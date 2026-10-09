@@ -20,15 +20,15 @@
 ; Built-in output statement
 "print" @function.builtin
 
-; Function names and parameters
+; Function names, parameters, and calls
 (function_definition name: (identifier) @function)
 (parameter name: (identifier) @variable.parameter)
 (call_expression function: (identifier) @function.call)
 
-; Variables
+; Variable declarations, assignments, and variable references
 (variable_declaration name: (identifier) @variable)
 (assignment_statement left: (identifier) @variable)
-(identifier) @variable
+(expression (identifier) @variable)
 
 ; Literals
 (boolean_literal) @boolean
