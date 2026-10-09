@@ -10,7 +10,11 @@
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
+/* Windows SDK has an enum member named TokenType; avoid colliding with
+ * YLang's TokenType typedef from lexer.h, which is included above. */
+#define TokenType WindowsSdkTokenType
 #include <windows.h>
+#undef TokenType
 #include <direct.h>
 #include <io.h>
 #include <process.h>
