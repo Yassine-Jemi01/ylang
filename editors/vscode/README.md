@@ -80,7 +80,7 @@ The compiler is authoritative: diagnostic locations and semantic errors are prod
 ## Windows setup
 
 1. Install a GCC toolchain such as MSYS2 UCRT64 and make sure `gcc.exe` is available on `PATH`.
-2. Build YLang on Windows with the repository's Makefile from an MSYS2 UCRT64 terminal (see [the Windows guide](../../docs/windows.md)).
+2. Build YLang on Windows with the repository's Makefile from an MSYS2 UCRT64 terminal (see [the Windows guide](https://github.com/Yassine-Jemi01/ylang/blob/dev/lsp-foundation/docs/windows.md)).
 3. Set `ylang.compilerPath` to the absolute path of `ylang.exe`, for example `C:\\msys64\\home\\your-user\\ylang\\build\\ylang.exe`.
 4. Restart VS Code, open a `.yl` file, and run **YLang: Build and Run Current File**.
 
