@@ -1,8 +1,8 @@
 {
   "name": "ylang-language-support",
   "displayName": "YLang Language Support",
-  "description": "YLang syntax highlighting, compiler diagnostics, custom file icon, and Code Runner support.",
-  "version": "0.3.0",
+  "description": "YLang syntax highlighting, LSP diagnostics, completion, hover, go-to-definition, file icons, and Code Runner support.",
+  "version": "0.4.0",
   "publisher": "yassine-jemi01",
   "license": "MIT",
   "categories": [
@@ -18,7 +18,7 @@
     "Error Lens"
   ],
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.91.0"
   },
   "contributes": {
     "languages": [
@@ -78,7 +78,7 @@
         "ylang.checkOnChange": {
           "type": "boolean",
           "default": true,
-          "description": "Check YLang files after edits, using the current unsaved editor contents."
+          "description": "Check the current unsaved buffer after edits."
         },
         "ylang.checkOnSave": {
           "type": "boolean",
@@ -98,5 +98,13 @@
   "main": "./extension.js",
   "activationEvents": [
     "onLanguage:ylang"
-  ]
+  ],
+  "dependencies": {
+    "vscode-languageclient": "^10.1.2",
+    "vscode-languageserver": "^10.1.2",
+    "vscode-languageserver-textdocument": "^1.0.13"
+  },
+  "scripts": {
+    "check": "node --check extension.js && node --check server/server.js"
+  }
 }
