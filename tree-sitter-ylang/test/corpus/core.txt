@@ -1,0 +1,17 @@
+==================
+Minimal main function
+==================
+
+function main() -> int {
+    return 0;
+}
+
+---
+
+(source_file
+  (function_definition
+    name: (identifier)
+    return_type: (type)
+    (block
+      (return_statement
+        (integer_literal)))))
