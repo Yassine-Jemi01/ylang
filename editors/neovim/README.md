@@ -33,7 +33,7 @@ The file should have the `ylang` filetype and highlight keywords, types, functio
 Install a recent Neovim build and GCC (MSYS2 UCRT64 is supported). Close open Neovim instances before updating an installed parser, then run this from PowerShell at the repository root:
 
 ```powershell
-.\\editors\\neovim\\install.ps1
+.\editors\neovim\install.ps1
 ```
 
 The PowerShell installer builds `ylang.dll`, installs it under Neovim's data directory, and installs the filetype/highlighting configuration. It refuses to overwrite different configuration files. Keep the UCRT64 `bin` directory on `PATH` so Neovim can load compiler runtime dependencies.

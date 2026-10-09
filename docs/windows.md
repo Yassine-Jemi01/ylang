@@ -33,9 +33,9 @@ The compiler is created at `build/ylang.exe`. The Windows CI uses this toolchain
 ## 3. Compile and run a program
 
 ```powershell
-.\\build\\ylang.exe check .\\examples\\hello.yl
-.\\build\\ylang.exe build .\\examples\\hello.yl -o .\\hello.exe
-.\\hello.exe
+.\build\ylang.exe check .\examples\hello.yl
+.\build\ylang.exe build .\examples\hello.yl -o .\hello.exe
+.\hello.exe
 ```
 
 Use an `.exe` suffix for the output name on Windows. GCC is the default native compiler.
@@ -63,13 +63,13 @@ Open a `.yl` file. Use **YLang: Check Current File** for diagnostics and **YLang
 Install recent Neovim and ensure `gcc.exe` is on `PATH`. Close Neovim instances before replacing a parser DLL. From PowerShell at the repository root, run:
 
 ```powershell
-.\\editors\\neovim\\install.ps1
+.\editors\neovim\install.ps1
 ```
 
 Then open a source file:
 
 ```powershell
-nvim .\\tree-sitter-ylang\\examples\\hello.yl
+nvim .\tree-sitter-ylang\examples\hello.yl
 ```
 
 Inside Neovim, check `:set filetype?` (should say `filetype=ylang`) and run `:InspectTree`.
