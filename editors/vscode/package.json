@@ -1,0 +1,41 @@
+{
+  "name": "ylang-language-support",
+  "displayName": "YLang Language Support",
+  "description": "Syntax highlighting and basic editor support for YLang .yl files.",
+  "version": "0.1.0",
+  "publisher": "yassine-jemi01",
+  "license": "MIT",
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "ylang",
+    "language",
+    "syntax highlighting"
+  ],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "ylang",
+        "aliases": [
+          "YLang",
+          "ylang"
+        ],
+        "extensions": [
+          ".yl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ylang",
+        "scopeName": "source.ylang",
+        "path": "./syntaxes/ylang.tmLanguage.json"
+      }
+    ]
+  }
+}
