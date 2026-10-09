@@ -35,9 +35,9 @@ The compiler is created at `build/ylang.exe`. The Windows CI uses this toolchain
 After installing MSYS2 UCRT64 GCC and adding `C:\\msys64\\ucrt64\\bin` to the Windows user `PATH`, you can build without running GNU Make:
 
 ```powershell
-.`scripts`windows`build.ps1
-.`build`ylang.exe --version
-.`scripts`windows`smoke-test.ps1
+.\scripts\windows\build.ps1
+.\build\ylang.exe --version
+.\scripts\windows\smoke-test.ps1
 ```
 
 The PowerShell build script compiles the compiler's C sources directly into `build\\ylang.exe`. The smoke test checks the version, validates a YLang source file, compiles a native Windows executable, runs it, and compares its output. The full regression suite still runs through `make test` in MSYS2 UCRT64.
