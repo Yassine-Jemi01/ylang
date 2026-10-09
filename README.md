@@ -187,3 +187,4 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [YLang Book (PDF)](docs/book/YLang-Book.pdf)
 - [Language specification](docs/language-spec.md)
 - [Architecture](docs/architecture.md)
+- [VS Code language support, compiler diagnostics, and Code Runner setup](editors/vscode/README.md)
