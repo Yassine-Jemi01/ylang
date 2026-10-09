@@ -13,5 +13,7 @@ function main() -> int {
     name: (identifier)
     return_type: (type)
     (block
-      (return_statement
-        (integer_literal)))))
+      (statement
+        (return_statement
+          value: (expression
+            (integer_literal)))))))
