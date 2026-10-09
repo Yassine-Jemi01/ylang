@@ -6,6 +6,7 @@ const { LanguageClient, TransportKind } = require("vscode-languageclient/node");
 
 let client;
 let clientStart;
+let startupError;
 
 function activate(context) {
   const serverModule = context.asAbsolutePath(path.join("server", "server.js"));
@@ -42,8 +43,8 @@ function activate(context) {
   );
 
   clientStart = client.start().catch((error) => {
+    startupError = error;
     vscode.window.showErrorMessage("YLang Language Server failed to start: " + error.message);
-    throw error;
   });
 
   context.subscriptions.push(
@@ -55,6 +56,7 @@ function activate(context) {
       }
       try {
         await clientStart;
+        if (startupError) return;
         await client.sendNotification("ylang/checkDocument", {
           uri: editor.document.uri.toString()
         });
@@ -67,11 +69,6 @@ function activate(context) {
     })
   );
 
-  context.subscriptions.push({
-    dispose: () => {
-      if (client) void client.stop();
-    }
-  });
 }
 
 async function deactivate() {
