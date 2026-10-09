@@ -1,8 +1,8 @@
 {
   "name": "ylang-language-support",
   "displayName": "YLang Language Support",
-  "description": "Syntax highlighting, file icon, and Code Runner support for YLang .yl files.",
-  "version": "0.2.0",
+  "description": "YLang syntax highlighting, compiler diagnostics, custom file icon, and Code Runner support.",
+  "version": "0.3.0",
   "publisher": "yassine-jemi01",
   "license": "MIT",
   "categories": [
@@ -13,7 +13,9 @@
     "language",
     "syntax highlighting",
     "code runner",
-    "compiler"
+    "compiler",
+    "diagnostics",
+    "Error Lens"
   ],
   "engines": {
     "vscode": "^1.85.0"
@@ -49,6 +51,52 @@
           ".yl": "cd $dir && ylang build $fullFileName -o \"$fileNameWithoutExt\" && \"./$fileNameWithoutExt\""
         }
       }
+    },
+    "commands": [
+      {
+        "command": "ylang.checkCurrentFile",
+        "title": "YLang: Check Current File"
+      },
+      {
+        "command": "ylang.showOutput",
+        "title": "YLang: Show Output"
+      }
+    ],
+    "configuration": {
+      "title": "YLang",
+      "properties": {
+        "ylang.compilerPath": {
+          "type": "string",
+          "default": "ylang",
+          "description": "Path to the YLang compiler executable. Use an absolute path if VS Code cannot find it in PATH."
+        },
+        "ylang.checkOnOpen": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check YLang files when they are opened."
+        },
+        "ylang.checkOnChange": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check YLang files after edits, using the current unsaved editor contents."
+        },
+        "ylang.checkOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check YLang files when they are saved."
+        },
+        "ylang.checkTimeoutMs": {
+          "type": "number",
+          "default": 10000,
+          "minimum": 500,
+          "maximum": 120000,
+          "description": "Maximum time in milliseconds to wait for the YLang compiler check."
+        }
+      }
     }
-  }
+  },
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:ylang"
+  ]
 }
