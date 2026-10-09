@@ -1,0 +1,9 @@
+function show(&int value) -> void {
+    print(value);
+}
+
+function main() -> int {
+    let int score = 42;
+    show(&score);
+    return 0;
+}

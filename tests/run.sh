@@ -136,4 +136,46 @@ if command -v clang >/dev/null 2>&1; then
     diff -u tests/expected-demo.txt build/test-demo-clang.out
 fi
 
+
+# Borrowed scalar parameters: shared borrows read; exclusive borrows update the caller.
+"$YLANG" build tests/borrow-read.yl -o "build/test-borrow-read$EXEEXT" >/dev/null
+"./build/test-borrow-read$EXEEXT" > build/borrow-read.out
+normalize_output "build/borrow-read.out"
+diff -u tests/expected-borrow-read.txt build/borrow-read.out
+
+"$YLANG" build tests/borrow-mut.yl -o "build/test-borrow-mut$EXEEXT" >/dev/null
+"./build/test-borrow-mut$EXEEXT" > build/borrow-mut.out
+normalize_output "build/borrow-mut.out"
+diff -u tests/expected-borrow-mut.txt build/borrow-mut.out
+
+if "$YLANG" check tests/borrow-shared-write.yl > build/borrow-shared-write.out 2>&1; then
+    echo "FAIL: shared borrow allowed mutation" >&2
+    exit 1
+fi
+grep -q 'E2022' build/borrow-shared-write.out
+
+if "$YLANG" check tests/borrow-mode-mismatch.yl > build/borrow-mode-mismatch.out 2>&1; then
+    echo "FAIL: non-borrow argument accepted by borrowed parameter" >&2
+    exit 1
+fi
+grep -q 'E2042' build/borrow-mode-mismatch.out
+
+if "$YLANG" check tests/borrow-conflict.yl > build/borrow-conflict.out 2>&1; then
+    echo "FAIL: overlapping mutable/shared borrow accepted" >&2
+    exit 1
+fi
+grep -q 'E2045' build/borrow-conflict.out
+
+if "$YLANG" check tests/borrow-nested-conflict.yl > build/borrow-nested-conflict.out 2>&1; then
+    echo "FAIL: nested conflicting borrow accepted" >&2
+    exit 1
+fi
+grep -q 'E2045' build/borrow-nested-conflict.out
+
+if "$YLANG" check tests/borrow-global.yl > build/borrow-global.out 2>&1; then
+    echo "FAIL: mutable global borrow accepted" >&2
+    exit 1
+fi
+grep -q 'E2065' build/borrow-global.out
+
 echo "All YLang tests passed."

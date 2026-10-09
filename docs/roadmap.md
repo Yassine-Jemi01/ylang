@@ -8,20 +8,20 @@ Build the language core first and keep operating-system details out of language 
 
 A syntax or semantic feature is not complete until its specification, diagnostics, tests, and editor grammar are updated. The LSP may temporarily lag while syntax is experimental, but that limitation must be explicit.
 
-## Phase 1 — Decide the foundations
+## Phase 1 — Ownership and borrowing
 
-Before implementing heap-backed collections, document the choices that affect the rest of the language:
+The first scalar-borrowing subset is now on the development branch. Stabilize its semantics and regression tests first:
 
-- Value and memory model: what assignment and argument passing mean for strings and future arrays, and how memory is reclaimed.
-- Array contract: element types, initialization, indexing, mutability, length, resizing, and out-of-bounds behavior.
-- Runtime error contract: predictable diagnostics and exit behavior for invalid input, failed conversions, and bounds violations.
-- Standard-library boundary: which operations are language primitives and which are ordinary library functions.
+- `&T` shared borrows and `&mut T` exclusive borrows at function-call boundaries.
+- Reject parameter-mode mismatches, conflicting borrows, and reads/writes during a mutable borrow.
+- Define move semantics for owned strings, use-after-move detection, explicit cloning, and cleanup on all control-flow exits.
+- Keep strings and arrays out of the borrowable type set until their ownership and lifetime rules are implemented.
 
-Do not promise Rust-like memory safety without a concrete design and evidence.
+Do not promise Rust-like memory safety without a complete design and evidence.
 
 ## Phase 2 — Arrays and iteration
 
-After the foundation decision, add one-dimensional typed arrays in small increments:
+After ownership/move semantics are implemented and tested, add one-dimensional typed arrays in small increments:
 
 1. Array type syntax and array literals.
 2. Index reads and writes, with compile-time type checking.

@@ -33,6 +33,7 @@ typedef enum {
     EXPR_STRING,
     EXPR_FSTRING,
     EXPR_NAME,
+    EXPR_BORROW,
     EXPR_UNARY,
     EXPR_BINARY,
     EXPR_ASSIGN,
@@ -54,6 +55,7 @@ struct Expr {
         struct { Expr *left; Expr *right; Token op; } binary;
         struct { Expr *target; Expr *right; VarDecl *variable; } assign;
         struct { char *name; VarDecl *variable; } name;
+        struct { Expr *target; VarDecl *variable; bool is_mut; } borrow;
         struct { char *name; Expr **args; size_t count; Function *function; } call;
         struct { FPart *parts; size_t count; } fstring;
     } as;
@@ -79,6 +81,8 @@ struct VarDecl {
     bool is_const;
     bool initialized;
     bool is_global;
+    bool is_borrowed;
+    bool is_mut_borrow;
     Expr *initializer;
 };
 

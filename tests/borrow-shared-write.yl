@@ -1,0 +1,9 @@
+function bad(&int value) -> void {
+    value = 9;
+}
+
+function main() -> int {
+    let int score = 1;
+    bad(&score);
+    return 0;
+}

@@ -1,0 +1,14 @@
+function mutate(&mut int value) -> int {
+    value = value + 1;
+    return value;
+}
+
+function combine(&mut int value, int ignored) -> void {
+    value = value + ignored;
+}
+
+function main() -> int {
+    let int score = 1;
+    combine(&mut score, mutate(&mut score));
+    return 0;
+}

@@ -135,11 +135,22 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             emit_fstring_expr(sb, expr);
             break;
         case EXPR_NAME:
-            sb_append(sb, expr->as.name.variable ? expr->as.name.variable->c_name : "yl_missing_variable");
+            if (expr->as.name.variable && expr->as.name.variable->is_borrowed) {
+                sb_append(sb, "(*");
+                sb_append(sb, expr->as.name.variable->c_name);
+                sb_append(sb, ")");
+            } else {
+                sb_append(sb, expr->as.name.variable ? expr->as.name.variable->c_name : "yl_missing_variable");
+            }
+            break;
+        case EXPR_BORROW:
+            sb_append(sb, "&(");
+            emit_expr(sb, expr->as.borrow.target);
+            sb_append(sb, ")");
             break;
         case EXPR_ASSIGN:
             sb_append(sb, "(");
-            sb_append(sb, expr->as.assign.variable ? expr->as.assign.variable->c_name : "yl_missing_variable");
+            emit_expr(sb, expr->as.assign.target);
             sb_append(sb, " = "); emit_expr(sb, expr->as.assign.right); sb_append(sb, ")");
             break;
         case EXPR_CALL:
@@ -214,6 +225,21 @@ static void emit_var_type(FILE *out, VarDecl *var, bool global)
     if (var->is_const && var->type != TYPE_STRING) fputs("const ", out);
     fputs(c_base_type(var->type), out);
     if (var->is_const && var->type == TYPE_STRING) fputs(" const", out);
+}
+
+static void emit_param_type(FILE *out, VarDecl *param)
+{
+    if (!param->is_borrowed) {
+        fputs(c_base_type(param->type), out);
+        return;
+    }
+    if (param->type == TYPE_STRING) {
+        fputs(param->is_mut_borrow ? "const char **" : "const char * const *", out);
+        return;
+    }
+    if (!param->is_mut_borrow) fputs("const ", out);
+    fputs(c_base_type(param->type), out);
+    fputs(" *", out);
 }
 
 static void emit_expr_to_file(FILE *out, Expr *expr)
@@ -399,7 +425,7 @@ bool generate_c(Compiler *c, const char *path)
         if (fn->param_count == 0) fputs("void", out);
         for (size_t j = 0; j < fn->param_count; j++) {
             if (j) fputs(", ", out);
-            fprintf(out, "%s %s", c_base_type(fn->params[j]->type), fn->params[j]->c_name);
+            { emit_param_type(out, fn->params[j]); fprintf(out, " %s", fn->params[j]->c_name); }
         }
         fputs(");\n", out);
     }

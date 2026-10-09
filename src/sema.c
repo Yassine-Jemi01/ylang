@@ -15,12 +15,48 @@ struct Scope {
 };
 
 typedef struct {
+    VarDecl *variable;
+    bool is_mut;
+    Token token;
+} ActiveBorrow;
+
+typedef struct {
     Compiler *compiler;
     Scope *scope;
     Function *function;
     unsigned loop_depth;
     Expr *allowed_assignment;
+    bool allow_borrow_expr;
+    bool resolving_borrow_target;
+    ActiveBorrow *active_borrows;
+    size_t active_borrow_count;
+    size_t active_borrow_capacity;
 } Checker;
+
+static bool type_is_borrowable_scalar(YType type)
+{
+    return type == TYPE_INT || type == TYPE_FLOAT ||
+           type == TYPE_BOOL || type == TYPE_CHAR;
+}
+
+static void push_active_borrow(Checker *checker, VarDecl *variable,
+                               bool is_mut, Token token)
+{
+    if (checker->active_borrow_count == checker->active_borrow_capacity) {
+        size_t capacity = checker->active_borrow_capacity
+            ? checker->active_borrow_capacity * 2 : 8;
+        ActiveBorrow *grown = arena_alloc(&checker->compiler->arena,
+                                         capacity * sizeof(*grown));
+        if (checker->active_borrow_count) {
+            memcpy(grown, checker->active_borrows,
+                   checker->active_borrow_count * sizeof(*grown));
+        }
+        checker->active_borrows = grown;
+        checker->active_borrow_capacity = capacity;
+    }
+    checker->active_borrows[checker->active_borrow_count++] =
+        (ActiveBorrow){ .variable = variable, .is_mut = is_mut, .token = token };
+}
 
 static Scope *scope_new(Compiler *c, Scope *parent)
 {
@@ -231,7 +267,66 @@ static YType check_expr(Checker *checker, Expr *expr)
                 diagnostic(c, expr->token, "error", "E2021",
                            "This variable may be used before it is initialized.", suggestion);
             }
+            if (!checker->resolving_borrow_target) {
+                for (size_t i = 0; i < checker->active_borrow_count; i++) {
+                    ActiveBorrow *borrow = &checker->active_borrows[i];
+                    if (borrow->variable == var && borrow->is_mut) {
+                        diagnostic(c, expr->token, "error", "E2067",
+                                   "Cannot read a variable while it is mutably borrowed by another argument.",
+                                   "Avoid using the same variable in other arguments during a mutable borrow.");
+                        break;
+                    }
+                }
+            }
             expr->type = var->type;
+            return expr->type;
+        }
+        case EXPR_BORROW: {
+            if (!checker->allow_borrow_expr) {
+                diagnostic(c, expr->token, "error", "E2063",
+                           "A borrow expression can only be passed directly to a matching borrowed function parameter.",
+                           "Declare a parameter as '&int value' or '&mut int value', then pass '&name' or '&mut name'.");
+            }
+            bool previous_resolving = checker->resolving_borrow_target;
+            checker->resolving_borrow_target = true;
+            YType target_type = check_expr(checker, expr->as.borrow.target);
+            checker->resolving_borrow_target = previous_resolving;
+            VarDecl *var = expr->as.borrow.target
+                ? expr->as.borrow.target->as.name.variable : NULL;
+            expr->as.borrow.variable = var;
+            if (!var || target_type == TYPE_ERROR) {
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            if (!type_is_borrowable_scalar(var->type)) {
+                diagnostic(c, expr->token, "error", "E2064",
+                           "Borrowing currently supports int, float, bool, and char only.",
+                           "Pass string values normally; string and array borrowing require the owning-memory model.");
+            }
+            if (var->is_const && expr->as.borrow.is_mut) {
+                diagnostic(c, expr->token, "error", "E2066",
+                           "Cannot mutably borrow a const variable.",
+                           "Remove 'const' only when mutation is intended and safe.");
+            }
+            if (var->is_global && !var->is_const) {
+                diagnostic(c, expr->token, "error", "E2065",
+                           "Mutable global variables cannot be borrowed in this initial implementation.",
+                           "Copy the value to a local variable, or make the global const.");
+            }
+            for (size_t i = 0; i < checker->active_borrow_count; i++) {
+                ActiveBorrow *active = &checker->active_borrows[i];
+                if (active->variable == var &&
+                    (active->is_mut || expr->as.borrow.is_mut)) {
+                    diagnostic(c, expr->token, "error", "E2045",
+                               "This function call creates overlapping borrows of the same variable.",
+                               "Use multiple shared borrows, or pass the variable to only one mutable borrow parameter.");
+                    break;
+                }
+            }
+            if (checker->allow_borrow_expr) {
+                push_active_borrow(checker, var, expr->as.borrow.is_mut, expr->token);
+            }
+            expr->type = target_type;
             return expr->type;
         }
         case EXPR_ASSIGN: {
@@ -252,6 +347,18 @@ static YType check_expr(Checker *checker, Expr *expr)
                 return expr->type;
             }
             expr->as.assign.variable = var;
+            if (target && target->kind == EXPR_NAME) {
+                target->as.name.variable = var;
+                target->as.name.name = var->name;
+            }
+            for (size_t i = 0; i < checker->active_borrow_count; i++) {
+                if (checker->active_borrows[i].variable == var) {
+                    diagnostic(c, expr->token, "error", "E2068",
+                               "Cannot assign to a variable while it is borrowed by another argument.",
+                               "Do not mutate a variable while a borrow of it is active in the current call.");
+                    break;
+                }
+            }
             YType right = check_expr(checker, expr->as.assign.right);
             if (var->is_const) {
                 diagnostic(c, expr->token, "error", "E2022",
@@ -360,6 +467,7 @@ static YType check_expr(Checker *checker, Expr *expr)
             return expr->type;
         }
         case EXPR_CALL: {
+            size_t borrow_base = checker->active_borrow_count;
             Function *function = find_function(c, expr->as.call.name);
             if (!function) {
                 const char *near = nearest_function(c, expr->as.call.name);
@@ -380,6 +488,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 }
                 for (size_t i = 0; i < expr->as.call.count; i++)
                     (void)check_expr(checker, expr->as.call.args[i]);
+                checker->active_borrow_count = borrow_base;
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
@@ -395,18 +504,44 @@ static YType check_expr(Checker *checker, Expr *expr)
             size_t shared = expr->as.call.count < function->param_count ?
                             expr->as.call.count : function->param_count;
             for (size_t i = 0; i < expr->as.call.count; i++) {
-                YType arg_type = check_expr(checker, expr->as.call.args[i]);
-                if (i < shared && arg_type != TYPE_ERROR &&
-                    arg_type != function->params[i]->type) {
+                Expr *arg = expr->as.call.args[i];
+                bool is_borrow_expr = arg && arg->kind == EXPR_BORROW;
+                bool previous_allow = checker->allow_borrow_expr;
+                checker->allow_borrow_expr = is_borrow_expr;
+                YType arg_type = check_expr(checker, arg);
+                checker->allow_borrow_expr = previous_allow;
+
+                if (i >= shared) continue;
+                VarDecl *param = function->params[i];
+                if (param->is_borrowed != is_borrow_expr) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion, sizeof(suggestion),
+                        "Argument %zu of '%s' %s a borrow expression.",
+                        i + 1, function->name,
+                        param->is_borrowed ? "must be" : "must not be");
+                    diagnostic(c, arg->token, "error", "E2042",
+                               "Function argument passing mode mismatch.", suggestion);
+                    continue;
+                }
+                if (param->is_borrowed && is_borrow_expr &&
+                    param->is_mut_borrow != arg->as.borrow.is_mut) {
+                    diagnostic(c, arg->token, "error", "E2044",
+                               "The argument's borrow mode does not match the parameter.",
+                               param->is_mut_borrow
+                                 ? "Pass '&mut name' to a '&mut T' parameter."
+                                 : "Pass '&name' to a shared '&T' parameter.");
+                }
+                if (arg_type != TYPE_ERROR && arg_type != param->type) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
                         "Argument %zu of '%s' expects %s, but received %s.",
-                        i + 1, function->name, type_name(function->params[i]->type),
+                        i + 1, function->name, type_name(param->type),
                         type_name(arg_type));
-                    diagnostic(c, expr->as.call.args[i]->token, "error", "E2042",
+                    diagnostic(c, arg->token, "error", "E2042",
                                "Function argument type mismatch.", suggestion);
                 }
             }
+            checker->active_borrow_count = borrow_base;
             expr->type = function->return_type;
             return expr->type;
         }
@@ -642,6 +777,14 @@ bool check_program(Compiler *c)
                 diagnostic(c, function->params[j]->token, "error", "E2005",
                            "A function parameter cannot have type void.",
                            "Use a value type such as int, float, bool, char, or string.");
+            }
+            if (function->params[j]->is_borrowed) {
+                function->params[j]->is_const = !function->params[j]->is_mut_borrow;
+                if (!type_is_borrowable_scalar(function->params[j]->type)) {
+                    diagnostic(c, function->params[j]->token, "error", "E2064",
+                               "Borrowed parameters currently support int, float, bool, and char only.",
+                               "String and array borrowing will follow after ownership and lifetime rules are implemented.");
+                }
             }
             (void)scope_add(&checker, checker.scope, function->params[j]);
         }

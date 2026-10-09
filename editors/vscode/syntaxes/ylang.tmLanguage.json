@@ -175,7 +175,7 @@
       "name": "constant.language.boolean.ylang"
     },
     "keywords": {
-      "match": "\\b(?:function|return|let|const|if|else|loop|break|continue|and|or|not)\\b",
+      "match": "\\b(?:function|return|let|const|mut|if|else|loop|break|continue|and|or|not)\\b",
       "name": "keyword.control.ylang"
     },
     "types": {
@@ -195,7 +195,7 @@
       "name": "constant.numeric.ylang"
     },
     "operators": {
-      "match": "==|!=|<=|>=|[=<>+*/%!-]",
+      "match": "==|!=|<=|>=|[=<>+*/%!-&]",
       "name": "keyword.operator.ylang"
     },
     "punctuation": {

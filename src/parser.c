@@ -456,6 +456,19 @@ static Expr *parse_primary(Parser *p)
         if (p->current.type != TOKEN_EOF) advance_parser(p);
         return new_expr(p->compiler, EXPR_ERROR, token);
     }
+    if (match(p, TOKEN_AMPERSAND)) {
+        bool is_mut = match(p, TOKEN_MUT);
+        Token target_token = consume(p, TOKEN_IDENTIFIER,
+            "Expected a variable name after '&' or '&mut'.",
+            "Borrow a named variable directly, for example show(&score) or change(&mut score).");
+        Expr *target = new_expr(p->compiler, EXPR_NAME, target_token);
+        target->as.name.name = token_copy(p->compiler, target_token);
+        Expr *borrow = new_expr(p->compiler, EXPR_BORROW, token);
+        borrow->as.borrow.target = target;
+        borrow->as.borrow.variable = NULL;
+        borrow->as.borrow.is_mut = is_mut;
+        return borrow;
+    }
     if (match(p, TOKEN_NUMBER)) {
         Expr *expr = new_expr(p->compiler,
             memchr(token.start, '.', token.length) ? EXPR_FLOAT : EXPR_INT, token);
@@ -707,14 +720,18 @@ static Function *parse_function(Parser *p)
             "Write the parameter list inside parentheses.");
     if (p->current.type != TOKEN_RIGHT_PAREN) {
         do {
-            Token param_type_token = p->current;
+            bool is_borrowed = match(p, TOKEN_AMPERSAND);
+            bool is_mut_borrow = is_borrowed && match(p, TOKEN_MUT);
             YType type = parse_type(p);
+            Token param_type_token = p->previous;
             Token param_name = consume(p, TOKEN_IDENTIFIER,
                 "Expected a parameter name after its type.",
                 "For example: function greet(string name) -> void.");
             VarDecl *param = new_var(p->compiler, param_name,
                 token_copy(p->compiler, param_name), type, false, false, NULL);
             param->initialized = true;
+            param->is_borrowed = is_borrowed;
+            param->is_mut_borrow = is_mut_borrow;
             (void)param_type_token;
             append_ptr(p->compiler, (void ***)&function->params,
                        &function->param_count, param);

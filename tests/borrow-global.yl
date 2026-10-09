@@ -1,0 +1,10 @@
+let int shared_counter = 0;
+
+function mutate(&mut int value) -> void {
+    value = value + 1;
+}
+
+function main() -> int {
+    mutate(&mut shared_counter);
+    return 0;
+}

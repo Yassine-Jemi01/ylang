@@ -125,6 +125,7 @@ static TokenType identifier_type(const Lexer *lexer)
 {
     if (is_word(lexer, "let")) return TOKEN_LET;
     if (is_word(lexer, "const")) return TOKEN_CONST;
+    if (is_word(lexer, "mut")) return TOKEN_MUT;
     if (is_word(lexer, "print")) return TOKEN_PRINT;
     if (is_word(lexer, "if")) return TOKEN_IF;
     if (is_word(lexer, "else")) return TOKEN_ELSE;
@@ -228,6 +229,7 @@ Token lexer_next(Lexer *lexer)
         case '[' : return make_token(lexer, TOKEN_LEFT_BRACKET);
         case ']' : return make_token(lexer, TOKEN_RIGHT_BRACKET);
         case '.' : return make_token(lexer, TOKEN_DOT);
+        case '&' : return make_token(lexer, TOKEN_AMPERSAND);
         case '+' : return make_token(lexer, TOKEN_PLUS);
         case '*' : return make_token(lexer, TOKEN_STAR);
         case '/' : return make_token(lexer, TOKEN_SLASH);
@@ -288,6 +290,7 @@ const char *token_type_name(TokenType type)
         case TOKEN_NEWLINE: return "NEWLINE";
         case TOKEN_LET: return "LET";
         case TOKEN_CONST: return "CONST";
+        case TOKEN_MUT: return "MUT";
         case TOKEN_PRINT: return "PRINT";
         case TOKEN_IF: return "IF";
         case TOKEN_ELSE: return "ELSE";
@@ -311,6 +314,7 @@ const char *token_type_name(TokenType type)
         case TOKEN_LEFT_BRACKET: return "LEFT_BRACKET";
         case TOKEN_RIGHT_BRACKET: return "RIGHT_BRACKET";
         case TOKEN_DOT: return "DOT";
+        case TOKEN_AMPERSAND: return "AMPERSAND";
         case TOKEN_PLUS: return "PLUS";
         case TOKEN_MINUS: return "MINUS";
         case TOKEN_ARROW: return "ARROW";

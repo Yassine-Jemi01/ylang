@@ -1,0 +1,10 @@
+function increment(&mut int value) -> void {
+    value = value + 1;
+}
+
+function main() -> int {
+    let int score = 41;
+    increment(&mut score);
+    print(score);
+    return 0;
+}

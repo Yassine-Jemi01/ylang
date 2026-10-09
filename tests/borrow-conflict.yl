@@ -1,0 +1,9 @@
+function combine(&mut int left, &int right) -> void {
+    left = left + right;
+}
+
+function main() -> int {
+    let int score = 1;
+    combine(&mut score, &score);
+    return 0;
+}
