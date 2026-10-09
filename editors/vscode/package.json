@@ -4,6 +4,10 @@
   "description": "YLang syntax highlighting, LSP diagnostics, completion, navigation, and cross-platform build/run support.",
   "version": "0.5.0",
   "publisher": "yassine-jemi01",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Yassine-Jemi01/ylang.git"
+  },
   "license": "MIT",
   "categories": [
     "Programming Languages"
