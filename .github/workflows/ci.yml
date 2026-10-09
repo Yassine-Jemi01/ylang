@@ -21,3 +21,19 @@ jobs:
         run: make clean all CC=${{ matrix.compiler }}
       - name: Run regression tests
         run: make test CC=${{ matrix.compiler }}
+
+  language-server:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install language server dependencies
+        run: npm install
+        working-directory: editors/vscode
+      - name: Check extension and language server syntax
+        run: npm run check
+        working-directory: editors/vscode
