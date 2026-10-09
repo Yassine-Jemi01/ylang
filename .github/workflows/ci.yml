@@ -45,6 +45,12 @@ jobs:
         run: make clean all CC=gcc
       - name: Run Windows regression tests
         run: make test CC=gcc
+      - name: Build from native PowerShell
+        shell: pwsh
+        run: |
+          $env:PATH = "C:\msys64\ucrt64\bin;$env:PATH"
+          ./scripts/windows/build.ps1 -Compiler gcc
+          ./scripts/windows/smoke-test.ps1
       - name: Build Neovim Tree-sitter parser DLL
         run: gcc -std=c11 -O2 -shared -static-libgcc -Itree-sitter-ylang/src tree-sitter-ylang/src/parser.c -o build/ylang.dll
       - name: Check Neovim PowerShell installer syntax
