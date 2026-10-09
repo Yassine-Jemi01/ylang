@@ -1,0 +1,38 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "ylang",
+      "camelcase": "YLang",
+      "title": "YLang",
+      "scope": "source.ylang",
+      "path": ".",
+      "file-types": [
+        "yl"
+      ],
+      "highlights": "queries/highlights.scm",
+      "injection-regex": "^ylang$"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "Tree-sitter grammar for the YLang programming language.",
+    "authors": [
+      {
+        "name": "Yassine Jemi"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/Yassine-Jemi01/ylang"
+    }
+  },
+  "bindings": {
+    "c": true,
+    "node": true,
+    "python": true,
+    "rust": true,
+    "go": true,
+    "swift": true
+  }
+}
