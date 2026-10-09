@@ -1,0 +1,7 @@
+function main() -> int {
+    let const string name = "YLang";
+    let int answer = 42;
+    print(f"Hello from {name}!");
+    print("Answer:", answer);
+    return 0;
+}
