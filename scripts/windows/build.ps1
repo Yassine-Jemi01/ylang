@@ -39,7 +39,7 @@ $flags = @(
     "-g3",
     "-O0",
     "-I$includeDirectory",
-    ('-DYLANG_VERSION=\"{0}\"' -f $version)
+    ('-DYLANG_VERSION="{0}"' -f $version)
 )
 
 Write-Host "Building YLang $version for Windows with $($compilerCommand.Name)..."
