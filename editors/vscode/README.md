@@ -1,63 +1,78 @@
 # YLang Language Support for VS Code
 
-This extension registers the `.yl` file extension as YLang and provides syntax highlighting, compiler diagnostics, a language icon, and Code Runner integration.
+YLang's VS Code extension provides syntax highlighting, the custom language icon, Code Runner integration, and an initial Language Server Protocol (LSP) implementation.
 
-## Included
+## Features
 
-- Highlighting for keywords, types, booleans, numbers, strings, characters, f-strings, function declarations/calls, operators, and `//` comments.
-- Matching brackets, automatic closing pairs, comment toggling, and basic indentation.
-- Light/dark YLang icons for icon themes that support language icons.
-- A default Code Runner executor for `.yl` files: compile with YLang, then run the generated executable.
-- Syntax and semantic diagnostics from the real `ylang check` compiler command, including diagnostic codes and compiler hints.
-- Checks on open, while editing, and on save. Checks use a temporary copy of the current editor buffer, so unsaved edits are checked too.
+- TextMate syntax highlighting for the YLang 1.0 syntax.
+- Automatic brackets and comment toggling.
+- YLang icon support, including the local Catppuccin Mocha icon theme installer.
+- Code Runner integration to build and run the current `.yl` source.
+- LSP diagnostics from the actual `ylang check` compiler command.
+- Basic completion for keywords, types, and built-in `print`.
+- Hover information for built-in types and keywords, plus simple same-file function/variable information.
+- Go to definition for function and variable declarations in the current file.
+- Debounced checks while editing, plus checks on open and save.
+
+This is an early LSP foundation. It does not yet offer full scope-aware symbol analysis, cross-file navigation, rename refactoring, code actions, formatting, or debugging.
 
 ## Requirements
 
-- VS Code 1.85 or newer.
-- The YLang compiler built locally.
-- [Code Runner](https://marketplace.visualstudio.com/items?itemName=formulahendry.code-runner) for the **Run Code** shortcut.
-- [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) for displaying diagnostic messages inline next to the affected source code. The language extension creates the diagnostics; Error Lens displays them.
+- VS Code 1.91 or newer.
+- Node.js and npm to install the LSP dependencies.
+- The YLang compiler executable.
+- [Code Runner](https://marketplace.visualstudio.com/items?itemName=formulahendry.code-runner) for Run Code.
+- [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) for inline diagnostic messages.
 
-Build the compiler:
+## Get the LSP development branch
+
+From the local YLang repository:
+
+```sh
+git fetch origin
+git switch --track origin/dev/lsp-foundation
+cd editors/vscode
+npm install
+npm run check
+```
+
+The development branch is separate from the stable `main` branch. The first install downloads the dependencies used by the LSP client/server.
+
+## Install the local extension
+
+After switching to `dev/lsp-foundation` and installing dependencies:
+
+```sh
+mkdir -p ~/.vscode/extensions
+rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.3.0
+rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.4.0
+ln -s "$HOME/Documents/ylang-1.0/editors/vscode" ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.4.0
+```
+
+Build the compiler if needed:
 
 ```sh
 cd ~/Documents/ylang-1.0
-make clean
 make
 make test
 ```
 
-## Install or update the local extension on Linux
-
-From the root of the YLang repository, run:
-
-```sh
-git pull --ff-only
-mkdir -p ~/.vscode/extensions
-rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.1.0
-rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.2.0
-rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.3.0
-ln -s "$PWD/editors/vscode" ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.3.0
-```
-
-Fully restart VS Code, or run **Developer: Reload Window** from the Command Palette.
-
-## Configure the compiler path
-
-VS Code started from the desktop may not inherit the PATH configured in fish. Open **Preferences: Open User Settings (JSON)** and add the compiler path under the top-level settings object. For the build in this repository:
+Open VS Code settings JSON and set the compiler path to the local binary:
 
 ```json
 "ylang.compilerPath": "/home/yssn/Documents/ylang-1.0/build/ylang"
 ```
 
-If you installed YLang to `~/.local/bin/ylang`, use that absolute path instead.
+Keep this setting inside your existing top-level settings object. Restart VS Code completely or run **Developer: Reload Window**.
 
-The checker runs `ylang check` and maps compiler errors/warnings to VS Code's Problems panel and source underlines. Run **YLang: Check Current File** from the Command Palette to request a check manually. Use **YLang: Show Output** to inspect compiler startup or checker logs.
+## Use it
 
-## Run programs with Code Runner
+Open a `.yl` file. Diagnostics should appear in the Problems panel and as underlines; Error Lens can show the short messages inline.
 
-Save a `.yl` file and invoke **Run Code** (default shortcut: `Ctrl+Alt+N`). The configured executor compiles the source and runs the output executable in the same directory.
+- Run **YLang: Check Current File** from the Command Palette to request an immediate check.
+- Press **Ctrl+Space** for basic keyword and type completion.
+- Hover over a type, keyword, or simple function declaration for information.
+- Use **F12** on a same-file function or variable usage to try go-to-definition.
+- Use Code Runner's **Run Code** command (usually `Ctrl+Alt+N`) to build and execute the program.
 
-## File icon note
-
-The extension provides light and dark YLang icons through VS Code's language-icon contribution. Third-party file icon themes may override this mapping. The separate local theme installer, `editors/vscode/install-catppuccin-icon.sh`, can add the YLang icon to a locally installed Catppuccin Mocha icon theme.
+The compiler is authoritative: diagnostic locations and semantic errors are produced by the existing YLang compiler rather than a second implementation of language rules.
