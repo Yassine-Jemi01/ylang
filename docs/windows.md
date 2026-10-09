@@ -30,7 +30,19 @@ make test CC=gcc
 
 The compiler is created at `build/ylang.exe`. The Windows CI uses this toolchain and runs the regression suite.
 
-## 3. Compile and run a program
+## 3. Build from PowerShell
+
+After installing MSYS2 UCRT64 GCC and adding `C:\\msys64\\ucrt64\\bin` to the Windows user `PATH`, you can build without running GNU Make:
+
+```powershell
+.`scripts`windows`build.ps1
+.`build`ylang.exe --version
+.`scripts`windows`smoke-test.ps1
+```
+
+The PowerShell build script compiles the compiler's C sources directly into `build\\ylang.exe`. The smoke test checks the version, validates a YLang source file, compiles a native Windows executable, runs it, and compares its output. The full regression suite still runs through `make test` in MSYS2 UCRT64.
+
+## 4. Compile and run a program
 
 ```powershell
 .\build\ylang.exe check .\examples\hello.yl
@@ -40,7 +52,7 @@ The compiler is created at `build/ylang.exe`. The Windows CI uses this toolchain
 
 Use an `.exe` suffix for the output name on Windows. GCC is the default native compiler.
 
-## 4. VS Code
+## 5. VS Code
 
 From the repository root, install the extension dependencies:
 
@@ -58,7 +70,7 @@ Set `ylang.compilerPath` in VS Code settings JSON to the absolute path of your c
 
 Open a `.yl` file. Use **YLang: Check Current File** for diagnostics and **YLang: Build and Run Current File** to build and launch the program in an interactive integrated terminal.
 
-## 5. Neovim
+## 6. Neovim
 
 Install recent Neovim and ensure `gcc.exe` is on `PATH`. Close Neovim instances before replacing a parser DLL. From PowerShell at the repository root, run:
 
