@@ -1,0 +1,206 @@
+{
+  "scopeName": "source.ylang",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#function-declaration"
+    },
+    {
+      "include": "#f-string"
+    },
+    {
+      "include": "#string"
+    },
+    {
+      "include": "#character"
+    },
+    {
+      "include": "#boolean"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#builtin-functions"
+    },
+    {
+      "include": "#function-calls"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#punctuation"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "match": "//.*$",
+          "name": "comment.line.double-slash.ylang"
+        }
+      ]
+    },
+    "function-declaration": {
+      "match": "\\b(function)(\\s+)([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": {
+          "name": "keyword.control.ylang"
+        },
+        "3": {
+          "name": "entity.name.function.ylang"
+        }
+      }
+    },
+    "f-string": {
+      "name": "string.quoted.double.ylang",
+      "begin": "f\"",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.begin.ylang"
+        }
+      },
+      "end": "\"",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.ylang"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#interpolation"
+        },
+        {
+          "include": "#escapes"
+        }
+      ]
+    },
+    "string": {
+      "name": "string.quoted.double.ylang",
+      "begin": "\"",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.begin.ylang"
+        }
+      },
+      "end": "\"",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.ylang"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#escapes"
+        }
+      ]
+    },
+    "character": {
+      "name": "string.quoted.single.ylang",
+      "begin": "'",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.begin.ylang"
+        }
+      },
+      "end": "'",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.ylang"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#escapes"
+        }
+      ]
+    },
+    "escapes": {
+      "patterns": [
+        {
+          "match": "\\\\(?:[\\\\\"'nrt0]|x[0-9A-Fa-f]{2})",
+          "name": "constant.character.escape.ylang"
+        }
+      ]
+    },
+    "interpolation": {
+      "name": "meta.interpolation.ylang",
+      "begin": "\\{",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.interpolation.begin.ylang"
+        }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.interpolation.end.ylang"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#boolean"
+        },
+        {
+          "include": "#keywords"
+        },
+        {
+          "include": "#types"
+        },
+        {
+          "include": "#builtin-functions"
+        },
+        {
+          "include": "#function-calls"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#operators"
+        }
+      ]
+    },
+    "boolean": {
+      "match": "\\b(?:true|false)\\b",
+      "name": "constant.language.boolean.ylang"
+    },
+    "keywords": {
+      "match": "\\b(?:function|return|let|const|if|else|loop|break|continue|and|or|not)\\b",
+      "name": "keyword.control.ylang"
+    },
+    "types": {
+      "match": "\\b(?:int|float|bool|char|string|void)\\b",
+      "name": "storage.type.ylang"
+    },
+    "builtin-functions": {
+      "match": "\\bprint\\b",
+      "name": "support.function.builtin.ylang"
+    },
+    "function-calls": {
+      "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()",
+      "name": "entity.name.function.call.ylang"
+    },
+    "numbers": {
+      "match": "\\b(?:0[xX][0-9A-Fa-f]+|[0-9]+(?:\\.[0-9]+)?)\\b",
+      "name": "constant.numeric.ylang"
+    },
+    "operators": {
+      "match": "==|!=|<=|>=|[=<>+*/%!-]",
+      "name": "keyword.operator.ylang"
+    },
+    "punctuation": {
+      "match": "[{}()\\[\\],.;]",
+      "name": "punctuation.ylang"
+    }
+  }
+}
