@@ -30,8 +30,8 @@ sudo apt install build-essential clang make
 ### Build from source
 
 ```sh
-git clone https://github.com/OWNER/REPOSITORY.git
-cd REPOSITORY
+git clone https://github.com/Yassine-Jemi01/ylang.git
+cd ylang
 make
 make test
 ```
