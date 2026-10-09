@@ -1,0 +1,16 @@
+let const int MAX = 100;
+let int count = 0;
+
+function main() -> int {
+    loop() {
+        count = count + 1;
+        if (count >= 3 and MAX > 10) {
+            break;
+        } else if (count == 2) {
+            continue;
+        } else {
+            print("count:", count);
+        }
+    }
+    return 0;
+}
