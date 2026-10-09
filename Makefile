@@ -5,12 +5,18 @@ CC = gcc
 CPPFLAGS += -Iinclude -DYLANG_VERSION=\"$(VERSION)\"
 CFLAGS ?= -std=c17 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes -g3 -O0
 LDFLAGS ?=
+UNAME_S := $(shell uname -s 2>/dev/null)
+EXEEXT ?=
+ifneq (,$(filter MINGW% MSYS% CYGWIN%,$(UNAME_S)))
+EXEEXT := .exe
+endif
+
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
 
 SRC := $(wildcard src/*.c)
 OBJ := $(patsubst src/%.c,build/%.o,$(SRC))
-BIN := build/ylang
+BIN := build/ylang$(EXEEXT)
 
 .PHONY: all clean test sanitize install uninstall print-version
 
@@ -27,7 +33,7 @@ print-version:
 >@printf '%s\n' '$(VERSION)'
 
 test: $(BIN)
->sh tests/run.sh
+>YLANG_EXEEXT='$(EXEEXT)' sh tests/run.sh
 
 sanitize:
 >$(MAKE) clean

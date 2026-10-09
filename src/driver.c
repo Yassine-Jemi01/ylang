@@ -1,14 +1,119 @@
+#ifndef _WIN32
 #define _POSIX_C_SOURCE 200809L
+#endif
 #include "internal.h"
 
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <direct.h>
+#include <io.h>
+#include <process.h>
+#define YLANG_PATH_SEPARATOR "\\"
+#else
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#define YLANG_PATH_SEPARATOR "/"
+#endif
 
+static int ylang_make_directory(const char *path)
+{
+#ifdef _WIN32
+    return _mkdir(path);
+#else
+    return mkdir(path, 0755);
+#endif
+}
+
+static int ylang_remove_file(const char *path)
+{
+#ifdef _WIN32
+    return _unlink(path);
+#else
+    return unlink(path);
+#endif
+}
+
+static int ylang_remove_directory(const char *path)
+{
+#ifdef _WIN32
+    return _rmdir(path);
+#else
+    return rmdir(path);
+#endif
+}
+
+static char *ylang_copy_string(const char *value)
+{
+    size_t length = strlen(value) + 1;
+    char *copy = malloc(length);
+    if (copy) memcpy(copy, value, length);
+    return copy;
+}
+
+static char *ylang_create_build_directory(void)
+{
+#ifdef _WIN32
+    char temporary_path[MAX_PATH + 1];
+    DWORD length = GetTempPathA((DWORD)sizeof(temporary_path), temporary_path);
+    if (length == 0 || length >= sizeof(temporary_path)) {
+        errno = ENAMETOOLONG;
+        return NULL;
+    }
+
+    char reserved_file[MAX_PATH + 1];
+    if (GetTempFileNameA(temporary_path, "ylg", 0, reserved_file) == 0) {
+        errno = EIO;
+        return NULL;
+    }
+
+    char directory[MAX_PATH + 8];
+    int written = snprintf(directory, sizeof(directory), "%s.dir", reserved_file);
+    if (written < 0 || (size_t)written >= sizeof(directory)) {
+        (void)DeleteFileA(reserved_file);
+        errno = ENAMETOOLONG;
+        return NULL;
+    }
+    if (!CreateDirectoryA(directory, NULL)) {
+        (void)DeleteFileA(reserved_file);
+        errno = EIO;
+        return NULL;
+    }
+    if (!DeleteFileA(reserved_file)) {
+        (void)RemoveDirectoryA(directory);
+        errno = EIO;
+        return NULL;
+    }
+
+    char *result = ylang_copy_string(directory);
+    if (!result) {
+        (void)RemoveDirectoryA(directory);
+        errno = ENOMEM;
+    }
+    return result;
+#else
+    const char *pattern = "/tmp/ylang-build-XXXXXX";
+    char *directory = ylang_copy_string(pattern);
+    if (!directory) {
+        errno = ENOMEM;
+        return NULL;
+    }
+    if (!mkdtemp(directory)) {
+        int saved_errno = errno;
+        free(directory);
+        errno = saved_errno;
+        return NULL;
+    }
+    return directory;
+#endif
+}
 
 /* ------------------------ safe source fixes --------------------------- */
 typedef struct {
@@ -154,6 +259,20 @@ static char *read_source_file(const char *path, size_t *length)
 static int run_native_compiler(const char *cc, const char *c_path,
                                const char *output_path)
 {
+#ifdef _WIN32
+    const char *arguments[] = {
+        cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic", "-Wno-unused-function",
+        "-O2", "-g", "-fstack-protector-strong",
+        c_path, "-lm", "-o", output_path, NULL
+    };
+    intptr_t status = _spawnvp(_P_WAIT, cc, arguments);
+    if (status == -1) {
+        fprintf(stderr, "ylang: cannot execute native compiler '%s': %s\n",
+                cc, strerror(errno));
+        return errno == ENOENT ? 127 : 1;
+    }
+    return (int)status;
+#else
     pid_t pid = fork();
     if (pid < 0) {
         fprintf(stderr, "ylang: could not start native compiler: %s\n", strerror(errno));
@@ -174,6 +293,7 @@ static int run_native_compiler(const char *cc, const char *c_path,
     }
     if (WIFEXITED(status)) return WEXITSTATUS(status);
     return 1;
+#endif
 }
 
 int ylang_run(const char *command, const char *input_path,
@@ -234,7 +354,7 @@ int ylang_run(const char *command, const char *input_path,
 
     if (emit_c_command) {
         if (!c_path) {
-            if (mkdir("build", 0755) != 0 && errno != EEXIST) {
+            if (ylang_make_directory("build") != 0 && errno != EEXIST) {
                 fprintf(stderr, "ylang: cannot create build directory: %s\n", strerror(errno));
                 arena_destroy(&compiler.arena);
                 free(source);
@@ -243,33 +363,32 @@ int ylang_run(const char *command, const char *input_path,
             c_path = "build/ylang-generated.c";
         }
     } else {
-        char *template = strdup("/tmp/ylang-build-XXXXXX");
-        if (!template || !mkdtemp(template)) {
+        temporary_directory = ylang_create_build_directory();
+        if (!temporary_directory) {
             fprintf(stderr, "ylang: cannot create a temporary build directory: %s\n", strerror(errno));
-            free(template);
             arena_destroy(&compiler.arena);
             free(source);
             return 73;
         }
-        temporary_directory = template;
-        size_t path_size = strlen(temporary_directory) + sizeof("/generated.c");
+        size_t path_size = strlen(temporary_directory) + sizeof(YLANG_PATH_SEPARATOR "generated.c");
         generated_path = malloc(path_size);
         if (!generated_path) {
             fputs("ylang: out of memory while preparing native build\n", stderr);
-            (void)rmdir(temporary_directory);
+            (void)ylang_remove_directory(temporary_directory);
             free(temporary_directory);
             arena_destroy(&compiler.arena);
             free(source);
             return 70;
         }
-        (void)snprintf(generated_path, path_size, "%s/generated.c", temporary_directory);
+        (void)snprintf(generated_path, path_size, "%s%s%s",
+                       temporary_directory, YLANG_PATH_SEPARATOR, "generated.c");
         c_path = generated_path;
     }
 
     if (!generate_c(&compiler, c_path)) {
         if (temporary_directory) {
-            (void)unlink(c_path);
-            (void)rmdir(temporary_directory);
+            (void)ylang_remove_file(c_path);
+            (void)ylang_remove_directory(temporary_directory);
         }
         free(generated_path);
         free(temporary_directory);
@@ -282,12 +401,17 @@ int ylang_run(const char *command, const char *input_path,
     if (emit_c_command) {
         printf("Generated C source: %s\n", c_path);
     } else {
-        const char *target = output_path ? output_path : "a.out";
+        const char *target = output_path ? output_path :
+#ifdef _WIN32
+            "a.exe";
+#else
+            "a.out";
+#endif
         result = run_native_compiler(cc ? cc : "gcc", c_path, target);
         if (result == 0) printf("Build succeeded: %s\n", target);
         else fprintf(stderr, "ylang: native compilation failed (exit %d).\n", result);
-        (void)unlink(c_path);
-        (void)rmdir(temporary_directory);
+        (void)ylang_remove_file(c_path);
+        (void)ylang_remove_directory(temporary_directory);
     }
 
     free(generated_path);

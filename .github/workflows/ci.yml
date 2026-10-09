@@ -22,8 +22,48 @@ jobs:
       - name: Run regression tests
         run: make test CC=${{ matrix.compiler }}
 
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up MSYS2 UCRT64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            make
+            diffutils
+            grep
+            sed
+      - name: Build compiler for Windows
+        run: make clean all CC=gcc
+      - name: Run Windows regression tests
+        run: make test CC=gcc
+      - name: Build Neovim Tree-sitter parser DLL
+        run: gcc -std=c11 -O2 -shared -static-libgcc -Itree-sitter-ylang/src tree-sitter-ylang/src/parser.c -o build/ylang.dll
+      - name: Check Neovim PowerShell installer syntax
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("editors/neovim/install.ps1", [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+
   language-server:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out source
         uses: actions/checkout@v4

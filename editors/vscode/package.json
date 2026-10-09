@@ -1,8 +1,8 @@
 {
   "name": "ylang-language-support",
   "displayName": "YLang Language Support",
-  "description": "YLang syntax highlighting, LSP diagnostics, completion, hover, go-to-definition, file icons, and Code Runner support.",
-  "version": "0.4.0",
+  "description": "YLang syntax highlighting, LSP diagnostics, completion, navigation, and cross-platform build/run support.",
+  "version": "0.5.0",
   "publisher": "yassine-jemi01",
   "license": "MIT",
   "categories": [
@@ -12,10 +12,12 @@
     "ylang",
     "language",
     "syntax highlighting",
-    "code runner",
     "compiler",
     "diagnostics",
-    "Error Lens"
+    "Error Lens",
+    "Windows",
+    "cross-platform",
+    "build and run"
   ],
   "engines": {
     "vscode": "^1.91.0"
@@ -60,6 +62,10 @@
       {
         "command": "ylang.showOutput",
         "title": "YLang: Show Output"
+      },
+      {
+        "command": "ylang.buildAndRunCurrentFile",
+        "title": "YLang: Build and Run Current File"
       }
     ],
     "configuration": {

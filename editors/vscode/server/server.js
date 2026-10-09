@@ -85,7 +85,10 @@ async function getSettings(document) {
 
 function expandPath(value) {
   if (value === "~") return os.homedir();
-  return value.startsWith("~/") ? path.join(os.homedir(), value.slice(2)) : value;
+  if (value.startsWith("~/") || value.startsWith("~\\\\")) {
+    return path.join(os.homedir(), value.slice(2));
+  }
+  return value;
 }
 
 function removeTemp(entry) {

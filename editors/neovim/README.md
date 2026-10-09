@@ -8,7 +8,7 @@ This folder installs the generated YLang Tree-sitter parser into Neovim and enab
 - GCC or Clang
 - The generated parser in `tree-sitter-ylang/src/parser.c`
 
-## Install
+## Install on Linux
 
 From the root of the cloned YLang repository:
 
@@ -18,7 +18,7 @@ git pull --ff-only
 bash editors/neovim/install.sh
 ```
 
-The installer compiles `parser.c` into `ylang.so`, installs it under Neovim's data directory, and installs the highlighting query and two small Lua files into your Neovim config. It refuses to overwrite conflicting existing config files.
+The Bash installer compiles `parser.c` into `ylang.so`, installs it under Neovim's data directory, and installs the highlighting query and two small Lua files into your Neovim config. It refuses to overwrite conflicting existing config files.
 
 Then open a YLang file:
 
@@ -27,6 +27,16 @@ nvim tree-sitter-ylang/examples/hello.yl
 ```
 
 The file should have the `ylang` filetype and highlight keywords, types, function names/calls, variables, operators, comments, strings, and f-string interpolation.
+
+## Install on Windows
+
+Install a recent Neovim build and GCC (MSYS2 UCRT64 is supported). Close open Neovim instances before updating an installed parser, then run this from PowerShell at the repository root:
+
+```powershell
+.\\editors\\neovim\\install.ps1
+```
+
+The PowerShell installer builds `ylang.dll`, installs it under Neovim's data directory, and installs the filetype/highlighting configuration. It refuses to overwrite different configuration files. Keep the UCRT64 `bin` directory on `PATH` so Neovim can load compiler runtime dependencies.
 
 ## Verify in Neovim
 

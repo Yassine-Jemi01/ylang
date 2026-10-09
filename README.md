@@ -187,6 +187,7 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [YLang Book (PDF)](docs/book/YLang-Book.pdf)
 - [Language specification](docs/language-spec.md)
 - [Architecture](docs/architecture.md)
+- [Windows setup guide](docs/windows.md)
 - [Tree-sitter grammar and parsing tests](tree-sitter-ylang/README.md)
 - [Neovim Tree-sitter integration](editors/neovim/README.md)
 - [VS Code language support, compiler diagnostics, and Code Runner setup](editors/vscode/README.md)
