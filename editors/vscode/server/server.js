@@ -282,7 +282,7 @@ connection.onDidChangeConfiguration((change) => {
 });
 documents.onDidOpen(({ document }) => { void validate(document); });
 documents.onDidChangeContent(({ document }) => schedule(document, 300));
-documents.onDidSave(({ document }) => { void validate(document); });
+documents.onDidSave(({ document }) => schedule(document, 0));
 documents.onDidClose(({ document }) => {
   const uri = document.uri;
   if (timers.has(uri)) clearTimeout(timers.get(uri));
@@ -293,7 +293,7 @@ documents.onDidClose(({ document }) => {
 });
 connection.onNotification("ylang/checkDocument", (params) => {
   const doc = params && params.uri ? documents.get(params.uri) : null;
-  if (doc) void validate(doc);
+  if (doc) schedule(doc, 0);
 });
 connection.onCompletion((params) => {
   const doc = documents.get(params.textDocument.uri);
