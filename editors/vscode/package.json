@@ -1,8 +1,8 @@
 {
   "name": "ylang-language-support",
   "displayName": "YLang Language Support",
-  "description": "Syntax highlighting and basic editor support for YLang .yl files.",
-  "version": "0.1.0",
+  "description": "Syntax highlighting, file icon, and Code Runner support for YLang .yl files.",
+  "version": "0.2.0",
   "publisher": "yassine-jemi01",
   "license": "MIT",
   "categories": [
@@ -11,7 +11,9 @@
   "keywords": [
     "ylang",
     "language",
-    "syntax highlighting"
+    "syntax highlighting",
+    "code runner",
+    "compiler"
   ],
   "engines": {
     "vscode": "^1.85.0"
@@ -27,7 +29,11 @@
         "extensions": [
           ".yl"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/ylang-light.svg",
+          "dark": "./icons/ylang-dark.svg"
+        }
       }
     ],
     "grammars": [
@@ -36,6 +42,13 @@
         "scopeName": "source.ylang",
         "path": "./syntaxes/ylang.tmLanguage.json"
       }
-    ]
+    ],
+    "configurationDefaults": {
+      "[ylang]": {
+        "code-runner.executorMapByFileExtension": {
+          ".yl": "cd $dir && ylang build $fullFileName -o \"$fileNameWithoutExt\" && \"./$fileNameWithoutExt\""
+        }
+      }
+    }
   }
 }
