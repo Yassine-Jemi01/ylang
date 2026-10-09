@@ -1,0 +1,15 @@
+let string global_note;
+let bool global_enabled;
+let char global_grade;
+let float global_rate;
+
+function main() -> int {
+    let float rate = 5.0 / 2.0;
+    let char grade = 'A';
+    let bool enabled = not false;
+    let string message = f"rate={rate}, grade={grade}, ok={enabled}";
+    print(message);
+    print(f"logic={enabled}, calculation={rate / 2.0}, char={grade}");
+    print(f"defaults='{global_note}', {global_enabled}, char-zero={global_grade == '\0'}, {global_rate}");
+    return 0;
+}

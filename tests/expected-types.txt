@@ -1,0 +1,3 @@
+rate=2.5, grade=A, ok=true
+logic=true, calculation=1.25, char=A
+defaults='', false, char-zero=true, 0

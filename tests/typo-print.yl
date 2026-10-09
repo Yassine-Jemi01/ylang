@@ -1,0 +1,7 @@
+function main() -> int {
+    let int age = 16;
+    pritn(age);
+    print("The literal word pritn must remain unchanged.");
+    // pritn(age) inside a comment must remain unchanged.
+    return 0;
+}

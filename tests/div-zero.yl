@@ -1,0 +1,5 @@
+function main() -> int {
+    let int invalid = 4 / 0;
+    print(invalid);
+    return 0;
+}

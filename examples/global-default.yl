@@ -1,0 +1,6 @@
+let string blank;
+let int counter;
+function main() -> int {
+    print(f"blank='{blank}', counter={counter}");
+    return 0;
+}

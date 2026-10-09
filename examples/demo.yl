@@ -1,0 +1,30 @@
+let const string project = "YLang";
+
+function add(int a, int b) -> int {
+    return a + b;
+}
+
+function main() -> int {
+    let int count = 0;
+    let int sum = add(10, 20);
+
+    print(f"Welcome to {project}!");
+    print("sum:", sum);
+    print(f"Progress: 100% {{complete}}, next={sum + 1}");
+
+    loop() {
+        count = count + 1;
+        print(f"Count: {count}");
+        if (count >= 3) {
+            break;
+        }
+    }
+
+    if (sum == 30 and count == 3) {
+        print("Compiler works!");
+    } else {
+        print("Something went wrong.");
+    }
+
+    return 0;
+}

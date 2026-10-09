@@ -1,0 +1,41 @@
+name: Bug report
+description: Report a reproducible issue in YLang.
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Please search existing issues first. Do not include private data or security-sensitive exploit details here."
+  - type: input
+    id: version
+    attributes:
+      label: YLang version
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, architecture, and GCC/Clang version.
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Minimal YLang source
+      render: ylang
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true

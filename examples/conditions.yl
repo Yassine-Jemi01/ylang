@@ -1,0 +1,13 @@
+function main() -> int {
+    let int level = 12;
+    if (level < 10) {
+        print("beginner");
+    } else if (level < 20) {
+        print("intermediate");
+    } else if (level < 30) {
+        print("advanced");
+    } else {
+        print("expert");
+    }
+    return 0;
+}

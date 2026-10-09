@@ -1,0 +1,10 @@
+function main() -> int {
+    let int score;
+    if (true) {
+        score = 10;
+    } else {
+        score = 20;
+    }
+    print(score);
+    return 0;
+}

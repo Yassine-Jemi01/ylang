@@ -1,0 +1,7 @@
+Welcome to YLang!
+sum: 30
+Progress: 100% {complete}, next=31
+Count: 1
+Count: 2
+Count: 3
+Compiler works!

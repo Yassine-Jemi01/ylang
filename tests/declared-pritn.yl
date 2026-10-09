@@ -1,0 +1,8 @@
+function pritn(int value) -> int {
+    return value;
+}
+
+function main() -> int {
+    print(pritn(16));
+    return 0;
+}

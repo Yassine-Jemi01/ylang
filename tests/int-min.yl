@@ -1,0 +1,5 @@
+function main() -> int {
+    let int smallest = -9223372036854775808;
+    print(smallest);
+    return 0;
+}

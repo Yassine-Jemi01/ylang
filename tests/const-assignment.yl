@@ -1,0 +1,5 @@
+function main() -> int {
+    let const int MAX = 100;
+    MAX = 200;
+    return 0;
+}

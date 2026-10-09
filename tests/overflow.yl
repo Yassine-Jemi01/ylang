@@ -1,0 +1,6 @@
+function main() -> int {
+    let int max = 9223372036854775807;
+    let int overflow = max + 1;
+    print(overflow);
+    return 0;
+}
