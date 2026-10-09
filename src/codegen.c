@@ -437,7 +437,7 @@ bool generate_c(Compiler *c, const char *path)
         if (fn->param_count == 0) fputs("void", out);
         for (size_t j = 0; j < fn->param_count; j++) {
             if (j) fputs(", ", out);
-            fprintf(out, "%s %s", c_base_type(fn->params[j]->type), fn->params[j]->c_name);
+            { emit_param_type(out, fn->params[j]); fprintf(out, " %s", fn->params[j]->c_name); }
         }
         fputs(") ", out); fputc('\n', out);
         emit_stmt(out, fn->body, 0);
