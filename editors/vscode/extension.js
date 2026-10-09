@@ -46,6 +46,69 @@ function compilerExecutable(configured) {
   return configured;
 }
 
+const SHORT_MESSAGES = {
+  E1001: "Invalid character",
+  E1002: "Syntax error",
+  E1003: "Expected a value",
+  E1004: "Invalid assignment",
+  E1005: "Put this code inside a function",
+  E1010: "Invalid f-string",
+  E1011: "Extra '}' in f-string",
+  E1012: "Missing '}' in f-string",
+  E1013: "Empty f-string placeholder",
+  E1014: "Invalid f-string expression",
+  E1015: "print() needs a value",
+  E2001: "Type mismatch",
+  E2002: "Unknown type",
+  E2003: "const needs a value",
+  E2004: "Name already declared",
+  E2005: "void cannot be used here",
+  E2010: "Integer is too large",
+  E2011: "Invalid float value",
+  E2012: "char must be one byte",
+  E2013: "Cannot use void in an f-string",
+  E2014: "No calls or assignments inside f-strings",
+  E2020: "Unknown variable",
+  E2021: "Variable may be uninitialized",
+  E2022: "Cannot change a const variable",
+  E2023: "Assignment cannot be used as a value",
+  E2030: "Minus needs a number",
+  E2031: "'not' needs true or false",
+  E2032: "'and' and 'or' need true/false values",
+  E2033: "'%' needs integers",
+  E2034: "Use matching number types",
+  E2035: "Compare matching types",
+  E2036: "Compare values of the same type",
+  E2040: "Unknown function",
+  E2041: "Wrong number of arguments",
+  E2042: "Argument type mismatch",
+  E2043: "Function already exists",
+  E2050: "Cannot print a void value",
+  E2051: "if condition must be true or false",
+  E2052: "'break' or 'continue' must be inside loop()",
+  E2053: "Return value missing",
+  E2054: "void function cannot return a value",
+  E2055: "Return type mismatch",
+  E2056: "Global value must be a constant",
+  E2060: "Missing main() function",
+  E2061: "Invalid main() function",
+  E2062: "Some path is missing a return"
+};
+
+function shortMessage(code, original) {
+  if (code && SHORT_MESSAGES[code]) {
+    if (code === "E1002") {
+      const expected = String(original || "").match(/Expected ['"](.+?)['"]/i);
+      if (expected) return "Expected " + expected[1];
+    }
+    return SHORT_MESSAGES[code];
+  }
+
+  const message = String(original || "YLang error").replace(/\s+/g, " ").trim();
+  if (message.length <= 58) return message.replace(/\.$/, "");
+  return message.slice(0, 55).trimEnd() + "...";
+}
+
 function parseDiagnostics(text, document) {
   const lines = text.split(/\r?\n/);
   const blocks = [];
@@ -91,9 +154,7 @@ function parseDiagnostics(text, document) {
       ? vscode.DiagnosticSeverity.Warning
       : vscode.DiagnosticSeverity.Error;
 
-    const helpLine = block.lines.find((line) => /^\s*=\s*help:\s*/.test(line));
-    const help = helpLine ? helpLine.replace(/^\s*=\s*help:\s*/, "").trim() : "";
-    const message = help ? block.message + "\nHelp: " + help : block.message;
+    const message = shortMessage(block.code, block.message);
     const diagnostic = new vscode.Diagnostic(new vscode.Range(start, end), message, severity);
     diagnostic.source = "YLang";
     if (block.code) diagnostic.code = block.code;
@@ -274,3 +335,4 @@ function deactivate() {
 }
 
 module.exports = { activate, deactivate };
+
