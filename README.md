@@ -10,7 +10,7 @@ YLang **1.0.0 is the first stable release of the language subset documented in t
 
 ### Requirements
 
-- Linux (Fedora and Ubuntu are the primary tested platforms)
+- Linux (Fedora and Ubuntu) or Windows (MSYS2 UCRT64 / MinGW-w64; see [Windows setup](docs/windows.md))
 - A C17 compiler to build YLang itself (`gcc` or `clang`)
 - `make`
 - GCC or Clang available on `PATH` to compile generated C into executables
