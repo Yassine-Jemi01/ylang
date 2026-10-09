@@ -53,15 +53,22 @@ jobs:
           ./scripts/windows/smoke-test.ps1
       - name: Build Neovim Tree-sitter parser DLL
         run: gcc -std=c11 -O2 -shared -static-libgcc -Itree-sitter-ylang/src tree-sitter-ylang/src/parser.c -o build/ylang.dll
-      - name: Check Neovim PowerShell installer syntax
+      - name: Check PowerShell script syntax
         shell: pwsh
         run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile("editors/neovim/install.ps1", [ref]$tokens, [ref]$errors) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Error $_.Message }
-            exit 1
+          $files = @(
+            "scripts/windows/build.ps1",
+            "scripts/windows/smoke-test.ps1",
+            "editors/neovim/install.ps1"
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($file, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error ($file + ": " + $_.Message) }
+              exit 1
+            }
           }
 
   language-server:
