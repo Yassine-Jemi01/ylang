@@ -21,7 +21,7 @@ npm test
 npm run parse:examples
 ```
 
-`npm run generate` creates the generated C parser and node type metadata under `src/`. These generated files can be committed when preparing the parser for use by editors such as Neovim.
+`npm run generate` creates the C parser and node type metadata under `src/`. The generated parser files are committed in this repository so editor integrations can compile them directly.
 
 ## Parse a YLang file
 
@@ -45,5 +45,7 @@ Tree-sitter is a syntactic parser. Some restrictions remain the compiler's respo
 ## Integration
 
 The grammar is registered for the `.yl` file extension in `tree-sitter.json`. Its highlighting query is `queries/highlights.scm`.
+
+For installation and automatic Tree-sitter highlighting in Neovim, see [`editors/neovim/README.md`](../editors/neovim/README.md) and run `bash editors/neovim/install.sh` from the repository root.
 
 The first version is intentionally kept in the YLang repository under `tree-sitter-ylang/` so the grammar and language specification can evolve together. It can be moved to a dedicated `tree-sitter-ylang` repository later without changing the grammar name.
