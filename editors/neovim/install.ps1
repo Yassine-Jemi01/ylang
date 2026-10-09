@@ -2,11 +2,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $scriptDir = $PSScriptRoot
-$repoRoot = (Resolve-Path (Join-Path $scriptDir "..\\..")).Path
+$repoRoot = (Resolve-Path (Join-Path $scriptDir "..\..")).Path
 $grammarDir = Join-Path $repoRoot "tree-sitter-ylang"
-$parserSource = Join-Path $grammarDir "src\\parser.c"
+$parserSource = Join-Path $grammarDir "src\parser.c"
 $parserInclude = Join-Path $grammarDir "src"
-$querySource = Join-Path $grammarDir "queries\\highlights.scm"
+$querySource = Join-Path $grammarDir "queries\highlights.scm"
 
 function Get-NeovimPath([string] $kind) {
     $value = & nvim --headless -u NONE -c "lua io.write(vim.fn.stdpath('$kind'))" -c "qa!"
@@ -48,13 +48,13 @@ if ($LASTEXITCODE -ne 0) { throw "This Neovim build does not expose the built-in
 
 $dataRoot = Get-NeovimPath "data"
 $configRoot = Get-NeovimPath "config"
-$parserOut = Join-Path $dataRoot "site\\parser\\ylang.dll"
-$queryOut = Join-Path $configRoot "queries\\ylang\\highlights.scm"
-$filetypeOut = Join-Path $configRoot "ftdetect\\ylang.lua"
-$pluginOut = Join-Path $configRoot "after\\plugin\\ylang-treesitter.lua"
+$parserOut = Join-Path $dataRoot "site\parser\ylang.dll"
+$queryOut = Join-Path $configRoot "queries\ylang\highlights.scm"
+$filetypeOut = Join-Path $configRoot "ftdetect\ylang.lua"
+$pluginOut = Join-Path $configRoot "after\plugin\ylang-treesitter.lua"
 
-Copy-ManagedFile (Join-Path $scriptDir "ftdetect\\ylang.lua") $filetypeOut
-Copy-ManagedFile (Join-Path $scriptDir "after\\plugin\\ylang-treesitter.lua") $pluginOut
+Copy-ManagedFile (Join-Path $scriptDir "ftdetect\ylang.lua") $filetypeOut
+Copy-ManagedFile (Join-Path $scriptDir "after\plugin\ylang-treesitter.lua") $pluginOut
 Copy-ManagedFile $querySource $queryOut
 
 $parserDirectory = Split-Path -Parent $parserOut

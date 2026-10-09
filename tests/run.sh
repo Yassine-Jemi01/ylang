@@ -60,6 +60,7 @@ diff -u tests/expected-types.txt build/test-types.out
 
 "$YLANG" build tests/int-min.yl -o "build/test-int-min$EXEEXT" >/dev/null
 "./build/test-int-min$EXEEXT" > build/int-min.out
+normalize_output "build/int-min.out"
 diff -u tests/expected-int-min.txt build/int-min.out
 
 "$YLANG" build examples/conditions.yl -o "build/test-conditions$EXEEXT" >/dev/null

@@ -47,13 +47,6 @@
         "path": "./syntaxes/ylang.tmLanguage.json"
       }
     ],
-    "configurationDefaults": {
-      "[ylang]": {
-        "code-runner.executorMapByFileExtension": {
-          ".yl": "cd $dir && ylang build $fullFileName -o \"$fileNameWithoutExt\" && \"./$fileNameWithoutExt\""
-        }
-      }
-    },
     "commands": [
       {
         "command": "ylang.checkCurrentFile",

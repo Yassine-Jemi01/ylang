@@ -85,7 +85,7 @@ async function getSettings(document) {
 
 function expandPath(value) {
   if (value === "~") return os.homedir();
-  if (value.startsWith("~/") || value.startsWith("~\\\\")) {
+  if (value.startsWith("~/") || value.startsWith("~\\")) {
     return path.join(os.homedir(), value.slice(2));
   }
   return value;

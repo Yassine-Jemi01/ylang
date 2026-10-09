@@ -41,10 +41,10 @@ sanitize:
 
 install: $(BIN)
 >install -d '$(DESTDIR)$(BINDIR)'
->install -m 755 $(BIN) '$(DESTDIR)$(BINDIR)/ylang'
+>install -m 755 $(BIN) '$(DESTDIR)$(BINDIR)/ylang$(EXEEXT)'
 
 uninstall:
->rm -f '$(DESTDIR)$(BINDIR)/ylang'
+>rm -f '$(DESTDIR)$(BINDIR)/ylang$(EXEEXT)'
 
 clean:
 >rm -rf build
