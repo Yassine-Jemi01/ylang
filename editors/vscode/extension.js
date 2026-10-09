@@ -12,13 +12,11 @@ function activate(context) {
   const serverModule = context.asAbsolutePath(path.join("server", "server.js"));
   const serverOptions = {
     run: {
-      command: process.execPath,
-      args: [serverModule],
+      module: serverModule,
       transport: TransportKind.stdio
     },
     debug: {
-      command: process.execPath,
-      args: [serverModule],
+      module: serverModule,
       transport: TransportKind.stdio,
       options: { execArgv: ["--nolazy", "--inspect=6009"] }
     }
