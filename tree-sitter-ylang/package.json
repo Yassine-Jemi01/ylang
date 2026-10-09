@@ -1,0 +1,28 @@
+{
+  "name": "tree-sitter-ylang",
+  "version": "0.1.0",
+  "description": "Tree-sitter grammar for YLang",
+  "license": "MIT",
+  "main": "bindings/node",
+  "keywords": [
+    "tree-sitter",
+    "ylang",
+    "parser",
+    "grammar",
+    "incremental-parsing"
+  ],
+  "scripts": {
+    "generate": "tree-sitter generate",
+    "test": "tree-sitter test",
+    "parse:examples": "bash scripts/parse-examples.sh"
+  },
+  "devDependencies": {
+    "tree-sitter-cli": "^0.27.0"
+  },
+  "tree-sitter": {
+    "scope": "source.ylang",
+    "file-types": [
+      "yl"
+    ]
+  }
+}
