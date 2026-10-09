@@ -195,7 +195,7 @@
       "name": "constant.numeric.ylang"
     },
     "operators": {
-      "match": "==|!=|<=|>=|[=<>+*/%!-&]",
+      "match": "==|!=|<=|>=|[=<>+*/%!&-]",
       "name": "keyword.operator.ylang"
     },
     "punctuation": {
