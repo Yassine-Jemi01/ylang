@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "Tree-sitter grammar for YLang",
   "license": "MIT",
-  "main": "bindings/node",
   "keywords": [
     "tree-sitter",
     "ylang",
