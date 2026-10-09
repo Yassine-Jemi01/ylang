@@ -37,3 +37,25 @@ jobs:
       - name: Check extension and language server syntax
         run: npm run check
         working-directory: editors/vscode
+
+  tree-sitter:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Tree-sitter CLI
+        run: npm install
+        working-directory: tree-sitter-ylang
+      - name: Generate parser
+        run: npm run generate
+        working-directory: tree-sitter-ylang
+      - name: Run grammar corpus tests
+        run: npm test
+        working-directory: tree-sitter-ylang
+      - name: Parse grammar examples
+        run: npm run parse:examples
+        working-directory: tree-sitter-ylang
