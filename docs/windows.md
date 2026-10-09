@@ -14,7 +14,7 @@ Windows support is being developed on `dev/lsp-foundation`. The compiler is writ
 
 4. Verify `gcc --version` and `make --version`.
 
-For use from regular PowerShell or VS Code, add `C:\\msys64\\ucrt64\\bin` to your Windows user `PATH`. Adjust this path if MSYS2 was installed elsewhere.
+For use from regular PowerShell or VS Code, add `C:\msys64\ucrt64\bin` to your Windows user `PATH`. Adjust this path if MSYS2 was installed elsewhere.
 
 ## 2. Build YLang
 
@@ -32,7 +32,7 @@ The compiler is created at `build/ylang.exe`. The Windows CI uses this toolchain
 
 ## 3. Build from PowerShell
 
-After installing MSYS2 UCRT64 GCC and adding `C:\\msys64\\ucrt64\\bin` to the Windows user `PATH`, you can build without running GNU Make:
+After installing MSYS2 UCRT64 GCC and adding `C:\msys64\ucrt64\bin` to the Windows user `PATH`, you can build without running GNU Make:
 
 ```powershell
 .\scripts\windows\build.ps1
@@ -65,7 +65,7 @@ npm run check
 Set `ylang.compilerPath` in VS Code settings JSON to the absolute path of your compiler:
 
 ```json
-"ylang.compilerPath": "C:\\\\path\\\\to\\\\ylang\\\\build\\\\ylang.exe"
+"ylang.compilerPath": "C:\\path\\to\\ylang\\build\\ylang.exe"
 ```
 
 Open a `.yl` file. Use **YLang: Check Current File** for diagnostics and **YLang: Build and Run Current File** to build and launch the program in an interactive integrated terminal.
