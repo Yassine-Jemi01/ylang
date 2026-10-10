@@ -151,7 +151,7 @@ fi
 
 # Standard input and byte-length builtins work with dynamic input on all platforms.
 "$YLANG" build tests/read-line.yl -o "build/test-read-line$EXEEXT" >/dev/null
-printf 'YLang\\r\\n' > build/read-line.in
+printf 'YLang\r\n' > build/read-line.in
 "./build/test-read-line$EXEEXT" < build/read-line.in > build/read-line.out
 normalize_output "build/read-line.out"
 diff -u tests/expected-read-line.txt build/read-line.out
