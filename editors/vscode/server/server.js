@@ -249,6 +249,8 @@ const completions = [
   { label:"read_line", kind:CompletionItemKind.Function, detail:"Read one line from standard input", insertText:"read_line()" },
   { label:"parse_int", kind:CompletionItemKind.Function, detail:"Parse a complete string as a signed 64-bit integer", insertText:"parse_int(" + "$" + "{1:text})" },
   { label:"parse_float", kind:CompletionItemKind.Function, detail:"Parse a complete string as a finite float", insertText:"parse_float(" + "$" + "{1:text})" },
+  { label:"read_file", kind:CompletionItemKind.Function, detail:"Read a text file into a string", insertText:"read_file(" + "$" + "{1:path})" },
+  { label:"write_file", kind:CompletionItemKind.Function, detail:"Write text to a file", insertText:"write_file(" + "$" + "{1:path}, " + "$" + "{2:content});" },
   { label:"len", kind:CompletionItemKind.Function, detail:"String byte length or array element count", insertText:"len(" + "$" + "{1:value})" },
   { label:"clone", kind:CompletionItemKind.Function, detail:"Copy an owned string or array", insertText:"clone(" + "$" + "{1:value})" },
   { label:"append", kind:CompletionItemKind.Function, detail:"Append a value to a mutable array", insertText:"append(" + "$" + "{1:values}, " + "$" + "{2:value});" }
@@ -260,7 +262,7 @@ const hovers = {
   function:"Declares a function.", let:"Declares a variable.", const:"Makes a variable immutable.",
   if:"Conditional statement.", else:"Alternative branch.", loop:"Repeats until break.", for:"Iterates over each scalar element of an array.", in:"Separates the loop variable from the array.",
   break:"Exits the current loop.", continue:"Skips to the next loop iteration.",
-  return:"Returns from the current function.", print:"Built-in statement: print(value);", read_line:"Reads one line from standard input; EOF is a runtime error in this initial API.", parse_int:"Parses a complete string as a signed 64-bit integer or exits with a runtime error.", parse_float:"Parses a complete finite floating-point string or exits with a runtime error.", len:"Returns UTF-8 byte length for strings or element count for arrays.", clone:"Creates an independent copy of an owned string or array.", append:"Appends one type-matching value to a named mutable array.",
+  return:"Returns from the current function.", print:"Built-in statement: print(value);", read_line:"Reads one line from standard input; EOF is a runtime error in this initial API.", parse_int:"Parses a complete string as a signed 64-bit integer or exits with a runtime error.", parse_float:"Parses a complete finite floating-point string or exits with a runtime error.", read_file:"Reads a text file into a string; binary NUL bytes are not supported.", write_file:"Writes text to a file using the process user’s filesystem permissions.", len:"Returns UTF-8 byte length for strings or element count for arrays.", clone:"Creates an independent copy of an owned string or array.", append:"Appends one type-matching value to a named mutable array.",
   true:"Boolean true.", false:"Boolean false.", and:"Boolean AND.", or:"Boolean OR.", not:"Boolean negation."
 };
 

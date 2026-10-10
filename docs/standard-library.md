@@ -1,6 +1,6 @@
 # YLang Standard Library Plan
 
-**Status:** Initial `read_line()`, `parse_int()`, `parse_float()`, `len()`, `clone()`, and array built-ins are implemented on `dev/lsp-foundation`. The complete module API below remains a proposal; each API becomes supported only after tests exist on Linux and Windows.
+**Status:** Initial `read_line()`, `parse_int()`, `parse_float()`, `read_file()`, `write_file()`, `len()`, `clone()`, and array built-ins are implemented on `dev/lsp-foundation`. The complete module API below remains a proposal; each API becomes supported only after tests exist on Linux and Windows.
 
 ## Compatibility rule
 
@@ -14,7 +14,7 @@ Portable APIs have the same behavior and error semantics on supported platforms.
 | `std.string` | `len(string)`, `clone(string)`, `parse_int(string)`, and `parse_float(string)` built-ins (dev branch) | `len` counts UTF-8 bytes; numeric parse failures terminate with a runtime error; other operations remain planned |
 | `std.array` | typed one-dimensional arrays, checked indexing, `len`, `append`, `clone` (dev branch); capacity API planned | Bounds checks, allocation failure, and ownership are defined |
 | `std.math` | common math operations/constants | Domain errors and floating-point behavior are documented |
-| `std.fs` | read/write files, metadata, directory iteration | Handles close deterministically; permissions and errors are preserved |
+| `std.fs` | `read_file(path)` and `write_file(path, content)` text built-ins (dev branch) | File handles close before return; I/O failures are runtime errors; NUL-containing binary files are unsupported |
 | `std.path` | join, normalize, extension, filename | Uses platform-neutral path values and correct Windows path semantics |
 | `std.process` | args, environment, exit, spawn | Argument passing avoids shell-string concatenation by default |
 | `std.time` | monotonic clock, durations | Monotonic time is used for elapsed durations |
