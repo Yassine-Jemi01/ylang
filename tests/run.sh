@@ -168,6 +168,16 @@ if ./build/ylang check tests/array-mixed-types.yl > build/array-mixed-types.out 
 fi
 grep -q 'All array elements must have the same type' build/array-mixed-types.out
 
+# Native optimization levels are selectable without changing source code.
+YLANG_OPT_LEVEL=3 ./build/ylang build examples/loops.yl -o build/test-loops-o3 >/dev/null
+./build/test-loops-o3 > build/loops-o3.out
+diff -u tests/expected-loops.txt build/loops-o3.out
+if YLANG_OPT_LEVEL=invalid ./build/ylang build examples/loops.yl -o build/invalid-opt > build/invalid-opt.out 2>&1; then
+    echo "FAIL: invalid optimization level was accepted" >&2
+    exit 1
+fi
+grep -q 'invalid YLANG_OPT_LEVEL' build/invalid-opt.out
+
 # C-style for loops and condition-driven while loops.
 ./build/ylang check examples/loops.yl >/dev/null
 ./build/ylang build examples/loops.yl -o build/test-loops >/dev/null
