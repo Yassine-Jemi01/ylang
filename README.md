@@ -2,7 +2,7 @@
 
 **A small compiled programming language with explicit types and actionable diagnostics.**
 
-YLang is implemented in C. Its compiler tokenizes and parses `.yl` files, checks names, initialization and types, generates C, and invokes GCC or Clang to produce a native executable. It is a compiled language toolchain, not an interpreter.
+YLang is implemented in C17. Its compiler tokenizes and parses `.yl` files, checks names, initialization and types, generates C, and invokes GCC or Clang to produce a native executable. The compiler currently targets POSIX systems; Linux and macOS are the supported portability targets. Native Windows support remains future work. It is a compiled language toolchain, not an interpreter.
 
 YLang **1.0.0 is the first stable release of the language subset documented in the specification**. The syntax and behavior listed as supported below are the v1.0 contract. This release is deliberately small; it does not claim to implement every feature planned for YLang, and it does not claim Rust-level memory safety.
 
@@ -10,7 +10,7 @@ YLang **1.0.0 is the first stable release of the language subset documented in t
 
 ### Requirements
 
-- Linux (Fedora and Ubuntu are the primary tested platforms)
+- Linux (Fedora and Ubuntu) or macOS 13+ (CI-tested targets; Windows is not supported yet)
 - A C17 compiler to build YLang itself (`gcc` or `clang`)
 - `make`
 - GCC or Clang available on `PATH` to compile generated C into executables
