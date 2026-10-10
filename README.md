@@ -188,7 +188,7 @@ String helpers and I/O are also available: `string.length`, `string.contains`, `
 
 ## Explicit non-goals for this release
 
-YLang's current language subset does **not** implement classes/OOP, raw pointers/references, `try`/`catch`, `for`/`while`, modules, generics, or a dedicated LLVM/native-code backend. Arrays are fixed-size and cannot yet be passed to or returned from functions; nested and const arrays are not supported. These are not silently approximated; programs using unsupported syntax are rejected. A final ownership/borrowing or garbage-collection model is not defined. `char` is one byte, not a Unicode scalar value.
+YLang's current language subset does **not** implement classes/OOP, raw pointers/references, `try`/`catch`, modules, generics, or a dedicated LLVM/native-code backend. Arrays are fixed-size and cannot yet be passed to or returned from functions; nested and const arrays are not supported. These are not silently approximated; programs using unsupported syntax are rejected. A final ownership/borrowing or garbage-collection model is not defined. `char` is one byte, not a Unicode scalar value.
 
 The C backend uses generated runtime helpers and process-lifetime storage for some formatted strings. Long-running programs that repeatedly create f-string values may grow in memory usage. Do not use this release for security-critical code or to process hostile source as a hardened sandbox. Generated programs are ordinary native programs with the permissions of the user who runs them.
 
@@ -207,7 +207,7 @@ make CC=clang test
 make sanitize
 ```
 
-The tests exercise successful compilation/output, GCC/Clang parity when Clang is installed, diagnostics, rejection of invalid programs, safe fixes, integer overflow, division by zero, math and string built-ins, line input, text file I/O, array mutation, and bounds checks.
+The tests exercise successful compilation/output, GCC/Clang parity when Clang is installed, diagnostics, rejection of invalid programs, safe fixes, integer overflow, division by zero, math and string built-ins, line input, text file I/O, array mutation and bounds checks, plus `loop()`, `while`, and C-style `for` loops.
 
 ## Install (optional)
 
