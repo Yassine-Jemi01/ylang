@@ -273,11 +273,6 @@ static YType check_expr(Checker *checker, Expr *expr)
                            "This value was moved and can no longer be used.",
                            "Use the destination that received the value, or explicitly clone it before moving.");
             }
-            if (var->moved && !checker->resolving_borrow_target) {
-                diagnostic(c, expr->token, "error", "E2080",
-                           "This value was moved and can no longer be used.",
-                           "Use the destination that received the value, or explicitly clone it before moving.");
-            }
             if (!checker->resolving_borrow_target) {
                 for (size_t i = 0; i < checker->active_borrow_count; i++) {
                     ActiveBorrow *borrow = &checker->active_borrows[i];
@@ -490,7 +485,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                     } else source->moved = true;
                 }
             }
-            if (target->kind == EXPR_NAME) var->initialized = true;
+            if (target->kind == EXPR_NAME) {
+                var->initialized = true;
+                var->moved = false;
+            }
             expr->type = target_type;
             return expr->type;
         }
