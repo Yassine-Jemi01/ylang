@@ -7,17 +7,37 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest]
         compiler: [gcc, clang]
+        exclude:
+          # Apple's gcc command is a Clang alias; test it once as clang.
+          - os: macos-latest
+            compiler: gcc
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-      - name: Install toolchain
+      - name: Install toolchain (Linux)
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y build-essential clang
+      - name: Install toolchain (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          xcode-select --install 2>/dev/null || true
+          brew list llvm >/dev/null 2>&1 || brew install llvm
+      - name: Select compiler
+        id: compiler
+        shell: bash
+        run: |
+          if [[ "${{ matrix.compiler }}" == "clang" && "$RUNNER_OS" == "macOS" ]]; then
+            echo "cc=$(brew --prefix llvm)/bin/clang" >> "$GITHUB_OUTPUT"
+          else
+            echo "cc=${{ matrix.compiler }}" >> "$GITHUB_OUTPUT"
+          fi
       - name: Build compiler
-        run: make clean all CC=${{ matrix.compiler }}
+        run: make clean all CC="${{ steps.compiler.outputs.cc }}"
       - name: Run regression tests
-        run: make test CC=${{ matrix.compiler }}
+        run: make test CC="${{ steps.compiler.outputs.cc }}"
