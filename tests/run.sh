@@ -168,6 +168,13 @@ if ./build/ylang check tests/array-mixed-types.yl > build/array-mixed-types.out 
 fi
 grep -q 'All array elements must have the same type' build/array-mixed-types.out
 
+# Text file I/O: writing returns a status, reading returns a string.
+./build/ylang check tests/file-io.yl >/dev/null
+./build/ylang build tests/file-io.yl -o build/test-file-io >/dev/null
+./build/test-file-io > build/file-io.out
+diff -u tests/expected-file-io.txt build/file-io.out
+cmp build/io-output.txt <(printf 'YLang file I/O')
+
 # String standard library and stdin line input.
 ./build/ylang check examples/strings.yl >/dev/null
 ./build/ylang build examples/strings.yl -o build/test-strings >/dev/null
