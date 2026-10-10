@@ -103,6 +103,8 @@ jobs:
 
   tree-sitter:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -131,3 +133,15 @@ jobs:
             tree-sitter-ylang/src/grammar.json
             tree-sitter-ylang/src/node-types.json
           if-no-files-found: error
+      - name: Sync generated parser files on development branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev/lsp-foundation'
+        run: |
+          if git diff --quiet -- tree-sitter-ylang/src/parser.c tree-sitter-ylang/src/grammar.json tree-sitter-ylang/src/node-types.json; then
+            echo "Generated parser files are already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tree-sitter-ylang/src/parser.c tree-sitter-ylang/src/grammar.json tree-sitter-ylang/src/node-types.json
+          git commit -m "chore: sync generated Tree-sitter parser"
+          git push
