@@ -228,7 +228,7 @@ grep -q 'array index out of bounds' build/v2-bounds.out
 
 # Deterministic cleanup on control-flow exits and nested function returns.
 "$YLANG" emit-c tests/v2-control-cleanup.yl -o build/v2-control-cleanup.c >/dev/null
-awk '/^\\/\\* YLang function:/{in_main = ($0 ~ /^\\/\\* YLang function: main \\*\\//)} in_main && /continue;/{if (previous !~ /yl_string_drop/) {print "missing cleanup before continue: " previous > "/dev/stderr"; exit 1} saw_continue=1} in_main && /break;/{if (previous !~ /yl_string_drop/) {print "missing cleanup before break: " previous > "/dev/stderr"; exit 1} saw_break=1} {previous=$0} END {if (!saw_continue || !saw_break) exit 1}' build/v2-control-cleanup.c
+awk 'index($0, "/* YLang function:") == 1 {in_main = ($0 == "/* YLang function: main */")} in_main && /continue;/{if (previous !~ /yl_string_drop/) {print "missing cleanup before continue: " previous > "/dev/stderr"; exit 1} saw_continue=1} in_main && /break;/{if (previous !~ /yl_string_drop/) {print "missing cleanup before break: " previous > "/dev/stderr"; exit 1} saw_break=1} {previous=$0} END {if (!saw_continue || !saw_break) exit 1}' build/v2-control-cleanup.c
 "$YLANG" emit-c tests/v2-return-cleanup.yl -o build/v2-return-cleanup.c >/dev/null
 awk '/return yl_return_temp_/{if (previous ~ /yl_string_drop/) saw_owned_return=1} {previous=$0} END {if (!saw_owned_return) exit 1}' build/v2-return-cleanup.c
 "$YLANG" build tests/v2-control-cleanup.yl -o "build/test-v2-control-cleanup$EXEEXT" >/dev/null

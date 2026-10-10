@@ -701,7 +701,7 @@ bool generate_c(Compiler *c, const char *path)
 
     for (size_t i = 0; i < c->program->function_count; i++) {
         Function *fn = c->program->functions[i];
-        fprintf(out, "/* YLang function: %s */\\n", fn->name);
+        fprintf(out, "/* YLang function: %s */\n", fn->name);
         fprintf(out, "%s %s(", c_base_type(fn->return_type), fn->c_name);
         if (fn->param_count == 0) fputs("void", out);
         for (size_t j = 0; j < fn->param_count; j++) {
