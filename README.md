@@ -207,7 +207,17 @@ make CC=clang test
 make sanitize
 ```
 
-The tests exercise successful compilation/output, GCC/Clang parity when Clang is installed, diagnostics, rejection of invalid programs, safe fixes, integer overflow, division by zero, math and string built-ins, line input, text file I/O, array mutation and bounds checks, plus `loop()`, `while`, and C-style `for` loops.
+The tests exercise successful compilation/output, GCC/Clang parity when Clang is installed, diagnostics, rejection of invalid programs, safe fixes, integer overflow, division by zero, math and string built-ins, line input, text file I/O, array mutation and bounds checks, `loop()`, `while`, C-style `for`, and native optimization-level selection.
+
+### Native optimization
+
+YLang emits C and compiles it with GCC or Clang. Native builds default to `-O2`; set `YLANG_OPT_LEVEL` to `0`, `1`, `2`, `3`, or `s` to select the compiler optimization level:
+
+```sh
+YLANG_OPT_LEVEL=3 ylang build app.yl -o app
+```
+
+Use `0` for debugging, `2` for the default balance, `3` when testing maximum speed, and `s` to favor smaller binaries. Actual speed depends on the program, compiler, and hardware; YLang does not claim to outperform every language without reproducible benchmarks.
 
 ## Install (optional)
 
