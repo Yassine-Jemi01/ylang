@@ -263,12 +263,22 @@ static YType check_expr(Checker *checker, Expr *expr)
                            "Move the assignment to its own statement, then use the variable.");
             }
             Expr *target = expr->as.assign.target;
-            const char *name = target && target->kind == EXPR_NAME ? target->as.name.name : "";
-            VarDecl *var = scope_lookup(checker->scope, name);
+            VarDecl *var = NULL;
+            if (target && target->kind == EXPR_NAME) {
+                var = scope_lookup(checker->scope, target->as.name.name);
+                if (var) {
+                    target->as.name.variable = var;
+                    target->as.name.name = var->name;
+                    target->type = var->type;
+                }
+            } else if (target && target->kind == EXPR_INDEX) {
+                (void)check_expr(checker, target);
+                var = target->as.index.variable;
+            }
             if (!var) {
                 diagnostic(c, expr->token, "error", "E2020",
-                           "Cannot assign to an unknown variable.",
-                           "Declare the variable before assigning to it.");
+                           "Cannot assign to an unknown variable or invalid array element.",
+                           "Declare the variable first and use an integer index for array elements.");
                 (void)check_expr(checker, expr->as.assign.right);
                 expr->type = TYPE_ERROR;
                 return expr->type;
@@ -379,6 +389,57 @@ static YType check_expr(Checker *checker, Expr *expr)
                 return expr->type;
             }
             expr->type = TYPE_ERROR;
+            return expr->type;
+        }
+        case EXPR_ARRAY: {
+            if (expr->as.array.count == 0) {
+                diagnostic(c, expr->token, "error", "E2024",
+                           "An array literal must contain at least one element.",
+                           "Initialize the array with one or more values.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            YType element_type = check_expr(checker, expr->as.array.items[0]);
+            for (size_t i = 1; i < expr->as.array.count; i++) {
+                YType item_type = check_expr(checker, expr->as.array.items[i]);
+                if (item_type != TYPE_ERROR && element_type != TYPE_ERROR &&
+                    item_type != element_type) {
+                    diagnostic(c, expr->as.array.items[i]->token, "error", "E2025",
+                               "All array elements must have the same type.",
+                               "Use one element type throughout the array literal.");
+                    element_type = TYPE_ERROR;
+                }
+            }
+            expr->type = element_type;
+            return expr->type;
+        }
+        case EXPR_INDEX: {
+            Expr *target = expr->as.index.target;
+            if (!target || target->kind != EXPR_NAME) {
+                diagnostic(c, expr->token, "error", "E2026",
+                           "Only named fixed-size arrays can be indexed.",
+                           "Index an array variable such as values[0].");
+                (void)check_expr(checker, expr->as.index.index);
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            (void)check_expr(checker, target);
+            VarDecl *var = target->as.name.variable;
+            expr->as.index.variable = var;
+            YType index_type = check_expr(checker, expr->as.index.index);
+            if (!var || !var->is_array) {
+                diagnostic(c, expr->token, "error", "E2027",
+                           "Indexing requires an array variable.",
+                           "Declare an array with syntax such as 'let int values[] = [1, 2, 3];'.");
+                expr->type = TYPE_ERROR;
+            } else if (index_type != TYPE_INT && index_type != TYPE_ERROR) {
+                diagnostic(c, expr->as.index.index->token, "error", "E2028",
+                           "Array indices must have type int.",
+                           "Use an integer index such as values[0].");
+                expr->type = TYPE_ERROR;
+            } else {
+                expr->type = var->type;
+            }
             return expr->type;
         }
         case EXPR_CALL: {
