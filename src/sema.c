@@ -166,6 +166,29 @@ static const MathBuiltin *find_math_builtin(const char *name)
     return NULL;
 }
 
+typedef struct {
+    const char *name;
+    size_t arity;
+    YType result;
+} StringBuiltin;
+
+static const StringBuiltin string_builtins[] = {
+    {"string.length", 1, TYPE_INT},
+    {"string.contains", 2, TYPE_BOOL},
+    {"string.starts_with", 2, TYPE_BOOL},
+    {"string.ends_with", 2, TYPE_BOOL},
+    {"string.concat", 2, TYPE_STRING},
+    {"io.read_line", 0, TYPE_STRING}
+};
+
+static const StringBuiltin *find_string_builtin(const char *name)
+{
+    for (size_t i = 0; i < sizeof(string_builtins) / sizeof(string_builtins[0]); i++) {
+        if (strcmp(name, string_builtins[i].name) == 0) return &string_builtins[i];
+    }
+    return NULL;
+}
+
 static YType check_expr(Checker *checker, Expr *expr)
 {
     if (!expr) return TYPE_VOID;
@@ -462,6 +485,27 @@ static YType check_expr(Checker *checker, Expr *expr)
             return expr->type;
         }
         case EXPR_CALL: {
+            const StringBuiltin *string_builtin = find_string_builtin(expr->as.call.name);
+            if (string_builtin) {
+                if (expr->as.call.count != string_builtin->arity) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion, sizeof(suggestion),
+                        "%s expects %zu argument(s), but received %zu.",
+                        string_builtin->name, string_builtin->arity, expr->as.call.count);
+                    diagnostic(c, expr->token, "error", "E2043",
+                               "Incorrect number of standard-library arguments.", suggestion);
+                }
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    YType arg_type = check_expr(checker, expr->as.call.args[i]);
+                    if (arg_type != TYPE_ERROR && arg_type != TYPE_STRING) {
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2044",
+                                   "This standard-library function requires string arguments.",
+                                   "Pass string values or string literals.");
+                    }
+                }
+                expr->type = string_builtin->result;
+                return expr->type;
+            }
             const MathBuiltin *math_builtin = find_math_builtin(expr->as.call.name);
             if (math_builtin) {
                 if (expr->as.call.count != math_builtin->arity) {
