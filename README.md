@@ -118,6 +118,8 @@ See [`docs/language-spec.md`](docs/language-spec.md) for the complete supported 
 
 ## YLang 2.0 development
 
+The development CLI now includes `ylang run <file.yl>`, which compiles source into a temporary directory, runs the resulting native program, removes its temporary files, and returns the program's exit status. Argument forwarding and debugger integration are not implemented yet.
+
 YLang 2.0 is being developed separately from the stable 1.0.0 contract. The current work is exploratory and is not a complete 2.0 release. See the [2.0 design](docs/v2-design.md), [development roadmap](docs/roadmap.md), [ownership model](docs/ownership-and-borrowing.md), and [standard-library plan](docs/standard-library.md). The native compiler backend, owned strings/arrays, modules, and standard library are gated on implementation and cross-platform tests; documentation does not imply those features already work.
 
 ## What is included in 1.0.0

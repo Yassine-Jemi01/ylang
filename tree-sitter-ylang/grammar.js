@@ -47,6 +47,7 @@ module.exports = grammar({
     parameter_list: $ => commaSep1($.parameter),
 
     parameter: $ => seq(
+      optional(seq("&", optional("mut"))),
       field("type", $.type),
       field("name", $.identifier)
     ),
@@ -151,6 +152,7 @@ module.exports = grammar({
       $.binary_expression,
       $.unary_expression,
       $.call_expression,
+      $.borrow_expression,
       $.parenthesized_expression,
       $.identifier,
       $.integer_literal,
@@ -202,6 +204,12 @@ module.exports = grammar({
     call_expression: $ => prec(PREC.CALL, seq(
       field("function", $.identifier),
       field("arguments", $.argument_list)
+    )),
+
+    borrow_expression: $ => prec(PREC.UNARY, seq(
+      "&",
+      optional("mut"),
+      field("target", $.identifier)
     )),
 
     argument_list: $ => seq(

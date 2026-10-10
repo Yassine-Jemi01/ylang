@@ -17,3 +17,88 @@ function main() -> int {
         (return_statement
           value: (expression
             (integer_literal)))))))
+
+==================
+Scalar borrowing syntax
+==================
+
+function show(&int value) -> void {
+    print(value);
+}
+
+function increment(&mut int value) -> void {
+    value = value + 1;
+}
+
+function main() -> int {
+    let int score = 41;
+    show(&score);
+    increment(&mut score);
+    return 0;
+}
+
+---
+
+(source_file
+  (function_definition
+    name: (identifier)
+    (parameter_list
+      (parameter
+        (type)
+        name: (identifier)))
+    return_type: (type)
+    (block
+      (statement
+        (print_statement
+          argument: (expression
+            (identifier))))))
+  (function_definition
+    name: (identifier)
+    (parameter_list
+      (parameter
+        (type)
+        name: (identifier)))
+    return_type: (type)
+    (block
+      (statement
+        (assignment_statement
+          left: (identifier)
+          right: (expression
+            (binary_expression
+              left: (expression
+                (identifier))
+              operator: "+"
+              right: (expression
+                (integer_literal)))))))
+  (function_definition
+    name: (identifier)
+    return_type: (type)
+    (block
+      (statement
+        (variable_declaration
+          type: (type)
+          name: (identifier)
+          value: (expression
+            (integer_literal))))
+      (statement
+        (expression_statement
+          (expression
+            (call_expression
+              function: (identifier)
+              arguments: (argument_list
+                (expression
+                  (borrow_expression
+                    target: (identifier)))))))
+      (statement
+        (expression_statement
+          (expression
+            (call_expression
+              function: (identifier)
+              arguments: (argument_list
+                (expression
+                  (borrow_expression
+                    target: (identifier)))))))
+      (statement
+        (return_statement
+          value: (expression
+            (integer_literal)))))))

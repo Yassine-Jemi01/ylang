@@ -14,6 +14,7 @@ static void usage(FILE *stream)
         "Usage:\n"
         "  ylang check <file.yl>\n"
         "  ylang build <file.yl> [-o executable] [--cc gcc|clang]\n"
+        "  ylang run <file.yl> [--cc gcc|clang]\n"
         "  ylang emit-c <file.yl> [-o generated.c]\n"
         "  ylang fix <file.yl> -o fixed.yl\n"
         "  ylang --version\n\n"
@@ -41,7 +42,8 @@ int main(int argc, char **argv)
     }
     const char *command = argv[1];
     if (strcmp(command, "check") != 0 && strcmp(command, "build") != 0 &&
-        strcmp(command, "emit-c") != 0 && strcmp(command, "fix") != 0) {
+        strcmp(command, "run") != 0 && strcmp(command, "emit-c") != 0 &&
+        strcmp(command, "fix") != 0) {
         fprintf(stderr, "ylang: unknown command '%s'\n\n", command);
         usage(stderr);
         return 64;
@@ -77,6 +79,10 @@ int main(int argc, char **argv)
     }
     if (strcmp(command, "check") == 0 && output) {
         fputs("ylang: check does not accept -o\n", stderr);
+        return 64;
+    }
+    if (strcmp(command, "run") == 0 && output) {
+        fputs("ylang: run does not accept -o; it builds in a temporary directory\n", stderr);
         return 64;
     }
     if (strcmp(command, "fix") == 0 && !output) {
