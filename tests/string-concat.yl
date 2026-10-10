@@ -1,0 +1,8 @@
+function main() -> int {
+    let string greeting = "Hello " + "YLang";
+    let string enthusiastic = greeting + "!";
+    print(greeting);
+    print(enthusiastic);
+    print(greeting, len(greeting));
+    return 0;
+}

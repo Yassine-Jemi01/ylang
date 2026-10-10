@@ -1,0 +1,5 @@
+function main() -> int {
+    let string invalid = "number " + 42;
+    print(invalid);
+    return 0;
+}

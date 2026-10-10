@@ -284,7 +284,10 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             Expr *left = expr->as.binary.left;
             Expr *right = expr->as.binary.right;
             TokenType op = expr->as.binary.op.type;
-            if (expr->type == TYPE_INT && op == TOKEN_PLUS) {
+            if (expr->type == TYPE_STRING && op == TOKEN_PLUS) {
+                sb_append(sb, "yl_concat("); emit_expr(sb, left); sb_append(sb, ", ");
+                emit_expr(sb, right); sb_append(sb, ")");
+            } else if (expr->type == TYPE_INT && op == TOKEN_PLUS) {
                 sb_append(sb, "yl_add_i64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
             } else if (expr->type == TYPE_INT && op == TOKEN_MINUS) {
                 sb_append(sb, "yl_sub_i64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
@@ -586,6 +589,14 @@ static void emit_runtime(FILE *out)
         "    FILE *file = fopen(path, \"wb\"); if (!file) yl_runtime_error(\"cannot open file for writing\");\n"
         "    size_t length = strlen(content); bool ok = fwrite(content, 1, length, file) == length;\n"
         "    if (fclose(file) != 0) ok = false; if (!ok) yl_runtime_error(\"failed while writing file\");\n"
+        "}\n"
+        "static const char *yl_concat(const char *left, const char *right) {\n"
+        "    if (!left || !right) yl_runtime_error(\"string concatenation received a null string\");\n"
+        "    size_t a = strlen(left), b = strlen(right);\n"
+        "    if (a > SIZE_MAX - b - 1) yl_runtime_error(\"concatenated string is too large\");\n"
+        "    char *buffer = malloc(a + b + 1); if (!buffer) yl_runtime_error(\"out of memory while concatenating strings\");\n"
+        "    memcpy(buffer, left, a); memcpy(buffer + a, right, b + 1);\n"
+        "    return (const char *)yl_track(buffer);\n"
         "}\n"
         "static int64_t yl_len_string(const char *value) { if (!value) yl_runtime_error(\"len() received a null string\"); size_t n = strlen(value); if (n > (size_t)INT64_MAX) yl_runtime_error(\"string is too large for len()\"); return (int64_t)n; }\n"
         "static const char *yl_clone_string(const char *value) { if (!value) yl_runtime_error(\"clone() received a null string\"); size_t n = strlen(value); char *copy = malloc(n + 1); if (!copy) yl_runtime_error(\"out of memory while cloning string\"); memcpy(copy, value, n + 1); return (const char *)yl_track(copy); }\n"

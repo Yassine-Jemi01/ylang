@@ -164,6 +164,18 @@ set -e
 [ "$file_io_status" -eq 70 ]
 grep -q 'cannot open file for reading' build/file-io-error.out
 
+# String '+' concatenates without consuming either operand.
+"$YLANG" build tests/string-concat.yl -o "build/test-string-concat$EXEEXT" >/dev/null
+"./build/test-string-concat$EXEEXT" > build/string-concat.out
+normalize_output "build/string-concat.out"
+diff -u tests/expected-string-concat.txt build/string-concat.out
+
+if "$YLANG" check tests/string-concat-type-error.yl > build/string-concat-type-error.out 2>&1; then
+    echo "FAIL: string concatenation accepted mismatched operand types" >&2
+    exit 1
+fi
+grep -q 'E2034' build/string-concat-type-error.out
+
 # Numeric parsing of user input succeeds and invalid values fail predictably.
 "$YLANG" build tests/parse-input.yl -o "build/test-parse-input$EXEEXT" >/dev/null
 "./build/test-parse-input$EXEEXT" < tests/input-values.txt > build/parse-input.out

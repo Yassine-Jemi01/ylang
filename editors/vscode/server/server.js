@@ -258,7 +258,7 @@ const completions = [
 
 const hovers = {
   int:"Signed 64-bit integer.", float:"64-bit floating-point value.", bool:"Boolean: true or false.",
-  char:"One-byte character.", string:"Immutable string.", void:"Function return type with no value.",
+  char:"One-byte character.", string:"UTF-8 string value; use + for concatenation and clone(text) for an independent owned copy.", void:"Function return type with no value.",
   function:"Declares a function.", let:"Declares a variable.", const:"Makes a variable immutable.",
   if:"Conditional statement.", else:"Alternative branch.", loop:"Repeats until break.", for:"Iterates over each scalar element of an array.", in:"Separates the loop variable from the array.",
   break:"Exits the current loop.", continue:"Skips to the next loop iteration.",

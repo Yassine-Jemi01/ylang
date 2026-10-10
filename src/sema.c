@@ -552,6 +552,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                 } else expr->type = TYPE_BOOL;
                 return expr->type;
             }
+            if (op == TOKEN_PLUS && left == TYPE_STRING && right == TYPE_STRING) {
+                expr->type = TYPE_STRING;
+                return expr->type;
+            }
             if (op == TOKEN_PLUS || op == TOKEN_MINUS || op == TOKEN_STAR ||
                 op == TOKEN_SLASH || op == TOKEN_PERCENT) {
                 if (op == TOKEN_PERCENT) {
