@@ -469,6 +469,7 @@ static void emit_runtime(FILE *out)
         "    YLTracked *node = malloc(sizeof(*node)); if (!node) yl_runtime_error(\"out of memory\");\n"
         "    node->ptr = ptr; node->next = yl_tracked; yl_tracked = node; return ptr;\n}\n"
         "static const char *yl_boolstr(bool value) { return value ? \"true\" : \"false\"; }\n"
+        "static const char *yl_format(const char *format, ...);\n"
         "static const char *yl_to_string_int(int64_t value) { return yl_format(\"%lld\", (long long)value); }\n"
         "static const char *yl_to_string_float(double value) { return yl_format(\"%.17g\", value); }\n"
         "static const char *yl_to_string_char(char value) { return yl_format(\"%c\", (int)value); }\n"
