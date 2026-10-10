@@ -1049,10 +1049,12 @@ bool check_program(Compiler *c)
                        "A variable cannot have type void.",
                        "Use a value type such as int, float, bool, char, or string.");
         }
-        if (ylang_type_is_owned(var->type) && var->initializer) {
+        if (var->initializer &&
+            (ylang_type_is_array(var->type) ||
+             (var->type == TYPE_STRING && var->initializer->kind != EXPR_STRING))) {
             diagnostic(c, var->token, "error", "E2092",
-                       "Global string/array initializers are not supported in YLang 2.0 yet.",
-                       "Initialize owned global values inside main(), or use scalar compile-time constants.");
+                       "Global array initializers and dynamically-created global strings are not supported in YLang 2.0 yet.",
+                       "Use a string literal for a global string, or initialize arrays inside main().");
         }
         (void)scope_add(&checker, globals, var);
     }
