@@ -186,6 +186,19 @@ int ylang_run(const char *command, const char *input_path,
         return 66;
     }
 
+    /*
+     * The lexer uses NUL as its end-of-input sentinel. Reject embedded NUL
+     * bytes before lexing so a binary source file cannot be accepted as only
+     * its valid-looking prefix.
+     */
+    if (memchr(source, '\0', source_length) != NULL) {
+        fprintf(stderr,
+                "ylang: source file '%s' contains a NUL byte; source files must be text.\n",
+                input_path);
+        free(source);
+        return 65;
+    }
+
     Compiler compiler;
     memset(&compiler, 0, sizeof(compiler));
     compiler.filename = (char *)input_path;
