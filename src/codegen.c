@@ -129,6 +129,8 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "string.ends_with") == 0) return "yl_string_ends_with";
     if (strcmp(name, "string.concat") == 0) return "yl_string_concat";
     if (strcmp(name, "io.read_line") == 0) return "yl_read_line";
+    if (strcmp(name, "io.read_file") == 0) return "yl_read_file";
+    if (strcmp(name, "io.write_file") == 0) return "yl_write_file";
     return NULL;
 }
 
@@ -409,7 +411,9 @@ static void emit_runtime(FILE *out)
         "static bool yl_string_starts_with(const char *value, const char *prefix) { size_t n = strlen(prefix); return strncmp(value, prefix, n) == 0; }\n"
         "static bool yl_string_ends_with(const char *value, const char *suffix) { size_t n = strlen(value), m = strlen(suffix); return m <= n && memcmp(value + n - m, suffix, m) == 0; }\n"
         "static const char *yl_string_concat(const char *left, const char *right) { return yl_format(\"%s%s\", left, right); }\n"
-        "static const char *yl_read_line(void) { char *line = NULL; size_t capacity = 0; ssize_t got = getline(&line, &capacity, stdin); if (got < 0) { free(line); line = malloc(1); if (!line) yl_runtime_error(\"out of memory\"); line[0] = '\\0'; return (const char *)yl_track(line); } while (got > 0 && (line[got - 1] == '\\n' || line[got - 1] == '\\r')) line[--got] = '\\0'; return (const char *)yl_track(line); }\n\n",
+        "static const char *yl_read_line(void) { char *line = NULL; size_t capacity = 0; ssize_t got = getline(&line, &capacity, stdin); if (got < 0) { if (ferror(stdin)) { free(line); yl_runtime_error(\"failed to read standard input\"); } free(line); line = malloc(1); if (!line) yl_runtime_error(\"out of memory\"); line[0] = '\\0'; return (const char *)yl_track(line); } while (got > 0 && (line[got - 1] == '\\n' || line[got - 1] == '\\r')) line[--got] = '\\0'; return (const char *)yl_track(line); }\n"
+        "static const char *yl_read_file(const char *path) { FILE *file = fopen(path, \"rb\"); if (!file) yl_runtime_error(\"cannot open file for reading\"); if (fseek(file, 0, SEEK_END) != 0) { fclose(file); yl_runtime_error(\"cannot seek input file\"); } long end = ftell(file); if (end < 0 || (uintmax_t)end >= (uintmax_t)SIZE_MAX) { fclose(file); yl_runtime_error(\"input file is too large\"); } rewind(file); size_t size = (size_t)end; char *data = malloc(size + 1); if (!data) { fclose(file); yl_runtime_error(\"out of memory\"); } size_t got = fread(data, 1, size, file); bool failed = ferror(file) != 0 || got != size; fclose(file); if (failed) { free(data); yl_runtime_error(\"failed to read input file\"); } if (memchr(data, '\\0', size)) { free(data); yl_runtime_error(\"binary files are not supported by string I/O\"); } data[size] = '\\0'; return (const char *)yl_track(data); }\n"
+        "static bool yl_write_file(const char *path, const char *content) { FILE *file = fopen(path, \"wb\"); if (!file) return false; size_t size = strlen(content); bool ok = fwrite(content, 1, size, file) == size; if (fclose(file) != 0) ok = false; return ok; }\n\n",
         out);
 }
 
