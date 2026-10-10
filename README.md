@@ -170,7 +170,7 @@ function main() -> int {
 }
 ```
 
-String helpers and line-based input are also available: `string.length`, `string.contains`, `string.starts_with`, `string.ends_with`, `string.concat`, and `io.read_line()`. Run `make test` to test these APIs alongside math, arrays, and bounds protection. Arrays cannot yet be passed to or returned from functions; object-oriented classes are not implemented yet.
+String helpers and I/O are also available: `string.length`, `string.contains`, `string.starts_with`, `string.ends_with`, `string.concat`, `io.read_line()`, `io.read_file(path)`, and `io.write_file(path, content)`. File I/O is synchronous and text-only; read errors terminate with a runtime error, while writes return a boolean status. Run `make test` to test these APIs alongside math, arrays, and bounds protection. Arrays cannot yet be passed to or returned from functions; object-oriented classes are not implemented yet.
 
 
 ## What is included in 1.0.0
@@ -180,7 +180,7 @@ String helpers and line-based input are also available: `string.length`, `string
 - Functions and return statements
 - `if` / `else if` / `else`, `loop()`, `break`, and `continue`
 - Arithmetic, comparisons, boolean operators, function calls, and assignments
-- `print(...)`, f-string interpolation, string utilities, and standard-input line reading
+- `print(...)`, f-string interpolation, string utilities, standard-input line reading, and text file I/O
 - Name/type checks, uninitialized-read checks, constant-assignment checks, and source-located diagnostic messages
 - Runtime checks for integer overflow and division by zero
 - C code generation and native compilation using GCC or Clang
@@ -207,7 +207,7 @@ make CC=clang test
 make sanitize
 ```
 
-The tests exercise successful compilation/output, GCC/Clang parity when Clang is installed, diagnostics, rejection of invalid programs, safe fixes, integer overflow, division by zero, math and string built-ins, line input, array mutation, and bounds checks.
+The tests exercise successful compilation/output, GCC/Clang parity when Clang is installed, diagnostics, rejection of invalid programs, safe fixes, integer overflow, division by zero, math and string built-ins, line input, text file I/O, array mutation, and bounds checks.
 
 ## Install (optional)
 
