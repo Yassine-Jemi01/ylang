@@ -738,6 +738,44 @@ static Stmt *parse_statement(Parser *p)
         return stmt;
     }
 
+    if (match(p, TOKEN_WHILE)) {
+        Stmt *stmt = new_stmt(p->compiler, STMT_WHILE, token);
+        consume(p, TOKEN_LEFT_PAREN, "Expected '(' after while.",
+                "Write while (condition) { ... }.");
+        stmt->as.while_stmt.condition = parse_expression(p);
+        consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after while condition.",
+                "Close the condition with ')'.");
+        stmt->as.while_stmt.body = parse_statement(p);
+        return stmt;
+    }
+
+    if (match(p, TOKEN_FOR)) {
+        Stmt *stmt = new_stmt(p->compiler, STMT_FOR, token);
+        consume(p, TOKEN_LEFT_PAREN, "Expected '(' after for.",
+                "Write for (let int i = 0; i < limit; i = i + 1) { ... }.");
+        if (match(p, TOKEN_SEMICOLON)) {
+            stmt->as.for_stmt.initializer = NULL;
+        } else if (match(p, TOKEN_LET)) {
+            stmt->as.for_stmt.initializer = parse_variable(p, false);
+        } else {
+            Stmt *init = new_stmt(p->compiler, STMT_EXPR, p->current);
+            init->as.expression = parse_expression(p);
+            consume(p, TOKEN_SEMICOLON, "Expected ';' after for initializer.",
+                    "Separate the initializer and condition with ';'.");
+            stmt->as.for_stmt.initializer = init;
+        }
+        if (p->current.type != TOKEN_SEMICOLON)
+            stmt->as.for_stmt.condition = parse_expression(p);
+        consume(p, TOKEN_SEMICOLON, "Expected ';' after for condition.",
+                "Separate the condition and increment with ';'.");
+        if (p->current.type != TOKEN_RIGHT_PAREN)
+            stmt->as.for_stmt.increment = parse_expression(p);
+        consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after for clauses.",
+                "Close the for header with ')'.");
+        stmt->as.for_stmt.body = parse_statement(p);
+        return stmt;
+    }
+
     if (match(p, TOKEN_BREAK)) {
         Stmt *stmt = new_stmt(p->compiler, STMT_BREAK, token);
         consume(p, TOKEN_SEMICOLON, "Expected ';' after break.", "Write break;.");
