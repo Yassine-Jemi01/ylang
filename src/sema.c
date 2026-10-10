@@ -20,6 +20,7 @@ typedef struct {
     Function *function;
     unsigned loop_depth;
     Expr *allowed_assignment;
+    bool allow_array_name;
 } Checker;
 
 static Scope *scope_new(Compiler *c, Scope *parent)
@@ -143,6 +144,53 @@ static bool expr_contains_call_or_assignment(Expr *expr)
 static YType check_expr(Checker *checker, Expr *expr);
 static void check_stmt(Checker *checker, Stmt *stmt);
 
+typedef struct {
+    const char *name;
+    size_t arity;
+} MathBuiltin;
+
+static const MathBuiltin math_builtins[] = {
+    {"math.sqrt", 1}, {"math.sin", 1}, {"math.cos", 1}, {"math.tan", 1},
+    {"math.asin", 1}, {"math.acos", 1}, {"math.atan", 1}, {"math.exp", 1},
+    {"math.log", 1}, {"math.log10", 1}, {"math.floor", 1}, {"math.ceil", 1},
+    {"math.round", 1}, {"math.abs", 1}, {"math.sinh", 1}, {"math.cosh", 1},
+    {"math.tanh", 1}, {"math.pow", 2}, {"math.atan2", 2}, {"math.min", 2},
+    {"math.max", 2}, {"math.hypot", 2}, {"math.clamp", 3}
+};
+
+static const MathBuiltin *find_math_builtin(const char *name)
+{
+    for (size_t i = 0; i < sizeof(math_builtins) / sizeof(math_builtins[0]); i++) {
+        if (strcmp(name, math_builtins[i].name) == 0) return &math_builtins[i];
+    }
+    return NULL;
+}
+
+typedef struct {
+    const char *name;
+    size_t arity;
+    YType result;
+} StringBuiltin;
+
+static const StringBuiltin string_builtins[] = {
+    {"string.length", 1, TYPE_INT},
+    {"string.contains", 2, TYPE_BOOL},
+    {"string.starts_with", 2, TYPE_BOOL},
+    {"string.ends_with", 2, TYPE_BOOL},
+    {"string.concat", 2, TYPE_STRING},
+    {"io.read_line", 0, TYPE_STRING},
+    {"io.read_file", 1, TYPE_STRING},
+    {"io.write_file", 2, TYPE_BOOL}
+};
+
+static const StringBuiltin *find_string_builtin(const char *name)
+{
+    for (size_t i = 0; i < sizeof(string_builtins) / sizeof(string_builtins[0]); i++) {
+        if (strcmp(name, string_builtins[i].name) == 0) return &string_builtins[i];
+    }
+    return NULL;
+}
+
 static YType check_expr(Checker *checker, Expr *expr)
 {
     if (!expr) return TYPE_VOID;
@@ -224,6 +272,13 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             expr->as.name.name = var->name;
             expr->as.name.variable = var;
+            if (var->is_array && !checker->allow_array_name) {
+                diagnostic(c, expr->token, "error", "E2029",
+                           "An array must be indexed before it can be used as a value.",
+                           "Use an element such as values[0], or add array support to the function you want to call.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
             if (!var->initialized) {
                 char suggestion[256];
                 (void)snprintf(suggestion, sizeof(suggestion),
@@ -241,17 +296,35 @@ static YType check_expr(Checker *checker, Expr *expr)
                            "Move the assignment to its own statement, then use the variable.");
             }
             Expr *target = expr->as.assign.target;
-            const char *name = target && target->kind == EXPR_NAME ? target->as.name.name : "";
-            VarDecl *var = scope_lookup(checker->scope, name);
+            VarDecl *var = NULL;
+            if (target && target->kind == EXPR_NAME) {
+                var = scope_lookup(checker->scope, target->as.name.name);
+                if (var) {
+                    target->as.name.variable = var;
+                    target->as.name.name = var->name;
+                    target->type = var->type;
+                }
+            } else if (target && target->kind == EXPR_INDEX) {
+                (void)check_expr(checker, target);
+                var = target->as.index.variable;
+            }
             if (!var) {
                 diagnostic(c, expr->token, "error", "E2020",
-                           "Cannot assign to an unknown variable.",
-                           "Declare the variable before assigning to it.");
+                           "Cannot assign to an unknown variable or invalid array element.",
+                           "Declare the variable first and use an integer index for array elements.");
                 (void)check_expr(checker, expr->as.assign.right);
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
             expr->as.assign.variable = var;
+            if (var->is_array && target && target->kind == EXPR_NAME) {
+                diagnostic(c, expr->token, "error", "E2037",
+                           "Whole-array assignment is not supported.",
+                           "Assign to a specific element, for example values[0] = 5;.");
+                (void)check_expr(checker, expr->as.assign.right);
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
             YType right = check_expr(checker, expr->as.assign.right);
             if (var->is_const) {
                 diagnostic(c, expr->token, "error", "E2022",
@@ -359,7 +432,103 @@ static YType check_expr(Checker *checker, Expr *expr)
             expr->type = TYPE_ERROR;
             return expr->type;
         }
+        case EXPR_ARRAY: {
+            if (expr->as.array.count == 0) {
+                diagnostic(c, expr->token, "error", "E2024",
+                           "An array literal must contain at least one element.",
+                           "Initialize the array with one or more values.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            YType element_type = check_expr(checker, expr->as.array.items[0]);
+            for (size_t i = 1; i < expr->as.array.count; i++) {
+                YType item_type = check_expr(checker, expr->as.array.items[i]);
+                if (item_type != TYPE_ERROR && element_type != TYPE_ERROR &&
+                    item_type != element_type) {
+                    diagnostic(c, expr->as.array.items[i]->token, "error", "E2025",
+                               "All array elements must have the same type.",
+                               "Use one element type throughout the array literal.");
+                    element_type = TYPE_ERROR;
+                }
+            }
+            expr->type = element_type;
+            return expr->type;
+        }
+        case EXPR_INDEX: {
+            Expr *target = expr->as.index.target;
+            if (!target || target->kind != EXPR_NAME) {
+                diagnostic(c, expr->token, "error", "E2026",
+                           "Only named fixed-size arrays can be indexed.",
+                           "Index an array variable such as values[0].");
+                (void)check_expr(checker, expr->as.index.index);
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            bool previous_array_access = checker->allow_array_name;
+            checker->allow_array_name = true;
+            (void)check_expr(checker, target);
+            checker->allow_array_name = previous_array_access;
+            VarDecl *var = target->as.name.variable;
+            expr->as.index.variable = var;
+            YType index_type = check_expr(checker, expr->as.index.index);
+            if (!var || !var->is_array) {
+                diagnostic(c, expr->token, "error", "E2027",
+                           "Indexing requires an array variable.",
+                           "Declare an array with syntax such as 'let int values[] = [1, 2, 3];'.");
+                expr->type = TYPE_ERROR;
+            } else if (index_type != TYPE_INT && index_type != TYPE_ERROR) {
+                diagnostic(c, expr->as.index.index->token, "error", "E2028",
+                           "Array indices must have type int.",
+                           "Use an integer index such as values[0].");
+                expr->type = TYPE_ERROR;
+            } else {
+                expr->type = var->type;
+            }
+            return expr->type;
+        }
         case EXPR_CALL: {
+            const StringBuiltin *string_builtin = find_string_builtin(expr->as.call.name);
+            if (string_builtin) {
+                if (expr->as.call.count != string_builtin->arity) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion, sizeof(suggestion),
+                        "%s expects %zu argument(s), but received %zu.",
+                        string_builtin->name, string_builtin->arity, expr->as.call.count);
+                    diagnostic(c, expr->token, "error", "E2043",
+                               "Incorrect number of standard-library arguments.", suggestion);
+                }
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    YType arg_type = check_expr(checker, expr->as.call.args[i]);
+                    if (arg_type != TYPE_ERROR && arg_type != TYPE_STRING) {
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2044",
+                                   "This standard-library function requires string arguments.",
+                                   "Pass string values or string literals.");
+                    }
+                }
+                expr->type = string_builtin->result;
+                return expr->type;
+            }
+            const MathBuiltin *math_builtin = find_math_builtin(expr->as.call.name);
+            if (math_builtin) {
+                if (expr->as.call.count != math_builtin->arity) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion, sizeof(suggestion),
+                        "%s expects %zu argument(s), but received %zu.",
+                        math_builtin->name, math_builtin->arity, expr->as.call.count);
+                    diagnostic(c, expr->token, "error", "E2041",
+                               "Incorrect number of math function arguments.", suggestion);
+                }
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    YType arg_type = check_expr(checker, expr->as.call.args[i]);
+                    if (arg_type != TYPE_ERROR && arg_type != TYPE_FLOAT) {
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2042",
+                                   "Math functions require float arguments.",
+                                   "Use a float value, for example math.sqrt(9.0). YLang does not implicitly convert int to float.");
+                    }
+                }
+                expr->type = TYPE_FLOAT;
+                return expr->type;
+            }
             Function *function = find_function(c, expr->as.call.name);
             if (!function) {
                 const char *near = nearest_function(c, expr->as.call.name);
@@ -438,6 +607,11 @@ static bool global_initializer_is_constant(Expr *expr)
     switch (expr->kind) {
         case EXPR_INT: case EXPR_FLOAT: case EXPR_BOOL: case EXPR_CHAR: case EXPR_STRING:
             return true;
+        case EXPR_ARRAY:
+            for (size_t i = 0; i < expr->as.array.count; i++) {
+                if (!global_initializer_is_constant(expr->as.array.items[i])) return false;
+            }
+            return true;
         case EXPR_UNARY:
             return (expr->as.unary.op.type == TOKEN_MINUS) &&
                    global_initializer_is_constant(expr->as.unary.right);
@@ -460,6 +634,12 @@ static void check_stmt(Checker *checker, Stmt *stmt)
         }
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
+            if (var->is_array &&
+                (!var->initializer || var->initializer->kind != EXPR_ARRAY)) {
+                diagnostic(c, var->token, "error", "E2038",
+                           "Array declarations require an array literal initializer.",
+                           "Use syntax such as 'let int values[] = [1, 2, 3];'.");
+            }
             if (var->type == TYPE_VOID) {
                 diagnostic(c, var->token, "error", "E2005",
                            "A variable cannot have type void.",
@@ -523,13 +703,60 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
             break;
         }
+        case STMT_WHILE: {
+            YType cond = check_expr(checker, stmt->as.while_stmt.condition);
+            if (cond != TYPE_BOOL && cond != TYPE_ERROR) {
+                diagnostic(c, stmt->as.while_stmt.condition->token, "error", "E2051",
+                           "while condition must have type bool.",
+                           "Write a comparison such as 'while (count < limit)'.");
+            }
+            size_t n = c->all_var_count;
+            bool *before = arena_alloc(&c->arena, n * sizeof(bool));
+            for (size_t i = 0; i < n; i++) before[i] = c->all_vars[i]->initialized;
+            checker->loop_depth++;
+            check_stmt(checker, stmt->as.while_stmt.body);
+            checker->loop_depth--;
+            for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
+            break;
+        }
+        case STMT_FOR: {
+            Scope *outer_scope = checker->scope;
+            checker->scope = scope_new(c, outer_scope);
+            size_t n_before_init = c->all_var_count;
+            bool *before = arena_alloc(&c->arena, n_before_init * sizeof(bool));
+            for (size_t i = 0; i < n_before_init; i++) before[i] = c->all_vars[i]->initialized;
+            if (stmt->as.for_stmt.initializer)
+                check_stmt(checker, stmt->as.for_stmt.initializer);
+            if (stmt->as.for_stmt.condition) {
+                YType cond = check_expr(checker, stmt->as.for_stmt.condition);
+                if (cond != TYPE_BOOL && cond != TYPE_ERROR) {
+                    diagnostic(c, stmt->as.for_stmt.condition->token, "error", "E2051",
+                               "for condition must have type bool.",
+                               "Use a boolean comparison or omit the condition for an infinite loop.");
+                }
+            }
+            checker->loop_depth++;
+            check_stmt(checker, stmt->as.for_stmt.body);
+            if (stmt->as.for_stmt.increment) {
+                Expr *previous_assignment = checker->allowed_assignment;
+                checker->allowed_assignment =
+                    stmt->as.for_stmt.increment->kind == EXPR_ASSIGN ?
+                    stmt->as.for_stmt.increment : NULL;
+                (void)check_expr(checker, stmt->as.for_stmt.increment);
+                checker->allowed_assignment = previous_assignment;
+            }
+            checker->loop_depth--;
+            for (size_t i = 0; i < n_before_init; i++) c->all_vars[i]->initialized = before[i];
+            checker->scope = outer_scope;
+            break;
+        }
         case STMT_BREAK:
         case STMT_CONTINUE:
             if (checker->loop_depth == 0) {
                 diagnostic(c, stmt->token, "error", "E2052",
-                           stmt->kind == STMT_BREAK ? "break is only valid inside loop()." :
-                                                      "continue is only valid inside loop().",
-                           "Place this statement inside a loop() block.");
+                           stmt->kind == STMT_BREAK ? "break is only valid inside a loop." :
+                                                      "continue is only valid inside a loop.",
+                           "Place this statement inside loop(), while, or for.");
             }
             break;
         case STMT_RETURN: {

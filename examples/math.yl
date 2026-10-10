@@ -1,0 +1,12 @@
+function main() -> int {
+    let float root = math.sqrt(81.0);
+    let float power = math.pow(2.0, 8.0);
+    let float bounded = math.clamp(12.0, 0.0, 10.0);
+
+    print("sqrt:", root);
+    print("pow:", power);
+    print("sin:", math.sin(0.0));
+    print("clamp:", bounded);
+    print("max:", math.max(3.0, 7.0));
+    return 0;
+}

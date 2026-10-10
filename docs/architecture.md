@@ -17,7 +17,7 @@ Compiler errors are intended to be stable, user-facing output. Changes should pr
 
 ## Native backend
 
-The v1.0 backend generates C17 and invokes the selected native compiler (`gcc` by default or `clang` when selected). Generated programs are ordinary native executables, not sandboxed. For native builds, generated C is placed in a private temporary directory and removed after the native compiler exits. This avoids clobbering a project file and avoids collisions between concurrent build invocations. `emit-c` writes to the requested path, or `build/ylang-generated.c` if no output path is given.
+The v1.0 backend generates C17 and invokes the selected native compiler (`gcc` by default or `clang` when selected). Linux builds use GNU linker RELRO/NOW hardening and `_FORTIFY_SOURCE`; macOS builds omit GNU/Linux-specific flags and use the platform linker. Generated programs are ordinary native executables, not sandboxed. For native builds, generated C is placed in a private temporary directory and removed after the native compiler exits. This avoids clobbering a project file and avoids collisions between concurrent build invocations. `emit-c` writes to the requested path, or `build/ylang-generated.c` if no output path is given.
 
 ## Scope
 

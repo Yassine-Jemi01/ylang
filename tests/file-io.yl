@@ -1,0 +1,7 @@
+function main() -> int {
+    let bool wrote = io.write_file("build/io-output.txt", "YLang file I/O");
+    print(wrote);
+    let string content = io.read_file("build/io-output.txt");
+    print(content);
+    return 0;
+}

@@ -1,0 +1,6 @@
+function main() -> int {
+    while (42) {
+        break;
+    }
+    return 0;
+}

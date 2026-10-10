@@ -1,0 +1,11 @@
+let int base_values[] = [3, 5, 8];
+
+function main() -> int {
+    let int values[] = [10, 20, 30];
+    values[1] = 42;
+    print("first:", values[0]);
+    print("updated:", values[1]);
+    print("last:", values[2]);
+    print("global:", base_values[1]);
+    return 0;
+}

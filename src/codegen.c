@@ -109,6 +109,31 @@ static void emit_fstring_expr(StringBuilder *sb, Expr *expr)
     sb_destroy(&args);
 }
 
+static const char *math_c_name(const char *name)
+{
+    if (strcmp(name, "math.abs") == 0) return "fabs";
+    if (strcmp(name, "math.min") == 0) return "fmin";
+    if (strcmp(name, "math.max") == 0) return "fmax";
+    if (strcmp(name, "math.clamp") == 0) return "yl_math_clamp";
+    if (strncmp(name, "math.", 5) == 0) return name + 5;
+    return NULL;
+}
+
+static const char *builtin_c_name(const char *name)
+{
+    const char *math_name = math_c_name(name);
+    if (math_name) return math_name;
+    if (strcmp(name, "string.length") == 0) return "yl_string_length";
+    if (strcmp(name, "string.contains") == 0) return "yl_string_contains";
+    if (strcmp(name, "string.starts_with") == 0) return "yl_string_starts_with";
+    if (strcmp(name, "string.ends_with") == 0) return "yl_string_ends_with";
+    if (strcmp(name, "string.concat") == 0) return "yl_string_concat";
+    if (strcmp(name, "io.read_line") == 0) return "yl_read_line";
+    if (strcmp(name, "io.read_file") == 0) return "yl_read_file";
+    if (strcmp(name, "io.write_file") == 0) return "yl_write_file";
+    return NULL;
+}
+
 static void emit_expr(StringBuilder *sb, Expr *expr)
 {
     if (!expr) { sb_append(sb, "0"); return; }
@@ -134,16 +159,32 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
         case EXPR_FSTRING:
             emit_fstring_expr(sb, expr);
             break;
+        case EXPR_ARRAY:
+            sb_append(sb, "{");
+            for (size_t i = 0; i < expr->as.array.count; i++) {
+                if (i) sb_append(sb, ", ");
+                emit_expr(sb, expr->as.array.items[i]);
+            }
+            sb_append(sb, "}");
+            break;
+        case EXPR_INDEX:
+            emit_expr(sb, expr->as.index.target);
+            sb_append(sb, "[yl_bounds(");
+            emit_expr(sb, expr->as.index.index);
+            sb_appendf(sb, ", %zu)]", expr->as.index.variable ? expr->as.index.variable->array_length : 0U);
+            break;
         case EXPR_NAME:
             sb_append(sb, expr->as.name.variable ? expr->as.name.variable->c_name : "yl_missing_variable");
             break;
         case EXPR_ASSIGN:
             sb_append(sb, "(");
-            sb_append(sb, expr->as.assign.variable ? expr->as.assign.variable->c_name : "yl_missing_variable");
+            emit_expr(sb, expr->as.assign.target);
             sb_append(sb, " = "); emit_expr(sb, expr->as.assign.right); sb_append(sb, ")");
             break;
-        case EXPR_CALL:
-            sb_append(sb, expr->as.call.function ? expr->as.call.function->c_name : "yl_missing_function");
+        case EXPR_CALL: {
+            const char *builtin_name = builtin_c_name(expr->as.call.name);
+            sb_append(sb, expr->as.call.function ? expr->as.call.function->c_name :
+                         (builtin_name ? builtin_name : "yl_missing_function"));
             sb_append(sb, "(");
             for (size_t i = 0; i < expr->as.call.count; i++) {
                 if (i) sb_append(sb, ", ");
@@ -151,6 +192,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             }
             sb_append(sb, ")");
             break;
+        }
         case EXPR_UNARY: {
             TokenType op = expr->as.unary.op.type;
             if (expr->is_min_int) {
@@ -285,6 +327,7 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             VarDecl *var = stmt->as.variable;
             emit_indent(out, indent); emit_var_type(out, var, false);
             fprintf(out, " %s", var->c_name);
+            if (var->is_array) fprintf(out, "[%zu]", var->array_length);
             if (var->initializer) {
                 fputs(" = ", out); emit_expr_to_file(out, var->initializer);
             }
@@ -315,6 +358,26 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); fputs("for (;;) ", out); fputs("\n", out);
             emit_stmt(out, stmt->as.loop_body, indent);
             break;
+        case STMT_WHILE:
+            emit_indent(out, indent); fputs("while (", out);
+            emit_expr_to_file(out, stmt->as.while_stmt.condition);
+            fputs(")\n", out);
+            emit_stmt(out, stmt->as.while_stmt.body, indent);
+            break;
+        case STMT_FOR:
+            emit_indent(out, indent); fputs("{\n", out);
+            if (stmt->as.for_stmt.initializer)
+                emit_stmt(out, stmt->as.for_stmt.initializer, indent + 1);
+            emit_indent(out, indent + 1); fputs("for (; ", out);
+            if (stmt->as.for_stmt.condition)
+                emit_expr_to_file(out, stmt->as.for_stmt.condition);
+            fputs("; ", out);
+            if (stmt->as.for_stmt.increment)
+                emit_expr_to_file(out, stmt->as.for_stmt.increment);
+            fputs(")\n", out);
+            emit_stmt(out, stmt->as.for_stmt.body, indent + 1);
+            emit_indent(out, indent); fputs("}\n", out);
+            break;
         case STMT_BREAK:
             emit_indent(out, indent); fputs("break;\n", out); break;
         case STMT_CONTINUE:
@@ -332,9 +395,10 @@ static void emit_runtime(FILE *out)
 {
     fputs(
         "/* Generated by YLang v1.0.0. This file is compiler output. */\n"
+        "#define _POSIX_C_SOURCE 200809L\n"
         "#include <stdbool.h>\n#include <stdint.h>\n#include <stdio.h>\n"
         "#include <stdlib.h>\n#include <stdarg.h>\n#include <string.h>\n"
-        "#include <limits.h>\n\n"
+        "#include <limits.h>\n#include <stddef.h>\n#include <math.h>\n\n"
         "static void yl_runtime_error(const char *message) {\n"
         "    fprintf(stderr, \"YLang runtime error: %s\\n\", message);\n"
         "    exit(70);\n}\n"
@@ -359,7 +423,17 @@ static void emit_runtime(FILE *out)
         "static int64_t yl_neg_i64(int64_t a) { if (a == INT64_MIN) yl_runtime_error(\"integer overflow in negation\"); return -a; }\n"
         "static int64_t yl_div_i64(int64_t a, int64_t b) { if (!b) yl_runtime_error(\"integer division by zero\"); if (a == INT64_MIN && b == -1) yl_runtime_error(\"integer overflow in division\"); return a / b; }\n"
         "static int64_t yl_mod_i64(int64_t a, int64_t b) { if (!b) yl_runtime_error(\"integer modulo by zero\"); if (a == INT64_MIN && b == -1) return 0; return a % b; }\n"
-        "static double yl_div_f64(double a, double b) { if (b == 0.0) yl_runtime_error(\"floating-point division by zero\"); return a / b; }\n\n",
+        "static double yl_div_f64(double a, double b) { if (b == 0.0) yl_runtime_error(\"floating-point division by zero\"); return a / b; }\n"
+        "static size_t yl_bounds(int64_t index, size_t length) { if (index < 0 || (uint64_t)index >= (uint64_t)length) yl_runtime_error(\"array index out of bounds\"); return (size_t)index; }\n"
+        "static double yl_math_clamp(double value, double low, double high) { if (low > high) yl_runtime_error(\"math.clamp lower bound exceeds upper bound\"); return fmin(fmax(value, low), high); }\n"
+        "static int64_t yl_string_length(const char *value) { return (int64_t)strlen(value); }\n"
+        "static bool yl_string_contains(const char *value, const char *needle) { return strstr(value, needle) != NULL; }\n"
+        "static bool yl_string_starts_with(const char *value, const char *prefix) { size_t n = strlen(prefix); return strncmp(value, prefix, n) == 0; }\n"
+        "static bool yl_string_ends_with(const char *value, const char *suffix) { size_t n = strlen(value), m = strlen(suffix); return m <= n && memcmp(value + n - m, suffix, m) == 0; }\n"
+        "static const char *yl_string_concat(const char *left, const char *right) { return yl_format(\"%s%s\", left, right); }\n"
+        "static const char *yl_read_line(void) { char *line = NULL; size_t capacity = 0; ssize_t got = getline(&line, &capacity, stdin); if (got < 0) { if (ferror(stdin)) { free(line); yl_runtime_error(\"failed to read standard input\"); } free(line); line = malloc(1); if (!line) yl_runtime_error(\"out of memory\"); line[0] = '\\0'; return (const char *)yl_track(line); } while (got > 0 && (line[got - 1] == '\\n' || line[got - 1] == '\\r')) line[--got] = '\\0'; return (const char *)yl_track(line); }\n"
+        "static const char *yl_read_file(const char *path) { FILE *file = fopen(path, \"rb\"); if (!file) yl_runtime_error(\"cannot open file for reading\"); if (fseek(file, 0, SEEK_END) != 0) { fclose(file); yl_runtime_error(\"cannot seek input file\"); } long end = ftell(file); if (end < 0 || (uintmax_t)end >= (uintmax_t)SIZE_MAX) { fclose(file); yl_runtime_error(\"input file is too large\"); } rewind(file); size_t size = (size_t)end; char *data = malloc(size + 1); if (!data) { fclose(file); yl_runtime_error(\"out of memory\"); } size_t got = fread(data, 1, size, file); bool failed = ferror(file) != 0 || got != size; fclose(file); if (failed) { free(data); yl_runtime_error(\"failed to read input file\"); } if (memchr(data, '\\0', size)) { free(data); yl_runtime_error(\"binary files are not supported by string I/O\"); } data[size] = '\\0'; return (const char *)yl_track(data); }\n"
+        "static bool yl_write_file(const char *path, const char *content) { FILE *file = fopen(path, \"wb\"); if (!file) return false; size_t size = strlen(content); bool ok = fwrite(content, 1, size, file) == size; if (fclose(file) != 0) ok = false; return ok; }\n\n",
         out);
 }
 
@@ -376,6 +450,7 @@ bool generate_c(Compiler *c, const char *path)
         VarDecl *var = c->program->globals[i];
         emit_var_type(out, var, true);
         fprintf(out, " %s", var->c_name);
+        if (var->is_array) fprintf(out, "[%zu]", var->array_length);
         if (var->initializer) {
             fputs(" = ", out); emit_expr_to_file(out, var->initializer);
         } else if (var->type == TYPE_STRING) {

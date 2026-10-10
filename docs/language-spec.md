@@ -78,6 +78,92 @@ Operator precedence is conventional: unary operators, multiplication/division/mo
 
 Signed integer overflow, integer division/modulo by zero, and floating-point division by zero are handled by generated runtime helpers and terminate the program with a runtime-error message and status 70. This does not mean every possible C-level issue is guarded or that the language is memory-safe.
 
+## Loops
+
+Three loop forms are supported:
+
+```ylang
+loop() {
+    // Repeat until break.
+    break;
+}
+
+while (count < limit) {
+    count = count + 1;
+}
+
+for (let int i = 0; i < limit; i = i + 1) {
+    print(i);
+}
+```
+
+- `loop()` is an unconditional loop.
+- `while (condition)` repeats while a boolean condition is true.
+- `for (initializer; condition; increment)` uses C-style clauses. The initializer may be a `let` declaration or expression; condition and increment may be omitted.
+- `break;` exits the innermost loop and `continue;` starts its next iteration.
+- A `for` initializer declaration is scoped to the loop and its body.
+
+## Fixed-size arrays
+
+YLang supports fixed-size arrays with an explicit element type and an initializer. The length is inferred from the initializer. Arrays may be local or global, must contain at least one element, and all elements must have the same type.
+
+```ylang
+let int scores[] = [10, 20, 30];
+
+function main() -> int {
+    scores[1] = 42;
+    print(scores[0], scores[1], scores[2]);
+    return 0;
+}
+```
+
+- Indexing starts at zero.
+- Array indices must be `int`; every access performs a runtime bounds check and exits with status 70 on an invalid index.
+- Element assignment is supported, such as `scores[1] = 42;`.
+- Whole-array assignment, passing arrays to functions, returning arrays, nested arrays, and `const` arrays are not supported yet.
+- Arrays must be initialized at declaration; their size cannot change at runtime.
+
+## Standard string and input library
+
+YLang includes byte-oriented string helpers and a line reader for simple command-line programs:
+
+```ylang
+let string name = io.read_line();
+let string greeting = string.concat("Hello, ", name);
+print(greeting);
+print(string.length(name));
+print(string.contains(name, "lang"));
+print(string.starts_with(name, "Y"));
+print(string.ends_with(name, "n"));
+```
+
+- `string.length(value)` returns the number of bytes, not Unicode characters.
+- `string.contains(value, needle)`, `string.starts_with(value, prefix)`, and `string.ends_with(value, suffix)` return `bool`.
+- `string.concat(left, right)` returns a new string. The generated runtime tracks allocated strings until process exit, so repeated concatenation in a long-running loop can increase memory use.
+- `io.read_line()` reads one line from standard input and removes its trailing newline. At end-of-file it returns an empty string.
+- `io.read_file(path)` reads an entire UTF-8/ASCII-compatible text file into a string. A file-open/read failure or embedded NUL byte terminates the program with a runtime error; binary files are not supported by the string API.
+- `io.write_file(path, content)` overwrites or creates a text file and returns `true` on success or `false` if it cannot open/write the file. It does not create missing parent directories.
+- File paths are interpreted relative to the process working directory. File I/O is synchronous and currently has no structured error/exception type.
+
+## Standard math library
+
+YLang provides a built-in `math` namespace for common floating-point operations. These calls are checked by the compiler and emitted as native C math-library calls.
+
+```ylang
+let float root = math.sqrt(81.0);
+let float power = math.pow(2.0, 8.0);
+let float angle = math.sin(0.0);
+let float bounded = math.clamp(12.0, 0.0, 10.0);
+```
+
+Available functions (all arguments must be `float`, and all return `float`):
+
+- Unary: `sqrt`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `sinh`, `cosh`, `tanh`, `exp`, `log`, `log10`, `floor`, `ceil`, `round`, `abs`.
+- Binary: `pow`, `atan2`, `min`, `max`, `hypot`.
+- Three arguments: `clamp(value, low, high)`; a lower bound greater than the upper bound triggers a runtime error.
+
+YLang does not implicitly convert integers to floats, so use float literals such as `9.0`. Domain errors and non-finite results follow the platform C math library behavior.
+
 ## 8. Conditions and loops
 
 ```ylang
@@ -122,6 +208,6 @@ Parameter and return types are explicit. Function overloading is not supported. 
 
 ## 11. Unsupported features and implementation limits
 
-The following are not supported by the 1.0.0 language subset: arrays, raw pointers/references, classes/OOP, exception syntax (`try`/`catch`), `for`/`while`, modules, generics, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
+The following are not supported by the current language subset: classes/OOP, exception syntax (`try`/`catch`), modules, generics, raw pointers/references, passing or returning arrays, nested/const arrays, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
 
 The compiler generates C, so native code inherits ordinary process privileges and is not sandboxed. Some formatted string values are stored until process exit; creating many such values in a long-running loop can increase memory consumption. The language does not define ownership/borrowing or a garbage collector in this release. Do not assume Rust-like memory-safety guarantees.

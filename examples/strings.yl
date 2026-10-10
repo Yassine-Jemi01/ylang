@@ -1,0 +1,9 @@
+function main() -> int {
+    let const string title = "YLang projects";
+    print(string.length(title));
+    print(string.contains(title, "projects"));
+    print(string.starts_with(title, "YLang"));
+    print(string.ends_with(title, "projects"));
+    print(string.concat("Build ", "something."));
+    return 0;
+}

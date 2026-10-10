@@ -1,0 +1,5 @@
+function main() -> int {
+    let string name = io.read_line();
+    print(string.concat("Hello, ", name));
+    return 0;
+}

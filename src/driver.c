@@ -1,3 +1,6 @@
+#if defined(__APPLE__) && !defined(_DARWIN_C_SOURCE)
+#define _DARWIN_C_SOURCE 1
+#endif
 #define _POSIX_C_SOURCE 200809L
 #include "internal.h"
 
@@ -154,15 +157,39 @@ static char *read_source_file(const char *path, size_t *length)
 static int run_native_compiler(const char *cc, const char *c_path,
                                const char *output_path)
 {
+    const char *requested_opt = getenv("YLANG_OPT_LEVEL");
+    const char *optimization = "-O2";
+    if (requested_opt && requested_opt[0] != '\0') {
+        if (strcmp(requested_opt, "0") == 0) optimization = "-O0";
+        else if (strcmp(requested_opt, "1") == 0) optimization = "-O1";
+        else if (strcmp(requested_opt, "2") == 0) optimization = "-O2";
+        else if (strcmp(requested_opt, "3") == 0) optimization = "-O3";
+        else if (strcmp(requested_opt, "s") == 0) optimization = "-Os";
+        else {
+            fprintf(stderr,
+                    "ylang: invalid YLANG_OPT_LEVEL '%s' (use 0, 1, 2, 3, or s)\n",
+                    requested_opt);
+            return 64;
+        }
+    }
+
     pid_t pid = fork();
     if (pid < 0) {
         fprintf(stderr, "ylang: could not start native compiler: %s\n", strerror(errno));
         return 1;
     }
     if (pid == 0) {
+#if defined(__APPLE__)
+        /* macOS uses Apple's linker; GNU ld's -z hardening flags are Linux-only. */
         execlp(cc, cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic", "-Wno-unused-function",
-               "-O2", "-g", "-D_FORTIFY_SOURCE=3", "-fstack-protector-strong", "-fPIE",
+               optimization, "-g", "-fstack-protector-strong", "-fPIE",
+               c_path, "-lm", "-pie", "-o", output_path, (char *)NULL);
+#else
+        /* Linux: enable fortification and GNU ld RELRO/NOW hardening. */
+        execlp(cc, cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic", "-Wno-unused-function",
+               optimization, "-g", "-D_FORTIFY_SOURCE=3", "-fstack-protector-strong", "-fPIE",
                c_path, "-lm", "-pie", "-Wl,-z,relro,-z,now", "-o", output_path, (char *)NULL);
+#endif
         fprintf(stderr, "ylang: cannot execute '%s': %s\n", cc, strerror(errno));
         _exit(127);
     }

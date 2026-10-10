@@ -36,7 +36,9 @@ typedef enum {
     EXPR_UNARY,
     EXPR_BINARY,
     EXPR_ASSIGN,
-    EXPR_CALL
+    EXPR_CALL,
+    EXPR_ARRAY,
+    EXPR_INDEX
 } ExprKind;
 
 typedef struct FPart {
@@ -55,6 +57,8 @@ struct Expr {
         struct { Expr *target; Expr *right; VarDecl *variable; } assign;
         struct { char *name; VarDecl *variable; } name;
         struct { char *name; Expr **args; size_t count; Function *function; } call;
+        struct { Expr **items; size_t count; } array;
+        struct { Expr *target; Expr *index; VarDecl *variable; } index;
         struct { FPart *parts; size_t count; } fstring;
     } as;
 };
@@ -65,6 +69,8 @@ typedef enum {
     STMT_PRINT,
     STMT_IF,
     STMT_LOOP,
+    STMT_WHILE,
+    STMT_FOR,
     STMT_BREAK,
     STMT_CONTINUE,
     STMT_RETURN,
@@ -79,6 +85,8 @@ struct VarDecl {
     bool is_const;
     bool initialized;
     bool is_global;
+    bool is_array;
+    size_t array_length;
     Expr *initializer;
 };
 
@@ -91,6 +99,8 @@ struct Stmt {
         struct { Expr **args; size_t count; } print;
         struct { Expr *condition; Stmt *then_branch; Stmt *else_branch; } if_stmt;
         Stmt *loop_body;
+        struct { Expr *condition; Stmt *body; } while_stmt;
+        struct { Stmt *initializer; Expr *condition; Expr *increment; Stmt *body; } for_stmt;
         Expr *return_value;
         Expr *expression;
     } as;

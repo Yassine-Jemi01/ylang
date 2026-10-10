@@ -130,4 +130,86 @@ if command -v clang >/dev/null 2>&1; then
     diff -u tests/expected-demo.txt build/test-demo-clang.out
 fi
 
+
+# Standard math library: native calls, namespacing, and argument type checks.
+./build/ylang check examples/math.yl >/dev/null
+./build/ylang build examples/math.yl -o build/test-math >/dev/null
+./build/test-math > build/test-math.out
+diff -u tests/expected-math.txt build/test-math.out
+if ./build/ylang check tests/math-type-error.yl > build/math-type-error.out 2>&1; then
+    echo "FAIL: math.sqrt accepted an int argument without an explicit conversion" >&2
+    exit 1
+fi
+grep -q 'Math functions require float arguments' build/math-type-error.out
+
+# Fixed-size arrays: homogeneous initialization, indexed mutation, globals, and bounds checks.
+./build/ylang check examples/arrays.yl >/dev/null
+./build/ylang build examples/arrays.yl -o build/test-arrays >/dev/null
+./build/test-arrays > build/test-arrays.out
+diff -u tests/expected-arrays.txt build/test-arrays.out
+./build/ylang build tests/array-out-of-bounds.yl -o build/test-array-oob >/dev/null
+if ./build/test-array-oob > build/array-oob.out 2>&1; then
+    echo "FAIL: out-of-bounds array access was accepted at runtime" >&2
+    exit 1
+else
+    array_status=$?
+    [ "$array_status" -eq 70 ]
+fi
+grep -q 'array index out of bounds' build/array-oob.out
+
+if ./build/ylang check tests/array-scalar-init.yl > build/array-scalar-init.out 2>&1; then
+    echo "FAIL: scalar initializer for an array was accepted" >&2
+    exit 1
+fi
+grep -q 'Array declarations require an array literal initializer' build/array-scalar-init.out
+if ./build/ylang check tests/array-mixed-types.yl > build/array-mixed-types.out 2>&1; then
+    echo "FAIL: mixed-type array literal was accepted" >&2
+    exit 1
+fi
+grep -q 'All array elements must have the same type' build/array-mixed-types.out
+
+# Native optimization levels are selectable without changing source code.
+YLANG_OPT_LEVEL=3 ./build/ylang build examples/loops.yl -o build/test-loops-o3 >/dev/null
+./build/test-loops-o3 > build/loops-o3.out
+diff -u tests/expected-loops.txt build/loops-o3.out
+if YLANG_OPT_LEVEL=invalid ./build/ylang build examples/loops.yl -o build/invalid-opt > build/invalid-opt.out 2>&1; then
+    echo "FAIL: invalid optimization level was accepted" >&2
+    exit 1
+fi
+grep -q 'invalid YLANG_OPT_LEVEL' build/invalid-opt.out
+
+# C-style for loops and condition-driven while loops.
+./build/ylang check examples/loops.yl >/dev/null
+./build/ylang build examples/loops.yl -o build/test-loops >/dev/null
+./build/test-loops > build/loops.out
+diff -u tests/expected-loops.txt build/loops.out
+if ./build/ylang check tests/loop-condition-error.yl > build/loop-condition-error.out 2>&1; then
+    echo "FAIL: while accepted a non-bool condition" >&2
+    exit 1
+fi
+grep -q 'while condition must have type bool' build/loop-condition-error.out
+
+# Text file I/O: writing returns a status, reading returns a string.
+./build/ylang check tests/file-io.yl >/dev/null
+./build/ylang build tests/file-io.yl -o build/test-file-io >/dev/null
+./build/test-file-io > build/file-io.out
+diff -u tests/expected-file-io.txt build/file-io.out
+printf 'YLang file I/O' > build/io-expected.txt
+cmp build/io-output.txt build/io-expected.txt
+
+# String standard library and stdin line input.
+./build/ylang check examples/strings.yl >/dev/null
+./build/ylang build examples/strings.yl -o build/test-strings >/dev/null
+./build/test-strings > build/test-strings.out
+diff -u tests/expected-strings.txt build/test-strings.out
+if ./build/ylang check tests/string-type-error.yl > build/string-type-error.out 2>&1; then
+    echo "FAIL: string.length accepted an int argument" >&2
+    exit 1
+fi
+grep -q 'requires string arguments' build/string-type-error.out
+./build/ylang check tests/read-line.yl >/dev/null
+./build/ylang build tests/read-line.yl -o build/test-read-line >/dev/null
+printf 'YLang\n' | ./build/test-read-line > build/read-line.out
+diff -u tests/expected-read-line.txt build/read-line.out
+
 echo "All YLang tests passed."

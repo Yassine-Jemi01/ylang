@@ -465,9 +465,44 @@ static Expr *parse_primary(Parser *p)
     if (match(p, TOKEN_CHAR)) return new_expr(p->compiler, EXPR_CHAR, token);
     if (match(p, TOKEN_FSTRING)) return parse_fstring(p, token);
     if (match(p, TOKEN_TRUE) || match(p, TOKEN_FALSE)) return new_expr(p->compiler, EXPR_BOOL, token);
+    if (match(p, TOKEN_LEFT_BRACKET)) {
+        Expr *array = new_expr(p->compiler, EXPR_ARRAY, token);
+        if (p->current.type != TOKEN_RIGHT_BRACKET) {
+            do {
+                Expr *item = parse_expression(p);
+                append_ptr(p->compiler, (void ***)&array->as.array.items,
+                           &array->as.array.count, item);
+            } while (match(p, TOKEN_COMMA) && p->current.type != TOKEN_RIGHT_BRACKET);
+        }
+        consume(p, TOKEN_RIGHT_BRACKET, "Expected ']' after array literal.",
+                "Close the array literal, for example [1, 2, 3].");
+        return array;
+    }
     if (match(p, TOKEN_IDENTIFIER)) {
         Expr *expr = new_expr(p->compiler, EXPR_NAME, token);
-        expr->as.name.name = token_copy(p->compiler, token);
+        char *name = token_copy(p->compiler, token);
+        /* Namespaced standard-library calls use the familiar module.function form. */
+        if (match(p, TOKEN_DOT)) {
+            Token member = consume(p, TOKEN_IDENTIFIER,
+                "Expected a member name after '.'.",
+                "For example: math.sqrt(value), string.length(value), or io.read_line().");
+            if (token_is(&token, "math") || token_is(&token, "string") ||
+                token_is(&token, "io")) {
+                StringBuilder qualified;
+                sb_init(&qualified);
+                sb_append_n(&qualified, token.start, token.length);
+                sb_append(&qualified, ".");
+                sb_append_n(&qualified, member.start, member.length);
+                name = arena_strndup(&p->compiler->arena, qualified.data, qualified.length);
+                sb_destroy(&qualified);
+            } else {
+                diagnostic(p->compiler, token, "error", "E1016",
+                           "Unknown standard-library namespace.",
+                           "Use a supported namespace such as math, string, or io.");
+                name = arena_strndup(&p->compiler->arena, "", 0);
+            }
+        }
+        expr->as.name.name = name;
         if (match(p, TOKEN_LEFT_PAREN)) {
             Expr *call = new_expr(p->compiler, EXPR_CALL, token);
             call->as.call.name = expr->as.name.name;
@@ -524,6 +559,18 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
     }
 
     for (;;) {
+        if (p->current.type == TOKEN_LEFT_BRACKET && min_precedence <= 8) {
+            Token bracket = p->current;
+            advance_parser(p);
+            Expr *index = parse_expression(p);
+            consume(p, TOKEN_RIGHT_BRACKET, "Expected ']' after array index.",
+                    "Close the index expression with ']'.");
+            Expr *indexed = new_expr(p->compiler, EXPR_INDEX, bracket);
+            indexed->as.index.target = left;
+            indexed->as.index.index = index;
+            left = indexed;
+            continue;
+        }
         int prec = precedence(p->current.type);
         if (prec == 0 || prec < min_precedence) break;
         op = p->current;
@@ -531,10 +578,10 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
         int next_min = prec + (op.type == TOKEN_EQUAL ? 0 : 1);
         Expr *right = parse_precedence(p, next_min);
         if (op.type == TOKEN_EQUAL) {
-            if (left->kind != EXPR_NAME) {
+            if (left->kind != EXPR_NAME && left->kind != EXPR_INDEX) {
                 diagnostic(p->compiler, op, "error", "E1004",
-                           "The left side of an assignment must be a variable name.",
-                           "Write an assignment such as 'count = count + 1;'.");
+                           "The left side of an assignment must be a variable or array element.",
+                           "Write an assignment such as 'count = count + 1;' or 'values[0] = 1;'.");
                 left = new_expr(p->compiler, EXPR_ERROR, op);
             } else {
                 Expr *assign = new_expr(p->compiler, EXPR_ASSIGN, op);
@@ -585,8 +632,29 @@ static Stmt *parse_variable(Parser *p, bool global)
     Token name_token = consume(p, TOKEN_IDENTIFIER,
         "Expected a variable name after the type.",
         "For example: let int count = 0;");
+    bool is_array = false;
+    if (match(p, TOKEN_LEFT_BRACKET)) {
+        is_array = true;
+        consume(p, TOKEN_RIGHT_BRACKET, "Array declarations use empty brackets after the name.",
+                "Use a declaration such as 'let int values[] = [1, 2, 3];'.");
+        if (is_const) {
+            diagnostic(p->compiler, name_token, "error", "E2017",
+                       "const arrays are not supported yet.",
+                       "Use a mutable array declaration for now.");
+        }
+    }
     Expr *initializer = NULL;
     if (match(p, TOKEN_EQUAL)) initializer = parse_expression(p);
+    if (is_array && !initializer) {
+        diagnostic(p->compiler, name_token, "error", "E2018",
+                   "An array declaration requires an initializer in this release.",
+                   "Initialize it with an array literal, for example [1, 2, 3].");
+    }
+    if (!is_array && initializer && initializer->kind == EXPR_ARRAY) {
+        diagnostic(p->compiler, name_token, "error", "E2019",
+                   "An array literal requires an array declaration.",
+                   "Declare the variable with empty brackets after its name, such as 'let int values[] = [1, 2, 3];'.");
+    }
     if (is_const && !initializer) {
         diagnostic(p->compiler, name_token, "error", "E2003",
                    "A const variable must be initialized at declaration.",
@@ -596,6 +664,9 @@ static Stmt *parse_variable(Parser *p, bool global)
             "The declaration may be missing ';' before this token.");
     VarDecl *var = new_var(p->compiler, name_token, token_copy(p->compiler, name_token),
                            type, is_const, global, initializer);
+    var->is_array = is_array;
+    var->array_length = is_array && initializer && initializer->kind == EXPR_ARRAY ?
+                        initializer->as.array.count : 0;
     Stmt *stmt = new_stmt(p->compiler, STMT_VAR, start);
     stmt->as.variable = var;
     return stmt;
@@ -664,6 +735,44 @@ static Stmt *parse_statement(Parser *p)
         consume(p, TOKEN_LEFT_BRACE, "Expected '{' before loop body.",
                 "Start the loop body with '{'.");
         stmt->as.loop_body = parse_block_after_open(p, p->previous);
+        return stmt;
+    }
+
+    if (match(p, TOKEN_WHILE)) {
+        Stmt *stmt = new_stmt(p->compiler, STMT_WHILE, token);
+        consume(p, TOKEN_LEFT_PAREN, "Expected '(' after while.",
+                "Write while (condition) { ... }.");
+        stmt->as.while_stmt.condition = parse_expression(p);
+        consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after while condition.",
+                "Close the condition with ')'.");
+        stmt->as.while_stmt.body = parse_statement(p);
+        return stmt;
+    }
+
+    if (match(p, TOKEN_FOR)) {
+        Stmt *stmt = new_stmt(p->compiler, STMT_FOR, token);
+        consume(p, TOKEN_LEFT_PAREN, "Expected '(' after for.",
+                "Write for (let int i = 0; i < limit; i = i + 1) { ... }.");
+        if (match(p, TOKEN_SEMICOLON)) {
+            stmt->as.for_stmt.initializer = NULL;
+        } else if (match(p, TOKEN_LET)) {
+            stmt->as.for_stmt.initializer = parse_variable(p, false);
+        } else {
+            Stmt *init = new_stmt(p->compiler, STMT_EXPR, p->current);
+            init->as.expression = parse_expression(p);
+            consume(p, TOKEN_SEMICOLON, "Expected ';' after for initializer.",
+                    "Separate the initializer and condition with ';'.");
+            stmt->as.for_stmt.initializer = init;
+        }
+        if (p->current.type != TOKEN_SEMICOLON)
+            stmt->as.for_stmt.condition = parse_expression(p);
+        consume(p, TOKEN_SEMICOLON, "Expected ';' after for condition.",
+                "Separate the condition and increment with ';'.");
+        if (p->current.type != TOKEN_RIGHT_PAREN)
+            stmt->as.for_stmt.increment = parse_expression(p);
+        consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after for clauses.",
+                "Close the for header with ')'.");
+        stmt->as.for_stmt.body = parse_statement(p);
         return stmt;
     }
 
