@@ -1,0 +1,5 @@
+sqrt: 9
+pow: 256
+sin: 0
+clamp: 10
+max: 7
