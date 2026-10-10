@@ -12,7 +12,7 @@ normalize_output() {
     mv "$1.normalized" "$1"
 }
 
-"$YLANG" --version | grep -q '1.0.0'
+"$YLANG" --version | grep -q '2.0.0-dev'
 "$YLANG" --help > build/help.out
 grep -q 'ylang check' build/help.out
 "$YLANG" emit-c examples/demo.yl -o build/demo-generated.c > build/emit-c.out
