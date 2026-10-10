@@ -80,7 +80,7 @@ Supported printable values are `int`, `float`, `bool`, `char`, and `string`. `pr
 - Arithmetic: `+`, `-`, `*`, `/`, `%`
 - Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
 - Boolean: `and`, `or`
-- Assignment: `=` as a statement
+- Assignment: `=` and `+=` as statements; postfix `++` increments a mutable numeric variable by one
 - Grouping: `(expression)`
 - Calls: `name(argument, ...)`
 
@@ -99,7 +99,7 @@ loop() {
 }
 
 while (count < limit) {
-    count = count + 1;
+    count += 1; or count++;
 }
 
 for (let int i = 0; i < limit; i = i + 1) {

@@ -536,7 +536,7 @@ static Expr *parse_primary(Parser *p)
 static int precedence(TokenType type)
 {
     switch (type) {
-        case TOKEN_EQUAL: return 1;
+        case TOKEN_EQUAL: case TOKEN_PLUS_EQUAL: return 1;
         case TOKEN_OR: return 2;
         case TOKEN_AND: return 3;
         case TOKEN_EQUAL_EQUAL: case TOKEN_BANG_EQUAL: return 4;
@@ -574,14 +574,41 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
             left = indexed;
             continue;
         }
+        if (p->current.type == TOKEN_PLUS_PLUS) {
+            op = p->current;
+            if (min_precedence > 1) break;
+            advance_parser(p);
+            if (left->kind != EXPR_NAME) {
+                diagnostic(p->compiler, op, "error", "E1004",
+                           "The '++' operator requires a variable name.",
+                           "Use 'count++' for a mutable numeric variable.");
+                left = new_expr(p->compiler, EXPR_ERROR, op);
+                continue;
+            }
+            Expr *one = new_expr(p->compiler, EXPR_INT, op);
+            one->as.name.name = NULL;
+            one->is_min_int = false;
+            /* Numeric literal tokens are parsed from their source spelling. */
+            one->kind = EXPR_INT;
+            Expr *sum = new_expr(p->compiler, EXPR_BINARY, op);
+            sum->as.binary.left = left;
+            sum->as.binary.right = one;
+            sum->as.binary.op = op;
+            Expr *assign = new_expr(p->compiler, EXPR_ASSIGN, op);
+            assign->as.assign.target = left;
+            assign->as.assign.right = sum;
+            assign->as.assign.variable = NULL;
+            left = assign;
+            continue;
+        }
         int prec = precedence(p->current.type);
         if (prec == 0 || prec < min_precedence) break;
         op = p->current;
         advance_parser(p);
-        int next_min = prec + (op.type == TOKEN_EQUAL ? 0 : 1);
+        int next_min = prec + ((op.type == TOKEN_EQUAL || op.type == TOKEN_PLUS_EQUAL) ? 0 : 1);
         Expr *right = parse_precedence(p, next_min);
-        if (op.type == TOKEN_EQUAL) {
-            if (left->kind != EXPR_NAME && left->kind != EXPR_INDEX) {
+        if (op.type == TOKEN_EQUAL || op.type == TOKEN_PLUS_EQUAL) {
+            if (left->kind != EXPR_NAME && (op.type == TOKEN_EQUAL && left->kind != EXPR_INDEX)) {
                 diagnostic(p->compiler, op, "error", "E1004",
                            "The left side of an assignment must be a variable or array element.",
                            "Write an assignment such as 'count = count + 1;' or 'values[0] = 1;'.");
@@ -589,7 +616,19 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
             } else {
                 Expr *assign = new_expr(p->compiler, EXPR_ASSIGN, op);
                 assign->as.assign.target = left;
-                assign->as.assign.right = right;
+                if (op.type == TOKEN_PLUS_EQUAL) {
+                    Expr *sum = new_expr(p->compiler, EXPR_BINARY, op);
+                    sum->as.binary.left = left;
+                    sum->as.binary.right = right;
+                    sum->as.binary.op.type = TOKEN_PLUS;
+                    sum->as.binary.op.start = op.start;
+                    sum->as.binary.op.length = op.length;
+                    sum->as.binary.op.line = op.line;
+                    sum->as.binary.op.column = op.column;
+                    assign->as.assign.right = sum;
+                } else {
+                    assign->as.assign.right = right;
+                }
                 assign->as.assign.variable = NULL;
                 left = assign;
             }

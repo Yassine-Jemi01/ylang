@@ -268,7 +268,9 @@ Token lexer_next(Lexer *lexer)
         case '[' : return make_token(lexer, TOKEN_LEFT_BRACKET);
         case ']' : return make_token(lexer, TOKEN_RIGHT_BRACKET);
         case '.' : return make_token(lexer, TOKEN_DOT);
-        case '+' : return make_token(lexer, TOKEN_PLUS);
+        case '+':
+            if (match_char(lexer, '+')) return make_token(lexer, TOKEN_PLUS_PLUS);
+            return make_token(lexer, match_char(lexer, '=') ? TOKEN_PLUS_EQUAL : TOKEN_PLUS);
         case '*' : return make_token(lexer, TOKEN_STAR);
         case '/' : return make_token(lexer, TOKEN_SLASH);
         case '%' : return make_token(lexer, TOKEN_PERCENT);
@@ -354,6 +356,8 @@ const char *token_type_name(TokenType type)
         case TOKEN_RIGHT_BRACKET: return "RIGHT_BRACKET";
         case TOKEN_DOT: return "DOT";
         case TOKEN_PLUS: return "PLUS";
+        case TOKEN_PLUS_EQUAL: return "PLUS_EQUAL";
+        case TOKEN_PLUS_PLUS: return "PLUS_PLUS";
         case TOKEN_MINUS: return "MINUS";
         case TOKEN_ARROW: return "ARROW";
         case TOKEN_STAR: return "STAR";

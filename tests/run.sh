@@ -278,3 +278,22 @@ if ./build/ylang check build/unterminated-comment.yl > build/unterminated-commen
     exit 1
 fi
 grep -q 'Unterminated block comment' build/unterminated-comment.out
+
+# Compound addition and postfix increment.
+cat > build/compound-operators.yl <<'EOF'
+function main() -> int {
+    let int count = 2;
+    count += 3;
+    count++;
+    print(count);
+    let float ratio = 1.5;
+    ratio += 0.5;
+    print(ratio);
+    return 0;
+}
+EOF
+./build/ylang check build/compound-operators.yl >/dev/null
+./build/ylang build build/compound-operators.yl -o build/test-compound-operators >/dev/null
+./build/test-compound-operators > build/compound-operators.out
+grep -q '^6$' build/compound-operators.out
+grep -q '^2$' build/compound-operators.out
