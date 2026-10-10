@@ -310,10 +310,6 @@ static YType parse_type(Parser *p)
     Token token = consume(p, TOKEN_IDENTIFIER,
         "Expected a type name such as 'int', 'float', 'bool', 'char', 'string', or 'void'.",
         "Write the type before the variable or parameter name.");
-    if (token_is(&token, "int")) return TYPE_INT;
-    if (token_is(&token, "float")) return TYPE_FLOAT;
-    if (token_is(&token, "bool")) return TYPE_BOOL;
-    if (token_is(&token, "char")) return TYPE_CHAR;
     if (token_is(&token, "string")) {
         YType base = TYPE_STRING;
         if (match(p, TOKEN_LEFT_BRACKET)) {
@@ -347,7 +343,7 @@ static YType parse_type(Parser *p)
         return base;
     }
     diagnostic(p->compiler, token, "error", "E2002", "Unknown type name.",
-               "Available YLang 1.0 types: int, float, bool, char, string, void.");
+               "Available types: int, float, bool, char, string, void, and typed arrays such as int[] and string[].");
     return TYPE_ERROR;
 }
 
