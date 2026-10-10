@@ -1,56 +1,89 @@
-# YLang Development Roadmap
+# YLang 2.0 Development Roadmap
 
-This is a working plan for development on `dev/lsp-foundation`. It is not a release promise. The stable `main` branch remains the YLang 1.0.0 contract until a future release is intentionally prepared.
+This roadmap describes the intended release, not features already implemented. Stable YLang 1.0.0 remains on `main`.
 
-## Working rule
+## Release principle
 
-Build the language core first and keep operating-system details out of language semantics. Add focused Linux regression tests with each feature so bugs are caught while the change is small. Keep the existing Windows CI smoke checks as an early portability warning; run a broader Windows/editor compatibility pass after the planned language features have settled.
+Prioritize the core semantics and test harness over a long list of shallow features. Each feature must include the compiler, tests, documentation, and editor grammar. Keep Windows CI running continuously and run executable smoke tests on every platform.
 
-A syntax or semantic feature is not complete until its specification, diagnostics, tests, and editor grammar are updated. The LSP may temporarily lag while syntax is experimental, but that limitation must be explicit.
+## Stage 0 — Stabilize the development foundation
 
-## Phase 1 — Ownership and borrowing
+- [ ] Review and stabilize scalar `&T` / `&mut T` borrowing.
+- [ ] Ensure diagnostics reject all mismatched modes and conflicting aliases.
+- [ ] Fix parser/codegen edge cases before adding heap-backed types.
+- [ ] Add fuzz targets for lexer/parser and sanitizer CI.
+- [ ] Define versioning and compatibility policy for 2.0.
 
-The first scalar-borrowing subset is now on the development branch. Stabilize its semantics and regression tests first:
+## Stage 1 — Ownership and deterministic cleanup
 
-- `&T` shared borrows and `&mut T` exclusive borrows at function-call boundaries.
-- Reject parameter-mode mismatches, conflicting borrows, and reads/writes during a mutable borrow.
-- Define move semantics for owned strings, use-after-move detection, explicit cloning, and cleanup on all control-flow exits.
-- Keep strings and arrays out of the borrowable type set until their ownership and lifetime rules are implemented.
+- [ ] Define string representation, UTF-8 contract, and clone/move semantics.
+- [ ] Add move-state analysis and reject use-after-move.
+- [ ] Replace process-lifetime f-string allocations with deterministic ownership.
+- [ ] Generate cleanup on all control-flow exits and error paths.
+- [ ] Test early returns, nested scopes, loops, and repeated formatting.
+- [ ] Keep references call-scoped until lifetimes are implemented.
 
-Do not promise Rust-like memory safety without a complete design and evidence.
+## Stage 2 — Arrays
 
-## Phase 2 — Arrays and iteration
+- [ ] Add `T[]` types and typed literals.
+- [ ] Add indexing reads/writes with bounds checks.
+- [ ] Add `len`, append, capacity, and explicit clone/move rules.
+- [ ] Define empty-array typing and allocation failure behavior.
+- [ ] Test invalid indexes, zero-length arrays, overflow, and memory cleanup.
 
-After ownership/move semantics are implemented and tested, add one-dimensional typed arrays in small increments:
+## Stage 3 — Essential language features
 
-1. Array type syntax and array literals.
-2. Index reads and writes, with compile-time type checking.
-3. Length access and defined behavior for invalid indexes.
-4. Tests for empty arrays, initialization, const/mutable behavior, nested scopes, and error cases.
-5. A useful iteration form (such as a range-based `for`), designed around the settled array contract.
+- [ ] Line input and typed conversion APIs with EOF/error behavior.
+- [ ] Range-based `for` iteration.
+- [ ] Match/enum or another explicit sum-type design for robust error handling.
+- [ ] Multi-file modules/imports and visibility.
+- [ ] Structs/records and methods only after value layout and ownership are clear.
+- [ ] Generics only after monomorphization/type-checking design and compile-time diagnostics are tested.
 
-Update the parser, AST, semantic analysis, C generator/runtime, language specification, Tree-sitter grammar, and VS Code language support together or record any temporary editor limitations.
+## Stage 4 — Standard library
 
-## Phase 3 — Input and core library
+- [ ] `std.io`: output, line input, streams, I/O errors.
+- [ ] `std.string`: UTF-8 operations, formatting, split/join/search.
+- [ ] `std.array`: safe collections and capacity operations.
+- [ ] `std.math`: numeric functions and documented domains.
+- [ ] `std.fs` and `std.path`: portable filesystem APIs.
+- [ ] `std.process`: args, environment, exit status, child processes.
+- [ ] `std.time`: monotonic clocks and durations.
+- [ ] `std.test`: unit and integration test runner.
+- [ ] Add networking and serialization only after error/result and ownership models stabilize.
 
-Add a portable input path using standard C facilities where possible, avoiding operating-system-specific code in language semantics. Define line input, end-of-file behavior, and conversion failures before exposing APIs. Add examples and tests for successful input, empty input, malformed values, and EOF.
+## Stage 5 — Dedicated compiler backend
 
-## Phase 4 — Multi-file programs
+- [ ] Prototype LLVM IR emission for constants, arithmetic, functions, conditionals, loops, and strings.
+- [ ] Produce native Linux and Windows executables.
+- [ ] Test debug information, link behavior, runtime ABI, and distribution size.
+- [ ] Keep the C backend as a reference until output parity and regression tests pass.
+- [ ] Add explicit target selection and optimization levels.
+- [ ] Never run optimization passes over invalid or ill-typed IR.
 
-Design imports/modules before implementation. Specify module naming and file resolution, duplicate names, visibility, circular imports, and how the CLI builds multiple files. Then add tests for valid imports, missing modules, duplicate symbols, and cycles. Do not start with a package manager before multi-file compilation behavior is clear.
+## Stage 6 — Modules, packages, and dependency security
 
-## Phase 5 — Tooling catches up
+- [ ] Define project manifest and lockfile.
+- [ ] Pin dependencies with hashes and license metadata.
+- [ ] Default to no arbitrary package install scripts.
+- [ ] Add dependency audit/update workflow and reproducible builds.
+- [ ] Support local path dependencies and a small trusted registry before broad registry support.
 
-Improve the LSP from its current lightweight analysis toward parser-backed diagnostics and scope-aware symbols. Then expand completion, hover, go-to-definition, and cross-file navigation as the compiler/module model allows. Keep TextMate highlighting and Tree-sitter grammar consistent with the actual language specification.
+## Stage 7 — Tooling and developer experience
 
-## Phase 6 — Full compatibility and release review
+- [ ] Add `ylang run`, `test`, `fmt`, `doc`, and `pkg`.
+- [ ] Improve diagnostics with suggestions and related locations.
+- [ ] Upgrade the language server from regex-based checks to parser/semantic-model-backed analysis.
+- [ ] Keep VS Code TextMate, Tree-sitter, Neovim, and LSP consistent.
+- [ ] Add project templates and end-to-end examples.
 
-When core feature work is stable, perform a deliberate compatibility pass:
+## Stage 8 — Release gates
 
-- Linux with GCC and Clang.
-- Windows with MSYS2 UCRT64 / MinGW-w64, the native PowerShell build script, and generated executable smoke tests.
-- VS Code extension packaging and language-server checks on Linux and Windows.
-- Tree-sitter grammar tests plus Neovim installation checks on supported platforms.
-- Sanitizer runs and regression checks for invalid input, bounds errors, integer overflow, division by zero, and generated-code failures.
-
-Do not call a platform fully supported just because the compiler itself builds there; the CLI, generated programs, editor integration, docs, and automated checks all need to agree.
+- [ ] Linux GCC and Clang builds, tests, sanitizers, and fuzz smoke tests.
+- [ ] Windows MSYS2 UCRT64 and native PowerShell build/test.
+- [ ] Windows native-backend output executes correctly.
+- [ ] Editor extension packaging and language-server tests on Linux/Windows.
+- [ ] Tree-sitter grammar tests and Neovim install checks.
+- [ ] Benchmark against a small documented suite, with compiler versions and flags recorded.
+- [ ] Publish spec, standard library docs, migration guide, dependency/license inventory, and known limitations.
+- [ ] Only then tag YLang 2.0.0.
