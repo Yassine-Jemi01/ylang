@@ -12,7 +12,13 @@
   "break"
   "continue"
   "return"
+  "mut"
 ] @keyword
+
+; Borrow operator
+"&" @operator
+
+; Keywords @keyword
 
 ; Types
 (type) @type

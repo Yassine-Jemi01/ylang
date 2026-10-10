@@ -68,7 +68,7 @@ function main() -> int {
               left: (expression
                 (identifier))
                             right: (expression
-                (integer_literal)))))))
+                (integer_literal))))))))
   (function_definition
     name: (identifier)
     return_type: (type)
