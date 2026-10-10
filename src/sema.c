@@ -227,10 +227,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                 FPart *part = &expr->as.fstring.parts[i];
                 if (part->expression) {
                     YType type = check_expr(checker, part->expression);
-                    if (type == TYPE_VOID) {
+                    if (type == TYPE_VOID || ylang_type_is_array(type)) {
                         diagnostic(c, part->expression->token, "error", "E2013",
-                                   "A void expression cannot be inserted into an f-string.",
-                                   "Use a value-returning expression inside '{...}'.");
+                                   "Void and array values cannot be inserted into an f-string.",
+                                   "Interpolate a scalar or string value; print arrays element by element.");
                     }
                     if (expr_contains_call_or_assignment(part->expression)) {
                         diagnostic(c, part->expression->token, "error", "E2014",
@@ -478,10 +478,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                                "Self-move is not allowed.",
                                "Use the value directly, or clone it when you need a distinct owned value.");
                 } else if (source) {
-                    if (source->is_global) {
+                    if (source->is_global || source->is_const) {
                         diagnostic(c, expr->as.assign.right->token, "error", "E2082",
-                                   "Moving an owned value out of a global is not supported.",
-                                   "Use a local owned value until global ownership rules are defined.");
+                                   "Moving an owned value requires a mutable local owner.",
+                                   "Use clone(value) when the source is const; avoid moving values from globals.");
                     } else source->moved = true;
                 }
             }
@@ -852,10 +852,10 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     var->initializer->kind == EXPR_NAME) {
                     VarDecl *source = var->initializer->as.name.variable;
                     if (source && source != var) {
-                        if (source->is_global) {
+                        if (source->is_global || source->is_const) {
                             diagnostic(c, var->initializer->token, "error", "E2082",
-                                       "Moving an owned value out of a global is not supported.",
-                                       "Use a local owned value until global ownership rules are defined.");
+                                       "Moving an owned value requires a mutable local owner.",
+                                       "Use clone(value) when the source is const; avoid moving values from globals.");
                         } else source->moved = true;
                     }
                 }
@@ -1002,10 +1002,10 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     stmt->as.return_value->kind == EXPR_NAME &&
                     stmt->as.return_value->as.name.variable) {
                     VarDecl *source = stmt->as.return_value->as.name.variable;
-                    if (source->is_global) {
+                    if (source->is_global || source->is_const) {
                         diagnostic(c, stmt->as.return_value->token, "error", "E2082",
-                                   "Moving an owned value out of a global is not supported.",
-                                   "Return a local value, or clone a global after global ownership rules are defined.");
+                                   "Returning an owned value requires transferring a mutable local owner.",
+                                   "Use clone(value) to return an independent copy from a const value.");
                     } else source->moved = true;
                 }
                 if (expected == TYPE_VOID) {
