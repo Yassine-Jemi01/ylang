@@ -131,3 +131,14 @@ if command -v clang >/dev/null 2>&1; then
 fi
 
 echo "All YLang tests passed."
+
+# Standard math library: native calls, namespacing, and argument type checks.
+./build/ylang check examples/math.yl >/dev/null
+./build/ylang build examples/math.yl -o build/test-math >/dev/null
+./build/test-math > build/test-math.out
+diff -u tests/expected-math.txt build/test-math.out
+if ./build/ylang check tests/math-type-error.yl > build/math-type-error.out 2>&1; then
+    echo "FAIL: math.sqrt accepted an int argument without an explicit conversion" >&2
+    exit 1
+fi
+grep -q 'Math functions require float arguments' build/math-type-error.out
