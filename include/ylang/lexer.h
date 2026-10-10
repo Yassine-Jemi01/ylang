@@ -23,6 +23,8 @@ typedef enum {
     TOKEN_FALSE,
     TOKEN_FUNCTION,
     TOKEN_LOOP,
+    TOKEN_FOR,
+    TOKEN_IN,
     TOKEN_BREAK,
     TOKEN_CONTINUE,
     TOKEN_RETURN,

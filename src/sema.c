@@ -938,6 +938,55 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             }
             break;
         }
+        case STMT_FOR_EACH: {
+            Expr *array_expr = stmt->as.for_each.array;
+            YType array_type = check_expr(checker, array_expr);
+            YType element_type = array_element_type(array_type);
+            VarDecl *variable = stmt->as.for_each.variable;
+            if (element_type == TYPE_ERROR && array_type != TYPE_ERROR) {
+                diagnostic(c, array_expr->token, "error", "E2076",
+                           "A for-each loop requires an array value.",
+                           "Iterate over a typed array such as int[] values.");
+            } else if (element_type == TYPE_STRING) {
+                diagnostic(c, array_expr->token, "error", "E2081",
+                           "For-each over string[] is not supported in this initial version.",
+                           "Use an indexed loop or iterate over an array of scalar values.");
+            } else if (element_type != TYPE_ERROR && variable->type != element_type) {
+                char suggestion[192];
+                (void)snprintf(suggestion, sizeof(suggestion),
+                               "Loop variable '%s' has type %s, but the array element type is %s.",
+                               variable->name, type_name(variable->type), type_name(element_type));
+                diagnostic(c, variable->token, "error", "E2080",
+                           "For-each loop variable type mismatch.", suggestion);
+            }
+            if (!array_expr || array_expr->kind != EXPR_NAME) {
+                diagnostic(c, array_expr ? array_expr->token : stmt->token,
+                           "error", "E2082",
+                           "For-each currently requires a named array variable.",
+                           "Store the array in a variable before iterating over it.");
+            }
+            Scope *previous_scope = checker->scope;
+            Scope *loop_scope = scope_new(c, previous_scope);
+            checker->scope = loop_scope;
+            variable->initialized = true;
+            (void)scope_add(checker, loop_scope, variable);
+            size_t n = c->all_var_count;
+            bool *before = arena_alloc(&c->arena, n * sizeof(bool));
+            bool *moved_before = arena_alloc(&c->arena, n * sizeof(bool));
+            for (size_t i = 0; i < n; i++) {
+                before[i] = c->all_vars[i]->initialized;
+                moved_before[i] = c->all_vars[i]->is_moved;
+            }
+            checker->loop_depth++;
+            check_stmt(checker, stmt->as.for_each.body);
+            checker->loop_depth--;
+            for (size_t i = 0; i < n; i++) {
+                c->all_vars[i]->initialized = before[i];
+                c->all_vars[i]->is_moved = moved_before[i] || c->all_vars[i]->is_moved;
+            }
+            checker->scope = previous_scope;
+            break;
+        }
         case STMT_BREAK:
         case STMT_CONTINUE:
             if (checker->loop_depth == 0) {

@@ -428,6 +428,27 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); fputs("for (;;) ", out); fputs("\n", out);
             emit_stmt(out, stmt->as.loop_body, indent);
             break;
+        case STMT_FOR_EACH: {
+            VarDecl *variable = stmt->as.for_each.variable;
+            Expr *array = stmt->as.for_each.array;
+            YType element = array_element_type(array->type);
+            char index_name[128], end_name[128];
+            (void)snprintf(index_name, sizeof(index_name), "yl_idx_%s", variable->c_name);
+            (void)snprintf(end_name, sizeof(end_name), "yl_end_%s", variable->c_name);
+            emit_indent(out, indent);
+            fprintf(out, "for (size_t %s = 0, %s = (", index_name, end_name);
+            emit_expr_to_file(out, array);
+            fprintf(out, ").len; %s < %s; %s++) {\n", index_name, end_name, index_name);
+            emit_indent(out, indent + 1);
+            emit_var_type(out, variable, false);
+            fprintf(out, " %s = *((%s *)yl_array_at(", variable->c_name, c_base_type(element));
+            emit_expr_to_file(out, array);
+            fprintf(out, ", (int64_t)%s, %d));\n", index_name, array_kind(array->type));
+            emit_stmt(out, stmt->as.for_each.body, indent + 1);
+            emit_indent(out, indent);
+            fputs("}\n", out);
+            break;
+        }
         case STMT_BREAK:
             emit_indent(out, indent); fputs("break;\n", out); break;
         case STMT_CONTINUE:

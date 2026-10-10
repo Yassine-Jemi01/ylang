@@ -704,6 +704,33 @@ static Stmt *parse_if_after_keyword(Parser *p, Token token)
     return stmt;
 }
 
+static Stmt *parse_for_each_after_keyword(Parser *p, Token token)
+{
+    consume(p, TOKEN_LEFT_PAREN, "Expected '(' after for.",
+            "Write for (int item in values) { ... }.");
+    YType declared_type = parse_type(p);
+    Token name_token = consume(p, TOKEN_IDENTIFIER,
+        "Expected a loop variable name after its type.",
+        "For example: for (int value in values) { ... }.");
+    Token in_token = consume(p, TOKEN_IN, "Expected 'in' before the array name.",
+                            "Write for (int value in values) { ... }.");
+    (void)in_token;
+    Expr *array = parse_expression(p);
+    consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after for loop header.",
+            "Close the for loop header with ')'.");
+    consume(p, TOKEN_LEFT_BRACE, "Expected '{' before for loop body.",
+            "Start the for loop body with '{'.");
+    Stmt *body = parse_block_after_open(p, p->previous);
+    Stmt *stmt = new_stmt(p->compiler, STMT_FOR_EACH, token);
+    VarDecl *variable = new_var(p->compiler, name_token,
+        token_copy(p->compiler, name_token), declared_type, false, false, NULL);
+    variable->initialized = true;
+    stmt->as.for_each.variable = variable;
+    stmt->as.for_each.array = array;
+    stmt->as.for_each.body = body;
+    return stmt;
+}
+
 static Stmt *parse_statement(Parser *p)
 {
     Token token = p->current;
@@ -734,6 +761,7 @@ static Stmt *parse_statement(Parser *p)
     }
 
     if (match(p, TOKEN_IF)) return parse_if_after_keyword(p, token);
+    if (match(p, TOKEN_FOR)) return parse_for_each_after_keyword(p, token);
 
     if (match(p, TOKEN_LOOP)) {
         Stmt *stmt = new_stmt(p->compiler, STMT_LOOP, token);
