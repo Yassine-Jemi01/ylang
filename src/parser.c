@@ -467,7 +467,27 @@ static Expr *parse_primary(Parser *p)
     if (match(p, TOKEN_TRUE) || match(p, TOKEN_FALSE)) return new_expr(p->compiler, EXPR_BOOL, token);
     if (match(p, TOKEN_IDENTIFIER)) {
         Expr *expr = new_expr(p->compiler, EXPR_NAME, token);
-        expr->as.name.name = token_copy(p->compiler, token);
+        char *name = token_copy(p->compiler, token);
+        /* Namespaced standard-library calls use the familiar module.function form. */
+        if (match(p, TOKEN_DOT)) {
+            Token member = consume(p, TOKEN_IDENTIFIER,
+                "Expected a member name after '.'.",
+                "For example: math.sqrt(value).");
+            if (token_is(&token, "math")) {
+                StringBuilder qualified;
+                sb_init(&qualified);
+                sb_append(&qualified, "math.");
+                sb_append_n(&qualified, member.start, member.length);
+                name = arena_strndup(&p->compiler->arena, qualified.data, qualified.length);
+                sb_destroy(&qualified);
+            } else {
+                diagnostic(p->compiler, token, "error", "E1016",
+                           "Only the built-in math namespace is available in this release.",
+                           "Use math.sqrt(value), or call a user-defined function by name.");
+                name = arena_strndup(&p->compiler->arena, "", 0);
+            }
+        }
+        expr->as.name.name = name;
         if (match(p, TOKEN_LEFT_PAREN)) {
             Expr *call = new_expr(p->compiler, EXPR_CALL, token);
             call->as.call.name = expr->as.name.name;
