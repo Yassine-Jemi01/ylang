@@ -197,9 +197,29 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             sb_append(sb, expr->as.name.variable ? expr->as.name.variable->c_name : "yl_missing_variable");
             break;
         case EXPR_ASSIGN:
-            sb_append(sb, "(");
-            emit_expr(sb, expr->as.assign.target);
-            sb_append(sb, " = "); emit_expr(sb, expr->as.assign.right); sb_append(sb, ")");
+            if (expr->as.assign.is_compound &&
+                expr->as.assign.variable &&
+                expr->as.assign.variable->type == TYPE_INT) {
+                sb_append(sb, "yl_add_assign_i64(&(");
+                emit_expr(sb, expr->as.assign.target);
+                sb_append(sb, "), ");
+                emit_expr(sb, expr->as.assign.right);
+                sb_append(sb, ")");
+            } else if (expr->as.assign.is_compound &&
+                       expr->as.assign.variable &&
+                       expr->as.assign.variable->type == TYPE_FLOAT) {
+                sb_append(sb, "yl_add_assign_f64(&(");
+                emit_expr(sb, expr->as.assign.target);
+                sb_append(sb, "), ");
+                emit_expr(sb, expr->as.assign.right);
+                sb_append(sb, ")");
+            } else {
+                sb_append(sb, "(");
+                emit_expr(sb, expr->as.assign.target);
+                sb_append(sb, " = ");
+                emit_expr(sb, expr->as.assign.right);
+                sb_append(sb, ")");
+            }
             break;
         case EXPR_CALL: {
             if (strcmp(expr->as.call.name, "length") == 0 && expr->as.call.count == 1) {
@@ -502,6 +522,8 @@ static void emit_runtime(FILE *out)
         "    (void)vsnprintf(buffer, (size_t)needed + 1, format, args); va_end(args);\n"
         "    return (const char *)yl_track(buffer);\n}\n"
         "static int64_t yl_add_i64(int64_t a, int64_t b) { int64_t r; if (__builtin_add_overflow(a,b,&r)) yl_runtime_error(\"integer overflow in addition\"); return r; }\n"
+        "static int64_t yl_add_assign_i64(int64_t *target, int64_t value) { *target = yl_add_i64(*target, value); return *target; }\n"
+        "static double yl_add_assign_f64(double *target, double value) { *target += value; return *target; }\n"
         "static int64_t yl_sub_i64(int64_t a, int64_t b) { int64_t r; if (__builtin_sub_overflow(a,b,&r)) yl_runtime_error(\"integer overflow in subtraction\"); return r; }\n"
         "static int64_t yl_mul_i64(int64_t a, int64_t b) { int64_t r; if (__builtin_mul_overflow(a,b,&r)) yl_runtime_error(\"integer overflow in multiplication\"); return r; }\n"
         "static int64_t yl_neg_i64(int64_t a) { if (a == INT64_MIN) yl_runtime_error(\"integer overflow in negation\"); return -a; }\n"

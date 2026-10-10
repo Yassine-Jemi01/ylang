@@ -181,6 +181,12 @@ void ylgui_window_destroy(YlguiWindow *window)
 void ylgui_shutdown(void)
 {
     if (!gui_initialized) return;
+
+    /* Destroy owned windows and renderers before tearing SDL down. */
+    while (gui_windows != NULL) {
+        ylgui_window_destroy(gui_windows);
+    }
     SDL_Quit();
     gui_initialized = false;
+    gui_error[0] = '\0';
 }

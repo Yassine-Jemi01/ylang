@@ -12,6 +12,7 @@ typedef struct ArenaBlock {
     struct ArenaBlock *next;
     size_t used;
     size_t capacity;
+    max_align_t aligner;
     unsigned char data[];
 } ArenaBlock;
 
@@ -42,6 +43,9 @@ typedef struct {
 void *arena_alloc(Arena *arena, size_t size);
 char *arena_strndup(Arena *arena, const char *text, size_t length);
 void arena_destroy(Arena *arena);
+/* Append to an arena-backed vector; items must originate from this helper. */
+void *arena_vector_append(Arena *arena, void *items, size_t count,
+                          size_t item_size, const void *item);
 
 void sb_init(StringBuilder *sb);
 void sb_append_n(StringBuilder *sb, const char *text, size_t length);

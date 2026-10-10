@@ -1,5 +1,7 @@
 function main() -> int {
     let int smallest = -9223372036854775808;
+    let int smallest_hex = -0x8000000000000000;
     print(smallest);
+    print(smallest_hex);
     return 0;
 }

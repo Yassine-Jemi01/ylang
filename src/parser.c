@@ -12,9 +12,26 @@ void *arena_alloc(Arena *arena, size_t size)
     const size_t alignment = _Alignof(max_align_t);
     if (size == 0) size = 1;
     ArenaBlock *block = arena->head;
-    size_t offset = block ? (block->used + alignment - 1U) & ~(alignment - 1U) : 0;
-    if (!block || offset + size > block->capacity) {
+    size_t offset = 0;
+    if (block) {
+        if (block->used > SIZE_MAX - (alignment - 1U)) {
+            fputs("ylang: fatal: arena offset overflow\n", stderr);
+            exit(70);
+        }
+        offset = (block->used + alignment - 1U) & ~(alignment - 1U);
+    }
+
+    if (!block || offset > block->capacity ||
+        size > block->capacity - offset) {
+        if (size > SIZE_MAX - alignment) {
+            fputs("ylang: fatal: arena allocation size overflow\n", stderr);
+            exit(70);
+        }
         size_t capacity = size > 8192 ? size + alignment : 8192;
+        if (capacity > SIZE_MAX - sizeof(*block)) {
+            fputs("ylang: fatal: arena allocation size overflow\n", stderr);
+            exit(70);
+        }
         ArenaBlock *fresh = malloc(sizeof(*fresh) + capacity);
         if (!fresh) {
             fputs("ylang: fatal: out of memory\n", stderr);
@@ -27,6 +44,7 @@ void *arena_alloc(Arena *arena, size_t size)
         block = fresh;
         offset = 0;
     }
+
     void *result = block->data + offset;
     block->used = offset + size;
     memset(result, 0, size);
@@ -52,6 +70,64 @@ void arena_destroy(Arena *arena)
     arena->head = NULL;
 }
 
+typedef union {
+    size_t capacity;
+    max_align_t alignment;
+} ArenaVectorHeader;
+
+void *arena_vector_append(Arena *arena, void *items, size_t count,
+                          size_t item_size, const void *item)
+{
+    if (!arena || item_size == 0 || !item || (count != 0 && !items)) {
+        fputs("ylang: fatal: invalid vector state\n", stderr);
+        exit(70);
+    }
+
+    ArenaVectorHeader *header = items ? ((ArenaVectorHeader *)items - 1) : NULL;
+    size_t capacity = header ? header->capacity : 0;
+    if (count == SIZE_MAX) {
+        fputs("ylang: fatal: vector size overflow\n", stderr);
+        exit(70);
+    }
+
+    if (count >= capacity) {
+        size_t needed = count + 1;
+        size_t next_capacity = capacity ? capacity : 8;
+        while (next_capacity < needed) {
+            if (next_capacity > SIZE_MAX / 2) {
+                fputs("ylang: fatal: vector capacity overflow\n", stderr);
+                exit(70);
+            }
+            next_capacity *= 2;
+        }
+        if (next_capacity > (SIZE_MAX - sizeof(*header)) / item_size) {
+            fputs("ylang: fatal: vector allocation size overflow\n", stderr);
+            exit(70);
+        }
+
+        header = arena_alloc(arena, sizeof(*header) + next_capacity * item_size);
+        header->capacity = next_capacity;
+        void *grown = header + 1;
+        if (count > 0) memcpy(grown, items, count * item_size);
+        items = grown;
+    }
+
+    memcpy((unsigned char *)items + count * item_size, item, item_size);
+    return items;
+}
+
+static void append_ptr(Compiler *c, void ***items, size_t *count, void *item)
+{
+    *items = arena_vector_append(&c->arena, *items, *count, sizeof(**items), &item);
+    (*count)++;
+}
+
+static void append_fpart(Compiler *c, FPart **items, size_t *count, FPart item)
+{
+    *items = arena_vector_append(&c->arena, *items, *count, sizeof(**items), &item);
+    (*count)++;
+}
+
 typedef struct {
     Compiler *compiler;
     Lexer lexer;
@@ -70,9 +146,20 @@ void sb_init(StringBuilder *sb)
 
 static void sb_reserve(StringBuilder *sb, size_t extra)
 {
-    if (sb->length + extra + 1 <= sb->capacity) return;
+    if (sb->length == SIZE_MAX || extra > SIZE_MAX - sb->length - 1) {
+        fputs("ylang: fatal: generated text is too large\n", stderr);
+        exit(70);
+    }
+    size_t required = sb->length + extra + 1;
+    if (required <= sb->capacity) return;
     size_t capacity = sb->capacity ? sb->capacity : 128;
-    while (capacity < sb->length + extra + 1) capacity *= 2;
+    while (capacity < required) {
+        if (capacity > SIZE_MAX / 2) {
+            capacity = required;
+            break;
+        }
+        capacity *= 2;
+    }
     char *data = realloc(sb->data, capacity);
     if (!data) {
         fputs("ylang: fatal: out of memory\n", stderr);
@@ -276,21 +363,19 @@ static VarDecl *new_var(Compiler *c, Token token, char *name, YType type,
     var->is_global = is_global;
     var->initializer = initializer;
     var->initialized = initializer != NULL || (is_global && !is_const);
-    var->c_name = arena_alloc(&c->arena, 96);
-    (void)snprintf(var->c_name, 96, "yl_v_%zu_%s", ++c->next_var_id, name);
-    VarDecl **grown = arena_alloc(&c->arena, (c->all_var_count + 1) * sizeof(*grown));
-    if (c->all_var_count) memcpy(grown, c->all_vars, c->all_var_count * sizeof(*grown));
-    grown[c->all_var_count++] = var;
-    c->all_vars = grown;
+    size_t variable_id = ++c->next_var_id;
+    size_t name_length = strlen(name);
+    int prefix_length = snprintf(NULL, 0, "yl_v_%zu_", variable_id);
+    if (prefix_length < 0 ||
+        (size_t)prefix_length > SIZE_MAX - name_length - 1) {
+        fputs("ylang: fatal: generated variable name is too large\n", stderr);
+        exit(70);
+    }
+    size_t c_name_size = (size_t)prefix_length + name_length + 1;
+    var->c_name = arena_alloc(&c->arena, c_name_size);
+    (void)snprintf(var->c_name, c_name_size, "yl_v_%zu_%s", variable_id, name);
+    append_ptr(c, (void ***)&c->all_vars, &c->all_var_count, var);
     return var;
-}
-
-static void append_ptr(Compiler *c, void ***items, size_t *count, void *item)
-{
-    void **grown = arena_alloc(&c->arena, (*count + 1) * sizeof(*grown));
-    if (*count) memcpy(grown, *items, *count * sizeof(*grown));
-    grown[(*count)++] = item;
-    *items = grown;
 }
 
 static YType parse_type(Parser *p)
@@ -380,10 +465,8 @@ static Expr *parse_fstring(Parser *p, Token token)
         }
         if (text.length > 0) {
             FPart part = { .text = arena_strndup(&p->compiler->arena, text.data, text.length), .expression = NULL };
-            FPart *grown = arena_alloc(&p->compiler->arena, (expr->as.fstring.count + 1) * sizeof(*grown));
-            if (expr->as.fstring.count) memcpy(grown, expr->as.fstring.parts, expr->as.fstring.count * sizeof(*grown));
-            grown[expr->as.fstring.count++] = part;
-            expr->as.fstring.parts = grown;
+            append_fpart(p->compiler, &expr->as.fstring.parts,
+                         &expr->as.fstring.count, part);
             text.length = 0;
             if (text.data) text.data[0] = '\0';
         }
@@ -430,20 +513,16 @@ static Expr *parse_fstring(Parser *p, Token token)
                            "Keep each interpolation to one valid YLang expression.");
             }
             FPart part = { .text = NULL, .expression = embedded };
-            FPart *grown = arena_alloc(&p->compiler->arena, (expr->as.fstring.count + 1) * sizeof(*grown));
-            if (expr->as.fstring.count) memcpy(grown, expr->as.fstring.parts, expr->as.fstring.count * sizeof(*grown));
-            grown[expr->as.fstring.count++] = part;
-            expr->as.fstring.parts = grown;
+            append_fpart(p->compiler, &expr->as.fstring.parts,
+                         &expr->as.fstring.count, part);
         }
         pos++; /* closing brace */
     }
     if (text.length > 0 || expr->as.fstring.count == 0) {
         FPart part = { .text = arena_strndup(&p->compiler->arena,
                        text.data ? text.data : "", text.length), .expression = NULL };
-        FPart *grown = arena_alloc(&p->compiler->arena, (expr->as.fstring.count + 1) * sizeof(*grown));
-        if (expr->as.fstring.count) memcpy(grown, expr->as.fstring.parts, expr->as.fstring.count * sizeof(*grown));
-        grown[expr->as.fstring.count++] = part;
-        expr->as.fstring.parts = grown;
+        append_fpart(p->compiler, &expr->as.fstring.parts,
+                     &expr->as.fstring.count, part);
     }
     sb_destroy(&text);
     return expr;
@@ -620,19 +699,8 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
             } else {
                 Expr *assign = new_expr(p->compiler, EXPR_ASSIGN, op);
                 assign->as.assign.target = left;
-                if (op.type == TOKEN_PLUS_EQUAL) {
-                    Expr *sum = new_expr(p->compiler, EXPR_BINARY, op);
-                    sum->as.binary.left = left;
-                    sum->as.binary.right = right;
-                    sum->as.binary.op.type = TOKEN_PLUS;
-                    sum->as.binary.op.start = op.start;
-                    sum->as.binary.op.length = op.length;
-                    sum->as.binary.op.line = op.line;
-                    sum->as.binary.op.column = op.column;
-                    assign->as.assign.right = sum;
-                } else {
-                    assign->as.assign.right = right;
-                }
+                assign->as.assign.is_compound = op.type == TOKEN_PLUS_EQUAL;
+                assign->as.assign.right = right;
                 assign->as.assign.variable = NULL;
                 left = assign;
             }

@@ -50,11 +50,10 @@ static bool scope_add(Checker *checker, Scope *scope, VarDecl *var)
             return false;
         }
     }
-    VarDecl **grown = arena_alloc(&checker->compiler->arena,
-                                  (scope->count + 1) * sizeof(*grown));
-    if (scope->count) memcpy(grown, scope->vars, scope->count * sizeof(*grown));
-    grown[scope->count++] = var;
-    scope->vars = grown;
+    scope->vars = arena_vector_append(&checker->compiler->arena,
+                                      scope->vars, scope->count,
+                                      sizeof(*scope->vars), &var);
+    scope->count++;
     return true;
 }
 
@@ -328,6 +327,12 @@ static YType check_expr(Checker *checker, Expr *expr)
                 return expr->type;
             }
             expr->as.assign.variable = var;
+            if (expr->as.assign.is_compound &&
+                var->type != TYPE_INT && var->type != TYPE_FLOAT) {
+                diagnostic(c, expr->token, "error", "E2034",
+                           "The '+=' operator requires an int or float target.",
+                           "Use '+=' only with matching int or float values.");
+            }
             if (var->is_array && target && target->kind == EXPR_NAME) {
                 diagnostic(c, expr->token, "error", "E2037",
                            "Whole-array assignment is not supported.",
@@ -358,10 +363,14 @@ static YType check_expr(Checker *checker, Expr *expr)
             TokenType op = expr->as.unary.op.type;
             Expr *operand = expr->as.unary.right;
             if (op == TOKEN_MINUS && operand && operand->kind == EXPR_INT) {
-                const char *digits = operand->token.start;
-                size_t length = operand->token.length;
-                while (length > 1 && *digits == '0') { digits++; length--; }
-                if (length == 19 && memcmp(digits, "9223372036854775808", 19) == 0) {
+                char *literal = token_copy(c, operand->token);
+                errno = 0;
+                char *end = NULL;
+                int base = literal[0] == '0' &&
+                    (literal[1] == 'x' || literal[1] == 'X') ? 16 : 10;
+                unsigned long long magnitude = strtoull(literal, &end, base);
+                if (errno != ERANGE && end != literal && *end == '\0' &&
+                    magnitude == (unsigned long long)INT64_MAX + 1ULL) {
                     expr->is_min_int = true;
                     operand->type = TYPE_INT;
                     expr->type = TYPE_INT;

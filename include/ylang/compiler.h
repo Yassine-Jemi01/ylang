@@ -54,7 +54,7 @@ struct Expr {
     union {
         struct { Expr *right; Token op; } unary;
         struct { Expr *left; Expr *right; Token op; } binary;
-        struct { Expr *target; Expr *right; VarDecl *variable; } assign;
+        struct { Expr *target; Expr *right; VarDecl *variable; bool is_compound; } assign;
         struct { char *name; VarDecl *variable; } name;
         struct { char *name; Expr **args; size_t count; Function *function; } call;
         struct { Expr **items; size_t count; } array;
