@@ -179,6 +179,8 @@ static const StringBuiltin string_builtins[] = {
     {"string.ends_with", 2, TYPE_BOOL},
     {"string.concat", 2, TYPE_STRING},
     {"string.replace", 3, TYPE_STRING},
+    {"string.upper", 1, TYPE_STRING},
+    {"string.lower", 1, TYPE_STRING},
     {"string.parse_int", 1, TYPE_INT},
     {"string.is_int", 1, TYPE_BOOL},
     {"io.read_line", 0, TYPE_STRING},
@@ -420,9 +422,10 @@ static YType check_expr(Checker *checker, Expr *expr)
             if (op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
                 op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL) {
                 if (!(same_numeric_type(left, right) ||
-                      (left == TYPE_CHAR && right == TYPE_CHAR))) {
+                      (left == TYPE_CHAR && right == TYPE_CHAR) ||
+                      (left == TYPE_STRING && right == TYPE_STRING))) {
                     diagnostic(c, expr->token, "error", "E2035",
-                               "Ordered comparisons require matching numeric types or two chars.",
+                               "Ordered comparisons require matching numeric types, two chars, or two strings.",
                                "Make both operands the same compatible type.");
                     expr->type = TYPE_ERROR;
                 } else expr->type = TYPE_BOOL;

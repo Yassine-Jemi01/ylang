@@ -150,7 +150,10 @@ print(string.ends_with(name, "n"));
 - `string.length(value)` returns the number of bytes, not Unicode characters.
 - `string.contains(value, needle)`, `string.starts_with(value, prefix)`, and `string.ends_with(value, suffix)` return `bool`.
 - `string.concat(left, right)` returns a new string.
-- `string.replace(value, needle, replacement)` returns a new string with every non-overlapping occurrence of `needle` replaced. An empty `needle` leaves the original string unchanged. The generated runtime tracks allocated strings until process exit, so repeated concatenation in a long-running loop can increase memory use.
+- `string.replace(value, needle, replacement)` returns a new string with every non-overlapping occurrence of `needle` replaced. An empty `needle` leaves the original string unchanged.
+- `string.upper(value)` and `string.lower(value)` return case-converted copies using the C locale's byte-oriented character mapping; they are not Unicode-aware.
+- Strings support lexicographic ordering with `<`, `<=`, `>`, and `>=`, using bytewise C-string ordering. Equality remains case-sensitive.
+- The generated runtime tracks allocated strings until process exit, so repeated concatenation or case conversion in a long-running loop can increase memory use.
 - `io.read_line()` reads one line from standard input and removes its trailing newline. At end-of-file it returns an empty string.
 - `io.read_file(path)` reads an entire UTF-8/ASCII-compatible text file into a string. A file-open/read failure or embedded NUL byte terminates the program with a runtime error; binary files are not supported by the string API.
 - `io.write_file(path, content)` overwrites or creates a text file and returns `true` on success or `false` if it cannot open/write the file. It does not create missing parent directories.
