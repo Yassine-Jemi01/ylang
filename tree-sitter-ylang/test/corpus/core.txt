@@ -168,7 +168,7 @@ function main() -> int {
               function: (identifier)
               arguments: (argument_list
                 (expression
-                  (identifier))))))
+                  (identifier)))))))
       (statement
         (return_statement
           value: (expression
