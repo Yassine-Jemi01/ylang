@@ -18,6 +18,11 @@ static const char *c_base_type(YType type)
         case TYPE_CHAR: return "char";
         case TYPE_STRING: return "const char *";
         case TYPE_VOID: return "void";
+        case TYPE_INT_ARRAY: return "YlArrayInt";
+        case TYPE_FLOAT_ARRAY: return "YlArrayFloat";
+        case TYPE_BOOL_ARRAY: return "YlArrayBool";
+        case TYPE_CHAR_ARRAY: return "YlArrayChar";
+        case TYPE_STRING_ARRAY: return "YlArrayString";
         case TYPE_ERROR: return "int";
     }
     return "int";
@@ -55,6 +60,53 @@ static const char *format_for_type(YType type)
 }
 
 static void emit_expr(StringBuilder *sb, Expr *expr);
+
+static const char *array_suffix(YType array_type)
+{
+    switch (array_type) {
+        case TYPE_INT_ARRAY: return "int";
+        case TYPE_FLOAT_ARRAY: return "float";
+        case TYPE_BOOL_ARRAY: return "bool";
+        case TYPE_CHAR_ARRAY: return "char";
+        case TYPE_STRING_ARRAY: return "string";
+        default: return "invalid";
+    }
+}
+
+static void emit_move_value(StringBuilder *sb, Expr *expr)
+{
+    if (expr && expr->kind == EXPR_NAME && expr->as.name.variable &&
+        ylang_type_is_owned(expr->type)) {
+        VarDecl *var = expr->as.name.variable;
+        if (ylang_type_is_array(expr->type)) {
+            sb_appendf(sb, "yl_array_%s_move(&%s)",
+                       array_suffix(expr->type), var->c_name);
+        } else {
+            sb_appendf(sb, "yl_string_move(&%s)", var->c_name);
+        }
+    } else {
+        emit_expr(sb, expr);
+    }
+}
+
+static void emit_array_literal(StringBuilder *sb, Expr *expr)
+{
+    YType element_type = ylang_array_element_type(expr->type);
+    const char *suffix = array_suffix(expr->type);
+    const char *element_ctype = c_base_type(element_type);
+    sb_appendf(sb, "yl_array_%s_make(", suffix);
+    if (expr->as.array_literal.count == 0) {
+        sb_append(sb, "NULL, 0");
+    } else {
+        sb_appendf(sb, "(const %s[]){", element_ctype);
+        for (size_t i = 0; i < expr->as.array_literal.count; i++) {
+            if (i) sb_append(sb, ", ");
+            emit_expr(sb, expr->as.array_literal.items[i]);
+        }
+        sb_appendf(sb, "}, %zu", expr->as.array_literal.count);
+    }
+    sb_append(sb, ")");
+}
 
 static void append_fstring_format_text(StringBuilder *format, const char *text)
 {
@@ -148,20 +200,83 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             emit_expr(sb, expr->as.borrow.target);
             sb_append(sb, ")");
             break;
+        case EXPR_ARRAY_LITERAL:
+            emit_array_literal(sb, expr);
+            break;
+        case EXPR_INDEX: {
+            Expr *array_expr = expr->as.index.array;
+            VarDecl *array_var = expr->as.index.variable;
+            const char *suffix = array_suffix(array_var ? array_var->type : TYPE_ERROR);
+            sb_appendf(sb, "(*yl_array_%s_at(&%s, ", suffix,
+                       array_var ? array_var->c_name : "yl_missing_array");
+            emit_expr(sb, expr->as.index.index);
+            sb_append(sb, "))");
+            (void)array_expr;
+            break;
+        }
         case EXPR_ASSIGN:
-            sb_append(sb, "(");
-            emit_expr(sb, expr->as.assign.target);
-            sb_append(sb, " = "); emit_expr(sb, expr->as.assign.right); sb_append(sb, ")");
-            break;
-        case EXPR_CALL:
-            sb_append(sb, expr->as.call.function ? expr->as.call.function->c_name : "yl_missing_function");
-            sb_append(sb, "(");
-            for (size_t i = 0; i < expr->as.call.count; i++) {
-                if (i) sb_append(sb, ", ");
-                emit_expr(sb, expr->as.call.args[i]);
+            if (expr->as.assign.target && expr->as.assign.target->kind == EXPR_NAME &&
+                ylang_type_is_array(expr->type) && expr->as.assign.variable) {
+                sb_appendf(sb, "yl_array_%s_replace(&%s, ",
+                           array_suffix(expr->type), expr->as.assign.variable->c_name);
+                emit_move_value(sb, expr->as.assign.right);
+                sb_append(sb, ")");
+            } else {
+                sb_append(sb, "(");
+                emit_expr(sb, expr->as.assign.target);
+                sb_append(sb, " = ");
+                if (expr->type == TYPE_STRING) emit_move_value(sb, expr->as.assign.right);
+                else emit_expr(sb, expr->as.assign.right);
+                sb_append(sb, ")");
             }
-            sb_append(sb, ")");
             break;
+        case EXPR_CALL: {
+            const char *name = expr->as.call.name;
+            if (strcmp(name, "input") == 0) sb_append(sb, "yl_input_string()");
+            else if (strcmp(name, "input_int") == 0) sb_append(sb, "yl_input_int()");
+            else if (strcmp(name, "input_float") == 0) sb_append(sb, "yl_input_float()");
+            else if (strcmp(name, "len") == 0 && expr->as.call.count == 1) {
+                Expr *arg = expr->as.call.args[0];
+                if (arg->type == TYPE_STRING) {
+                    sb_append(sb, "yl_string_len("); emit_expr(sb, arg); sb_append(sb, ")");
+                } else {
+                    sb_append(sb, "(int64_t)("); emit_expr(sb, arg); sb_append(sb, ").len");
+                }
+            } else if (strcmp(name, "clone") == 0 && expr->as.call.count == 1) {
+                Expr *arg = expr->as.call.args[0];
+                if (arg->type == TYPE_STRING) {
+                    sb_append(sb, "yl_clone_string("); emit_expr(sb, arg); sb_append(sb, ")");
+                } else {
+                    sb_appendf(sb, "yl_array_%s_clone(", array_suffix(arg->type));
+                    emit_expr(sb, arg); sb_append(sb, ")");
+                }
+            } else if (strcmp(name, "append") == 0 && expr->as.call.count == 2) {
+                Expr *arg = expr->as.call.args[0];
+                sb_appendf(sb, "yl_array_%s_append(", array_suffix(arg->type));
+                emit_move_value(sb, arg);
+                sb_append(sb, ", "); emit_expr(sb, expr->as.call.args[1]); sb_append(sb, ")");
+            } else if (expr->as.call.function) {
+                sb_append(sb, expr->as.call.function->c_name);
+                sb_append(sb, "(");
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    if (i) sb_append(sb, ", ");
+                    if (i < expr->as.call.function->param_count &&
+                        !expr->as.call.function->params[i]->is_borrowed &&
+                        ylang_type_is_owned(expr->as.call.function->params[i]->type))
+                        emit_move_value(sb, expr->as.call.args[i]);
+                    else emit_expr(sb, expr->as.call.args[i]);
+                }
+                sb_append(sb, ")");
+            } else {
+                sb_append(sb, "yl_missing_function(");
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    if (i) sb_append(sb, ", ");
+                    emit_expr(sb, expr->as.call.args[i]);
+                }
+                sb_append(sb, ")");
+            }
+            break;
+        }
         case EXPR_UNARY: {
             TokenType op = expr->as.unary.op.type;
             if (expr->is_min_int) {
@@ -275,6 +390,9 @@ static void emit_print_value(FILE *out, Expr *expr, unsigned indent)
         case TYPE_INT:
             fputs("printf(\"%lld\", (long long)(", out); emit_expr_to_file(out, expr);
             fputs("));\n", out); break;
+        case TYPE_INT_ARRAY: case TYPE_FLOAT_ARRAY: case TYPE_BOOL_ARRAY:
+        case TYPE_CHAR_ARRAY: case TYPE_STRING_ARRAY:
+            fputs("(void)0;\n", out); break;
         case TYPE_VOID: case TYPE_ERROR:
             fputs("(void)0;\n", out); break;
     }
@@ -305,6 +423,16 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); fputs("{\n", out);
             for (size_t i = 0; i < stmt->as.block.count; i++)
                 emit_stmt(out, stmt->as.block.items[i], indent + 1);
+            for (size_t i = stmt->as.block.count; i > 0; i--) {
+                Stmt *item = stmt->as.block.items[i - 1];
+                if (item && item->kind == STMT_VAR &&
+                    ylang_type_is_array(item->as.variable->type)) {
+                    VarDecl *var = item->as.variable;
+                    emit_indent(out, indent + 1);
+                    fprintf(out, "yl_array_%s_drop(&%s);\n",
+                            array_suffix(var->type), var->c_name);
+                }
+            }
             emit_indent(out, indent); fputs("}\n", out);
             break;
         case STMT_VAR: {
@@ -312,7 +440,18 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); emit_var_type(out, var, false);
             fprintf(out, " %s", var->c_name);
             if (var->initializer) {
-                fputs(" = ", out); emit_expr_to_file(out, var->initializer);
+                fputs(" = ", out);
+                if (ylang_type_is_owned(var->type) && var->initializer->kind == EXPR_NAME) {
+                    StringBuilder moved;
+                    sb_init(&moved);
+                    emit_move_value(&moved, var->initializer);
+                    fputs(moved.data ? moved.data : "0", out);
+                    sb_destroy(&moved);
+                } else emit_expr_to_file(out, var->initializer);
+            } else if (ylang_type_is_array(var->type)) {
+                fputs(" = {0}", out);
+            } else if (var->type == TYPE_STRING) {
+                fputs(" = NULL", out);
             }
             fputs(";\n", out);
             break;
@@ -341,13 +480,43 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); fputs("for (;;) ", out); fputs("\n", out);
             emit_stmt(out, stmt->as.loop_body, indent);
             break;
+        case STMT_FOR:
+            emit_indent(out, indent);
+            fputs("for (", out);
+            if (stmt->as.for_stmt.initializer &&
+                stmt->as.for_stmt.initializer->kind == STMT_VAR) {
+                VarDecl *var = stmt->as.for_stmt.initializer->as.variable;
+                emit_var_type(out, var, false);
+                fprintf(out, " %s", var->c_name);
+                if (var->initializer) {
+                    fputs(" = ", out);
+                    emit_expr_to_file(out, var->initializer);
+                }
+            }
+            fputs("; ", out);
+            if (stmt->as.for_stmt.condition) emit_expr_to_file(out, stmt->as.for_stmt.condition);
+            else fputs("true", out);
+            fputs("; ", out);
+            if (stmt->as.for_stmt.increment) emit_expr_to_file(out, stmt->as.for_stmt.increment);
+            fputs(")\n", out);
+            emit_stmt(out, stmt->as.for_stmt.body, indent);
+            break;
         case STMT_BREAK:
             emit_indent(out, indent); fputs("break;\n", out); break;
         case STMT_CONTINUE:
             emit_indent(out, indent); fputs("continue;\n", out); break;
         case STMT_RETURN:
             emit_indent(out, indent); fputs("return", out);
-            if (stmt->as.return_value) { fputc(' ', out); emit_expr_to_file(out, stmt->as.return_value); }
+            if (stmt->as.return_value) {
+                fputc(' ', out);
+                if (ylang_type_is_owned(stmt->as.return_value->type)) {
+                    StringBuilder moved;
+                    sb_init(&moved);
+                    emit_move_value(&moved, stmt->as.return_value);
+                    fputs(moved.data ? moved.data : "0", out);
+                    sb_destroy(&moved);
+                } else emit_expr_to_file(out, stmt->as.return_value);
+            }
             fputs(";\n", out); break;
         case STMT_EXPR:
             emit_indent(out, indent); emit_expr_to_file(out, stmt->as.expression); fputs(";\n", out); break;
