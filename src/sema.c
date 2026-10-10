@@ -295,6 +295,11 @@ static YType check_expr(Checker *checker, Expr *expr)
                                    "A void expression cannot be inserted into an f-string.",
                                    "Use a value-returning expression inside '{...}'.");
                     }
+                    if (type_is_array(type)) {
+                        diagnostic(c, part->expression->token, "error", "E207A",
+                                   "An array cannot be inserted directly into an f-string.",
+                                   "Format an individual element or print the array to inspect its length.");
+                    }
                     if (expr_contains_call_or_assignment(part->expression)) {
                         diagnostic(c, part->expression->token, "error", "E2014",
                                    "Function calls and assignments are not allowed inside f-string interpolations in YLang 1.0.",
@@ -422,6 +427,8 @@ static YType check_expr(Checker *checker, Expr *expr)
                                "Array element assignment type mismatch.",
                                "Assign a value with the same type as the array element.");
                 }
+                if (target_type == TYPE_STRING && right_type == TYPE_STRING)
+                    consume_owned_value(checker, expr->as.assign.right);
                 expr->type = target_type;
                 return expr->type;
             }
@@ -554,7 +561,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 return expr->type;
             }
             if (op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL) {
-                if (left != right || left == TYPE_VOID) {
+                if (left != right || left == TYPE_VOID || type_is_array(left)) {
                     diagnostic(c, expr->token, "error", "E2036",
                                "Equality comparisons require matching non-void types.",
                                "Compare values of the same type.");

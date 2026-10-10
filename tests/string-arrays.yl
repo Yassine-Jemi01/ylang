@@ -1,0 +1,8 @@
+function main() -> int {
+    let string[] words = ["one", "two"];
+    append(words, "three");
+    let string[] copy = clone(words);
+    copy[0] = "changed";
+    print(words[0], words[2], copy[0], len(copy));
+    return 0;
+}

@@ -1,0 +1,5 @@
+function main() -> int {
+    let int[] values = [1, 2];
+    print(values[2]);
+    return 0;
+}

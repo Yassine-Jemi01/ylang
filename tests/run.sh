@@ -179,6 +179,34 @@ if "$YLANG" check tests/string-use-after-move.yl > build/string-use-after-move.o
 fi
 grep -q 'E2070' build/string-use-after-move.out
 
+# Typed arrays support literal creation, checked indexing, append, length, clone, and moves.
+"$YLANG" build tests/arrays.yl -o "build/test-arrays$EXEEXT" >/dev/null
+"./build/test-arrays$EXEEXT" > build/arrays.out
+normalize_output "build/arrays.out"
+diff -u tests/expected-arrays.txt build/arrays.out
+
+"$YLANG" build tests/string-arrays.yl -o "build/test-string-arrays$EXEEXT" >/dev/null
+"./build/test-string-arrays$EXEEXT" > build/string-arrays.out
+normalize_output "build/string-arrays.out"
+diff -u tests/expected-string-arrays.txt build/string-arrays.out
+
+"$YLANG" build tests/array-bounds.yl -o "build/test-array-bounds$EXEEXT" >/dev/null
+set +e
+"./build/test-array-bounds$EXEEXT" > build/array-bounds.out 2>&1
+array_bounds_status=$?
+set -e
+[ "$array_bounds_status" -eq 70 ]
+grep -q 'array index out of bounds' build/array-bounds.out
+
+for case_name in array-type-error array-use-after-move; do
+    if "$YLANG" check "tests/$case_name.yl" > "build/$case_name.out" 2>&1; then
+        echo "FAIL: $case_name was accepted" >&2
+        exit 1
+    fi
+done
+grep -q 'E2001' build/array-type-error.out
+grep -q 'E2070' build/array-use-after-move.out
+
 # Borrowed scalar parameters: shared borrows read; exclusive borrows update the caller.
 "$YLANG" build tests/borrow-read.yl -o "build/test-borrow-read$EXEEXT" >/dev/null
 "./build/test-borrow-read$EXEEXT" > build/borrow-read.out

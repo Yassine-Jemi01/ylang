@@ -1,0 +1,12 @@
+function main() -> int {
+    let int[] values = [10, 20, 30];
+    print(values[0], values[1], len(values));
+    values[1] = 42;
+    append(values, 99);
+    print(values[1], values[3], len(values));
+    let int[] copy = clone(values);
+    copy[0] = 7;
+    print(values[0], copy[0]);
+    print(values);
+    return 0;
+}

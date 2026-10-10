@@ -1,0 +1,7 @@
+function main() -> int {
+    let int[] first = [1, 2];
+    let int[] second = first;
+    print(first[0]);
+    print(second[0]);
+    return 0;
+}
