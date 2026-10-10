@@ -1,24 +1,35 @@
-# YLang Compiler Architecture
+# YLang 2 Preview — Compiler Architecture
 
-YLang 1.0.0 uses a conventional multi-stage compiler pipeline:
+This page documents the current development branch. YLang 1.0.0 remains the stable contract on `main`; this branch is versioned `2.0.0-dev`.
 
-1. **Lexer (`src/lexer.c`)** — turns source text into positioned tokens.
-2. **Parser (`src/parser.c`)** — builds the program representation and emits syntax diagnostics.
-3. **Semantic analysis (`src/sema.c`)** — resolves names, validates initialization and constant assignment, and checks types.
-4. **C code generator (`src/codegen.c`)** — writes C for the checked program, including runtime helpers for supported checked arithmetic operations.
-5. **Driver (`src/driver.c`)** — reads the source, orchestrates checking, writes generated C, and invokes GCC or Clang without going through a shell. POSIX process APIs are used on Linux, while Windows uses the native process API; platform-specific linker flags are kept separate.
-6. **CLI (`src/main.c`)** — parses user commands and their options.
+## Front-end
 
-The internal compiler model is declared in `src/internal.h`; the public-facing compiler and token declarations are in `include/ylang/`.
+1. **Lexer (`src/lexer.c`)** turns source text into positioned tokens.
+2. **Parser (`src/parser.c`)** builds the AST for declarations, functions, expressions, arrays, indexing, control flow, and borrow expressions.
+3. **Semantic analysis (`src/sema.c`)** checks names, initialization, type consistency, function calls, array element types, borrow conflicts, a first-pass owned-value move state, and loop rules.
+4. **C code generator (`src/codegen.c`)** emits C17 for the checked AST and includes YLang runtime helpers for arrays, input, checked integer arithmetic, and formatting.
+5. **Driver (`src/driver.c`)** handles source loading, command orchestration, generated-C temporary files, and native compiler invocation. It uses POSIX process support on Linux and native process APIs on Windows.
+6. **CLI (`src/main.c`)** exposes `check`, `build`, `emit-c`, and the narrow `fix` command.
 
-## Diagnostic policy
+The internal AST/compiler model lives in `include/ylang/compiler.h` and `src/internal.h`. Public lexer declarations are in `include/ylang/lexer.h`.
 
-Compiler errors are intended to be stable, user-facing output. Changes should preserve useful codes where practical and include regression tests for source locations and hints. A check failure must not be reported as a native build failure. Code generation is only entered after parsing and semantic analysis report no errors.
+## Back-end boundary
 
-## Native backend
+This is a custom YLang compiler front-end, but the native back-end is currently generated C17 compiled by GCC or Clang. There is no separate LLVM IR or direct machine-code backend yet. Windows CI uses GCC from MSYS2 UCRT64/MinGW-w64; MSVC is not supported by the generated runtime at this stage.
 
-The backend generates C17 and invokes the selected native compiler (`gcc` by default or `clang` when selected). Linux builds use PIE/RELRO linker flags; Windows builds use MinGW-compatible arguments and produce `.exe` files. Generated programs are ordinary native executables, not sandboxed. For native builds, generated C is placed in a private temporary directory and removed after the native compiler exits. This avoids clobbering a project file and avoids collisions between concurrent build invocations. `emit-c` writes to the requested path, or `build/ylang-generated.c` if no output path is given.
+Generated programs run as normal native processes with the caller's permissions. Compilation does not sandbox a program.
 
-## Scope
+## Runtime model
 
-This architecture documents the current implementation, not a promise of features outside `docs/language-spec.md`. Arrays, pointers/references, classes, exception syntax, modules, and a finalized memory model are intentionally outside the 1.0.0 feature set.
+- Scalars are copied by value.
+- Strings are immutable pointers to NUL-terminated byte strings.
+- Arrays are typed, one-dimensional values represented by a (data, len, cap) structure.
+- Named strings and arrays are moved in supported ownership contexts. `clone` creates an explicit copy; array indexes are checked at runtime.
+- Runtime allocations are tracked. Local strings and arrays are dropped on normal block exit, with process-exit cleanup as a safety net. Early exits and owned string elements still need more deterministic cleanup before a stable safety claim is appropriate.
+- The first borrow-checking subset supports `&T` and `&mut T` for `int`, `float`, `bool`, and `char` function parameters only. References cannot be stored in locals or returned.
+
+## Diagnostics and testing
+
+Compiler errors include codes and source locations. A source with reported errors must not be built into a successful native executable. Regression tests run in Linux CI with GCC and Clang, and Windows CI compiles the compiler and runs the suite under MSYS2. Tree-sitter generation/tests and VS Code extension packaging run in CI as well.
+
+Tests and sanitizers are useful bug-finding tools, not a proof of memory safety. The ownership checker, control-flow state analysis, and generated runtime need continued review.
