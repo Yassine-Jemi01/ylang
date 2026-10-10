@@ -220,3 +220,31 @@ function main() -> int {
         (return_statement
           value: (expression
             (integer_literal)))))))
+
+
+==================
+Empty typed array
+==================
+
+function main() -> int {
+    let int[] values = [];
+    return 0;
+}
+
+---
+
+(source_file
+  (function_definition
+    name: (identifier)
+    return_type: (type)
+    (block
+      (statement
+        (variable_declaration
+          type: (type)
+          name: (identifier)
+          value: (expression
+            (array_literal))))
+      (statement
+        (return_statement
+          value: (expression
+            (integer_literal)))))))

@@ -242,6 +242,18 @@ grep -q 'E2083' build/string-array-index-move.out
 normalize_output "build/string-array-clone-index.out"
 diff -u tests/expected-string-array-clone-index.txt build/string-array-clone-index.out
 
+# Empty arrays infer the element type from the declaration and can grow later.
+"$YLANG" build tests/empty-array.yl -o "build/test-empty-array$EXEEXT" >/dev/null
+"./build/test-empty-array$EXEEXT" > build/empty-array.out
+normalize_output "build/empty-array.out"
+diff -u tests/expected-empty-array.txt build/empty-array.out
+
+if "$YLANG" check tests/empty-array-no-context.yl > build/empty-array-no-context.out 2>&1; then
+    echo "FAIL: empty array without a contextual type was accepted" >&2
+    exit 1
+fi
+grep -q 'E2073' build/empty-array-no-context.out
+
 # Typed arrays support literal creation, checked indexing, append, length, clone, and moves.
 "$YLANG" build tests/arrays.yl -o "build/test-arrays$EXEEXT" >/dev/null
 "./build/test-arrays$EXEEXT" > build/arrays.out

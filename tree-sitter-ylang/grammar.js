@@ -223,7 +223,7 @@ module.exports = grammar({
 
     array_literal: $ => seq(
       "[",
-      commaSep1($.expression),
+      optional(commaSep1($.expression)),
       "]"
     ),
 
