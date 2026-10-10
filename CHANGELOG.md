@@ -2,6 +2,17 @@
 
 All notable changes to YLang are documented here. This project follows semantic versioning for future releases.
 
+## [Unreleased] — 2.0.0-dev
+
+This development line is experimental and is not a stable release.
+
+- Added typed one-dimensional arrays, literals, indexing, checked bounds, `len`, `clone`, and `append`.
+- Added C-style `for` loops, line-based `input()`, `input_int()`, and `input_float()`.
+- Added a first-pass owned-value move checker for strings/arrays and retained the scalar `&T` / `&mut T` borrow subset.
+- Added regression fixtures for arrays, loop execution, input, move-after-use, type mismatches, and bounds violations.
+- Updated compiler version output and the v2 preview documentation.
+- Windows development support remains based on MSYS2 UCRT64 / MinGW-w64. Do not treat this preview as Rust-equivalent memory-safe; cleanup on all early exits and the ownership checker are still under development.
+
 ## [1.0.0] - 2026-10-09
 
 First stable release of the documented YLang language subset.
