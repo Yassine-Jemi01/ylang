@@ -1,105 +1,27 @@
-# YLang Language Specification — 1.0.0
+# YLang Language Specification — 2.0.0-dev
 
-This document defines the supported language subset for the YLang 1.0.0 stable release. Syntax not listed here is not part of the v1.0 language contract.
+**Status:** development specification. This document describes the current `v2/core` preview, not a stable release guarantee. The stable `main` branch continues to document YLang 1.0.0.
 
-## 1. Compilation model
+## 1. Language philosophy
 
-YLang is a compiled language. `ylang check` parses and performs semantic checks. `ylang build` generates C and invokes GCC or Clang to produce a native executable. `ylang emit-c` writes C for inspection. There is no interpreter in this release.
+YLang aims for four practical defaults:
 
-## 2. Source form and statements
+1. **Readable by design:** explicit types, familiar blocks, and error messages that point to the source.
+2. **Ownership is visible:** scalar values copy; strings and arrays move when passed by value or assigned from a named owner; `clone(value)` requests an explicit copy.
+3. **Portable programs:** the language runtime is written against the C standard library where possible; the compiler currently emits C17 and delegates native machine-code generation to GCC or Clang.
+4. **Useful essentials first:** arrays, checked indexing, input, functions, loops, and a small built-in library come before a large framework or package ecosystem.
 
-Statements end with `;`, blocks use `{` and `}`, and comments use `//` through the end of a line. Keywords are lowercase and case-sensitive. Each source file passed to the CLI is compiled as one program. A program must define `function main() -> int` or `function main() -> void`, with no parameters.
+These principles are goals for the project, not proof that every current implementation path is memory-safe. YLang 2.0-dev is not yet a Rust-equivalent safety system.
 
-## 3. Variables and constants
+## 2. Compilation model
 
-```ylang
-let int age;
-let int score = 100;
-let string name = "YLang";
-let bool enabled = true;
-let const int LIMIT = 100;
-```
+YLang has a dedicated front-end written in C: lexer, parser, semantic/type checker, diagnostics, and YLang-specific C code generator. `ylang check` validates a source file. `ylang build` validates it, emits temporary C17 code, then invokes GCC or Clang to produce a native executable. `ylang emit-c` writes generated C for inspection.
 
-- Mutable declaration: `let type name;` or `let type name = expression;`.
-- Constant declaration: `let const type name = expression;`. Constants must be initialized and cannot be reassigned.
-- A local variable must be assigned on every path before it is read. The checker rejects a read it cannot prove initialized.
-- Global variables without explicit initializers receive a type-appropriate zero/empty default. Explicit initialization is preferred.
-- A declaration can shadow a name in an outer block, but duplicate names within one scope are errors.
-- Assignment is a statement, not a general nested expression.
+There is not yet a standalone LLVM or machine-code backend. Generated programs run with the permissions of the user who launches them; compilation is not a sandbox.
 
-## 4. Types
+## 3. Source form and functions
 
-| Type | Meaning |
-| --- | --- |
-| `int` | Signed 64-bit integer |
-| `float` | 64-bit floating-point value |
-| `bool` | `true` or `false` |
-| `char` | One byte; ASCII-oriented |
-| `string` | Immutable string data represented as a C string by the current backend |
-| `void` | Function return type only; cannot be used as a variable type |
-
-No implicit numeric conversions are performed. Arithmetic operands must have compatible matching types. `%` is available only for `int`. Conditions must have type `bool`. Strings can be compared for equality/inequality. String values are immutable.
-
-## 5. Literals and strings
-
-```ylang
-let int n = 42;
-let float ratio = 1.25;
-let bool ready = true;
-let char initial = 'Y';
-let string message = "Hello\n";
-let string greeting = f"Hello {message}";
-```
-
-`char` is one byte, not a Unicode scalar. A string literal must be terminated. F-strings begin with `f"` and interpolate expressions inside `{}`. Supported interpolations include variables and operators. Function calls and assignments are not allowed inside interpolation expressions; compute the value in a preceding statement. Literal braces can be escaped as documented by the lexer (`{{`, `}}`, `\{`, and `\}`).
-
-## 6. Output
-
-`print(expression, ...)` writes values separated by one space and appends a newline:
-
-```ylang
-print("answer:", 42);
-print(f"Count: {n}");
-```
-
-Supported printable values are `int`, `float`, `bool`, `char`, and `string`. `print` is a statement in this release.
-
-## 7. Expressions and operators
-
-- Unary: `-`, `not`
-- Arithmetic: `+`, `-`, `*`, `/`, `%`
-- Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
-- Boolean: `and`, `or`
-- Assignment: `=` as a statement
-- Grouping: `(expression)`
-- Calls: `name(argument, ...)`
-
-Operator precedence is conventional: unary operators, multiplication/division/modulo, addition/subtraction, comparisons/equality, `and`, then `or`. Parentheses may be used to make grouping explicit.
-
-Signed integer overflow, integer division/modulo by zero, and floating-point division by zero are handled by generated runtime helpers and terminate the program with a runtime-error message and status 70. This does not mean every possible C-level issue is guarded or that the language is memory-safe.
-
-## 8. Conditions and loops
-
-```ylang
-if (age >= 18) {
-    print("Adult");
-} else if (age >= 13) {
-    print("Teenager");
-} else {
-    print("Child");
-}
-
-loop() {
-    if (done) {
-        break;
-    }
-    continue;
-}
-```
-
-Conditions must be boolean. `loop()` repeats indefinitely until `break` executes. `continue` skips to the next iteration. Both are only valid inside a loop. `for` and `while` are not supported in v1.0.0.
-
-## 9. Functions
+Statements end with `;`, blocks use `{` and `}`, and line comments start with `//`. Names and keywords are case-sensitive. A single file is compiled as one program. A program must define `function main() -> int` or `function main() -> void`, without parameters.
 
 ```ylang
 function add(int left, int right) -> int {
@@ -112,16 +34,112 @@ function main() -> int {
 }
 ```
 
-Parameter and return types are explicit. Function overloading is not supported. A non-void function must return a value on supported control-flow paths. `main` has no parameters and returns `int` or `void`.
+Function parameters and return types are explicit. Function overloading is not supported. Non-void functions must return on all paths the current control-flow checker can prove.
 
-## 10. Diagnostics and tooling
+## 4. Types, variables, and constants
 
-`check` reports parse and semantic/type diagnostics without invoking a native compiler. Diagnostics include an error code, file/line/column, source excerpt, caret, and a hint when one is available. `build` does not produce a successful executable if YLang diagnostics contain errors.
+Supported scalar types:
 
-`fix input.yl -o output.yl` currently implements one high-confidence source transformation: changing a `pritn(...)` call typo to `print(...)` when no function named `pritn` is declared. It requires an output path and does not intentionally modify comment/string text. It is not a general repair engine. Always run `check` after applying a fix.
+| Type | Meaning |
+| --- | --- |
+| `int` | Signed 64-bit integer |
+| `float` | 64-bit floating-point value |
+| `bool` | `true` or `false` |
+| `char` | One byte, ASCII-oriented |
+| `string` | Immutable, NUL-terminated byte string |
+| `void` | Function return type only |
 
-## 11. Unsupported features and implementation limits
+The preview also supports one-dimensional arrays: `int[]`, `float[]`, `bool[]`, `char[]`, and `string[]`. Nested arrays are not supported.
 
-The following are not supported by the 1.0.0 language subset: arrays, raw pointers/references, classes/OOP, exception syntax (`try`/`catch`), `for`/`while`, modules, generics, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
+```ylang
+let int count = 0;
+let const int MAX = 100;
+let string title = "YLang";
+let int[] scores = [10, 20, 30];
+```
 
-The compiler generates C, so native code inherits ordinary process privileges and is not sandboxed. Some formatted string values are stored until process exit; creating many such values in a long-running loop can increase memory consumption. The language does not define ownership/borrowing or a garbage collector in this release. Do not assume Rust-like memory-safety guarantees.
+A `let type name` binding may be assigned again. `let const type name` cannot be reassigned; const arrays also cannot have elements changed. Local variables must be initialized before they are read.
+
+## 5. Ownership, moving, and cloning
+
+Scalar assignment copies the value. A named `string` or array moved into another binding, returned from a function, or passed to a by-value function parameter leaves its original binding unusable. The compiler reports an error if it detects a later use. Reinitializing a moved binding is allowed.
+
+```ylang
+let string first = "YLang";
+let string second = first; // moves the value from first
+// print(first);            // rejected: value was moved
+
+let string copy = clone(second); // explicit independent string copy
+print(copy);
+```
+
+`clone(value)` supports strings and one-dimensional arrays. Scalar values already copy by value. `append(array, value)` consumes a mutable local array and returns the extended array value; write the result back to the binding:
+
+```ylang
+let int[] values = [1, 2, 3];
+values = append(values, 4);
+print(values[3]);
+```
+
+YLang currently implements a first-pass move checker and scalar-only function borrowing. It is **not a complete borrow checker**: branches and loops use conservative move-state merging, references cannot be stored or returned, and borrowing is currently restricted to `int`, `float`, `bool`, and `char` parameters. Borrowing strings and arrays is not implemented. Cleanup on early control-flow exits still needs more work; runtime allocations are tracked and released at program shutdown as a fallback. Do not treat the preview as memory-safe for hostile or security-critical workloads.
+
+## 6. Arrays
+
+Array literals infer their element type from non-empty values or from the declared array type when context is available. Empty literals require a type context.
+
+```ylang
+let int[] numbers = [10, 20, 30];
+numbers[1] = 99;
+print(numbers[1]);       // 99
+print(len(numbers));     // 3
+
+let int[] copy = clone(numbers);
+copy[0] = 42;
+print(numbers[0]);       // 10
+print(copy[0]);          // 42
+```
+
+Indexes are zero-based and checked at runtime. Negative or out-of-range indexes terminate with a runtime error rather than making an unchecked array access. All array elements must have exactly the same type; implicit conversions are not performed. Global array initialization is not supported in this preview. Arrays cannot be printed directly; print individual values.
+
+## 7. Conditions and loops
+
+`if`, `else if`, `else`, and `loop()` are supported. The preview adds the familiar three-clause `for` loop:
+
+```ylang
+let int sum = 0;
+for (let int i = 0; i < 5; i = i + 1) {
+    sum = sum + i;
+}
+print(sum); // 10
+```
+
+The initializer must be a scalar `let` declaration or empty. The condition must have type `bool`. `break` and `continue` are only valid inside loops.
+
+## 8. Built-ins and strings
+
+`print(value, ...)` prints values separated by spaces and ends the line. F-strings support interpolating scalar and string expressions, such as `f"Count: {count}"`.
+
+The current built-ins are:
+
+| Built-in | Behavior |
+| --- | --- |
+| `input()` | Reads one line and returns a string |
+| `input_int()` | Reads one line and parses a signed integer |
+| `input_float()` | Reads one line and parses a finite float |
+| `len(string_or_array)` | Returns byte length for strings or element count for arrays |
+| `clone(string_or_array)` | Creates an independent string or array copy |
+| `append(array, value)` | Consumes an array value and returns it with one appended element |
+
+Input lines are limited to 1 MiB. Invalid numeric input and unexpected EOF produce a runtime error (status 70). String lengths count bytes, not Unicode scalar values. The source syntax supports a one-byte `char`, not full Unicode character semantics.
+
+## 9. Diagnostics and runtime checks
+
+Compiler diagnostics include an error code, path, line/column, source excerpt, caret, and a hint where available. A failed `check` or `build` does not intentionally produce a successful executable. The runtime checks signed integer overflow and division by zero, array bounds, array-capacity overflow, and allocation errors.
+
+The generated C runtime is part of the trusted implementation. Sanitizers and regression tests help find defects but do not prove that every generated program is free of undefined behavior.
+
+## 10. Current limitations and next milestones
+
+Not yet supported: modules/imports, package management, generics, nested arrays, user-defined structs/classes, exceptions or a typed `Result` error model, async/concurrency, raw pointers, local reference variables/lifetime annotations, comprehensive file/network APIs, and a direct LLVM/native-code backend.
+
+Before a stable 2.x release, the project still needs a stronger ownership/lifetime analysis, deterministic cleanup on every exit path, file I/O APIs, module/import design, additional standard-library tests, and successful Linux plus Windows CI for the complete preview. Tree-sitter, VS Code, and Neovim must remain aligned with the compiler grammar.
