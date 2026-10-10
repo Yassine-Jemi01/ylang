@@ -1,0 +1,7 @@
+function main() -> int {
+    let string first = "owned";
+    let string[] values = [first];
+    print(first);
+    print(values[0]);
+    return 0;
+}

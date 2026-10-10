@@ -219,9 +219,21 @@ static void check_stmt(Checker *checker, Stmt *stmt);
  * until process exit by the bootstrap runtime; scope cleanup is a later stage. */
 static void consume_owned_value(Checker *checker, Expr *expr)
 {
-    if (!expr || !type_is_owned(expr->type) || expr->kind != EXPR_NAME ||
-        !expr->as.name.variable) return;
+    if (!expr || !type_is_owned(expr->type)) return;
+    if (expr->type == TYPE_STRING && expr->kind == EXPR_INDEX) {
+        diagnostic(checker->compiler, expr->token, "error", "E2083",
+                   "A string cannot be moved out of an array element.",
+                   "Use clone(values[index]) to copy the element, or redesign the operation so the array remains its owner.");
+        return;
+    }
+    if (expr->kind != EXPR_NAME || !expr->as.name.variable) return;
     VarDecl *var = expr->as.name.variable;
+    if (var->is_moved) {
+        diagnostic(checker->compiler, expr->token, "error", "E2070",
+                   "This owned value was already moved.",
+                   "Use the current owner, or clone the value before transferring it.");
+        return;
+    }
     if (var->is_global) {
         diagnostic(checker->compiler, expr->token, "error", "E2071",
                    "A global owned value cannot be moved out of global storage.",
@@ -575,14 +587,19 @@ static YType check_expr(Checker *checker, Expr *expr)
                            "Array elements must be scalar values of one matching type.",
                            "Use int, float, bool, char, or string elements; nested arrays are not supported yet.");
                 valid = false;
+            } else if (element == TYPE_STRING) {
+                consume_owned_value(checker, expr->as.array.items[0]);
             }
             for (size_t i = 1; i < expr->as.array.count; i++) {
-                YType item = check_expr(checker, expr->as.array.items[i]);
+                Expr *item_expr = expr->as.array.items[i];
+                YType item = check_expr(checker, item_expr);
                 if (item != element && item != TYPE_ERROR) {
-                    diagnostic(c, expr->as.array.items[i]->token, "error", "E2075",
+                    diagnostic(c, item_expr->token, "error", "E2075",
                                "All elements in an array literal must have the same type.",
                                "Convert the value explicitly or use a separate array for the other type.");
                     valid = false;
+                } else if (item == TYPE_STRING && element == TYPE_STRING) {
+                    consume_owned_value(checker, item_expr);
                 }
                 if (item == TYPE_ERROR) valid = false;
             }

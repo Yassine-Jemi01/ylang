@@ -1,0 +1,6 @@
+function main() -> int {
+    let string[] values = ["owned"];
+    let string first = values[0];
+    print(first);
+    return 0;
+}
