@@ -1,5 +1,5 @@
 #!/bin/sh
-set -eux
+set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
@@ -249,5 +249,4 @@ if ./build/ylang check tests/array-param-type-error.yl > build/array-param-type-
     echo "FAIL: scalar passed to array parameter" >&2
     exit 1
 fi
-cat build/array-param-type-error.out
- grep -qi 'array' build/array-param-type-error.out
+grep -q 'This parameter expects an array argument' build/array-param-type-error.out
