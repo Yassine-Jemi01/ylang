@@ -281,6 +281,18 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 sb_append(sb, "yl_mod_i64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
             } else if (left->type == TYPE_FLOAT && op == TOKEN_SLASH) {
                 sb_append(sb, "yl_div_f64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
+            } else if (left->type == TYPE_STRING &&
+                       (op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
+                        op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL)) {
+                sb_append(sb, "(strcmp("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right);
+                sb_append(sb, ") ");
+                switch (op) {
+                    case TOKEN_LESS: sb_append(sb, "< 0)"); break;
+                    case TOKEN_LESS_EQUAL: sb_append(sb, "<= 0)"); break;
+                    case TOKEN_GREATER: sb_append(sb, "> 0)"); break;
+                    case TOKEN_GREATER_EQUAL: sb_append(sb, ">= 0)"); break;
+                    default: sb_append(sb, "0)"); break;
+                }
             } else if ((op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL) && left->type == TYPE_STRING) {
                 sb_append(sb, "(strcmp("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right);
                 sb_append(sb, ") "); sb_append(sb, op == TOKEN_EQUAL_EQUAL ? "== 0)" : "!= 0)");
