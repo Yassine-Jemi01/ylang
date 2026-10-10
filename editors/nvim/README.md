@@ -64,3 +64,9 @@ function main() -> int {
 ~~~
 
 The let line should receive a diagnostic. Correct the type and the diagnostic should disappear after the next check.
+
+Run the parser regression test from the repository root with:
+
+~~~sh
+nvim --headless -u NONE +'luafile editors/nvim/tests/diagnostics.lua'
+~~~
