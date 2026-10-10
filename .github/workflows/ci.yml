@@ -51,6 +51,13 @@ jobs:
           $env:PATH = "C:\msys64\ucrt64\bin;$env:PATH"
           ./scripts/windows/build.ps1 -Compiler gcc
           ./scripts/windows/smoke-test.ps1
+      - name: Set up Node.js for Tree-sitter
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Generate current Tree-sitter parser
+        run: npm install && npm run generate
+        working-directory: tree-sitter-ylang
       - name: Build Neovim Tree-sitter parser DLL
         run: gcc -std=c11 -O2 -shared -static-libgcc -Itree-sitter-ylang/src tree-sitter-ylang/src/parser.c -o build/ylang.dll
       - name: Check PowerShell script syntax
@@ -115,3 +122,12 @@ jobs:
       - name: Parse grammar examples
         run: npm run parse:examples
         working-directory: tree-sitter-ylang
+      - name: Upload generated Tree-sitter parser sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: ylang-tree-sitter-generated
+          path: |
+            tree-sitter-ylang/src/parser.c
+            tree-sitter-ylang/src/grammar.json
+            tree-sitter-ylang/src/node-types.json
+          if-no-files-found: error
