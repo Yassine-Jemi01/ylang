@@ -1,0 +1,34 @@
+function return_literal() -> string {
+    return "literal";
+}
+
+function relay(string text) -> string {
+    return text;
+}
+
+function formatted() -> string {
+    return f"year={2026}";
+}
+
+function make_words() -> string[] {
+    let string first = "alpha";
+    let string[] values = [first, "beta"];
+    return values;
+}
+
+function relay_words(string[] values) -> string[] {
+    return values;
+}
+
+function main() -> int {
+    let string literal = return_literal();
+    let string caller_value = "from-caller";
+    let string returned = relay(caller_value);
+    print(literal, returned, formatted());
+
+    let string[] values = make_words();
+    print(values[0], values[1], len(values));
+    let string[] passed_through = relay_words(values);
+    print(passed_through[0], passed_through[1]);
+    return 0;
+}

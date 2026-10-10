@@ -282,6 +282,12 @@ done
 grep -q 'E2001' build/array-type-error.out
 grep -q 'E2070' build/array-use-after-move.out
 
+# Owned return values survive function cleanup and are adopted by the caller exactly once.
+"$YLANG" build tests/owned-return.yl -o "build/test-owned-return$EXEEXT" >/dev/null
+"./build/test-owned-return$EXEEXT" > build/owned-return.out
+normalize_output "build/owned-return.out"
+diff -u tests/expected-owned-return.txt build/owned-return.out
+
 # Borrowed scalar parameters: shared borrows read; exclusive borrows update the caller.
 "$YLANG" build tests/borrow-read.yl -o "build/test-borrow-read$EXEEXT" >/dev/null
 "./build/test-borrow-read$EXEEXT" > build/borrow-read.out
