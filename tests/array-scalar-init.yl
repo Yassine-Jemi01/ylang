@@ -1,0 +1,4 @@
+function main() -> int {
+    let int values[] = 3;
+    return 0;
+}
