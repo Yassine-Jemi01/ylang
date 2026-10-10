@@ -1,58 +1,92 @@
-# YLang 1.0.0
+# YLang 2.0.0-dev
 
-**A small compiled programming language with explicit types and actionable diagnostics.**
+**A compiler-first language experiment built around explicit types, explicit ownership moves, checked operations, and helpful diagnostics.**
 
-YLang is implemented in C. Its compiler tokenizes and parses `.yl` files, checks names, initialization and types, generates C, and invokes GCC or Clang to produce a native executable. It is a compiled language toolchain, not an interpreter.
+YLang has its own compiler front-end in C: lexer, parser, semantic analysis, diagnostic engine, and YLang-specific code generation. For now, its backend emits C17 and invokes GCC or Clang to produce a native executable. This is a dedicated YLang compiler, but not yet a standalone machine-code backend.
 
-YLang **1.0.0 is the first stable release of the language subset documented in the specification**. The syntax and behavior listed as supported below are the v1.0 contract. This release is deliberately small; it does not claim to implement every feature planned for YLang, and it does not claim Rust-level memory safety.
+> **Development preview:** version 2.0.0-dev is experimental. The stable `main` branch remains YLang 1.0.0. Do not use this preview for security-critical software or as a hardened sandbox.
+
+## Design philosophy
+
+- **Clarity beats magic.** Explicit types and source-located diagnostics keep behavior understandable.
+- **Moving is visible.** Strings and arrays move when assigned or passed by value; use `clone(value)` when a separate copy is required.
+- **The compiler does the checking.** Type, initialization, move-state, borrow-conflict, and array-index rules are checked where the current implementation can prove them.
+- **Fast native programs without a mandatory GC.** GCC or Clang optimize the generated C; array operations and integer arithmetic have runtime checks.
+- **Portable first.** Language behavior is implemented against C standard-library APIs when possible. Windows is tested using MSYS2 UCRT64 / MinGW-w64 in CI.
+- **Useful core, growing libraries.** A small set of built-ins covers printing, line input, strings, and arrays. Modules, broad file APIs, and a package ecosystem are future work, not hidden features.
+
+These are project principles, not a claim of Rust-equivalent memory safety. The current move/borrow checker is an early implementation and the ownership cleanup model still needs work.
+
+## What is in this preview
+
+| Feature | Current status |
+| --- | --- |
+| `int`, `float`, `bool`, `char`, `string`, functions, return types | Implemented |
+| `if` / `else`, `loop()`, `break`, `continue`, C-style `for` | Implemented; regression-tested |
+| Typed one-dimensional arrays, indexing, `len`, `append`, `clone` | Implemented; bounds checked at runtime |
+| `input()`, `input_int()`, `input_float()` | Implemented; line-based |
+| Scalar shared/exclusive parameters: `&T`, `&mut T` | Initial subset only |
+| String/array moves and detected use-after-move | Initial checker; still has known limitations |
+| GCC/Clang C17 backend | Implemented |
+| Windows build and regression suite | CI-tested; see current workflow status |
+| Modules/imports, generics, nested arrays, typed error values, broad file/network APIs | Not implemented yet |
+| Direct LLVM/machine-code backend | Not implemented; current backend emits C |
+
+See [the v2 language specification](docs/language-spec.md), [ownership and borrowing notes](docs/ownership-and-borrowing.md), and [the development roadmap](docs/roadmap.md).
 
 ## Quick start
 
 ### Requirements
 
-- Linux (Fedora and Ubuntu) or Windows (MSYS2 UCRT64 / MinGW-w64; see [Windows setup](docs/windows.md))
-- A C17 compiler to build YLang itself (`gcc` or `clang`)
-- `make`
-- GCC or Clang available on `PATH` to compile generated C into executables
+- Linux (Fedora or Ubuntu) or Windows via MSYS2 UCRT64 / MinGW-w64.
+- C17 compiler, Make, and GCC or Clang to compile the generated C.
+- Node.js/npm only if you are working on the VS Code extension or Tree-sitter grammar.
 
-On Fedora:
+Fedora:
 
 ```sh
 sudo dnf install gcc make clang
 ```
 
-On Debian or Ubuntu:
+Debian/Ubuntu:
 
 ```sh
 sudo apt install build-essential clang make
 ```
 
-### Build from source
+### Build the v2 development branch
 
 ```sh
 git clone https://github.com/Yassine-Jemi01/ylang.git
 cd ylang
+git switch v2/core
+make clean
 make
 make test
 ```
 
-The compiler is written to `build/ylang`.
+The compiler is written to `build/ylang` on Linux and `build/ylang.exe` on Windows.
 
-### Compile and run a program
+### Example: arrays, input, and loops
 
-Create `hello.yl`:
+Save as `hello.yl`:
 
 ```ylang
 function main() -> int {
-    let const string name = "YLang";
-    let int answer = 40 + 2;
-    print(f"Hello from {name}!");
-    print("Answer:", answer);
+    print("What is your name?");
+    let string name = input();
+
+    let int[] scores = [10, 20, 30];
+    scores = append(scores, 40);
+
+    for (let int i = 0; i < len(scores); i = i + 1) {
+        print(f"{name}'s score {i}: {scores[i]}");
+    }
     return 0;
 }
 ```
 
-Then run:
+Check, build, and run:
 
 ```sh
 ./build/ylang check hello.yl
@@ -60,13 +94,22 @@ Then run:
 ./hello
 ```
 
-To select Clang for the generated program:
+The input runtime is line-based and currently limits one input line to 1 MiB. An array index outside the valid range produces a runtime error rather than an unchecked C access.
 
-```sh
-./build/ylang build hello.yl -o hello --cc clang
+### Ownership in a small example
+
+```ylang
+let string first = "YLang";
+let string second = first;      // move first into second
+// print(first);                // rejected: first was moved
+
+let string copy = clone(second);
+print(second, copy);
 ```
 
-## Command-line reference
+This is the current ownership direction, not a complete Rust-style borrow checker. In particular, borrowing is limited to scalar function parameters, and cleanup on every early control-flow exit still needs improvement. Review the documented limits before relying on it.
+
+## CLI reference
 
 ```text
 ylang --help
@@ -77,117 +120,49 @@ ylang emit-c <file.yl> [-o generated.c]
 ylang fix <file.yl> -o <fixed.yl>
 ```
 
-- `check` parses and performs semantic/type checks without invoking a native compiler.
-- `build` validates the source, generates C, and invokes GCC or Clang. Invalid YLang source does not produce an executable.
-- `emit-c` writes the generated C source so it can be inspected.
-- `fix` applies only the currently supported high-confidence fix (`pritn(...)` to `print(...)`) and requires `-o`. The output is written to the requested path; always run `check` on it. This is intentionally not a general-purpose automatic repair engine.
+- `check` parses and performs semantic/type checks without running a native compiler.
+- `build` checks the source, emits temporary C17, then invokes GCC or Clang.
+- `emit-c` writes generated C for inspection.
+- `fix` applies a narrow, high-confidence fix for a common `pritn(...)` typo. It writes to a separate file and is not a general repair engine.
 
-Errors include a stable diagnostic code, path, line/column, source excerpt, caret, and a hint when available. Exit status is nonzero when a command fails.
+## Platform support
 
-## Language overview
+- Linux: GCC and Clang are exercised in GitHub Actions.
+- Windows: the project uses MSYS2 UCRT64 / MinGW-w64. CI builds the compiler, runs the regression suite, runs the native PowerShell smoke test, and checks the Tree-sitter DLL and PowerShell installer.
+- MSVC is not a supported generated-C toolchain in this preview.
+- VS Code packaging and LSP syntax checks run on both Linux and Windows; editor features are currently basic.
+- Tree-sitter grammar tests are part of CI. Neovim integration exists, but grammar regeneration and full editor behavior must be checked along with the compiler when syntax changes.
 
-```ylang
-let const int MAX = 100;
-let int count = 0;
+See [Windows setup](docs/windows.md).
 
-function add(int a, int b) -> int {
-    return a + b;
-}
+## Open-source tooling and dependencies
 
-function main() -> int {
-    let string product = "YLang";
-    print(f"Welcome to {product}");
-    print("Sum:", add(10, 20));
+The compiler/runtime currently rely on the C standard library instead of requiring a large external native runtime. This reduces packaging and cross-platform risks while the language core is changing.
 
-    loop() {
-        count = count + 1;
-        print(f"Count: {count}");
-        if (count >= 3) {
-            break;
-        }
-    }
+The project also uses open-source tooling for editor support, including Tree-sitter and the VS Code Language Server Protocol packages. Their generated parser/extension packages are checked in CI. Additional runtime libraries should be adopted only when a concrete standard-library feature needs them and their licensing, version pinning, Windows support, and tests can be maintained.
 
-    if (count == 3 and MAX > 10) {
-        print("Checks passed");
-    }
-    return 0;
-}
-```
-
-See [`docs/language-spec.md`](docs/language-spec.md) for the complete supported syntax, type rules, runtime behavior, and explicit limitations. [`docs/architecture.md`](docs/architecture.md) explains the compiler pipeline.
-
-## What is included in 1.0.0
-
-- Explicit declarations (`let type name`) and constants (`let const type name`)
-- `int` (signed 64-bit), `float` (64-bit), `bool`, single-byte `char`, `string`, and `void` return types
-- Functions and return statements
-- `if` / `else if` / `else`, `loop()`, `break`, and `continue`
-- Arithmetic, comparisons, boolean operators, function calls, and assignments
-- `print(...)` and f-string interpolation for supported expressions
-- Name/type checks, uninitialized-read checks, constant-assignment checks, and source-located diagnostic messages
-- Runtime checks for integer overflow and division by zero
-- C code generation and native compilation using GCC or Clang
-- A deliberately narrow safe-fix command
-
-## Explicit non-goals for this release
-
-YLang 1.0.0 does **not** implement arrays, raw pointers/references, classes/OOP, `try`/`catch`, `for`/`while`, modules, generics, or a dedicated LLVM/native-code backend. These are not silently approximated; programs using unsupported syntax are rejected. A final ownership/borrowing or garbage-collection model is not defined. `char` is one byte, not a Unicode scalar value.
-
-The C backend uses generated runtime helpers and process-lifetime storage for some formatted strings. Long-running programs that repeatedly create f-string values may grow in memory usage. Do not use this release for security-critical code or to process hostile source as a hardened sandbox. Generated programs are ordinary native programs with the permissions of the user who runs them.
-
-## Build and test
+## Development and safety
 
 ```sh
 make clean
 make
 make test
-```
-
-Optional checks if tools are available:
-
-```sh
 make CC=clang test
 make sanitize
 ```
 
-The tests exercise successful compilation/output, GCC/Clang parity when Clang is installed, diagnostics, rejection of invalid programs, safe fixes, integer overflow, and division by zero.
-
-## Install (optional)
-
-```sh
-sudo make install
-```
-
-The default installation path is `/usr/local/bin/ylang`. Use `sudo make uninstall` to remove it, or customize the prefix:
-
-```sh
-make install PREFIX="$HOME/.local"
-```
-
-## Repository layout
-
-- `src/` — compiler implementation (lexer, parser, semantic analysis, code generator, CLI)
-- `include/ylang/` — public-facing header declarations
-- `examples/` — sample YLang programs
-- `tests/` — compiler and regression tests
-- `docs/` — language specification and contributor notes
-
-## Contributing
-
-Bug reports and focused improvements are welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request. Changes to supported syntax or semantics must update the specification and tests in the same change.
-
-## License
-
-YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
+`make sanitize` uses available compiler sanitizers. Tests cover successful output, diagnostics, invalid programs, safe fixes, checked arithmetic, arrays, bounds failures, moves, input, borrow rules, and editor grammar parsing. Sanitizers and tests help catch defects but do not prove compiler or generated-code memory safety.
 
 ## Project resources
 
-![YLang logo](assets/branding/ylang-logo-full.svg)
-
-- [YLang Book (PDF)](docs/book/YLang-Book.pdf)
-- [Language specification](docs/language-spec.md)
-- [Architecture](docs/architecture.md)
+- [v2 language specification](docs/language-spec.md)
+- [Compiler architecture](docs/architecture.md)
+- [YLang design philosophy and roadmap](docs/roadmap.md)
+- [Ownership and borrowing](docs/ownership-and-borrowing.md)
+- [Memory and arrays](docs/memory-and-arrays.md)
 - [Windows setup guide](docs/windows.md)
-- [Tree-sitter grammar and parsing tests](tree-sitter-ylang/README.md)
-- [Neovim Tree-sitter integration](editors/neovim/README.md)
-- [VS Code language support, compiler diagnostics, and Code Runner setup](editors/vscode/README.md)
+- [Tree-sitter grammar](tree-sitter-ylang/README.md)
+- [Neovim integration](editors/neovim/README.md)
+- [VS Code language support](editors/vscode/README.md)
+
+YLang is distributed under the MIT License. See [LICENSE](LICENSE).
