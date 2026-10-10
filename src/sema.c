@@ -720,6 +720,8 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             break;
         }
         case STMT_FOR: {
+            Scope *outer_scope = checker->scope;
+            checker->scope = scope_new(c, outer_scope);
             size_t n_before_init = c->all_var_count;
             bool *before = arena_alloc(&c->arena, n_before_init * sizeof(bool));
             for (size_t i = 0; i < n_before_init; i++) before[i] = c->all_vars[i]->initialized;
@@ -739,6 +741,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 (void)check_expr(checker, stmt->as.for_stmt.increment);
             checker->loop_depth--;
             for (size_t i = 0; i < n_before_init; i++) c->all_vars[i]->initialized = before[i];
+            checker->scope = outer_scope;
             break;
         }
         case STMT_BREAK:
