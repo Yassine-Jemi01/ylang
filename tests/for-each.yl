@@ -3,7 +3,8 @@ function main() -> int {
     let int total = 0;
     for (int value in values) {
         total = total + value;
+        append(values, 0);
     }
-    print(total);
+    print(total, len(values));
     return 0;
 }

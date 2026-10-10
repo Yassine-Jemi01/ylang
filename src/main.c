@@ -21,6 +21,7 @@ static void usage(FILE *stream)
         "Commands:\n"
         "  check   Parse the source and validate types without producing a binary.\n"
         "  build   Generate C and invoke GCC or Clang to create a native executable.\n"
+        "  run     Build in a temporary directory and run the program.\n"
         "  emit-c  Write the generated C source for inspection.\n"
         "  fix     Apply high-confidence safe fixes to a new source file.\n",
         stream);
