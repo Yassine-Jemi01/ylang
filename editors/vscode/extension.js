@@ -176,15 +176,15 @@ function parseDiagnostics(text, document) {
     // Keep inline diagnostics short, but retain the compiler's complete explanation
     // and actionable help text in the hover/related-information UI.
     const relatedInformation = [];
-    if (block.message && message !== block.message.replace(/\\.$/, "")) {
+    if (block.message && message !== block.message.replace(/\.$/, "")) {
       relatedInformation.push(new vscode.DiagnosticRelatedInformation(
         new vscode.Location(document.uri, start),
         block.message
       ));
     }
-    const helpLine = block.lines.find((line) => /^\\s*=\\s*help:\\s*/.test(line));
+    const helpLine = block.lines.find((line) => /^\s*=\s*help:\s*/.test(line));
     if (helpLine) {
-      const hint = helpLine.replace(/^\\s*=\\s*help:\\s*/, "").trim();
+      const hint = helpLine.replace(/^\s*=\s*help:\s*/, "").trim();
       if (hint) {
         relatedInformation.push(new vscode.DiagnosticRelatedInformation(
           new vscode.Location(document.uri, start),
