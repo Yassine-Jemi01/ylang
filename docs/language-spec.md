@@ -48,7 +48,7 @@ let const int LIMIT = 100;
 | `string` | Immutable string data represented as a C string by the current backend |
 | `void` | Function return type only; cannot be used as a variable type |
 
-No implicit numeric conversions are performed. Arithmetic operands must have compatible matching types. `%` is available only for `int`. Conditions must have type `bool`. Strings can be compared for equality/inequality. String values are immutable.
+No implicit numeric conversions are performed. Arithmetic operands must have compatible matching types. `%` is available only for `int`. Conditions must have type `bool`. Strings support equality and lexicographic ordering comparisons. String values are immutable.
 
 ## 5. Literals and strings
 
