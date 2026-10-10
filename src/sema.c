@@ -178,9 +178,19 @@ static const StringBuiltin string_builtins[] = {
     {"string.starts_with", 2, TYPE_BOOL},
     {"string.ends_with", 2, TYPE_BOOL},
     {"string.concat", 2, TYPE_STRING},
+    {"string.replace", 3, TYPE_STRING},
+    {"string.upper", 1, TYPE_STRING},
+    {"string.lower", 1, TYPE_STRING},
+    {"string.parse_int", 1, TYPE_INT},
+    {"string.is_int", 1, TYPE_BOOL},
     {"io.read_line", 0, TYPE_STRING},
     {"io.read_file", 1, TYPE_STRING},
-    {"io.write_file", 2, TYPE_BOOL}
+    {"io.write_file", 2, TYPE_BOOL},
+    {"io.file_exists", 1, TYPE_BOOL},
+    {"path.exists", 1, TYPE_BOOL},
+    {"path.basename", 1, TYPE_STRING},
+    {"path.extension", 1, TYPE_STRING},
+    {"image.open", 1, TYPE_BOOL}
 };
 
 static const StringBuiltin *find_string_builtin(const char *name)
@@ -201,7 +211,8 @@ static YType check_expr(Checker *checker, Expr *expr)
             char *text = token_copy(c, expr->token);
             errno = 0;
             char *end = NULL;
-            (void)strtoll(text, &end, 10);
+            (void)strtoll(text, &end,
+                text[0] == '0' && (text[1] == 'x' || text[1] == 'X') ? 16 : 10);
             if (errno == ERANGE || !end || *end != '\0') {
                 diagnostic(c, expr->token, "error", "E2010",
                            "Integer literal is outside the signed 64-bit range.",
@@ -412,9 +423,10 @@ static YType check_expr(Checker *checker, Expr *expr)
             if (op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
                 op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL) {
                 if (!(same_numeric_type(left, right) ||
-                      (left == TYPE_CHAR && right == TYPE_CHAR))) {
+                      (left == TYPE_CHAR && right == TYPE_CHAR) ||
+                      (left == TYPE_STRING && right == TYPE_STRING))) {
                     diagnostic(c, expr->token, "error", "E2035",
-                               "Ordered comparisons require matching numeric types or two chars.",
+                               "Ordered comparisons require matching numeric types, two chars, or two strings.",
                                "Make both operands the same compatible type.");
                     expr->type = TYPE_ERROR;
                 } else expr->type = TYPE_BOOL;
@@ -487,6 +499,62 @@ static YType check_expr(Checker *checker, Expr *expr)
             return expr->type;
         }
         case EXPR_CALL: {
+            if (strcmp(expr->as.call.name, "to_float") == 0 ||
+                strcmp(expr->as.call.name, "to_int") == 0 ||
+                strcmp(expr->as.call.name, "to_string") == 0) {
+                const char *name = expr->as.call.name;
+                if (expr->as.call.count != 1) {
+                    diagnostic(c, expr->token, "error", "E2043",
+                               "A conversion function expects exactly one argument.",
+                               "Pass one value, for example to_float(42).");
+                }
+                YType arg_type = expr->as.call.count ? check_expr(checker, expr->as.call.args[0]) : TYPE_ERROR;
+                for (size_t i = 1; i < expr->as.call.count; i++) (void)check_expr(checker, expr->as.call.args[i]);
+                if (strcmp(name, "to_float") == 0) {
+                    if (arg_type != TYPE_INT && arg_type != TYPE_ERROR)
+                        diagnostic(c, expr->token, "error", "E2045", "to_float expects an int argument.",
+                                   "Use to_float(integer_value); float values do not need conversion.");
+                    expr->type = TYPE_FLOAT;
+                } else if (strcmp(name, "to_int") == 0) {
+                    if (arg_type != TYPE_FLOAT && arg_type != TYPE_ERROR)
+                        diagnostic(c, expr->token, "error", "E2045", "to_int expects a float argument.",
+                                   "Use to_int(float_value); conversion truncates toward zero and checks range.");
+                    expr->type = TYPE_INT;
+                } else {
+                    if (arg_type != TYPE_INT && arg_type != TYPE_FLOAT && arg_type != TYPE_BOOL &&
+                        arg_type != TYPE_CHAR && arg_type != TYPE_STRING && arg_type != TYPE_ERROR)
+                        diagnostic(c, expr->token, "error", "E2045", "to_string cannot convert this type.",
+                                   "Supported types are int, float, bool, char, and string.");
+                    expr->type = TYPE_STRING;
+                }
+                return expr->type;
+            }
+            if (strcmp(expr->as.call.name, "length") == 0) {
+                if (expr->as.call.count != 1) {
+                    diagnostic(c, expr->token, "error", "E2043",
+                               "length expects exactly one array argument.",
+                               "Use length(values) to get the number of elements.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                Expr *arg = expr->as.call.args[0];
+                bool previous = checker->allow_array_name;
+                checker->allow_array_name = true;
+                (void)check_expr(checker, arg);
+                checker->allow_array_name = previous;
+                if (arg->kind != EXPR_NAME || !arg->as.name.variable ||
+                    !arg->as.name.variable->is_array) {
+                    diagnostic(c, arg->token, "error", "E2027",
+                               "length requires an array variable.",
+                               "Pass a declared array, for example length(values).");
+                    expr->type = TYPE_ERROR;
+                } else {
+                    expr->type = TYPE_INT;
+                }
+                return expr->type;
+            }
             const StringBuiltin *string_builtin = find_string_builtin(expr->as.call.name);
             if (string_builtin) {
                 if (expr->as.call.count != string_builtin->arity) {
@@ -564,15 +632,32 @@ static YType check_expr(Checker *checker, Expr *expr)
             size_t shared = expr->as.call.count < function->param_count ?
                             expr->as.call.count : function->param_count;
             for (size_t i = 0; i < expr->as.call.count; i++) {
-                YType arg_type = check_expr(checker, expr->as.call.args[i]);
-                if (i < shared && arg_type != TYPE_ERROR &&
-                    arg_type != function->params[i]->type) {
+                Expr *arg = expr->as.call.args[i];
+                bool array_parameter = i < shared && function->params[i]->is_array;
+                bool previous_allow_array = checker->allow_array_name;
+                checker->allow_array_name = array_parameter;
+                YType arg_type = check_expr(checker, arg);
+                checker->allow_array_name = previous_allow_array;
+                if (i >= shared || arg_type == TYPE_ERROR) continue;
+                VarDecl *param = function->params[i];
+                if (param->is_array) {
+                    if (arg->kind != EXPR_NAME || !arg->as.name.variable ||
+                        !arg->as.name.variable->is_array) {
+                        diagnostic(c, arg->token, "error", "E2029",
+                                   "This parameter expects an array argument.",
+                                   "Pass a declared array variable, for example sum(values).");
+                    } else if (arg->as.name.variable->type != param->type) {
+                        diagnostic(c, arg->token, "error", "E2042",
+                                   "Function array element type mismatch.",
+                                   "Pass an array whose element type matches the parameter declaration.");
+                    }
+                } else if (arg_type != param->type) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
                         "Argument %zu of '%s' expects %s, but received %s.",
-                        i + 1, function->name, type_name(function->params[i]->type),
+                        i + 1, function->name, type_name(param->type),
                         type_name(arg_type));
-                    diagnostic(c, expr->as.call.args[i]->token, "error", "E2042",
+                    diagnostic(c, arg->token, "error", "E2042",
                                "Function argument type mismatch.", suggestion);
                 }
             }

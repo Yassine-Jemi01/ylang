@@ -1,0 +1,4 @@
+function main() -> int {
+    let int n = to_int(42);
+    return n;
+}

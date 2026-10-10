@@ -5,5 +5,11 @@ function main() -> int {
     print(string.starts_with(title, "YLang"));
     print(string.ends_with(title, "projects"));
     print(string.concat("Build ", "something."));
+    print(string.upper("YLang strings"));
+    print(string.lower("YLANG STRINGS"));
+    print("apple" < "banana");
+    print("apple" <= "apple");
+    print("zebra" > "yak");
+    print("banana" >= "apple");
     return 0;
 }

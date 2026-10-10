@@ -1,10 +1,10 @@
-# YLang 1.0.0
+# YLang 1.1.0
 
 **A small compiled programming language with explicit types and actionable diagnostics.**
 
 YLang is implemented in C17. Its compiler tokenizes and parses `.yl` files, checks names, initialization and types, generates C, and invokes GCC or Clang to produce a native executable. The compiler currently targets POSIX systems; Linux and macOS are the supported portability targets. Native Windows support remains future work. It is a compiled language toolchain, not an interpreter.
 
-YLang **1.0.0 is the first stable release of the language subset documented in the specification**. The syntax and behavior listed as supported below are the v1.0 contract. This release is deliberately small; it does not claim to implement every feature planned for YLang, and it does not claim Rust-level memory safety.
+YLang **1.1.0** extends the first stable language subset with explicit conversions and checked integer parsing. It remains deliberately scoped and does not claim to implement every planned feature or Rust-level memory safety.
 
 ## Quick start
 
@@ -158,7 +158,7 @@ let float root = math.sqrt(81.0);
 let float power = math.pow(2.0, 8.0);
 ```
 
-Fixed-size arrays use an inferred length, homogeneous initializers, and bounds-checked indexing:
+Fixed-size arrays use an inferred length, homogeneous initializers, and bounds-checked indexing. Functions can accept arrays with `int values[]`; `length(values)` returns the array length, including for parameters:
 
 ```ylang
 let int scores[] = [10, 20, 30];
@@ -170,7 +170,7 @@ function main() -> int {
 }
 ```
 
-String helpers and I/O are also available: `string.length`, `string.contains`, `string.starts_with`, `string.ends_with`, `string.concat`, `io.read_line()`, `io.read_file(path)`, and `io.write_file(path, content)`. File I/O is synchronous and text-only; read errors terminate with a runtime error, while writes return a boolean status. Run `make test` to test these APIs alongside math, arrays, and bounds protection. Arrays cannot yet be passed to or returned from functions; object-oriented classes are not implemented yet.
+Explicit conversions include `to_float(int)`, range-checked `to_int(float)`, and `to_string(value)` for int/float/bool/char/string. Use `string.is_int(text)` before `string.parse_int(text)` for untrusted input; invalid or out-of-range parsing raises a runtime error. `io.file_exists(path)` lets programs check a path before reading. String helpers and I/O are also available: `string.length`, `string.contains`, `string.starts_with`, `string.ends_with`, `string.concat`, `string.replace`, `io.read_line()`, `io.read_file(path)`, and `io.write_file(path, content)`. The new `path` namespace provides `path.exists(path)`, `path.basename(path)`, and `path.extension(path)`. On Linux/macOS, `image.open(path)` safely launches the system default viewer (using an argument vector rather than a shell command), returning whether the viewer launcher succeeded; it does not decode/render images inside YLang yet. File I/O is synchronous and text-only; read errors terminate with a runtime error, while writes return a boolean status. Run `make test` to test these APIs alongside math, arrays, and bounds protection. Arrays can be passed to functions with their length supplied automatically, but cannot yet be returned or nested; object-oriented classes are not implemented yet.
 
 
 ## What is included in 1.0.0
@@ -178,9 +178,9 @@ String helpers and I/O are also available: `string.length`, `string.contains`, `
 - Explicit declarations (`let type name`) and constants (`let const type name`)
 - `int` (signed 64-bit), `float` (64-bit), `bool`, single-byte `char`, `string`, and `void` return types
 - Functions and return statements
-- `if` / `else if` / `else`, `loop()`, `break`, and `continue`
+- `if` / `else if` / `else`, `loop()`, `while`, C-style `for`, `break`, and `continue`
 - Arithmetic, comparisons, boolean operators, function calls, and assignments
-- `print(...)`, f-string interpolation, string utilities, standard-input line reading, and text file I/O
+- `print(...)`, f-string interpolation, string utilities, path inspection, OS image-viewer launching, standard-input line reading, and text file I/O
 - Name/type checks, uninitialized-read checks, constant-assignment checks, and source-located diagnostic messages
 - Runtime checks for integer overflow and division by zero
 - C code generation and native compilation using GCC or Clang

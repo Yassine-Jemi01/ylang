@@ -1,8 +1,13 @@
-# YLang 1.0.0 — Stable Release
+# YLang 1.1.0 — Explicit Conversions and Input Validation
 
-YLang 1.0.0 is the first stable release of the language subset documented in `docs/language-spec.md`.
+YLang 1.1.0 builds on the stable subset documented in `docs/language-spec.md`, adding explicit conversions and checked integer parsing.
 
 ## Highlights
+
+- Explicit `to_float`, `to_int`, and `to_string` conversions; no implicit conversions were introduced.
+- `string.is_int` and `string.parse_int` provide a checkable integer-parsing path.
+- `io.file_exists` checks a path before attempting text file I/O.
+- Generated-C unused-variable warnings are suppressed to keep ordinary build output focused on YLang diagnostics.
 
 - Compiled workflow: YLang source → checked AST → generated C → native executable.
 - `ylang check`, `ylang build`, and `ylang emit-c` commands.

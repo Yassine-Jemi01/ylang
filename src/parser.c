@@ -458,7 +458,9 @@ static Expr *parse_primary(Parser *p)
     }
     if (match(p, TOKEN_NUMBER)) {
         Expr *expr = new_expr(p->compiler,
-            memchr(token.start, '.', token.length) ? EXPR_FLOAT : EXPR_INT, token);
+            (memchr(token.start, '.', token.length) ||
+             memchr(token.start, 'e', token.length) ||
+             memchr(token.start, 'E', token.length)) ? EXPR_FLOAT : EXPR_INT, token);
         return expr;
     }
     if (match(p, TOKEN_STRING)) return new_expr(p->compiler, EXPR_STRING, token);
@@ -487,7 +489,8 @@ static Expr *parse_primary(Parser *p)
                 "Expected a member name after '.'.",
                 "For example: math.sqrt(value), string.length(value), or io.read_line().");
             if (token_is(&token, "math") || token_is(&token, "string") ||
-                token_is(&token, "io")) {
+                token_is(&token, "io") || token_is(&token, "path") ||
+                token_is(&token, "image")) {
                 StringBuilder qualified;
                 sb_init(&qualified);
                 sb_append_n(&qualified, token.start, token.length);
@@ -498,7 +501,7 @@ static Expr *parse_primary(Parser *p)
             } else {
                 diagnostic(p->compiler, token, "error", "E1016",
                            "Unknown standard-library namespace.",
-                           "Use a supported namespace such as math, string, or io.");
+                           "Use a supported namespace such as math, string, io, path, or image.");
                 name = arena_strndup(&p->compiler->arena, "", 0);
             }
         }
@@ -533,7 +536,7 @@ static Expr *parse_primary(Parser *p)
 static int precedence(TokenType type)
 {
     switch (type) {
-        case TOKEN_EQUAL: return 1;
+        case TOKEN_EQUAL: case TOKEN_PLUS_EQUAL: return 1;
         case TOKEN_OR: return 2;
         case TOKEN_AND: return 3;
         case TOKEN_EQUAL_EQUAL: case TOKEN_BANG_EQUAL: return 4;
@@ -571,14 +574,45 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
             left = indexed;
             continue;
         }
+        if (p->current.type == TOKEN_PLUS_PLUS) {
+            op = p->current;
+            if (min_precedence > 1) break;
+            advance_parser(p);
+            if (left->kind != EXPR_NAME) {
+                diagnostic(p->compiler, op, "error", "E1004",
+                           "The '++' operator requires a variable name.",
+                           "Use 'count++' for a mutable numeric variable.");
+                left = new_expr(p->compiler, EXPR_ERROR, op);
+                continue;
+            }
+            Token one_token = op;
+            one_token.start = "1";
+            one_token.length = 1;
+            Expr *one = new_expr(p->compiler, EXPR_INT, one_token);
+            one->is_min_int = false;
+            Token plus_token = op;
+            plus_token.type = TOKEN_PLUS;
+            plus_token.start = "+";
+            plus_token.length = 1;
+            Expr *sum = new_expr(p->compiler, EXPR_BINARY, plus_token);
+            sum->as.binary.left = left;
+            sum->as.binary.right = one;
+            sum->as.binary.op = plus_token;
+            Expr *assign = new_expr(p->compiler, EXPR_ASSIGN, op);
+            assign->as.assign.target = left;
+            assign->as.assign.right = sum;
+            assign->as.assign.variable = NULL;
+            left = assign;
+            continue;
+        }
         int prec = precedence(p->current.type);
         if (prec == 0 || prec < min_precedence) break;
         op = p->current;
         advance_parser(p);
-        int next_min = prec + (op.type == TOKEN_EQUAL ? 0 : 1);
+        int next_min = prec + ((op.type == TOKEN_EQUAL || op.type == TOKEN_PLUS_EQUAL) ? 0 : 1);
         Expr *right = parse_precedence(p, next_min);
-        if (op.type == TOKEN_EQUAL) {
-            if (left->kind != EXPR_NAME && left->kind != EXPR_INDEX) {
+        if (op.type == TOKEN_EQUAL || op.type == TOKEN_PLUS_EQUAL) {
+            if (left->kind != EXPR_NAME && (op.type == TOKEN_EQUAL && left->kind != EXPR_INDEX)) {
                 diagnostic(p->compiler, op, "error", "E1004",
                            "The left side of an assignment must be a variable or array element.",
                            "Write an assignment such as 'count = count + 1;' or 'values[0] = 1;'.");
@@ -586,7 +620,19 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
             } else {
                 Expr *assign = new_expr(p->compiler, EXPR_ASSIGN, op);
                 assign->as.assign.target = left;
-                assign->as.assign.right = right;
+                if (op.type == TOKEN_PLUS_EQUAL) {
+                    Expr *sum = new_expr(p->compiler, EXPR_BINARY, op);
+                    sum->as.binary.left = left;
+                    sum->as.binary.right = right;
+                    sum->as.binary.op.type = TOKEN_PLUS;
+                    sum->as.binary.op.start = op.start;
+                    sum->as.binary.op.length = op.length;
+                    sum->as.binary.op.line = op.line;
+                    sum->as.binary.op.column = op.column;
+                    assign->as.assign.right = sum;
+                } else {
+                    assign->as.assign.right = right;
+                }
                 assign->as.assign.variable = NULL;
                 left = assign;
             }
@@ -823,6 +869,12 @@ static Function *parse_function(Parser *p)
                 "For example: function greet(string name) -> void.");
             VarDecl *param = new_var(p->compiler, param_name,
                 token_copy(p->compiler, param_name), type, false, false, NULL);
+            if (match(p, TOKEN_LEFT_BRACKET)) {
+                param->is_array = true;
+                consume(p, TOKEN_RIGHT_BRACKET,
+                        "Array parameters use empty brackets after the name.",
+                        "Use syntax such as function sum(int values[]) -> int.");
+            }
             param->initialized = true;
             (void)param_type_token;
             append_ptr(p->compiler, (void ***)&function->params,

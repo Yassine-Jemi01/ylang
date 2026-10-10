@@ -1,6 +1,16 @@
-# YLang Language Specification — 1.0.0
+# YLang Language Specification — 1.1.0
 
-This document defines the supported language subset for the YLang 1.0.0 stable release. Syntax not listed here is not part of the v1.0 language contract.
+This document defines the supported language subset for the YLang 1.1.0 release. Syntax not listed here is not part of the v1.0 language contract.
+
+## Explicit conversions
+
+YLang does not implicitly convert values between types. Use explicit conversion functions:
+
+- `to_float(integer)` converts a signed 64-bit integer to a double-precision float.
+- `to_int(float)` truncates toward zero and terminates with a runtime error if the input is non-finite or outside the signed 64-bit range.
+- `to_string(value)` supports `int`, `float`, `bool`, `char`, and `string`. A string input is returned unchanged.
+- `string.is_int(text)` returns whether the entire string is a valid base-10 signed 64-bit integer.
+- `string.parse_int(text)` converts a valid integer string; invalid or out-of-range input produces a runtime error. Check with `string.is_int` first when parsing untrusted input.
 
 ## 1. Compilation model
 
@@ -8,7 +18,7 @@ YLang is a compiled language. `ylang check` parses and performs semantic checks.
 
 ## 2. Source form and statements
 
-Statements end with `;`, blocks use `{` and `}`, and comments use `//` through the end of a line. Keywords are lowercase and case-sensitive. Source files are text and embedded NUL bytes are rejected before lexing. Each source file passed to the CLI is compiled as one program. A program must define `function main() -> int` or `function main() -> void`, with no parameters.
+Statements end with `;`, blocks use `{` and `}`, and comments use `//` through the end of a line or `/* ... */` across lines. Block comments cannot be nested and must be closed. Keywords are lowercase and case-sensitive. Source files are text and embedded NUL bytes are rejected before lexing. Each source file passed to the CLI is compiled as one program. A program must define `function main() -> int` or `function main() -> void`, with no parameters.
 
 ## 3. Variables and constants
 
@@ -38,7 +48,7 @@ let const int LIMIT = 100;
 | `string` | Immutable string data represented as a C string by the current backend |
 | `void` | Function return type only; cannot be used as a variable type |
 
-No implicit numeric conversions are performed. Arithmetic operands must have compatible matching types. `%` is available only for `int`. Conditions must have type `bool`. Strings can be compared for equality/inequality. String values are immutable.
+No implicit numeric conversions are performed. Arithmetic operands must have compatible matching types. `%` is available only for `int`. Conditions must have type `bool`. Strings support equality and lexicographic ordering comparisons. String values are immutable.
 
 ## 5. Literals and strings
 
@@ -51,7 +61,7 @@ let string message = "Hello\n";
 let string greeting = f"Hello {message}";
 ```
 
-`char` is one byte, not a Unicode scalar. A string literal must be terminated. F-strings begin with `f"` and interpolate expressions inside `{}`. Supported interpolations include variables and operators. Function calls and assignments are not allowed inside interpolation expressions; compute the value in a preceding statement. Literal braces can be escaped as documented by the lexer (`{{`, `}}`, `\{`, and `\}`).
+`char` is one byte, not a Unicode scalar. Integer literals support decimal notation and hexadecimal notation such as `0xFF`; floating-point literals support decimal notation and scientific notation such as `1e3` or `2.5e-4`. A string literal must be terminated. F-strings begin with `f"` and interpolate expressions inside `{}`. Supported interpolations include variables and operators. Function calls and assignments are not allowed inside interpolation expressions; compute the value in a preceding statement. Literal braces can be escaped as documented by the lexer (`{{`, `}}`, `\{`, and `\}`).
 
 ## 6. Output
 
@@ -70,7 +80,7 @@ Supported printable values are `int`, `float`, `bool`, `char`, and `string`. `pr
 - Arithmetic: `+`, `-`, `*`, `/`, `%`
 - Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
 - Boolean: `and`, `or`
-- Assignment: `=` as a statement
+- Assignment: `=` and `+=` as statements; postfix `++` increments a mutable numeric variable by one
 - Grouping: `(expression)`
 - Calls: `name(argument, ...)`
 
@@ -89,7 +99,7 @@ loop() {
 }
 
 while (count < limit) {
-    count = count + 1;
+    count += 1; or count++;
 }
 
 for (let int i = 0; i < limit; i = i + 1) {
@@ -120,7 +130,7 @@ function main() -> int {
 - Indexing starts at zero.
 - Array indices must be `int`; every access performs a runtime bounds check and exits with status 70 on an invalid index.
 - Element assignment is supported, such as `scores[1] = 42;`.
-- Whole-array assignment, passing arrays to functions, returning arrays, nested arrays, and `const` arrays are not supported yet.
+- Whole-array assignment, returning arrays, nested arrays, and `const` arrays are not supported yet. Array parameters use `type name[]`; the generated native ABI passes a pointer and a separate length value.
 - Arrays must be initialized at declaration; their size cannot change at runtime.
 
 ## Standard string and input library
@@ -139,13 +149,17 @@ print(string.ends_with(name, "n"));
 
 - `string.length(value)` returns the number of bytes, not Unicode characters.
 - `string.contains(value, needle)`, `string.starts_with(value, prefix)`, and `string.ends_with(value, suffix)` return `bool`.
-- `string.concat(left, right)` returns a new string. The generated runtime tracks allocated strings until process exit, so repeated concatenation in a long-running loop can increase memory use.
+- `string.concat(left, right)` returns a new string.
+- `string.replace(value, needle, replacement)` returns a new string with every non-overlapping occurrence of `needle` replaced. An empty `needle` leaves the original string unchanged.
+- `string.upper(value)` and `string.lower(value)` return case-converted copies using the C locale's byte-oriented character mapping; they are not Unicode-aware.
+- Strings support lexicographic ordering with `<`, `<=`, `>`, and `>=`, using bytewise C-string ordering. Equality remains case-sensitive.
+- The generated runtime tracks allocated strings until process exit, so repeated concatenation or case conversion in a long-running loop can increase memory use.
 - `io.read_line()` reads one line from standard input and removes its trailing newline. At end-of-file it returns an empty string.
 - `io.read_file(path)` reads an entire UTF-8/ASCII-compatible text file into a string. A file-open/read failure or embedded NUL byte terminates the program with a runtime error; binary files are not supported by the string API.
 - `io.write_file(path, content)` overwrites or creates a text file and returns `true` on success or `false` if it cannot open/write the file. It does not create missing parent directories.
-- File paths are interpreted relative to the process working directory. File I/O is synchronous and currently has no structured error/exception type.
+- File paths are interpreted relative to the process working directory. File I/O is synchronous and currently has no structured error/exception type.\n- `path.exists(path)` returns whether a path can be inspected with `stat`; it may return true for files, directories, or other filesystem objects.\n- `path.basename(path)` returns the final path component, and `path.extension(path)` returns the suffix after the final dot (without the dot); a leading dot alone is not treated as an extension. These helpers use POSIX path separators.\n- `image.open(path)` launches the platform default opener (`xdg-open` on Linux, `open` on macOS) without invoking a shell and returns whether the launcher exits successfully. It requires a desktop session and a registered handler; it opens the file in an external application and does not decode or draw the image in a YLang window.
 
-## Standard math library
+## Path and desktop integration\n\n```ylang\nlet string file = io.read_line();\nif (path.exists(file)) {\n    print(path.basename(file), path.extension(file));\n    let bool opened = image.open(file);\n    if (not opened) { print("Could not launch the default image/file viewer."); }\n}\n```\n\nThe `path` namespace exposes `exists`, `basename`, and `extension`. The `image.open(path)` convenience API starts the operating system's default file handler without passing the path through a shell, avoiding shell-metacharacter interpretation. This is OS integration rather than a built-in image decoder or a custom GUI image widget; native GUI bindings and in-process image decoding remain future work. These APIs currently target the POSIX systems supported by YLang.\n\n## Standard math library
 
 YLang provides a built-in `math` namespace for common floating-point operations. These calls are checked by the compiler and emitted as native C math-library calls.
 
@@ -183,7 +197,7 @@ loop() {
 }
 ```
 
-Conditions must be boolean. `loop()` repeats indefinitely until `break` executes. `continue` skips to the next iteration. Both are only valid inside a loop. `for` and `while` are not supported in v1.0.0.
+Conditions must be boolean. `loop()` repeats indefinitely until `break` executes. `while` repeats while its condition is true, and `for` supports initializer, condition, and increment clauses. `continue` skips to the next iteration. `break` and `continue` are only valid inside a loop.
 
 ## 9. Functions
 
@@ -208,6 +222,6 @@ Parameter and return types are explicit. Function overloading is not supported. 
 
 ## 11. Unsupported features and implementation limits
 
-The following are not supported by the current language subset: classes/OOP, exception syntax (`try`/`catch`), modules, generics, raw pointers/references, passing or returning arrays, nested/const arrays, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
+The following are not supported by the current language subset: classes/OOP, exception syntax (`try`/`catch`), modules, generics, raw pointers/references, returning arrays, nested/const arrays, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
 
 The compiler generates C, so native code inherits ordinary process privileges and is not sandboxed. Some formatted string values are stored until process exit; creating many such values in a long-running loop can increase memory consumption. The language does not define ownership/borrowing or a garbage collector in this release. Do not assume Rust-like memory-safety guarantees.

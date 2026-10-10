@@ -1,0 +1,8 @@
+function main() -> int {
+    print(path.exists("README.md"));
+    print(path.exists("build/definitely-not-a-real-file.yl"));
+    print(path.basename("assets/icons/preview.png"));
+    print(path.extension("assets/icons/preview.png"));
+    print(path.extension(".profile"));
+    return 0;
+}
