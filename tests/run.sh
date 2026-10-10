@@ -157,3 +157,14 @@ else
     [ "$array_status" -eq 70 ]
 fi
 grep -q 'array index out of bounds' build/array-oob.out
+
+if ./build/ylang check tests/array-scalar-init.yl > build/array-scalar-init.out 2>&1; then
+    echo "FAIL: scalar initializer for an array was accepted" >&2
+    exit 1
+fi
+grep -q 'Array declarations require an array literal initializer' build/array-scalar-init.out
+if ./build/ylang check tests/array-mixed-types.yl > build/array-mixed-types.out 2>&1; then
+    echo "FAIL: mixed-type array literal was accepted" >&2
+    exit 1
+fi
+grep -q 'All array elements must have the same type' build/array-mixed-types.out
