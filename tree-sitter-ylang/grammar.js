@@ -47,17 +47,14 @@ module.exports = grammar({
     parameter_list: $ => commaSep1($.parameter),
 
     parameter: $ => seq(
+      optional(choice("&", seq("&", "mut"))),
       field("type", $.type),
       field("name", $.identifier)
     ),
 
-    type: $ => choice(
-      "int",
-      "float",
-      "bool",
-      "char",
-      "string",
-      "void"
+    type: $ => seq(
+      choice("int", "float", "bool", "char", "string", "void"),
+      optional(seq("[", "]"))
     ),
 
     variable_declaration: $ => seq(
@@ -82,6 +79,7 @@ module.exports = grammar({
       $.expression_statement,
       $.if_statement,
       $.loop_statement,
+      $.for_statement,
       $.break_statement,
       $.continue_statement,
       $.return_statement
@@ -97,7 +95,7 @@ module.exports = grammar({
     ),
 
     assignment_statement: $ => seq(
-      field("left", $.identifier),
+      field("left", choice($.identifier, $.index_expression)),
       "=",
       field("right", $.expression),
       ";"
@@ -137,6 +135,24 @@ module.exports = grammar({
       $.block
     ),
 
+    for_statement: $ => seq(
+      "for",
+      "(",
+      optional(seq(
+        "let",
+        optional("const"),
+        field("type", $.type),
+        field("name", $.identifier),
+        optional(seq("=", field("value", $.expression)))
+      )),
+      ";",
+      optional(field("condition", $.expression)),
+      ";",
+      optional(field("increment", $.expression)),
+      ")",
+      $.block
+    ),
+
     break_statement: $ => seq("break", ";"),
 
     continue_statement: $ => seq("continue", ";"),
@@ -150,6 +166,9 @@ module.exports = grammar({
     expression: $ => choice(
       $.binary_expression,
       $.unary_expression,
+      $.array_literal,
+      $.index_expression,
+      $.borrow_expression,
       $.call_expression,
       $.parenthesized_expression,
       $.identifier,
@@ -215,6 +234,25 @@ module.exports = grammar({
       $.expression,
       ")"
     ),
+
+    array_literal: $ => seq(
+      "[",
+      optional(commaSep1($.expression)),
+      "]"
+    ),
+
+    index_expression: $ => prec(PREC.CALL, seq(
+      field("array", $.expression),
+      "[",
+      field("index", $.expression),
+      "]"
+    )),
+
+    borrow_expression: $ => prec(PREC.UNARY, seq(
+      "&",
+      optional("mut"),
+      field("target", $.identifier)
+    )),
 
     boolean_literal: $ => choice("true", "false"),
 
