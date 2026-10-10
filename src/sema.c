@@ -69,18 +69,6 @@ static YType array_element_type(YType type)
     }
 }
 
-static int array_kind(YType type)
-{
-    switch (type) {
-        case TYPE_INT_ARRAY: return 1;
-        case TYPE_FLOAT_ARRAY: return 2;
-        case TYPE_BOOL_ARRAY: return 3;
-        case TYPE_CHAR_ARRAY: return 4;
-        case TYPE_STRING_ARRAY: return 5;
-        default: return 0;
-    }
-}
-
 static bool type_is_borrowable_scalar(YType type)
 {
     return type == TYPE_INT || type == TYPE_FLOAT ||
@@ -797,7 +785,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 }
                 if (type_is_owned(arg_type) && param->type == arg_type &&
                     !param->is_borrowed) {
-                    consume_string_value(checker, arg);
+                    consume_owned_value(checker, arg);
                 }
                 if (arg_type != TYPE_ERROR && arg_type != param->type) {
                     char suggestion[256];
@@ -879,7 +867,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                                "Variable initializer type mismatch.", suggestion);
                 }
                 if (type_is_owned(init_type) && var->type == init_type) {
-                    consume_string_value(checker, var->initializer);
+                    consume_owned_value(checker, var->initializer);
                 }
                 var->initialized = true;
             }
@@ -976,7 +964,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                                "A void function cannot return a value.",
                                "Use 'return;' or change the function return type.");
                 } else if (type_is_owned(actual) && expected == actual) {
-                    consume_string_value(checker, stmt->as.return_value);
+                    consume_owned_value(checker, stmt->as.return_value);
                 } else if (actual != TYPE_ERROR && actual != expected) {
                     char suggestion[192];
                     (void)snprintf(suggestion, sizeof(suggestion),
