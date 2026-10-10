@@ -168,6 +168,17 @@ if ./build/ylang check tests/array-mixed-types.yl > build/array-mixed-types.out 
 fi
 grep -q 'All array elements must have the same type' build/array-mixed-types.out
 
+# C-style for loops and condition-driven while loops.
+./build/ylang check examples/loops.yl >/dev/null
+./build/ylang build examples/loops.yl -o build/test-loops >/dev/null
+./build/test-loops > build/loops.out
+diff -u tests/expected-loops.txt build/loops.out
+if ./build/ylang check tests/loop-condition-error.yl > build/loop-condition-error.out 2>&1; then
+    echo "FAIL: while accepted a non-bool condition" >&2
+    exit 1
+fi
+grep -q 'while condition must have type bool' build/loop-condition-error.out
+
 # Text file I/O: writing returns a status, reading returns a string.
 ./build/ylang check tests/file-io.yl >/dev/null
 ./build/ylang build tests/file-io.yl -o build/test-file-io >/dev/null
