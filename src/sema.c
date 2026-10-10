@@ -629,6 +629,32 @@ static YType check_expr(Checker *checker, Expr *expr)
                 checker->active_borrow_count = borrow_base;
                 return expr->type;
             }
+            if (!function &&
+                (strcmp(expr->as.call.name, "parse_int") == 0 ||
+                 strcmp(expr->as.call.name, "parse_float") == 0)) {
+                bool wants_int = strcmp(expr->as.call.name, "parse_int") == 0;
+                if (expr->as.call.count != 1) {
+                    diagnostic(c, expr->token, "error", "E2041",
+                               "parse_int() and parse_float() expect one string argument.",
+                               "Pass the text returned by read_line(), for example parse_int(read_line()).");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                } else {
+                    YType arg_type = check_expr(checker, expr->as.call.args[0]);
+                    if (arg_type != TYPE_STRING && arg_type != TYPE_ERROR) {
+                        diagnostic(c, expr->as.call.args[0]->token, "error", "E2042",
+                                   "Numeric parsing requires a string argument.",
+                                   "Use parse_int(text) or parse_float(text) with a string value.");
+                        expr->type = TYPE_ERROR;
+                    } else {
+                        expr->type = arg_type == TYPE_ERROR ? TYPE_ERROR :
+                                     (wants_int ? TYPE_INT : TYPE_FLOAT);
+                    }
+                }
+                checker->active_borrow_count = borrow_base;
+                return expr->type;
+            }
             if (!function && strcmp(expr->as.call.name, "clone") == 0) {
                 if (expr->as.call.count != 1) {
                     diagnostic(c, expr->token, "error", "E2041",
