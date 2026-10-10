@@ -56,6 +56,7 @@ jobs:
         with:
           node-version: 22
       - name: Generate current Tree-sitter parser
+        shell: pwsh
         run: npm install && npm run generate
         working-directory: tree-sitter-ylang
       - name: Build Neovim Tree-sitter parser DLL
