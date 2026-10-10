@@ -7,3 +7,5 @@ YLANG STRINGS
 ylang strings
 true
 true
+true
+true
