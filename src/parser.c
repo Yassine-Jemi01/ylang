@@ -293,20 +293,69 @@ static void append_ptr(Compiler *c, void ***items, size_t *count, void *item)
     *items = grown;
 }
 
+bool ylang_type_is_array(YType type)
+{
+    return type == TYPE_INT_ARRAY || type == TYPE_FLOAT_ARRAY ||
+           type == TYPE_BOOL_ARRAY || type == TYPE_CHAR_ARRAY ||
+           type == TYPE_STRING_ARRAY;
+}
+
+YType ylang_array_element_type(YType type)
+{
+    switch (type) {
+        case TYPE_INT_ARRAY: return TYPE_INT;
+        case TYPE_FLOAT_ARRAY: return TYPE_FLOAT;
+        case TYPE_BOOL_ARRAY: return TYPE_BOOL;
+        case TYPE_CHAR_ARRAY: return TYPE_CHAR;
+        case TYPE_STRING_ARRAY: return TYPE_STRING;
+        default: return TYPE_ERROR;
+    }
+}
+
+YType ylang_array_type_for(YType element_type)
+{
+    switch (element_type) {
+        case TYPE_INT: return TYPE_INT_ARRAY;
+        case TYPE_FLOAT: return TYPE_FLOAT_ARRAY;
+        case TYPE_BOOL: return TYPE_BOOL_ARRAY;
+        case TYPE_CHAR: return TYPE_CHAR_ARRAY;
+        case TYPE_STRING: return TYPE_STRING_ARRAY;
+        default: return TYPE_ERROR;
+    }
+}
+
+bool ylang_type_is_owned(YType type)
+{
+    return type == TYPE_STRING || ylang_type_is_array(type);
+}
+
 static YType parse_type(Parser *p)
 {
     Token token = consume(p, TOKEN_IDENTIFIER,
         "Expected a type name such as 'int', 'float', 'bool', 'char', 'string', or 'void'.",
         "Write the type before the variable or parameter name.");
-    if (token_is(&token, "int")) return TYPE_INT;
-    if (token_is(&token, "float")) return TYPE_FLOAT;
-    if (token_is(&token, "bool")) return TYPE_BOOL;
-    if (token_is(&token, "char")) return TYPE_CHAR;
-    if (token_is(&token, "string")) return TYPE_STRING;
-    if (token_is(&token, "void")) return TYPE_VOID;
-    diagnostic(p->compiler, token, "error", "E2002", "Unknown type name.",
-               "Available YLang 1.0 types: int, float, bool, char, string, void.");
-    return TYPE_ERROR;
+    YType type = TYPE_ERROR;
+    if (token_is(&token, "int")) type = TYPE_INT;
+    else if (token_is(&token, "float")) type = TYPE_FLOAT;
+    else if (token_is(&token, "bool")) type = TYPE_BOOL;
+    else if (token_is(&token, "char")) type = TYPE_CHAR;
+    else if (token_is(&token, "string")) type = TYPE_STRING;
+    else if (token_is(&token, "void")) type = TYPE_VOID;
+    else diagnostic(p->compiler, token, "error", "E2002", "Unknown type name.",
+                    "Available types: int, float, bool, char, string, and void.");
+
+    if (match(p, TOKEN_LEFT_BRACKET)) {
+        consume(p, TOKEN_RIGHT_BRACKET, "Expected ']' after '[' in an array type.",
+                "Write array types as 'int[]' or 'string[]'.");
+        if (type == TYPE_VOID || type == TYPE_ERROR) {
+            diagnostic(p->compiler, token, "error", "E2070",
+                       "This type cannot be used as an array element type.",
+                       "Use an array of int, float, bool, char, or string.");
+            return TYPE_ERROR;
+        }
+        type = ylang_array_type_for(type);
+    }
+    return type;
 }
 
 const char *type_name(YType type)
@@ -318,6 +367,11 @@ const char *type_name(YType type)
         case TYPE_CHAR: return "char";
         case TYPE_STRING: return "string";
         case TYPE_VOID: return "void";
+        case TYPE_INT_ARRAY: return "int[]";
+        case TYPE_FLOAT_ARRAY: return "float[]";
+        case TYPE_BOOL_ARRAY: return "bool[]";
+        case TYPE_CHAR_ARRAY: return "char[]";
+        case TYPE_STRING_ARRAY: return "string[]";
         case TYPE_ERROR: return "<error>";
     }
     return "<unknown>";
@@ -469,6 +523,19 @@ static Expr *parse_primary(Parser *p)
         borrow->as.borrow.is_mut = is_mut;
         return borrow;
     }
+    if (match(p, TOKEN_LEFT_BRACKET)) {
+        Expr *expr = new_expr(p->compiler, EXPR_ARRAY_LITERAL, token);
+        if (p->current.type != TOKEN_RIGHT_BRACKET) {
+            do {
+                Expr *item = parse_expression(p);
+                append_ptr(p->compiler, (void ***)&expr->as.array_literal.items,
+                           &expr->as.array_literal.count, item);
+            } while (match(p, TOKEN_COMMA) && p->current.type != TOKEN_RIGHT_BRACKET);
+        }
+        consume(p, TOKEN_RIGHT_BRACKET, "Expected ']' after array elements.",
+                "Close the array literal, for example '[1, 2, 3]'.");
+        return expr;
+    }
     if (match(p, TOKEN_NUMBER)) {
         Expr *expr = new_expr(p->compiler,
             memchr(token.start, '.', token.length) ? EXPR_FLOAT : EXPR_INT, token);
@@ -537,6 +604,17 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
     }
 
     for (;;) {
+        if (match(p, TOKEN_LEFT_BRACKET)) {
+            Token bracket = p->previous;
+            Expr *index = new_expr(p->compiler, EXPR_INDEX, bracket);
+            index->as.index.array = left;
+            index->as.index.index = parse_expression(p);
+            index->as.index.variable = NULL;
+            consume(p, TOKEN_RIGHT_BRACKET, "Expected ']' after array index.",
+                    "Close the index expression with ']'.");
+            left = index;
+            continue;
+        }
         int prec = precedence(p->current.type);
         if (prec == 0 || prec < min_precedence) break;
         op = p->current;
@@ -544,10 +622,10 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
         int next_min = prec + (op.type == TOKEN_EQUAL ? 0 : 1);
         Expr *right = parse_precedence(p, next_min);
         if (op.type == TOKEN_EQUAL) {
-            if (left->kind != EXPR_NAME) {
+            if (left->kind != EXPR_NAME && left->kind != EXPR_INDEX) {
                 diagnostic(p->compiler, op, "error", "E1004",
-                           "The left side of an assignment must be a variable name.",
-                           "Write an assignment such as 'count = count + 1;'.");
+                           "The left side of an assignment must be a variable or array element.",
+                           "Write 'count = count + 1;' or 'items[index] = value;'.");
                 left = new_expr(p->compiler, EXPR_ERROR, op);
             } else {
                 Expr *assign = new_expr(p->compiler, EXPR_ASSIGN, op);
@@ -667,6 +745,36 @@ static Stmt *parse_statement(Parser *p)
     }
 
     if (match(p, TOKEN_IF)) return parse_if_after_keyword(p, token);
+
+    if (match(p, TOKEN_FOR)) {
+        Stmt *stmt = new_stmt(p->compiler, STMT_FOR, token);
+        consume(p, TOKEN_LEFT_PAREN, "Expected '(' after for.",
+                "Use for (let int i = 0; i < 10; i = i + 1) { ... }.");
+        if (match(p, TOKEN_SEMICOLON)) {
+            stmt->as.for_stmt.initializer = NULL;
+        } else if (match(p, TOKEN_LET)) {
+            stmt->as.for_stmt.initializer = parse_variable(p, false);
+        } else {
+            diagnostic(p->compiler, p->current, "error", "E2071",
+                       "A for-loop initializer must be a let declaration or empty.",
+                       "Start the initializer with 'let', or leave it empty.");
+            while (p->current.type != TOKEN_SEMICOLON &&
+                   p->current.type != TOKEN_EOF) advance_parser(p);
+            (void)match(p, TOKEN_SEMICOLON);
+        }
+        stmt->as.for_stmt.condition = p->current.type == TOKEN_SEMICOLON
+            ? NULL : parse_expression(p);
+        consume(p, TOKEN_SEMICOLON, "Expected ';' after for-loop condition.",
+                "Separate initializer, condition, and increment with semicolons.");
+        stmt->as.for_stmt.increment = p->current.type == TOKEN_RIGHT_PAREN
+            ? NULL : parse_expression(p);
+        consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after for-loop clauses.",
+                "Close the for-loop header with ')'.");
+        consume(p, TOKEN_LEFT_BRACE, "Expected '{' before for-loop body.",
+                "Start the loop body with '{'.");
+        stmt->as.for_stmt.body = parse_block_after_open(p, p->previous);
+        return stmt;
+    }
 
     if (match(p, TOKEN_LOOP)) {
         Stmt *stmt = new_stmt(p->compiler, STMT_LOOP, token);

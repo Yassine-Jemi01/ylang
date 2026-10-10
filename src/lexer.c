@@ -126,6 +126,7 @@ static TokenType identifier_type(const Lexer *lexer)
     if (is_word(lexer, "let")) return TOKEN_LET;
     if (is_word(lexer, "const")) return TOKEN_CONST;
     if (is_word(lexer, "mut")) return TOKEN_MUT;
+    if (is_word(lexer, "for")) return TOKEN_FOR;
     if (is_word(lexer, "print")) return TOKEN_PRINT;
     if (is_word(lexer, "if")) return TOKEN_IF;
     if (is_word(lexer, "else")) return TOKEN_ELSE;
@@ -291,6 +292,7 @@ const char *token_type_name(TokenType type)
         case TOKEN_LET: return "LET";
         case TOKEN_CONST: return "CONST";
         case TOKEN_MUT: return "MUT";
+        case TOKEN_FOR: return "FOR";
         case TOKEN_PRINT: return "PRINT";
         case TOKEN_IF: return "IF";
         case TOKEN_ELSE: return "ELSE";
