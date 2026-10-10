@@ -31,6 +31,7 @@ typedef struct {
     ActiveBorrow *active_borrows;
     size_t active_borrow_count;
     size_t active_borrow_capacity;
+    YType expected_type;
 } Checker;
 
 static bool type_is_borrowable_scalar(YType type)
@@ -267,6 +268,11 @@ static YType check_expr(Checker *checker, Expr *expr)
                 diagnostic(c, expr->token, "error", "E2021",
                            "This variable may be used before it is initialized.", suggestion);
             }
+            if (var->moved && !checker->resolving_borrow_target) {
+                diagnostic(c, expr->token, "error", "E2080",
+                           "This value was moved and can no longer be used.",
+                           "Use the destination that received the value, or explicitly clone it before moving.");
+            }
             if (!checker->resolving_borrow_target) {
                 for (size_t i = 0; i < checker->active_borrow_count; i++) {
                     ActiveBorrow *borrow = &checker->active_borrows[i];
@@ -279,6 +285,77 @@ static YType check_expr(Checker *checker, Expr *expr)
                 }
             }
             expr->type = var->type;
+            return expr->type;
+        }
+        case EXPR_ARRAY_LITERAL: {
+            YType expected = checker->expected_type;
+            YType element_type = ylang_type_is_array(expected)
+                ? ylang_array_element_type(expected) : TYPE_ERROR;
+            for (size_t i = 0; i < expr->as.array_literal.count; i++) {
+                YType saved_expected = checker->expected_type;
+                checker->expected_type = element_type;
+                YType item_type = check_expr(checker, expr->as.array_literal.items[i]);
+                checker->expected_type = saved_expected;
+                if (item_type == TYPE_VOID || ylang_type_is_array(item_type)) {
+                    diagnostic(c, expr->as.array_literal.items[i]->token, "error", "E2072",
+                               "Array elements must be scalar values or strings; nested arrays are not supported in YLang 2.0.",
+                               "Use int, float, bool, char, or string elements in one-dimensional arrays.");
+                    continue;
+                }
+                if (item_type == TYPE_ERROR) continue;
+                if (element_type == TYPE_ERROR) element_type = item_type;
+                else if (item_type != element_type) {
+                    diagnostic(c, expr->as.array_literal.items[i]->token, "error", "E2073",
+                               "All elements in an array literal must have the same type.",
+                               "Use elements of one type; implicit element conversions are not performed.");
+                }
+            }
+            if (element_type == TYPE_ERROR) {
+                if (ylang_type_is_array(expected)) element_type = ylang_array_element_type(expected);
+                else {
+                    diagnostic(c, expr->token, "error", "E2074",
+                               "The element type of an empty array cannot be inferred.",
+                               "Declare its type, for example 'let int[] values = [];'.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+            }
+            expr->type = ylang_array_type_for(element_type);
+            if (ylang_type_is_array(expected) && expected != expr->type) {
+                diagnostic(c, expr->token, "error", "E2075",
+                           "Array literal element type does not match its declared type.",
+                           "Use an array literal whose elements match the declared element type.");
+                expr->type = TYPE_ERROR;
+            }
+            return expr->type;
+        }
+        case EXPR_INDEX: {
+            YType array_type = check_expr(checker, expr->as.index.array);
+            YType index_type = check_expr(checker, expr->as.index.index);
+            if (index_type != TYPE_INT && index_type != TYPE_ERROR) {
+                diagnostic(c, expr->as.index.index->token, "error", "E2076",
+                           "An array index must have type int.",
+                           "Use an integer index such as values[0].");
+            }
+            if (!ylang_type_is_array(array_type)) {
+                if (array_type != TYPE_ERROR) {
+                    diagnostic(c, expr->as.index.array->token, "error", "E2077",
+                               "Indexing requires an array value.",
+                               "Declare an array such as 'let int[] values = [1, 2, 3];'.");
+                }
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            if (!expr->as.index.array || expr->as.index.array->kind != EXPR_NAME ||
+                !expr->as.index.array->as.name.variable) {
+                diagnostic(c, expr->token, "error", "E2078",
+                           "Only named array variables can be indexed in YLang 2.0.",
+                           "Store the array in a variable before indexing it.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            expr->as.index.variable = expr->as.index.array->as.name.variable;
+            expr->type = ylang_array_element_type(array_type);
             return expr->type;
         }
         case EXPR_BORROW: {
@@ -332,25 +409,32 @@ static YType check_expr(Checker *checker, Expr *expr)
         case EXPR_ASSIGN: {
             if (checker->allowed_assignment != expr) {
                 diagnostic(c, expr->token, "error", "E2023",
-                           "Assignment is a statement in YLang 1.0, not a nested value expression.",
+                           "Assignment is a statement, not a nested value expression.",
                            "Move the assignment to its own statement, then use the variable.");
             }
             Expr *target = expr->as.assign.target;
-            const char *name = target && target->kind == EXPR_NAME ? target->as.name.name : "";
-            VarDecl *var = scope_lookup(checker->scope, name);
+            VarDecl *var = NULL;
+            YType target_type = TYPE_ERROR;
+            if (target && target->kind == EXPR_NAME) {
+                var = scope_lookup(checker->scope, target->as.name.name);
+                if (var) {
+                    target->as.name.variable = var;
+                    target->as.name.name = var->name;
+                    target_type = var->type;
+                }
+            } else if (target && target->kind == EXPR_INDEX) {
+                target_type = check_expr(checker, target);
+                var = target->as.index.variable;
+            }
             if (!var) {
                 diagnostic(c, expr->token, "error", "E2020",
-                           "Cannot assign to an unknown variable.",
-                           "Declare the variable before assigning to it.");
+                           "Cannot assign to an unknown variable or unsupported array target.",
+                           "Declare the variable first and index a named array variable.");
                 (void)check_expr(checker, expr->as.assign.right);
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
             expr->as.assign.variable = var;
-            if (target && target->kind == EXPR_NAME) {
-                target->as.name.variable = var;
-                target->as.name.name = var->name;
-            }
             for (size_t i = 0; i < checker->active_borrow_count; i++) {
                 if (checker->active_borrows[i].variable == var) {
                     diagnostic(c, expr->token, "error", "E2068",
@@ -359,22 +443,40 @@ static YType check_expr(Checker *checker, Expr *expr)
                     break;
                 }
             }
+            YType saved_expected = checker->expected_type;
+            checker->expected_type = target_type;
             YType right = check_expr(checker, expr->as.assign.right);
+            checker->expected_type = saved_expected;
             if (var->is_const) {
                 diagnostic(c, expr->token, "error", "E2022",
-                           "Cannot assign to a const variable.",
-                           "Keep 'const' and remove this assignment, or remove 'const' if the variable should be mutable.");
+                           "Cannot assign to a const variable or mutate its array.",
+                           "Remove 'const' only when mutation is intended and safe.");
             }
-            if (right != TYPE_ERROR && right != var->type) {
+            if (right != TYPE_ERROR && target_type != TYPE_ERROR && right != target_type) {
                 char suggestion[256];
                 (void)snprintf(suggestion, sizeof(suggestion),
-                    "'%s' has type %s, but the assigned expression has type %s.",
-                    var->name, type_name(var->type), type_name(right));
+                    "'%s' expects %s, but the assigned expression has type %s.",
+                    var->name, type_name(target_type), type_name(right));
                 diagnostic(c, expr->token, "error", "E2001",
                            "Assignment type mismatch.", suggestion);
             }
-            var->initialized = true;
-            expr->type = var->type;
+            if (target->kind == EXPR_NAME && ylang_type_is_owned(var->type) &&
+                expr->as.assign.right && expr->as.assign.right->kind == EXPR_NAME) {
+                VarDecl *source = expr->as.assign.right->as.name.variable;
+                if (source == var) {
+                    diagnostic(c, expr->token, "error", "E2081",
+                               "Self-move is not allowed.",
+                               "Use the value directly, or clone it when you need a distinct owned value.");
+                } else if (source) {
+                    if (source->is_global) {
+                        diagnostic(c, expr->as.assign.right->token, "error", "E2082",
+                                   "Moving an owned value out of a global is not supported.",
+                                   "Use a local owned value until global ownership rules are defined.");
+                    } else source->moved = true;
+                }
+            }
+            if (target->kind == EXPR_NAME) var->initialized = true;
+            expr->type = target_type;
             return expr->type;
         }
         case EXPR_UNARY: {
@@ -601,7 +703,10 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                            "Use a value type such as int, float, bool, char, or string.");
             }
             if (var->initializer) {
+                YType saved_expected = checker->expected_type;
+                checker->expected_type = var->type;
                 YType init_type = check_expr(checker, var->initializer);
+                checker->expected_type = saved_expected;
                 if (init_type != TYPE_ERROR && init_type != var->type) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
@@ -609,6 +714,17 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                         var->name, type_name(var->type), type_name(init_type));
                     diagnostic(c, var->initializer->token, "error", "E2001",
                                "Variable initializer type mismatch.", suggestion);
+                }
+                if (ylang_type_is_owned(var->type) &&
+                    var->initializer->kind == EXPR_NAME) {
+                    VarDecl *source = var->initializer->as.name.variable;
+                    if (source && source != var) {
+                        if (source->is_global) {
+                            diagnostic(c, var->initializer->token, "error", "E2082",
+                                       "Moving an owned value out of a global is not supported.",
+                                       "Use a local owned value until global ownership rules are defined.");
+                        } else source->moved = true;
+                    }
                 }
                 var->initialized = true;
             }
@@ -618,10 +734,10 @@ static void check_stmt(Checker *checker, Stmt *stmt)
         case STMT_PRINT:
             for (size_t i = 0; i < stmt->as.print.count; i++) {
                 YType type = check_expr(checker, stmt->as.print.args[i]);
-                if (type == TYPE_VOID) {
+                if (type == TYPE_VOID || ylang_type_is_array(type)) {
                     diagnostic(c, stmt->as.print.args[i]->token, "error", "E2050",
-                               "print() cannot print a void expression.",
-                               "Print a value or change the function to return one.");
+                               "print() cannot print void or array values directly.",
+                               "Print a scalar or string value, or print individual array elements.");
                 }
             }
             break;
@@ -678,7 +794,20 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                                "Missing return value.", suggestion);
                 }
             } else {
+                YType saved_expected = checker->expected_type;
+                checker->expected_type = expected;
                 YType actual = check_expr(checker, stmt->as.return_value);
+                checker->expected_type = saved_expected;
+                if (ylang_type_is_owned(expected) &&
+                    stmt->as.return_value->kind == EXPR_NAME &&
+                    stmt->as.return_value->as.name.variable) {
+                    VarDecl *source = stmt->as.return_value->as.name.variable;
+                    if (source->is_global) {
+                        diagnostic(c, stmt->as.return_value->token, "error", "E2082",
+                                   "Moving an owned value out of a global is not supported.",
+                                   "Return a local value, or clone a global after global ownership rules are defined.");
+                    } else source->moved = true;
+                }
                 if (expected == TYPE_VOID) {
                     diagnostic(c, stmt->token, "error", "E2054",
                                "A void function cannot return a value.",
@@ -717,6 +846,11 @@ bool check_program(Compiler *c)
             diagnostic(c, var->token, "error", "E2005",
                        "A variable cannot have type void.",
                        "Use a value type such as int, float, bool, char, or string.");
+        }
+        if (ylang_type_is_owned(var->type) && var->initializer) {
+            diagnostic(c, var->token, "error", "E2092",
+                       "Global string/array initializers are not supported in YLang 2.0 yet.",
+                       "Initialize owned global values inside main(), or use scalar compile-time constants.");
         }
         (void)scope_add(&checker, globals, var);
     }
