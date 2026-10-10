@@ -18,9 +18,42 @@ static const char *c_base_type(YType type)
         case TYPE_CHAR: return "char";
         case TYPE_STRING: return "const char *";
         case TYPE_VOID: return "void";
+        case TYPE_INT_ARRAY: case TYPE_FLOAT_ARRAY: case TYPE_BOOL_ARRAY:
+        case TYPE_CHAR_ARRAY: case TYPE_STRING_ARRAY: return "YLArray";
         case TYPE_ERROR: return "int";
     }
     return "int";
+}
+
+static bool type_is_array(YType type)
+{
+    return type == TYPE_INT_ARRAY || type == TYPE_FLOAT_ARRAY ||
+           type == TYPE_BOOL_ARRAY || type == TYPE_CHAR_ARRAY ||
+           type == TYPE_STRING_ARRAY;
+}
+
+static YType array_element_type(YType type)
+{
+    switch (type) {
+        case TYPE_INT_ARRAY: return TYPE_INT;
+        case TYPE_FLOAT_ARRAY: return TYPE_FLOAT;
+        case TYPE_BOOL_ARRAY: return TYPE_BOOL;
+        case TYPE_CHAR_ARRAY: return TYPE_CHAR;
+        case TYPE_STRING_ARRAY: return TYPE_STRING;
+        default: return TYPE_ERROR;
+    }
+}
+
+static int array_kind(YType type)
+{
+    switch (type) {
+        case TYPE_INT_ARRAY: return 1;
+        case TYPE_FLOAT_ARRAY: return 2;
+        case TYPE_BOOL_ARRAY: return 3;
+        case TYPE_CHAR_ARRAY: return 4;
+        case TYPE_STRING_ARRAY: return 5;
+        default: return 0;
+    }
 }
 
 static void append_c_quoted(StringBuilder *sb, const char *text)
@@ -153,15 +186,60 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             emit_expr(sb, expr->as.assign.target);
             sb_append(sb, " = "); emit_expr(sb, expr->as.assign.right); sb_append(sb, ")");
             break;
+        case EXPR_ARRAY: {
+            YType element = expr->as.array.element_type;
+            sb_appendf(sb, "yl_array_make(sizeof(%s), (%s[]){",
+                       c_base_type(element), c_base_type(element));
+            for (size_t i = 0; i < expr->as.array.count; i++) {
+                if (i) sb_append(sb, ", ");
+                emit_expr(sb, expr->as.array.items[i]);
+            }
+            sb_appendf(sb, "}, %zu, %d)", expr->as.array.count, array_kind(expr->type));
+            break;
+        }
+        case EXPR_INDEX: {
+            YType element = expr->as.index.element_type;
+            sb_appendf(sb, "(*((%s *)yl_array_at(", c_base_type(element));
+            emit_expr(sb, expr->as.index.array);
+            sb_append(sb, ", ");
+            emit_expr(sb, expr->as.index.index);
+            sb_appendf(sb, ", %d)))", array_kind(expr->as.index.array->type));
+            break;
+        }
         case EXPR_CALL:
+            if (!expr->as.call.function && strcmp(expr->as.call.name, "append") == 0 &&
+                expr->as.call.count == 2 && expr->as.call.args[0]->kind == EXPR_NAME) {
+                Expr *array_arg = expr->as.call.args[0];
+                Expr *value_arg = expr->as.call.args[1];
+                YType element = array_element_type(array_arg->type);
+                sb_append(sb, "yl_array_append(&");
+                emit_expr(sb, array_arg);
+                sb_appendf(sb, ", &(%s){", c_base_type(element));
+                emit_expr(sb, value_arg);
+                sb_appendf(sb, "}, sizeof(%s), %d)", c_base_type(element), array_kind(array_arg->type));
+                break;
+            }
             if (expr->as.call.function) {
                 sb_append(sb, expr->as.call.function->c_name);
             } else if (strcmp(expr->as.call.name, "read_line") == 0) {
                 sb_append(sb, "yl_read_line");
             } else if (strcmp(expr->as.call.name, "len") == 0) {
-                sb_append(sb, "yl_len_string");
+                if (expr->as.call.count == 1 && type_is_array(expr->as.call.args[0]->type))
+                    sb_append(sb, "yl_array_len");
+                else
+                    sb_append(sb, "yl_len_string");
             } else if (strcmp(expr->as.call.name, "clone") == 0) {
-                sb_append(sb, "yl_clone_string");
+                if (expr->as.call.count == 1 && type_is_array(expr->as.call.args[0]->type))
+                    sb_append(sb, "yl_array_clone");
+                else
+                    sb_append(sb, "yl_clone_string");
+            } else if (strcmp(expr->as.call.name, "append") == 0) {
+                sb_append(sb, "yl_array_append");
+            } else {
+                    sb_append(sb, "yl_invalid_append");
+                }
+                sb_append(sb, ")");
+                break;
             } else {
                 sb_append(sb, "yl_missing_function");
             }
@@ -270,6 +348,10 @@ static void emit_print_value(FILE *out, Expr *expr, unsigned indent)
 {
     emit_indent(out, indent);
     switch (expr->type) {
+        case TYPE_INT_ARRAY: case TYPE_FLOAT_ARRAY: case TYPE_BOOL_ARRAY:
+        case TYPE_CHAR_ARRAY: case TYPE_STRING_ARRAY:
+            fputs("printf(\"[array len=%lld]\", (long long)yl_array_len(", out);
+            emit_expr_to_file(out, expr); fputs("));\\n", out); break;
         case TYPE_STRING:
             fputs("fputs((const char *)(", out); emit_expr_to_file(out, expr);
             fputs("), stdout);\n", out); break;
@@ -367,20 +449,22 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
 static void emit_runtime(FILE *out)
 {
     fputs(
-        "/* Generated by YLang v1.0.0. This file is compiler output. */\n"
+        "/* Generated by YLang development compiler. */\n"
         "#include <stdbool.h>\n#include <stdint.h>\n#include <stdio.h>\n"
         "#include <stdlib.h>\n#include <stdarg.h>\n#include <string.h>\n"
         "#include <limits.h>\n\n"
-        "static void yl_runtime_error(const char *message) {\n"
-        "    fprintf(stderr, \"YLang runtime error: %s\\n\", message);\n"
-        "    exit(70);\n}\n"
+        "typedef struct { void *data; size_t len; size_t cap; int kind; } YLArray;\n"
         "typedef struct YLTracked { void *ptr; struct YLTracked *next; } YLTracked;\n"
-        "static YLTracked *yl_tracked = NULL;\n"
+        "typedef struct YLTrackedArray { void *ptr; struct YLTrackedArray *next; } YLTrackedArray;\n"
+        "static YLTracked *yl_tracked = NULL;\nstatic YLTrackedArray *yl_arrays = NULL;\n"
+        "static void yl_runtime_error(const char *message) { fprintf(stderr, \"YLang runtime error: %s\\n\", message); exit(70); }\n"
         "static void yl_cleanup(void) {\n"
-        "    while (yl_tracked) { YLTracked *next = yl_tracked->next; free(yl_tracked->ptr); free(yl_tracked); yl_tracked = next; }\n}\n"
-        "static void *yl_track(void *ptr) {\n"
-        "    YLTracked *node = malloc(sizeof(*node)); if (!node) yl_runtime_error(\"out of memory\");\n"
-        "    node->ptr = ptr; node->next = yl_tracked; yl_tracked = node; return ptr;\n}\n"
+        "    while (yl_tracked) { YLTracked *next = yl_tracked->next; free(yl_tracked->ptr); free(yl_tracked); yl_tracked = next; }\n"
+        "    while (yl_arrays) { YLTrackedArray *next = yl_arrays->next; free(yl_arrays->ptr); free(yl_arrays); yl_arrays = next; }\n"
+        "}\n"
+        "static void *yl_track(void *ptr) { YLTracked *node = malloc(sizeof(*node)); if (!node) yl_runtime_error(\"out of memory\"); node->ptr = ptr; node->next = yl_tracked; yl_tracked = node; return ptr; }\n"
+        "static void yl_track_array_buffer(void *ptr) { YLTrackedArray *node = malloc(sizeof(*node)); if (!node) yl_runtime_error(\"out of memory\"); node->ptr = ptr; node->next = yl_arrays; yl_arrays = node; }\n"
+        "static void yl_replace_array_buffer(void *old_ptr, void *new_ptr) { for (YLTrackedArray *node = yl_arrays; node; node = node->next) if (node->ptr == old_ptr) { node->ptr = new_ptr; return; } yl_runtime_error(\"array allocation tracking failed\"); }\n"
         "static const char *yl_boolstr(bool value) { return value ? \"true\" : \"false\"; }\n"
         "static const char *yl_format(const char *format, ...) {\n"
         "    va_list args; va_start(args, format); va_list copy; va_copy(copy, args);\n"
@@ -407,18 +491,14 @@ static void emit_runtime(FILE *out)
         "    if (length > 0 && buffer[length - 1] == '\\r') length--;\n"
         "    buffer[length] = '\\0'; return (const char *)yl_track(buffer);\n"
         "}\n"
-        "static int64_t yl_len_string(const char *value) {\n"
-        "    if (!value) yl_runtime_error(\"len() received a null string\");\n"
-        "    size_t length = strlen(value);\n"
-        "    if (length > (size_t)INT64_MAX) yl_runtime_error(\"string is too large for len()\");\n"
-        "    return (int64_t)length;\n"
-        "}\n"
-        "static const char *yl_clone_string(const char *value) {\n"
-        "    if (!value) yl_runtime_error(\"clone() received a null string\");\n"
-        "    size_t length = strlen(value); char *copy = malloc(length + 1);\n"
-        "    if (!copy) yl_runtime_error(\"out of memory while cloning string\");\n"
-        "    memcpy(copy, value, length + 1); return (const char *)yl_track(copy);\n"
-        "}\n"
+        "static int64_t yl_len_string(const char *value) { if (!value) yl_runtime_error(\"len() received a null string\"); size_t n = strlen(value); if (n > (size_t)INT64_MAX) yl_runtime_error(\"string is too large for len()\"); return (int64_t)n; }\n"
+        "static const char *yl_clone_string(const char *value) { if (!value) yl_runtime_error(\"clone() received a null string\"); size_t n = strlen(value); char *copy = malloc(n + 1); if (!copy) yl_runtime_error(\"out of memory while cloning string\"); memcpy(copy, value, n + 1); return (const char *)yl_track(copy); }\n"
+        "static size_t yl_array_element_size(int kind) { switch (kind) { case 1: return sizeof(int64_t); case 2: return sizeof(double); case 3: return sizeof(bool); case 4: return sizeof(char); case 5: return sizeof(const char *); default: yl_runtime_error(\"invalid array element type\"); } return 0; }\n"
+        "static YLArray yl_array_make(size_t element_size, const void *values, size_t count, int kind) { if (!element_size || count > SIZE_MAX / element_size) yl_runtime_error(\"array size overflow\"); size_t bytes = count * element_size; void *data = bytes ? malloc(bytes) : NULL; if (bytes && !data) yl_runtime_error(\"out of memory while creating array\"); if (bytes) memcpy(data, values, bytes); if (data) yl_track_array_buffer(data); return (YLArray){data, count, count, kind}; }\n"
+        "static void *yl_array_at(YLArray array, int64_t index, int kind) { if (array.kind != kind || !array.data) yl_runtime_error(\"invalid or uninitialized array\"); if (index < 0 || (uint64_t)index >= array.len) yl_runtime_error(\"array index out of bounds\"); return (char *)array.data + (size_t)index * yl_array_element_size(kind); }\n"
+        "static int64_t yl_array_len(YLArray array) { if (array.len > (size_t)INT64_MAX) yl_runtime_error(\"array is too large for len()\"); return (int64_t)array.len; }\n"
+        "static void yl_array_append(YLArray *array, const void *value, size_t element_size, int kind) { if (!array || array->kind != kind || !element_size) yl_runtime_error(\"append() type mismatch or uninitialized array\"); if (array->len == array->cap) { size_t next = array->cap ? array->cap * 2 : 4; if (next < array->cap || next > SIZE_MAX / element_size) yl_runtime_error(\"array capacity overflow\"); void *old = array->data; void *grown = realloc(old, next * element_size); if (!grown) yl_runtime_error(\"out of memory while growing array\"); if (old) yl_replace_array_buffer(old, grown); else yl_track_array_buffer(grown); array->data = grown; array->cap = next; } memcpy((char *)array->data + array->len * element_size, value, element_size); array->len++; }\n"
+        "static YLArray yl_array_clone(YLArray array) { size_t size = yl_array_element_size(array.kind); YLArray copy = yl_array_make(size, array.data, array.len, array.kind); if (array.kind == 5) { const char **source = (const char **)array.data; const char **target = (const char **)copy.data; for (size_t i = 0; i < array.len; i++) target[i] = yl_clone_string(source[i]); } return copy; }\n"
         "static int64_t yl_add_i64(int64_t a, int64_t b) { int64_t r; if (__builtin_add_overflow(a,b,&r)) yl_runtime_error(\"integer overflow in addition\"); return r; }\n"
         "static int64_t yl_sub_i64(int64_t a, int64_t b) { int64_t r; if (__builtin_sub_overflow(a,b,&r)) yl_runtime_error(\"integer overflow in subtraction\"); return r; }\n"
         "static int64_t yl_mul_i64(int64_t a, int64_t b) { int64_t r; if (__builtin_mul_overflow(a,b,&r)) yl_runtime_error(\"integer overflow in multiplication\"); return r; }\n"

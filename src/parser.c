@@ -360,6 +360,11 @@ const char *type_name(YType type)
         case TYPE_CHAR: return "char";
         case TYPE_STRING: return "string";
         case TYPE_VOID: return "void";
+        case TYPE_INT_ARRAY: return "int[]";
+        case TYPE_FLOAT_ARRAY: return "float[]";
+        case TYPE_BOOL_ARRAY: return "bool[]";
+        case TYPE_CHAR_ARRAY: return "char[]";
+        case TYPE_STRING_ARRAY: return "string[]";
         case TYPE_ERROR: return "<error>";
     }
     return "<unknown>";

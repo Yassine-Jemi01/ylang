@@ -33,6 +33,54 @@ typedef struct {
     size_t active_borrow_capacity;
 } Checker;
 
+static bool type_is_array(YType type)
+{
+    return type == TYPE_INT_ARRAY || type == TYPE_FLOAT_ARRAY ||
+           type == TYPE_BOOL_ARRAY || type == TYPE_CHAR_ARRAY ||
+           type == TYPE_STRING_ARRAY;
+}
+
+static bool type_is_owned(YType type)
+{
+    return type == TYPE_STRING || type_is_array(type);
+}
+
+static YType array_type_for(YType element)
+{
+    switch (element) {
+        case TYPE_INT: return TYPE_INT_ARRAY;
+        case TYPE_FLOAT: return TYPE_FLOAT_ARRAY;
+        case TYPE_BOOL: return TYPE_BOOL_ARRAY;
+        case TYPE_CHAR: return TYPE_CHAR_ARRAY;
+        case TYPE_STRING: return TYPE_STRING_ARRAY;
+        default: return TYPE_ERROR;
+    }
+}
+
+static YType array_element_type(YType type)
+{
+    switch (type) {
+        case TYPE_INT_ARRAY: return TYPE_INT;
+        case TYPE_FLOAT_ARRAY: return TYPE_FLOAT;
+        case TYPE_BOOL_ARRAY: return TYPE_BOOL;
+        case TYPE_CHAR_ARRAY: return TYPE_CHAR;
+        case TYPE_STRING_ARRAY: return TYPE_STRING;
+        default: return TYPE_ERROR;
+    }
+}
+
+static int array_kind(YType type)
+{
+    switch (type) {
+        case TYPE_INT_ARRAY: return 1;
+        case TYPE_FLOAT_ARRAY: return 2;
+        case TYPE_BOOL_ARRAY: return 3;
+        case TYPE_CHAR_ARRAY: return 4;
+        case TYPE_STRING_ARRAY: return 5;
+        default: return 0;
+    }
+}
+
 static bool type_is_borrowable_scalar(YType type)
 {
     return type == TYPE_INT || type == TYPE_FLOAT ||
@@ -181,15 +229,15 @@ static void check_stmt(Checker *checker, Stmt *stmt);
 
 /* The checker enforces source-level ownership. Heap strings are still tracked
  * until process exit by the bootstrap runtime; scope cleanup is a later stage. */
-static void consume_string_value(Checker *checker, Expr *expr)
+static void consume_owned_value(Checker *checker, Expr *expr)
 {
-    if (!expr || expr->type != TYPE_STRING || expr->kind != EXPR_NAME ||
+    if (!expr || !type_is_owned(expr->type) || expr->kind != EXPR_NAME ||
         !expr->as.name.variable) return;
     VarDecl *var = expr->as.name.variable;
     if (var->is_global) {
         diagnostic(checker->compiler, expr->token, "error", "E2071",
-                   "A global string cannot be moved out of global storage.",
-                   "Use clone(global_name) to create an owned local copy.");
+                   "A global owned value cannot be moved out of global storage.",
+                   "Use clone(global_name) to create an independently owned local copy.");
         return;
     }
     var->is_moved = true;
@@ -276,10 +324,10 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             expr->as.name.name = var->name;
             expr->as.name.variable = var;
-            if (var->type == TYPE_STRING && var->is_moved) {
+            if (type_is_owned(var->type) && var->is_moved) {
                 diagnostic(c, expr->token, "error", "E2070",
-                           "This string was moved and can no longer be used.",
-                           "Use the new owner, or clone the string before moving it.");
+                           "This owned value was moved and can no longer be used.",
+                           "Use the new owner, or clone the value before moving it.");
             }
             if (!var->initialized) {
                 char suggestion[256];
@@ -357,6 +405,26 @@ static YType check_expr(Checker *checker, Expr *expr)
                            "Move the assignment to its own statement, then use the variable.");
             }
             Expr *target = expr->as.assign.target;
+            if (target && target->kind == EXPR_INDEX) {
+                YType target_type = check_expr(checker, target);
+                YType right_type = check_expr(checker, expr->as.assign.right);
+                VarDecl *array_var = target->as.index.array &&
+                    target->as.index.array->kind == EXPR_NAME
+                    ? target->as.index.array->as.name.variable : NULL;
+                if (array_var && array_var->is_const) {
+                    diagnostic(c, expr->token, "error", "E2022",
+                               "Cannot modify an element of a const array.",
+                               "Remove const only if the array contents should be mutable.");
+                }
+                if (right_type != TYPE_ERROR && target_type != TYPE_ERROR &&
+                    right_type != target_type) {
+                    diagnostic(c, expr->token, "error", "E2001",
+                               "Array element assignment type mismatch.",
+                               "Assign a value with the same type as the array element.");
+                }
+                expr->type = target_type;
+                return expr->type;
+            }
             const char *name = target && target->kind == EXPR_NAME ? target->as.name.name : "";
             VarDecl *var = scope_lookup(checker->scope, name);
             if (!var) {
@@ -386,14 +454,14 @@ static YType check_expr(Checker *checker, Expr *expr)
                            "Cannot assign to a const variable.",
                            "Keep 'const' and remove this assignment, or remove 'const' if the variable should be mutable.");
             }
-            if (right == TYPE_STRING && var->type == TYPE_STRING &&
+            if (type_is_owned(right) && right == var->type &&
                 expr->as.assign.right && expr->as.assign.right->kind == EXPR_NAME &&
                 expr->as.assign.right->as.name.variable == var) {
                 diagnostic(c, expr->token, "error", "E2072",
                            "A string cannot be moved into itself.",
                            "Assign from a different string value or use clone(name).");
-            } else if (right == TYPE_STRING && right == var->type) {
-                consume_string_value(checker, expr->as.assign.right);
+            } else if (type_is_owned(right) && right == var->type) {
+                consume_owned_value(checker, expr->as.assign.right);
             }
             if (right != TYPE_ERROR && right != var->type) {
                 char suggestion[256];
@@ -497,6 +565,57 @@ static YType check_expr(Checker *checker, Expr *expr)
             expr->type = TYPE_ERROR;
             return expr->type;
         }
+        case EXPR_ARRAY: {
+            if (expr->as.array.count == 0) {
+                diagnostic(c, expr->token, "error", "E2073",
+                           "An array literal must contain at least one element in this version.",
+                           "Add an initial element, such as [1], or initialize the array before use.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            YType element = check_expr(checker, expr->as.array.items[0]);
+            if (type_is_array(element) || element == TYPE_VOID || element == TYPE_ERROR) {
+                diagnostic(c, expr->as.array.items[0]->token, "error", "E2074",
+                           "Array elements must be scalar values of one matching type.",
+                           "Use int, float, bool, char, or string elements; nested arrays are not supported yet.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            for (size_t i = 1; i < expr->as.array.count; i++) {
+                YType item = check_expr(checker, expr->as.array.items[i]);
+                if (item != element && item != TYPE_ERROR) {
+                    diagnostic(c, expr->as.array.items[i]->token, "error", "E2075",
+                               "All elements in an array literal must have the same type.",
+                               "Convert the value explicitly or use a separate array for the other type.");
+                    expr->type = TYPE_ERROR;
+                }
+            }
+            expr->as.array.element_type = element;
+            if (expr->type != TYPE_ERROR) expr->type = array_type_for(element);
+            return expr->type;
+        }
+        case EXPR_INDEX: {
+            YType array = check_expr(checker, expr->as.index.array);
+            YType index = check_expr(checker, expr->as.index.index);
+            YType element = array_element_type(array);
+            if (element == TYPE_ERROR && array != TYPE_ERROR) {
+                diagnostic(c, expr->as.index.array->token, "error", "E2076",
+                           "Indexing requires an array value.",
+                           "Declare an array such as int[] values = [1, 2].");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            if (index != TYPE_INT && index != TYPE_ERROR) {
+                diagnostic(c, expr->as.index.index->token, "error", "E2077",
+                           "Array indexes must be int values.",
+                           "Use an integer index such as values[0].");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            expr->as.index.element_type = element;
+            expr->type = element;
+            return expr->type;
+        }
         case EXPR_CALL: {
             size_t borrow_base = checker->active_borrow_count;
             Function *function = find_function(c, expr->as.call.name);
@@ -524,13 +643,61 @@ static YType check_expr(Checker *checker, Expr *expr)
                     expr->type = TYPE_ERROR;
                 } else {
                     YType arg_type = check_expr(checker, expr->as.call.args[0]);
-                    if (arg_type != TYPE_STRING && arg_type != TYPE_ERROR) {
+                    if (!type_is_owned(arg_type) && arg_type != TYPE_ERROR) {
                         diagnostic(c, expr->as.call.args[0]->token, "error", "E2042",
-                                   "clone() currently accepts a string, not this type.",
-                                   "Pass a string value.");
+                                   "clone() accepts an owned string or array value.",
+                                   "Pass a string or array value.");
                         expr->type = TYPE_ERROR;
                     } else {
-                        expr->type = arg_type == TYPE_ERROR ? TYPE_ERROR : TYPE_STRING;
+                        expr->type = arg_type;
+                    }
+                }
+                checker->active_borrow_count = borrow_base;
+                return expr->type;
+            }
+            if (!function && strcmp(expr->as.call.name, "append") == 0) {
+                if (expr->as.call.count != 2) {
+                    diagnostic(c, expr->token, "error", "E2041",
+                               "append() expects an array and one value.",
+                               "Use append(values, item) to add one item to an array.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                } else {
+                    Expr *array_expr = expr->as.call.args[0];
+                    YType array_type = check_expr(checker, array_expr);
+                    YType value_type = check_expr(checker, expr->as.call.args[1]);
+                    YType element_type = array_element_type(array_type);
+                    if (element_type == TYPE_ERROR && array_type != TYPE_ERROR) {
+                        diagnostic(c, array_expr->token, "error", "E2076",
+                                   "append() requires an array as its first argument.",
+                                   "Pass a mutable array variable.");
+                        expr->type = TYPE_ERROR;
+                    } else if (!array_expr || array_expr->kind != EXPR_NAME ||
+                               !array_expr->as.name.variable) {
+                        diagnostic(c, array_expr ? array_expr->token : expr->token,
+                                   "error", "E2078",
+                                   "append() requires a named array variable.",
+                                   "Store the array in a variable before appending.");
+                        expr->type = TYPE_ERROR;
+                    } else {
+                        VarDecl *array_var = array_expr->as.name.variable;
+                        if (array_var->is_const) {
+                            diagnostic(c, array_expr->token, "error", "E2079",
+                                       "Cannot append to a const array.",
+                                       "Use a mutable array variable.");
+                            expr->type = TYPE_ERROR;
+                        } else if (value_type != TYPE_ERROR && element_type != TYPE_ERROR &&
+                                   value_type != element_type) {
+                            diagnostic(c, expr->as.call.args[1]->token, "error", "E2001",
+                                       "append() value type does not match the array element type.",
+                                       "Append a value with the array's element type.");
+                            expr->type = TYPE_ERROR;
+                        } else {
+                            if (element_type == TYPE_STRING && value_type == TYPE_STRING)
+                                consume_owned_value(checker, expr->as.call.args[1]);
+                            expr->type = TYPE_VOID;
+                        }
                     }
                 }
                 checker->active_borrow_count = borrow_base;
@@ -546,10 +713,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                     expr->type = TYPE_ERROR;
                 } else {
                     YType arg_type = check_expr(checker, expr->as.call.args[0]);
-                    if (arg_type != TYPE_STRING && arg_type != TYPE_ERROR) {
+                    if (arg_type != TYPE_STRING && !type_is_array(arg_type) && arg_type != TYPE_ERROR) {
                         diagnostic(c, expr->as.call.args[0]->token, "error", "E2042",
-                                   "len() currently accepts a string, not this type.",
-                                   "Pass a string value; array length will be supported with arrays.");
+                                   "len() accepts a string or array value.",
+                                   "Pass a string or array.");
                         expr->type = TYPE_ERROR;
                     } else {
                         expr->type = arg_type == TYPE_ERROR ? TYPE_ERROR : TYPE_INT;
@@ -620,7 +787,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                                  ? "Pass '&mut name' to a '&mut T' parameter."
                                  : "Pass '&name' to a shared '&T' parameter.");
                 }
-                if (arg_type == TYPE_STRING && param->type == TYPE_STRING &&
+                if (type_is_owned(arg_type) && param->type == arg_type &&
                     !param->is_borrowed) {
                     consume_string_value(checker, arg);
                 }
@@ -703,7 +870,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     diagnostic(c, var->initializer->token, "error", "E2001",
                                "Variable initializer type mismatch.", suggestion);
                 }
-                if (init_type == TYPE_STRING && var->type == TYPE_STRING) {
+                if (type_is_owned(init_type) && var->type == init_type) {
                     consume_string_value(checker, var->initializer);
                 }
                 var->initialized = true;
@@ -800,7 +967,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     diagnostic(c, stmt->token, "error", "E2054",
                                "A void function cannot return a value.",
                                "Use 'return;' or change the function return type.");
-                } else if (actual == TYPE_STRING && expected == TYPE_STRING) {
+                } else if (type_is_owned(actual) && expected == actual) {
                     consume_string_value(checker, stmt->as.return_value);
                 } else if (actual != TYPE_ERROR && actual != expected) {
                     char suggestion[192];
