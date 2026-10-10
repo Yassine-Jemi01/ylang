@@ -32,6 +32,7 @@ On macOS, install the Xcode Command Line Tools and Homebrew toolchain:
 ```sh
 xcode-select --install
 brew install make llvm
+# Use gmake instead of the built-in BSD make
 ```
 
 For the optional GUI runtime, also install SDL2 and pkg-config:
@@ -108,11 +109,11 @@ Linux (Debian/Ubuntu): `sudo apt install libsdl2-dev pkg-config`
 macOS: `brew install sdl2 pkg-config`
 
 ```sh
-make gui gui-example
+gmake gui gui-example
 ./build/gui-example
 ```
 
-The example opens a window, paints the background, and draws a rectangle. On headless systems, compilation works but running it requires a display session. To install the optional static library and header, use `sudo make install-gui`.
+The example opens a window, paints the background, and draws a rectangle. On headless systems, compilation works but running it requires a display session. To install the optional static library and header, use `sudo gmake install-gui` on macOS (or `sudo make install-gui` on Linux).
 
 Errors include a stable diagnostic code, path, line/column, source excerpt, caret, and a hint when available. Exit status is nonzero when a command fails.
 
