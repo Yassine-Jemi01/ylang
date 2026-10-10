@@ -152,7 +152,11 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
         case EXPR_INT: {
             const char *digits = expr->token.start;
             size_t digits_len = expr->token.length;
-            while (digits_len > 1 && *digits == '0') { digits++; digits_len--; }
+            bool is_hex = digits_len > 2 && digits[0] == '0' &&
+                          (digits[1] == 'x' || digits[1] == 'X');
+            if (!is_hex) {
+                while (digits_len > 1 && *digits == '0') { digits++; digits_len--; }
+            }
             sb_append(sb, "INT64_C("); sb_append_n(sb, digits, digits_len); sb_append(sb, ")");
             break;
         }
