@@ -173,7 +173,8 @@ grep -q 'All array elements must have the same type' build/array-mixed-types.out
 ./build/ylang build tests/file-io.yl -o build/test-file-io >/dev/null
 ./build/test-file-io > build/file-io.out
 diff -u tests/expected-file-io.txt build/file-io.out
-cmp build/io-output.txt <(printf 'YLang file I/O')
+printf 'YLang file I/O' > build/io-expected.txt
+cmp build/io-output.txt build/io-expected.txt
 
 # String standard library and stdin line input.
 ./build/ylang check examples/strings.yl >/dev/null
