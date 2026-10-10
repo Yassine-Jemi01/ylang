@@ -590,10 +590,14 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
             one_token.length = 1;
             Expr *one = new_expr(p->compiler, EXPR_INT, one_token);
             one->is_min_int = false;
-            Expr *sum = new_expr(p->compiler, EXPR_BINARY, op);
+            Token plus_token = op;
+            plus_token.type = TOKEN_PLUS;
+            plus_token.start = "+";
+            plus_token.length = 1;
+            Expr *sum = new_expr(p->compiler, EXPR_BINARY, plus_token);
             sum->as.binary.left = left;
             sum->as.binary.right = one;
-            sum->as.binary.op = op;
+            sum->as.binary.op = plus_token;
             Expr *assign = new_expr(p->compiler, EXPR_ASSIGN, op);
             assign->as.assign.target = left;
             assign->as.assign.right = sum;
