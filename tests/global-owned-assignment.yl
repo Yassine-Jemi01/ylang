@@ -1,0 +1,7 @@
+let string global_text = "static";
+
+function main() -> int {
+    global_text = clone("dynamic");
+    print(global_text);
+    return 0;
+}

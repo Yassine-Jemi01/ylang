@@ -164,6 +164,13 @@ set -e
 [ "$file_io_status" -eq 70 ]
 grep -q 'cannot open file for reading' build/file-io-error.out
 
+# Global storage cannot outlive a dynamically tracked value's function scope.
+if "$YLANG" check tests/global-owned-assignment.yl > build/global-owned-assignment.out 2>&1; then
+    echo "FAIL: dynamic owned value assignment to global was accepted" >&2
+    exit 1
+fi
+grep -q 'E2084' build/global-owned-assignment.out
+
 # String '+' concatenates without consuming either operand.
 "$YLANG" build tests/string-concat.yl -o "build/test-string-concat$EXEEXT" >/dev/null
 "./build/test-string-concat$EXEEXT" > build/string-concat.out

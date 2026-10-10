@@ -60,7 +60,7 @@ struct Expr {
     union {
         struct { Expr *right; Token op; } unary;
         struct { Expr *left; Expr *right; Token op; } binary;
-        struct { Expr *target; Expr *right; VarDecl *variable; } assign;
+        struct { Expr *target; Expr *right; VarDecl *variable; bool target_was_moved; } assign;
         struct { char *name; VarDecl *variable; } name;
         struct { Expr *target; VarDecl *variable; bool is_mut; } borrow;
         struct { char *name; Expr **args; size_t count; Function *function; } call;
@@ -95,6 +95,7 @@ struct VarDecl {
     bool is_mut_borrow;
     bool is_moved;
     bool is_borrowed_alias;
+    unsigned scope_depth;
     Expr *initializer;
 };
 

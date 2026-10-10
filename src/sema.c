@@ -24,6 +24,8 @@ typedef struct {
     Compiler *compiler;
     Scope *scope;
     Function *function;
+    Scope *function_scope;
+    unsigned block_depth;
     unsigned loop_depth;
     Expr *allowed_assignment;
     bool allow_borrow_expr;
@@ -113,6 +115,7 @@ static VarDecl *scope_lookup(Scope *scope, const char *name)
 
 static bool scope_add(Checker *checker, Scope *scope, VarDecl *var)
 {
+    var->scope_depth = checker->function ? checker->block_depth : 0;
     for (size_t i = 0; i < scope->count; i++) {
         if (strcmp(scope->vars[i]->name, var->name) == 0) {
             diagnostic(checker->compiler, var->token, "error", "E2004",
@@ -475,7 +478,14 @@ static YType check_expr(Checker *checker, Expr *expr)
                     break;
                 }
             }
+            expr->as.assign.target_was_moved = var->is_moved;
             YType right = check_expr_as(checker, expr->as.assign.right, var->type);
+            if (var->is_global && type_is_owned(right) &&
+                (!expr->as.assign.right || expr->as.assign.right->kind != EXPR_STRING)) {
+                diagnostic(c, expr->token, "error", "E2084",
+                           "A dynamically owned value cannot be assigned to global storage.",
+                           "Keep the global string literal-backed, or store dynamic values in a local variable.");
+            }
             if (var->is_const) {
                 diagnostic(c, expr->token, "error", "E2022",
                            "Cannot assign to a const variable.",
@@ -939,11 +949,14 @@ static void check_stmt(Checker *checker, Stmt *stmt)
     Compiler *c = checker->compiler;
     switch (stmt->kind) {
         case STMT_BLOCK: {
+            bool is_function_body = checker->function && stmt == checker->function->body;
+            if (!is_function_body) checker->block_depth++;
             Scope *outer = checker->scope;
             checker->scope = scope_new(c, outer);
             for (size_t i = 0; i < stmt->as.block.count; i++)
                 check_stmt(checker, stmt->as.block.items[i]);
             checker->scope = outer;
+            if (!is_function_body) checker->block_depth--;
             break;
         }
         case STMT_VAR: {
@@ -1198,7 +1211,9 @@ bool check_program(Compiler *c)
         Function *function = c->program->functions[i];
         checker.function = function;
         checker.loop_depth = 0;
-        checker.scope = scope_new(c, globals);
+        checker.block_depth = 0;
+        checker.function_scope = scope_new(c, globals);
+        checker.scope = checker.function_scope;
         for (size_t j = 0; j < function->param_count; j++) {
             function->params[j]->initialized = true;
             if (function->params[j]->type == TYPE_VOID) {
