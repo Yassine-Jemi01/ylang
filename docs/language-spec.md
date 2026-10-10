@@ -78,7 +78,26 @@ Operator precedence is conventional: unary operators, multiplication/division/mo
 
 Signed integer overflow, integer division/modulo by zero, and floating-point division by zero are handled by generated runtime helpers and terminate the program with a runtime-error message and status 70. This does not mean every possible C-level issue is guarded or that the language is memory-safe.
 
-## 8. Conditions and loops
+## Standard math library
+
+YLang provides a built-in `math` namespace for common floating-point operations. These calls are checked by the compiler and emitted as native C math-library calls.
+
+```ylang
+let float root = math.sqrt(81.0);
+let float power = math.pow(2.0, 8.0);
+let float angle = math.sin(0.0);
+let float bounded = math.clamp(12.0, 0.0, 10.0);
+```
+
+Available functions (all arguments must be `float`, and all return `float`):
+
+- Unary: `sqrt`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `sinh`, `cosh`, `tanh`, `exp`, `log`, `log10`, `floor`, `ceil`, `round`, `abs`.
+- Binary: `pow`, `atan2`, `min`, `max`, `hypot`.
+- Three arguments: `clamp(value, low, high)`; a lower bound greater than the upper bound triggers a runtime error.
+
+YLang does not implicitly convert integers to floats, so use float literals such as `9.0`. Domain errors and non-finite results follow the platform C math library behavior.
+
+## 9. Conditions and loops
 
 ```ylang
 if (age >= 18) {
