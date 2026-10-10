@@ -98,6 +98,25 @@ function main() -> int {
 - Whole-array assignment, passing arrays to functions, returning arrays, nested arrays, and `const` arrays are not supported yet.
 - Arrays must be initialized at declaration; their size cannot change at runtime.
 
+## Standard string and input library
+
+YLang includes byte-oriented string helpers and a line reader for simple command-line programs:
+
+```ylang
+let string name = io.read_line();
+let string greeting = string.concat("Hello, ", name);
+print(greeting);
+print(string.length(name));
+print(string.contains(name, "lang"));
+print(string.starts_with(name, "Y"));
+print(string.ends_with(name, "n"));
+```
+
+- `string.length(value)` returns the number of bytes, not Unicode characters.
+- `string.contains(value, needle)`, `string.starts_with(value, prefix)`, and `string.ends_with(value, suffix)` return `bool`.
+- `string.concat(left, right)` returns a new string. The generated runtime tracks allocated strings until process exit, so repeated concatenation in a long-running loop can increase memory use.
+- `io.read_line()` reads one line from standard input and removes its trailing newline. At end-of-file it returns an empty string. Input is currently line-oriented; there is no structured file I/O or exception-based I/O error handling yet.
+
 ## Standard math library
 
 YLang provides a built-in `math` namespace for common floating-point operations. These calls are checked by the compiler and emitted as native C math-library calls.
@@ -161,6 +180,6 @@ Parameter and return types are explicit. Function overloading is not supported. 
 
 ## 11. Unsupported features and implementation limits
 
-The following are not supported by the 1.0.0 language subset: arrays, raw pointers/references, classes/OOP, exception syntax (`try`/`catch`), `for`/`while`, modules, generics, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
+The following are not supported by the current language subset: classes/OOP, exception syntax (`try`/`catch`), `for`/`while`, modules, generics, raw pointers/references, passing or returning arrays, nested/const arrays, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
 
 The compiler generates C, so native code inherits ordinary process privileges and is not sandboxed. Some formatted string values are stored until process exit; creating many such values in a long-running loop can increase memory consumption. The language does not define ownership/borrowing or a garbage collector in this release. Do not assume Rust-like memory-safety guarantees.
