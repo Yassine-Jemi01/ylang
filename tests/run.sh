@@ -226,6 +226,22 @@ if "$YLANG" check tests/for-each-type-error.yl > build/for-each-type-error.out 2
 fi
 grep -q 'E2080' build/for-each-type-error.out
 
+# Moving string values into arrays transfers ownership; indexed string extraction requires clone().
+for case_name in string-array-move-use-after-move string-array-duplicate-move string-array-index-move; do
+    if "$YLANG" check "tests/$case_name.yl" > "build/$case_name.out" 2>&1; then
+        echo "FAIL: $case_name was accepted" >&2
+        exit 1
+    fi
+done
+grep -q 'E2070' build/string-array-move-use-after-move.out
+grep -q 'E2070' build/string-array-duplicate-move.out
+grep -q 'E2083' build/string-array-index-move.out
+
+"$YLANG" build tests/string-array-clone-index.yl -o "build/test-string-array-clone-index$EXEEXT" >/dev/null
+"./build/test-string-array-clone-index$EXEEXT" > build/string-array-clone-index.out
+normalize_output "build/string-array-clone-index.out"
+diff -u tests/expected-string-array-clone-index.txt build/string-array-clone-index.out
+
 # Typed arrays support literal creation, checked indexing, append, length, clone, and moves.
 "$YLANG" build tests/arrays.yl -o "build/test-arrays$EXEEXT" >/dev/null
 "./build/test-arrays$EXEEXT" > build/arrays.out

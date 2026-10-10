@@ -1,0 +1,6 @@
+function main() -> int {
+    let string[] values = ["owned"];
+    let string first = clone(values[0]);
+    print(first, values[0]);
+    return 0;
+}
