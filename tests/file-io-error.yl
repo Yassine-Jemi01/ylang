@@ -1,0 +1,5 @@
+function main() -> int {
+    let string content = read_file("build/ylang-missing-directory/not-found.txt");
+    print(content);
+    return 0;
+}

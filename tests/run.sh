@@ -149,6 +149,21 @@ if command -v clang >/dev/null 2>&1; then
 fi
 
 
+# Portable text file I/O round-trips on Linux and Windows.
+"$YLANG" build tests/file-io.yl -o "build/test-file-io$EXEEXT" >/dev/null
+"./build/test-file-io$EXEEXT" > build/file-io.out
+normalize_output "build/file-io.out"
+diff -u tests/expected-file-io.txt build/file-io.out
+rm -f build/ylang-file-io.txt
+
+"$YLANG" build tests/file-io-error.yl -o "build/test-file-io-error$EXEEXT" >/dev/null
+set +e
+"./build/test-file-io-error$EXEEXT" > build/file-io-error.out 2>&1
+file_io_status=$?
+set -e
+[ "$file_io_status" -eq 70 ]
+grep -q 'cannot open file for reading' build/file-io-error.out
+
 # Numeric parsing of user input succeeds and invalid values fail predictably.
 "$YLANG" build tests/parse-input.yl -o "build/test-parse-input$EXEEXT" >/dev/null
 "./build/test-parse-input$EXEEXT" < tests/input-values.txt > build/parse-input.out

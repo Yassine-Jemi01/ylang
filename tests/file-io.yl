@@ -1,0 +1,6 @@
+function main() -> int {
+    write_file("build/ylang-file-io.txt", "YLang");
+    let string content = read_file("build/ylang-file-io.txt");
+    print(content, len(content));
+    return 0;
+}
