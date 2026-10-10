@@ -1,23 +1,20 @@
-# YLang Ownership and Borrowing
+# YLang 2 — Ownership and Borrowing
 
-**Status:** Scalar borrowing is implemented on `dev/lsp-foundation`. The complete owning-memory model is still a design target, not a current safety guarantee. This work does not change the stable YLang 1.0.0 contract on `main`.
+**Status:** development preview. Basic owned-value moves are checked for strings and arrays, and call-scoped scalar borrows are supported. This is not a complete borrow/lifetime checker and is not a Rust-equivalent safety guarantee.
 
-## Goals
+## Design rules
 
-- Make aliasing and mutation visible at function boundaries.
-- Reject conflicting shared and mutable borrows in the implemented subset.
-- Keep borrows limited to a function call; references cannot be stored in locals or returned.
-- Extend the design to heap-owned strings and arrays only after move, clone, and cleanup rules are implemented.
-- Do not claim Rust-equivalent memory safety from a partial implementation.
+- `int`, `float`, `bool`, and `char` copy by value.
+- `string` and the supported one-dimensional arrays are owned values. Passing a named value by value, initializing a binding from another named owner, or returning a named value moves it.
+- The source binding becomes unavailable after a detected move. Assigning a fresh value back into that binding reinitializes it.
+- `clone(value)` is the explicit way to obtain a separate string or array copy.
+- A move from a const binding or global is rejected in supported contexts; clone the value when a separate copy is required.
+- Borrow expressions may only be passed directly to matching function parameters; reference values cannot be stored or returned.
 
-## Value and ownership direction
-
-`int`, `float`, `bool`, and `char` are copyable scalar values. `string` and future arrays are intended to be owned values, moved by default with explicit cloning. The compiler must eventually reject use after move and clean up owned values on all exits. That heap ownership work is **not implemented yet**.
-
-## Borrowed function parameters
+## Example
 
 ```ylang
-function show(&int value) -> void {
+function report(&int value) -> void {
     print(value);
 }
 
@@ -26,33 +23,31 @@ function increment(&mut int value) -> void {
 }
 
 function main() -> int {
-    let int score = 41;
-    show(&score);
-    increment(&mut score);
-    print(score); // 42
+    let int count = 41;
+    report(&count);
+    increment(&mut count);
+    print(count);
+
+    let string owner = "YLang";
+    let string other = owner;       // owner is moved
+    let string copy = clone(other); // explicit copy
+    print(other, copy);
     return 0;
 }
 ```
 
-- `&T` is a shared borrow and permits reading but not assigning to the borrowed binding.
-- `&mut T` is an exclusive mutable borrow and permits reading/writing through that parameter.
-- The call site must match explicitly: `show(&score)`, `increment(&mut score)`.
-- Borrow expressions may only appear as direct arguments to matching borrowed parameters.
-- Borrows last for the duration of the call; no local reference variables, reference returns, stored references, raw pointers, or lifetime annotations are supported.
-- Multiple shared borrows can coexist.
-- Mutable and shared borrows of the same binding cannot overlap within one call, including nested calls in another argument. Reading or assigning to a binding during an active mutable borrow is rejected.
-- Mutable globals cannot be borrowed because other functions may access the same global through a different name.
-- The first implementation supports `int`, `float`, `bool`, and `char` only. Borrowing `string` and arrays is rejected until their ownership and lifetime behavior is implemented.
+## Borrow subset
 
-## Next milestones
+- `&T` is a shared read borrow; assigning to the borrowed parameter is rejected.
+- `&mut T` is an exclusive mutable borrow.
+- Borrow mode must match the parameter declaration.
+- Conflicting shared/mutable borrows of the same binding in a single call are rejected, including the supported nested-call argument cases.
+- Borrowing currently supports `int`, `float`, `bool`, and `char` only. Strings, arrays, globals, local reference bindings, and reference returns are not borrowable in this initial subset.
 
-1. Stabilize borrow-mode and conflict diagnostics with positive and negative tests.
-2. Define move semantics for owned strings, use-after-move analysis, explicit cloning, and cleanup on all control-flow exits.
-3. Replace process-lifetime f-string buffers with deterministic ownership/cleanup.
-4. Add arrays as owned values, with explicit move/clone semantics and runtime bounds checks.
-5. Enable borrowing of strings and arrays only after lifetimes and cleanup are covered by tests.
-6. Update Tree-sitter parser generation and Neovim integration to the new grammar, then run the full platform pass.
+## Known gaps
 
-## Safety boundary
+The checker uses a first-pass moved flag with conservative branch/loop merging; it is not a full control-flow dataflow engine. There are still paths where cleanup is deferred until process shutdown, especially on early returns and strings stored within arrays. The array/string runtime uses a tracking registry as a fallback, not a proof that each owned value is deterministically released on every path. Borrow analysis cannot reason about hidden aliases through global variables or foreign code.
 
-The C backend and runtime remain part of the trusted implementation. This first borrowing feature checks aliasing around function calls, but it is not a complete ownership/lifetime checker and does not prove memory safety. Generated-code bugs, unchecked runtime operations, or unsupported features can still cause unsafe behavior.
+Before stable 2.x, ownership checking must become proper control-flow dataflow, every ownership transfer must have one well-defined lowering rule, owned values must be dropped exactly once on every exit (`return`, `break`, `continue`, normal scope exit), and the runtime needs sanitizer-backed tests for move/reinitialize/clone and arrays of strings.
+
+Do not claim Rust-equivalent memory safety until the compiler, generated C, runtime, and supported interop boundary have been reviewed and extensively tested.
