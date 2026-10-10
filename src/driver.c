@@ -181,12 +181,12 @@ static int run_native_compiler(const char *cc, const char *c_path,
     if (pid == 0) {
 #if defined(__APPLE__)
         /* macOS uses Apple's linker; GNU ld's -z hardening flags are Linux-only. */
-        execlp(cc, cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic", "-Wno-unused-function",
+        execlp(cc, cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic", "-Wno-unused-function", "-Wno-unused-variable", "-Wno-unused-but-set-variable",
                optimization, "-g", "-fstack-protector-strong", "-fPIE",
                c_path, "-lm", "-pie", "-o", output_path, (char *)NULL);
 #else
         /* Linux: enable fortification and GNU ld RELRO/NOW hardening. */
-        execlp(cc, cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic", "-Wno-unused-function",
+        execlp(cc, cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic", "-Wno-unused-function", "-Wno-unused-variable", "-Wno-unused-but-set-variable",
                optimization, "-g", "-D_FORTIFY_SOURCE=3", "-fstack-protector-strong", "-fPIE",
                c_path, "-lm", "-pie", "-Wl,-z,relro,-z,now", "-o", output_path, (char *)NULL);
 #endif

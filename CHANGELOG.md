@@ -2,6 +2,13 @@
 
 All notable changes to YLang are documented here. This project follows semantic versioning for future releases.
 
+## [1.1.0] - 2026-10-10
+
+- Added explicit conversions: `to_float`, range-checked `to_int`, and `to_string`.
+- Added `string.is_int` and `string.parse_int` for checked integer text parsing.
+- Added `io.file_exists` and suppressed common generated-C unused-variable warnings in normal builds.
+- Documented diagnostic codes and refreshed the language specification for 1.1.0.
+
 ## [1.0.0] - 2026-10-09
 
 First stable release of the documented YLang language subset.

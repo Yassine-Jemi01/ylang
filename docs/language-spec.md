@@ -1,6 +1,16 @@
-# YLang Language Specification — 1.0.0
+# YLang Language Specification — 1.1.0
 
-This document defines the supported language subset for the YLang 1.0.0 stable release. Syntax not listed here is not part of the v1.0 language contract.
+This document defines the supported language subset for the YLang 1.1.0 release. Syntax not listed here is not part of the v1.0 language contract.
+
+## Explicit conversions
+
+YLang does not implicitly convert values between types. Use explicit conversion functions:
+
+- `to_float(integer)` converts a signed 64-bit integer to a double-precision float.
+- `to_int(float)` truncates toward zero and terminates with a runtime error if the input is non-finite or outside the signed 64-bit range.
+- `to_string(value)` supports `int`, `float`, `bool`, `char`, and `string`. A string input is returned unchanged.
+- `string.is_int(text)` returns whether the entire string is a valid base-10 signed 64-bit integer.
+- `string.parse_int(text)` converts a valid integer string; invalid or out-of-range input produces a runtime error. Check with `string.is_int` first when parsing untrusted input.
 
 ## 1. Compilation model
 

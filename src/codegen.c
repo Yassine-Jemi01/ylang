@@ -129,9 +129,12 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "string.ends_with") == 0) return "yl_string_ends_with";
     if (strcmp(name, "string.concat") == 0) return "yl_string_concat";
     if (strcmp(name, "string.replace") == 0) return "yl_string_replace";
+    if (strcmp(name, "string.parse_int") == 0) return "yl_string_parse_int";
+    if (strcmp(name, "string.is_int") == 0) return "yl_string_is_int";
     if (strcmp(name, "io.read_line") == 0) return "yl_read_line";
     if (strcmp(name, "io.read_file") == 0) return "yl_read_file";
     if (strcmp(name, "io.write_file") == 0) return "yl_write_file";
+    if (strcmp(name, "io.file_exists") == 0) return "yl_path_exists";
     if (strcmp(name, "path.exists") == 0) return "yl_path_exists";
     if (strcmp(name, "path.basename") == 0) return "yl_path_basename";
     if (strcmp(name, "path.extension") == 0) return "yl_path_extension";
@@ -187,6 +190,26 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             sb_append(sb, " = "); emit_expr(sb, expr->as.assign.right); sb_append(sb, ")");
             break;
         case EXPR_CALL: {
+            if (strcmp(expr->as.call.name, "to_string") == 0 && expr->as.call.count == 1) {
+                Expr *arg = expr->as.call.args[0];
+                switch (arg->type) {
+                    case TYPE_STRING: emit_expr(sb, arg); break;
+                    case TYPE_INT: sb_append(sb, "yl_to_string_int("); emit_expr(sb, arg); sb_append(sb, ")"); break;
+                    case TYPE_FLOAT: sb_append(sb, "yl_to_string_float("); emit_expr(sb, arg); sb_append(sb, ")"); break;
+                    case TYPE_BOOL: sb_append(sb, "yl_boolstr("); emit_expr(sb, arg); sb_append(sb, ")"); break;
+                    case TYPE_CHAR: sb_append(sb, "yl_to_string_char("); emit_expr(sb, arg); sb_append(sb, ")"); break;
+                    default: sb_append(sb, "\"\""); break;
+                }
+                break;
+            }
+            if (strcmp(expr->as.call.name, "to_float") == 0 && expr->as.call.count == 1) {
+                sb_append(sb, "((double)("); emit_expr(sb, expr->as.call.args[0]); sb_append(sb, "))");
+                break;
+            }
+            if (strcmp(expr->as.call.name, "to_int") == 0 && expr->as.call.count == 1) {
+                sb_append(sb, "yl_to_int("); emit_expr(sb, expr->as.call.args[0]); sb_append(sb, ")");
+                break;
+            }
             const char *builtin_name = builtin_c_name(expr->as.call.name);
             sb_append(sb, expr->as.call.function ? expr->as.call.function->c_name :
                          (builtin_name ? builtin_name : "yl_missing_function"));
@@ -417,6 +440,12 @@ static void emit_runtime(FILE *out)
         "    YLTracked *node = malloc(sizeof(*node)); if (!node) yl_runtime_error(\"out of memory\");\n"
         "    node->ptr = ptr; node->next = yl_tracked; yl_tracked = node; return ptr;\n}\n"
         "static const char *yl_boolstr(bool value) { return value ? \"true\" : \"false\"; }\n"
+        "static const char *yl_to_string_int(int64_t value) { return yl_format(\"%lld\", (long long)value); }\n"
+        "static const char *yl_to_string_float(double value) { return yl_format(\"%.17g\", value); }\n"
+        "static const char *yl_to_string_char(char value) { return yl_format(\"%c\", (int)value); }\n"
+        "static int64_t yl_to_int(double value) { if (!isfinite(value) || value < -9223372036854775808.0 || value >= 9223372036854775808.0) yl_runtime_error(\"to_int value is outside the signed 64-bit range\"); return (int64_t)value; }\n"
+        "static bool yl_string_is_int(const char *value) { if (!value || !*value) return false; errno = 0; char *end = NULL; (void)strtoll(value, &end, 10); return errno != ERANGE && end != value && end && *end == '\\0'; }\n"
+        "static int64_t yl_string_parse_int(const char *value) { if (!yl_string_is_int(value)) yl_runtime_error(\"string.parse_int received invalid or out-of-range integer text\"); return (int64_t)strtoll(value, NULL, 10); }\n"
         "static const char *yl_format(const char *format, ...) {\n"
         "    va_list args; va_start(args, format); va_list copy; va_copy(copy, args);\n"
         "    int needed = vsnprintf(NULL, 0, format, copy); va_end(copy);\n"

@@ -179,9 +179,12 @@ static const StringBuiltin string_builtins[] = {
     {"string.ends_with", 2, TYPE_BOOL},
     {"string.concat", 2, TYPE_STRING},
     {"string.replace", 3, TYPE_STRING},
+    {"string.parse_int", 1, TYPE_INT},
+    {"string.is_int", 1, TYPE_BOOL},
     {"io.read_line", 0, TYPE_STRING},
     {"io.read_file", 1, TYPE_STRING},
     {"io.write_file", 2, TYPE_BOOL},
+    {"io.file_exists", 1, TYPE_BOOL},
     {"path.exists", 1, TYPE_BOOL},
     {"path.basename", 1, TYPE_STRING},
     {"path.extension", 1, TYPE_STRING},
@@ -492,6 +495,36 @@ static YType check_expr(Checker *checker, Expr *expr)
             return expr->type;
         }
         case EXPR_CALL: {
+            if (strcmp(expr->as.call.name, "to_float") == 0 ||
+                strcmp(expr->as.call.name, "to_int") == 0 ||
+                strcmp(expr->as.call.name, "to_string") == 0) {
+                const char *name = expr->as.call.name;
+                if (expr->as.call.count != 1) {
+                    diagnostic(c, expr->token, "error", "E2043",
+                               "A conversion function expects exactly one argument.",
+                               "Pass one value, for example to_float(42).");
+                }
+                YType arg_type = expr->as.call.count ? check_expr(checker, expr->as.call.args[0]) : TYPE_ERROR;
+                for (size_t i = 1; i < expr->as.call.count; i++) (void)check_expr(checker, expr->as.call.args[i]);
+                if (strcmp(name, "to_float") == 0) {
+                    if (arg_type != TYPE_INT && arg_type != TYPE_ERROR)
+                        diagnostic(c, expr->token, "error", "E2045", "to_float expects an int argument.",
+                                   "Use to_float(integer_value); float values do not need conversion.");
+                    expr->type = TYPE_FLOAT;
+                } else if (strcmp(name, "to_int") == 0) {
+                    if (arg_type != TYPE_FLOAT && arg_type != TYPE_ERROR)
+                        diagnostic(c, expr->token, "error", "E2045", "to_int expects a float argument.",
+                                   "Use to_int(float_value); conversion truncates toward zero and checks range.");
+                    expr->type = TYPE_INT;
+                } else {
+                    if (arg_type != TYPE_INT && arg_type != TYPE_FLOAT && arg_type != TYPE_BOOL &&
+                        arg_type != TYPE_CHAR && arg_type != TYPE_STRING && arg_type != TYPE_ERROR)
+                        diagnostic(c, expr->token, "error", "E2045", "to_string cannot convert this type.",
+                                   "Supported types are int, float, bool, char, and string.");
+                    expr->type = TYPE_STRING;
+                }
+                return expr->type;
+            }
             const StringBuiltin *string_builtin = find_string_builtin(expr->as.call.name);
             if (string_builtin) {
                 if (expr->as.call.count != string_builtin->arity) {
