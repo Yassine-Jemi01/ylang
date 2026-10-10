@@ -585,11 +585,11 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
                 left = new_expr(p->compiler, EXPR_ERROR, op);
                 continue;
             }
-            Expr *one = new_expr(p->compiler, EXPR_INT, op);
-            one->as.name.name = NULL;
+            Token one_token = op;
+            one_token.start = "1";
+            one_token.length = 1;
+            Expr *one = new_expr(p->compiler, EXPR_INT, one_token);
             one->is_min_int = false;
-            /* Numeric literal tokens are parsed from their source spelling. */
-            one->kind = EXPR_INT;
             Expr *sum = new_expr(p->compiler, EXPR_BINARY, op);
             sum->as.binary.left = left;
             sum->as.binary.right = one;
