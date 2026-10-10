@@ -588,6 +588,12 @@ static void check_stmt(Checker *checker, Stmt *stmt)
         }
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
+            if (var->is_array &&
+                (!var->initializer || var->initializer->kind != EXPR_ARRAY)) {
+                diagnostic(c, var->token, "error", "E2038",
+                           "Array declarations require an array literal initializer.",
+                           "Use syntax such as 'let int values[] = [1, 2, 3];'.");
+            }
             if (var->type == TYPE_VOID) {
                 diagnostic(c, var->token, "error", "E2005",
                            "A variable cannot have type void.",
