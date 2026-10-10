@@ -117,7 +117,7 @@ bool ylgui_window_poll(YlguiWindow *window)
             }
         }
     }
-    gui_error[0] = '\\0';
+    gui_error[0] = '\0';
     return window->open;
 }
 
@@ -132,7 +132,7 @@ bool ylgui_clear(YlguiWindow *window, uint8_t red, uint8_t green, uint8_t blue)
         set_sdl_error("Could not clear window");
         return false;
     }
-    gui_error[0] = '\\0';
+    gui_error[0] = '\0';
     return true;
 }
 
@@ -151,7 +151,7 @@ bool ylgui_draw_rect(YlguiWindow *window, int x, int y, int width, int height,
         set_sdl_error("Could not draw rectangle");
         return false;
     }
-    gui_error[0] = '\\0';
+    gui_error[0] = '\0';
     return true;
 }
 
@@ -162,7 +162,7 @@ bool ylgui_present(YlguiWindow *window)
         return false;
     }
     SDL_RenderPresent(window->renderer);
-    gui_error[0] = '\\0';
+    gui_error[0] = '\0';
     return true;
 }
 
