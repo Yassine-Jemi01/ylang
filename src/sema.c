@@ -20,6 +20,7 @@ typedef struct {
     Function *function;
     unsigned loop_depth;
     Expr *allowed_assignment;
+    bool allow_array_name;
 } Checker;
 
 static Scope *scope_new(Compiler *c, Scope *parent)
@@ -246,6 +247,13 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             expr->as.name.name = var->name;
             expr->as.name.variable = var;
+            if (var->is_array && !checker->allow_array_name) {
+                diagnostic(c, expr->token, "error", "E2029",
+                           "An array must be indexed before it can be used as a value.",
+                           "Use an element such as values[0], or add array support to the function you want to call.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
             if (!var->initialized) {
                 char suggestion[256];
                 (void)snprintf(suggestion, sizeof(suggestion),
@@ -284,6 +292,14 @@ static YType check_expr(Checker *checker, Expr *expr)
                 return expr->type;
             }
             expr->as.assign.variable = var;
+            if (var->is_array && target && target->kind == EXPR_NAME) {
+                diagnostic(c, expr->token, "error", "E2037",
+                           "Whole-array assignment is not supported.",
+                           "Assign to a specific element, for example values[0] = 5;.");
+                (void)check_expr(checker, expr->as.assign.right);
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
             YType right = check_expr(checker, expr->as.assign.right);
             if (var->is_const) {
                 diagnostic(c, expr->token, "error", "E2022",
@@ -423,7 +439,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
+            bool previous_array_access = checker->allow_array_name;
+            checker->allow_array_name = true;
             (void)check_expr(checker, target);
+            checker->allow_array_name = previous_array_access;
             VarDecl *var = target->as.name.variable;
             expr->as.index.variable = var;
             YType index_type = check_expr(checker, expr->as.index.index);
@@ -541,6 +560,11 @@ static bool global_initializer_is_constant(Expr *expr)
     if (!expr) return true;
     switch (expr->kind) {
         case EXPR_INT: case EXPR_FLOAT: case EXPR_BOOL: case EXPR_CHAR: case EXPR_STRING:
+            return true;
+        case EXPR_ARRAY:
+            for (size_t i = 0; i < expr->as.array.count; i++) {
+                if (!global_initializer_is_constant(expr->as.array.items[i])) return false;
+            }
             return true;
         case EXPR_UNARY:
             return (expr->as.unary.op.type == TOKEN_MINUS) &&
