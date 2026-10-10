@@ -1,0 +1,7 @@
+function main() -> int {
+    let int answer = parse_int(read_line());
+    let float ratio = parse_float(read_line());
+    print(answer, ratio);
+    print(answer + 1);
+    return 0;
+}

@@ -183,7 +183,7 @@
       "name": "storage.type.ylang"
     },
     "builtin-functions": {
-      "match": "\\b(?:print|read_line|len|clone|append)\\b",
+      "match": "\\b(?:print|read_line|parse_int|parse_float|len|clone|append)\\b",
       "name": "support.function.builtin.ylang"
     },
     "function-calls": {

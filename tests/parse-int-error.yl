@@ -1,0 +1,5 @@
+function main() -> int {
+    let int answer = parse_int(read_line());
+    print(answer);
+    return 0;
+}

@@ -149,6 +149,20 @@ if command -v clang >/dev/null 2>&1; then
 fi
 
 
+# Numeric parsing of user input succeeds and invalid values fail predictably.
+"$YLANG" build tests/parse-input.yl -o "build/test-parse-input$EXEEXT" >/dev/null
+"./build/test-parse-input$EXEEXT" < tests/input-values.txt > build/parse-input.out
+normalize_output "build/parse-input.out"
+diff -u tests/expected-parse-input.txt build/parse-input.out
+
+"$YLANG" build tests/parse-int-error.yl -o "build/test-parse-int-error$EXEEXT" >/dev/null
+set +e
+"./build/test-parse-int-error$EXEEXT" < tests/input-invalid-int.txt > build/parse-int-error.out 2>&1
+parse_int_status=$?
+set -e
+[ "$parse_int_status" -eq 70 ]
+grep -q 'invalid integer input' build/parse-int-error.out
+
 # Standard input and byte-length builtins work with dynamic input on all platforms.
 "$YLANG" build tests/read-line.yl -o "build/test-read-line$EXEEXT" >/dev/null
 printf 'YLang\r\n' > build/read-line.in
