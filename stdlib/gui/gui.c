@@ -3,7 +3,6 @@
 #include <SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 struct YlguiWindow {
     SDL_Window *window;
@@ -90,6 +89,8 @@ YlguiWindow *ylgui_window_create(const char *title, int width, int height)
 
     result->window_id = SDL_GetWindowID(result->window);
     result->open = true;
+    result->next = gui_windows;
+    gui_windows = result;
     gui_error[0] = '\0';
     return result;
 }
