@@ -10,9 +10,11 @@ struct YlguiWindow {
     SDL_Renderer *renderer;
     Uint32 window_id;
     bool open;
+    struct YlguiWindow *next;
 };
 
 static bool gui_initialized;
+static YlguiWindow *gui_windows;
 static char gui_error[256];
 
 static void set_error(const char *message)
@@ -102,13 +104,20 @@ bool ylgui_window_poll(YlguiWindow *window)
     SDL_Event event;
     while (SDL_PollEvent(&event) != 0) {
         if (event.type == SDL_QUIT) {
-            window->open = false;
+            for (YlguiWindow *at = gui_windows; at != NULL; at = at->next) {
+                at->open = false;
+            }
         } else if (event.type == SDL_WINDOWEVENT &&
-                   event.window.windowID == window->window_id &&
                    event.window.event == SDL_WINDOWEVENT_CLOSE) {
-            window->open = false;
+            for (YlguiWindow *at = gui_windows; at != NULL; at = at->next) {
+                if (at->window_id == event.window.windowID) {
+                    at->open = false;
+                    break;
+                }
+            }
         }
     }
+    gui_error[0] = '\\0';
     return window->open;
 }
 
@@ -123,6 +132,7 @@ bool ylgui_clear(YlguiWindow *window, uint8_t red, uint8_t green, uint8_t blue)
         set_sdl_error("Could not clear window");
         return false;
     }
+    gui_error[0] = '\\0';
     return true;
 }
 
@@ -141,6 +151,7 @@ bool ylgui_draw_rect(YlguiWindow *window, int x, int y, int width, int height,
         set_sdl_error("Could not draw rectangle");
         return false;
     }
+    gui_error[0] = '\\0';
     return true;
 }
 
@@ -151,12 +162,16 @@ bool ylgui_present(YlguiWindow *window)
         return false;
     }
     SDL_RenderPresent(window->renderer);
+    gui_error[0] = '\\0';
     return true;
 }
 
 void ylgui_window_destroy(YlguiWindow *window)
 {
     if (window == NULL) return;
+    YlguiWindow **link = &gui_windows;
+    while (*link != NULL && *link != window) link = &(*link)->next;
+    if (*link == window) *link = window->next;
     if (window->renderer != NULL) SDL_DestroyRenderer(window->renderer);
     if (window->window != NULL) SDL_DestroyWindow(window->window);
     free(window);
