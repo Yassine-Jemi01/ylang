@@ -9,6 +9,23 @@
 #include <string.h>
 
 /* --------------------------- C code generation -------------------------- */
+static unsigned emitted_scope_depth = 0;
+static unsigned emitted_loop_scope_depths[256];
+static size_t emitted_loop_scope_count = 0;
+
+static void append_scope_name(StringBuilder *sb, bool arrays, unsigned depth)
+{
+    const char *base = arrays ? "yl_scope_arrays" : "yl_scope_strings";
+    if (depth == 0) sb_append(sb, base);
+    else sb_appendf(sb, "%s_%u", base, depth);
+}
+
+static void write_scope_name(FILE *out, bool arrays, unsigned depth)
+{
+    const char *base = arrays ? "yl_scope_arrays" : "yl_scope_strings";
+    if (depth == 0) fputs(base, out);
+    else fprintf(out, "%s_%u", base, depth);
+}
 static const char *c_base_type(YType type)
 {
     switch (type) {
@@ -187,11 +204,47 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             emit_expr(sb, expr->as.borrow.target);
             sb_append(sb, ")");
             break;
-        case EXPR_ASSIGN:
+        case EXPR_ASSIGN: {
+            Expr *target = expr->as.assign.target;
+            VarDecl *var = expr->as.assign.variable;
+            if (target && target->kind == EXPR_INDEX && expr->type == TYPE_STRING &&
+                target->as.index.array && target->as.index.array->kind == EXPR_NAME &&
+                target->as.index.array->as.name.variable) {
+                VarDecl *array_var = target->as.index.array->as.name.variable;
+                sb_append(sb, "yl_array_set_string(");
+                emit_expr(sb, target->as.index.array);
+                sb_append(sb, ", "); emit_expr(sb, target->as.index.index);
+                sb_append(sb, ", "); emit_expr(sb, expr->as.assign.right);
+                sb_append(sb, ", 5, ");
+                append_scope_name(sb, false, array_var->scope_depth);
+                sb_append(sb, ")");
+                break;
+            }
+            if (var && (var->type == TYPE_STRING || type_is_array(var->type))) {
+                sb_append(sb, "("); sb_append(sb, var->c_name); sb_append(sb, " = ");
+                if (var->type == TYPE_STRING) {
+                    sb_append(sb, "yl_assign_string(");
+                    sb_append(sb, var->c_name); sb_append(sb, ", ");
+                    emit_expr(sb, expr->as.assign.right);
+                    sb_appendf(sb, ", %s, ", expr->as.assign.target_was_moved ? "true" : "false");
+                    append_scope_name(sb, false, var->scope_depth);
+                } else {
+                    sb_append(sb, "yl_assign_array(");
+                    sb_append(sb, var->c_name); sb_append(sb, ", ");
+                    emit_expr(sb, expr->as.assign.right);
+                    sb_appendf(sb, ", %s, ", expr->as.assign.target_was_moved ? "true" : "false");
+                    append_scope_name(sb, false, var->scope_depth);
+                    sb_append(sb, ", ");
+                    append_scope_name(sb, true, var->scope_depth);
+                }
+                sb_append(sb, "))");
+                break;
+            }
             sb_append(sb, "(");
-            emit_expr(sb, expr->as.assign.target);
+            emit_expr(sb, target);
             sb_append(sb, " = "); emit_expr(sb, expr->as.assign.right); sb_append(sb, ")");
             break;
+        }
         case EXPR_ARRAY: {
             YType element = expr->as.array.element_type;
             if (expr->as.array.count == 0) {
@@ -203,7 +256,15 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                        c_base_type(element), c_base_type(element));
             for (size_t i = 0; i < expr->as.array.count; i++) {
                 if (i) sb_append(sb, ", ");
-                emit_expr(sb, expr->as.array.items[i]);
+                if (element == TYPE_STRING) {
+                    sb_append(sb, "yl_rehome_string(");
+                    emit_expr(sb, expr->as.array.items[i]);
+                    sb_append(sb, ", ");
+                    append_scope_name(sb, false, emitted_scope_depth);
+                    sb_append(sb, ")");
+                } else {
+                    emit_expr(sb, expr->as.array.items[i]);
+                }
             }
             sb_appendf(sb, "}, %zu, %d)", expr->as.array.count, array_kind(expr->type));
             break;
@@ -226,7 +287,15 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 sb_append(sb, "yl_array_append(&");
                 emit_expr(sb, array_arg);
                 sb_appendf(sb, ", &(%s){", c_base_type(element));
-                emit_expr(sb, value_arg);
+                if (element == TYPE_STRING && array_arg->as.name.variable) {
+                    sb_append(sb, "yl_rehome_string(");
+                    emit_expr(sb, value_arg);
+                    sb_append(sb, ", ");
+                    append_scope_name(sb, false, array_arg->as.name.variable->scope_depth);
+                    sb_append(sb, ")");
+                } else {
+                    emit_expr(sb, value_arg);
+                }
                 sb_appendf(sb, "}, sizeof(%s), %d)", c_base_type(element), array_kind(array_arg->type));
                 break;
             }
@@ -413,12 +482,26 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
 {
     if (!stmt) return;
     switch (stmt->kind) {
-        case STMT_BLOCK:
+        case STMT_BLOCK: {
+            unsigned parent_depth = emitted_scope_depth;
+            unsigned child_depth = parent_depth + 1;
             emit_indent(out, indent); fputs("{\n", out);
+            emit_indent(out, indent + 1); fputs("YLTracked *", out);
+            write_scope_name(out, false, child_depth);
+            fputs(" = yl_scope_enter_strings();\n", out);
+            emit_indent(out, indent + 1); fputs("YLTrackedArray *", out);
+            write_scope_name(out, true, child_depth);
+            fputs(" = yl_scope_enter_arrays();\n", out);
+            emitted_scope_depth = child_depth;
             for (size_t i = 0; i < stmt->as.block.count; i++)
                 emit_stmt(out, stmt->as.block.items[i], indent + 1);
+            emitted_scope_depth = parent_depth;
+            emit_indent(out, indent + 1); fputs("yl_cleanup_scope(", out);
+            write_scope_name(out, false, child_depth); fputs(", ", out);
+            write_scope_name(out, true, child_depth); fputs(");\n", out);
             emit_indent(out, indent); fputs("}\n", out);
             break;
+        }
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
             emit_indent(out, indent); emit_var_type(out, var, false);
@@ -449,10 +532,15 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
                 emit_stmt(out, stmt->as.if_stmt.else_branch, indent);
             }
             break;
-        case STMT_LOOP:
+        case STMT_LOOP: {
+            size_t old_loop_count = emitted_loop_scope_count;
+            if (emitted_loop_scope_count < sizeof(emitted_loop_scope_depths) / sizeof(emitted_loop_scope_depths[0]))
+                emitted_loop_scope_depths[emitted_loop_scope_count++] = emitted_scope_depth;
             emit_indent(out, indent); fputs("for (;;) ", out); fputs("\n", out);
             emit_stmt(out, stmt->as.loop_body, indent);
+            emitted_loop_scope_count = old_loop_count;
             break;
+        }
         case STMT_FOR_EACH: {
             VarDecl *variable = stmt->as.for_each.variable;
             Expr *array = stmt->as.for_each.array;
@@ -460,6 +548,9 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             char index_name[128], end_name[128];
             (void)snprintf(index_name, sizeof(index_name), "yl_idx_%s", variable->c_name);
             (void)snprintf(end_name, sizeof(end_name), "yl_end_%s", variable->c_name);
+            size_t old_loop_count = emitted_loop_scope_count;
+            if (emitted_loop_scope_count < sizeof(emitted_loop_scope_depths) / sizeof(emitted_loop_scope_depths[0]))
+                emitted_loop_scope_depths[emitted_loop_scope_count++] = emitted_scope_depth;
             emit_indent(out, indent);
             fprintf(out, "for (size_t %s = 0, %s = (", index_name, end_name);
             emit_expr_to_file(out, array);
@@ -472,12 +563,23 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             emit_stmt(out, stmt->as.for_each.body, indent + 1);
             emit_indent(out, indent);
             fputs("}\n", out);
+            emitted_loop_scope_count = old_loop_count;
             break;
         }
         case STMT_BREAK:
-            emit_indent(out, indent); fputs("break;\n", out); break;
-        case STMT_CONTINUE:
-            emit_indent(out, indent); fputs("continue;\n", out); break;
+        case STMT_CONTINUE: {
+            if (emitted_loop_scope_count > 0) {
+                unsigned loop_entry_depth = emitted_loop_scope_depths[emitted_loop_scope_count - 1];
+                for (unsigned depth = emitted_scope_depth; depth > loop_entry_depth; depth--) {
+                    emit_indent(out, indent);
+                    fputs("yl_cleanup_scope(", out); write_scope_name(out, false, depth);
+                    fputs(", ", out); write_scope_name(out, true, depth); fputs(");\n", out);
+                }
+            }
+            emit_indent(out, indent);
+            fputs(stmt->kind == STMT_BREAK ? "break;\n" : "continue;\n", out);
+            break;
+        }
         case STMT_RETURN: {
             Expr *value = stmt->as.return_value;
             if (!value) {
@@ -669,6 +771,8 @@ bool generate_c(Compiler *c, const char *path)
 
     for (size_t i = 0; i < c->program->function_count; i++) {
         Function *fn = c->program->functions[i];
+        emitted_scope_depth = 0;
+        emitted_loop_scope_count = 0;
         fprintf(out, "%s %s(", c_base_type(fn->return_type), fn->c_name);
         if (fn->param_count == 0) fputs("void", out);
         for (size_t j = 0; j < fn->param_count; j++) {
