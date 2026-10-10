@@ -574,12 +574,12 @@ static YType check_expr(Checker *checker, Expr *expr)
                 return expr->type;
             }
             YType element = check_expr(checker, expr->as.array.items[0]);
+            bool valid = true;
             if (type_is_array(element) || element == TYPE_VOID || element == TYPE_ERROR) {
                 diagnostic(c, expr->as.array.items[0]->token, "error", "E2074",
                            "Array elements must be scalar values of one matching type.",
                            "Use int, float, bool, char, or string elements; nested arrays are not supported yet.");
-                expr->type = TYPE_ERROR;
-                return expr->type;
+                valid = false;
             }
             for (size_t i = 1; i < expr->as.array.count; i++) {
                 YType item = check_expr(checker, expr->as.array.items[i]);
@@ -587,11 +587,12 @@ static YType check_expr(Checker *checker, Expr *expr)
                     diagnostic(c, expr->as.array.items[i]->token, "error", "E2075",
                                "All elements in an array literal must have the same type.",
                                "Convert the value explicitly or use a separate array for the other type.");
-                    expr->type = TYPE_ERROR;
+                    valid = false;
                 }
+                if (item == TYPE_ERROR) valid = false;
             }
             expr->as.array.element_type = element;
-            if (expr->type != TYPE_ERROR) expr->type = array_type_for(element);
+            expr->type = valid ? array_type_for(element) : TYPE_ERROR;
             return expr->type;
         }
         case EXPR_INDEX: {

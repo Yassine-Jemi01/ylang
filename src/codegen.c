@@ -344,7 +344,7 @@ static void emit_print_value(FILE *out, Expr *expr, unsigned indent)
         case TYPE_INT_ARRAY: case TYPE_FLOAT_ARRAY: case TYPE_BOOL_ARRAY:
         case TYPE_CHAR_ARRAY: case TYPE_STRING_ARRAY:
             fputs("printf(\"[array len=%lld]\", (long long)yl_array_len(", out);
-            emit_expr_to_file(out, expr); fputs("));\\n", out); break;
+            emit_expr_to_file(out, expr); fputs("));\n", out); break;
         case TYPE_STRING:
             fputs("fputs((const char *)(", out); emit_expr_to_file(out, expr);
             fputs("), stdout);\n", out); break;
