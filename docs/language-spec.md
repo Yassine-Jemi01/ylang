@@ -78,6 +78,26 @@ Operator precedence is conventional: unary operators, multiplication/division/mo
 
 Signed integer overflow, integer division/modulo by zero, and floating-point division by zero are handled by generated runtime helpers and terminate the program with a runtime-error message and status 70. This does not mean every possible C-level issue is guarded or that the language is memory-safe.
 
+## Fixed-size arrays
+
+YLang supports fixed-size arrays with an explicit element type and an initializer. The length is inferred from the initializer. Arrays may be local or global, must contain at least one element, and all elements must have the same type.
+
+```ylang
+let int scores[] = [10, 20, 30];
+
+function main() -> int {
+    scores[1] = 42;
+    print(scores[0], scores[1], scores[2]);
+    return 0;
+}
+```
+
+- Indexing starts at zero.
+- Array indices must be `int`; every access performs a runtime bounds check and exits with status 70 on an invalid index.
+- Element assignment is supported, such as `scores[1] = 42;`.
+- Whole-array assignment, passing arrays to functions, returning arrays, nested arrays, and `const` arrays are not supported yet.
+- Arrays must be initialized at declaration; their size cannot change at runtime.
+
 ## Standard math library
 
 YLang provides a built-in `math` namespace for common floating-point operations. These calls are checked by the compiler and emitted as native C math-library calls.
