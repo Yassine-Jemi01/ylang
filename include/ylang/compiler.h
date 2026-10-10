@@ -83,6 +83,7 @@ struct VarDecl {
     bool is_global;
     bool is_borrowed;
     bool is_mut_borrow;
+    bool is_moved;
     Expr *initializer;
 };
 

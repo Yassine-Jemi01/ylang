@@ -179,6 +179,22 @@ static bool expr_contains_call_or_assignment(Expr *expr)
 static YType check_expr(Checker *checker, Expr *expr);
 static void check_stmt(Checker *checker, Stmt *stmt);
 
+/* The checker enforces source-level ownership. Heap strings are still tracked
+ * until process exit by the bootstrap runtime; scope cleanup is a later stage. */
+static void consume_string_value(Checker *checker, Expr *expr)
+{
+    if (!expr || expr->type != TYPE_STRING || expr->kind != EXPR_NAME ||
+        !expr->as.name.variable) return;
+    VarDecl *var = expr->as.name.variable;
+    if (var->is_global) {
+        diagnostic(checker->compiler, expr->token, "error", "E2071",
+                   "A global string cannot be moved out of global storage.",
+                   "Use clone(global_name) to create an owned local copy.");
+        return;
+    }
+    var->is_moved = true;
+}
+
 static YType check_expr(Checker *checker, Expr *expr)
 {
     if (!expr) return TYPE_VOID;
@@ -260,6 +276,11 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             expr->as.name.name = var->name;
             expr->as.name.variable = var;
+            if (var->type == TYPE_STRING && var->is_moved) {
+                diagnostic(c, expr->token, "error", "E2070",
+                           "This string was moved and can no longer be used.",
+                           "Use the new owner, or clone the string before moving it.");
+            }
             if (!var->initialized) {
                 char suggestion[256];
                 (void)snprintf(suggestion, sizeof(suggestion),
@@ -365,6 +386,15 @@ static YType check_expr(Checker *checker, Expr *expr)
                            "Cannot assign to a const variable.",
                            "Keep 'const' and remove this assignment, or remove 'const' if the variable should be mutable.");
             }
+            if (right == TYPE_STRING && var->type == TYPE_STRING &&
+                expr->as.assign.right && expr->as.assign.right->kind == EXPR_NAME &&
+                expr->as.assign.right->as.name.variable == var) {
+                diagnostic(c, expr->token, "error", "E2072",
+                           "A string cannot be moved into itself.",
+                           "Assign from a different string value or use clone(name).");
+            } else if (right == TYPE_STRING && right == var->type) {
+                consume_string_value(checker, expr->as.assign.right);
+            }
             if (right != TYPE_ERROR && right != var->type) {
                 char suggestion[256];
                 (void)snprintf(suggestion, sizeof(suggestion),
@@ -374,6 +404,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                            "Assignment type mismatch.", suggestion);
             }
             var->initialized = true;
+            var->is_moved = false;
             expr->type = var->type;
             return expr->type;
         }
@@ -483,6 +514,28 @@ static YType check_expr(Checker *checker, Expr *expr)
                 checker->active_borrow_count = borrow_base;
                 return expr->type;
             }
+            if (!function && strcmp(expr->as.call.name, "clone") == 0) {
+                if (expr->as.call.count != 1) {
+                    diagnostic(c, expr->token, "error", "E2041",
+                               "clone() expects exactly one string argument.",
+                               "Use clone(text) to create an independently owned copy.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                } else {
+                    YType arg_type = check_expr(checker, expr->as.call.args[0]);
+                    if (arg_type != TYPE_STRING && arg_type != TYPE_ERROR) {
+                        diagnostic(c, expr->as.call.args[0]->token, "error", "E2042",
+                                   "clone() currently accepts a string, not this type.",
+                                   "Pass a string value.");
+                        expr->type = TYPE_ERROR;
+                    } else {
+                        expr->type = arg_type == TYPE_ERROR ? TYPE_ERROR : TYPE_STRING;
+                    }
+                }
+                checker->active_borrow_count = borrow_base;
+                return expr->type;
+            }
             if (!function && strcmp(expr->as.call.name, "len") == 0) {
                 if (expr->as.call.count != 1) {
                     diagnostic(c, expr->token, "error", "E2041",
@@ -567,6 +620,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                                  ? "Pass '&mut name' to a '&mut T' parameter."
                                  : "Pass '&name' to a shared '&T' parameter.");
                 }
+                if (arg_type == TYPE_STRING && param->type == TYPE_STRING &&
+                    !param->is_borrowed) {
+                    consume_string_value(checker, arg);
+                }
                 if (arg_type != TYPE_ERROR && arg_type != param->type) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
@@ -646,6 +703,9 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     diagnostic(c, var->initializer->token, "error", "E2001",
                                "Variable initializer type mismatch.", suggestion);
                 }
+                if (init_type == TYPE_STRING && var->type == TYPE_STRING) {
+                    consume_string_value(checker, var->initializer);
+                }
                 var->initialized = true;
             }
             (void)scope_add(checker, checker->scope, var);
@@ -671,27 +731,48 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             size_t n = c->all_var_count;
             bool *before = arena_alloc(&c->arena, n * sizeof(bool));
             bool *after_then = arena_alloc(&c->arena, n * sizeof(bool));
-            for (size_t i = 0; i < n; i++) before[i] = c->all_vars[i]->initialized;
+            bool *moved_before = arena_alloc(&c->arena, n * sizeof(bool));
+            bool *moved_after_then = arena_alloc(&c->arena, n * sizeof(bool));
+            for (size_t i = 0; i < n; i++) {
+                before[i] = c->all_vars[i]->initialized;
+                moved_before[i] = c->all_vars[i]->is_moved;
+            }
             check_stmt(checker, stmt->as.if_stmt.then_branch);
-            for (size_t i = 0; i < n; i++) after_then[i] = c->all_vars[i]->initialized;
-            for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
+            for (size_t i = 0; i < n; i++) {
+                after_then[i] = c->all_vars[i]->initialized;
+                moved_after_then[i] = c->all_vars[i]->is_moved;
+                c->all_vars[i]->initialized = before[i];
+                c->all_vars[i]->is_moved = moved_before[i];
+            }
             if (stmt->as.if_stmt.else_branch) {
                 check_stmt(checker, stmt->as.if_stmt.else_branch);
-                for (size_t i = 0; i < n; i++)
+                for (size_t i = 0; i < n; i++) {
                     c->all_vars[i]->initialized = after_then[i] && c->all_vars[i]->initialized;
+                    c->all_vars[i]->is_moved = moved_after_then[i] || c->all_vars[i]->is_moved;
+                }
             } else {
-                for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
+                for (size_t i = 0; i < n; i++) {
+                    c->all_vars[i]->initialized = before[i];
+                    c->all_vars[i]->is_moved = moved_before[i] || moved_after_then[i];
+                }
             }
             break;
         }
         case STMT_LOOP: {
             size_t n = c->all_var_count;
             bool *before = arena_alloc(&c->arena, n * sizeof(bool));
-            for (size_t i = 0; i < n; i++) before[i] = c->all_vars[i]->initialized;
+            bool *moved_before = arena_alloc(&c->arena, n * sizeof(bool));
+            for (size_t i = 0; i < n; i++) {
+                before[i] = c->all_vars[i]->initialized;
+                moved_before[i] = c->all_vars[i]->is_moved;
+            }
             checker->loop_depth++;
             check_stmt(checker, stmt->as.loop_body);
             checker->loop_depth--;
-            for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
+            for (size_t i = 0; i < n; i++) {
+                c->all_vars[i]->initialized = before[i];
+                c->all_vars[i]->is_moved = moved_before[i] || c->all_vars[i]->is_moved;
+            }
             break;
         }
         case STMT_BREAK:
@@ -719,6 +800,8 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     diagnostic(c, stmt->token, "error", "E2054",
                                "A void function cannot return a value.",
                                "Use 'return;' or change the function return type.");
+                } else if (actual == TYPE_STRING && expected == TYPE_STRING) {
+                    consume_string_value(checker, stmt->as.return_value);
                 } else if (actual != TYPE_ERROR && actual != expected) {
                     char suggestion[192];
                     (void)snprintf(suggestion, sizeof(suggestion),

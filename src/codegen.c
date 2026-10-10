@@ -160,6 +160,8 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 sb_append(sb, "yl_read_line");
             } else if (strcmp(expr->as.call.name, "len") == 0) {
                 sb_append(sb, "yl_len_string");
+            } else if (strcmp(expr->as.call.name, "clone") == 0) {
+                sb_append(sb, "yl_clone_string");
             } else {
                 sb_append(sb, "yl_missing_function");
             }
@@ -410,6 +412,12 @@ static void emit_runtime(FILE *out)
         "    size_t length = strlen(value);\n"
         "    if (length > (size_t)INT64_MAX) yl_runtime_error(\"string is too large for len()\");\n"
         "    return (int64_t)length;\n"
+        "}\n"
+        "static const char *yl_clone_string(const char *value) {\n"
+        "    if (!value) yl_runtime_error(\"clone() received a null string\");\n"
+        "    size_t length = strlen(value); char *copy = malloc(length + 1);\n"
+        "    if (!copy) yl_runtime_error(\"out of memory while cloning string\");\n"
+        "    memcpy(copy, value, length + 1); return (const char *)yl_track(copy);\n"
         "}\n"
         "static int64_t yl_add_i64(int64_t a, int64_t b) { int64_t r; if (__builtin_add_overflow(a,b,&r)) yl_runtime_error(\"integer overflow in addition\"); return r; }\n"
         "static int64_t yl_sub_i64(int64_t a, int64_t b) { int64_t r; if (__builtin_sub_overflow(a,b,&r)) yl_runtime_error(\"integer overflow in subtraction\"); return r; }\n"

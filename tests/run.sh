@@ -162,6 +162,23 @@ if "$YLANG" check tests/len-type-error.yl > build/len-type-error.out 2>&1; then
 fi
 grep -q 'E2042' build/len-type-error.out
 
+# Owned strings move by default; explicit clone creates a second independent value.
+"$YLANG" build tests/string-move.yl -o "build/test-string-move$EXEEXT" >/dev/null
+"./build/test-string-move$EXEEXT" > build/string-move.out
+normalize_output "build/string-move.out"
+diff -u tests/expected-string-move.txt build/string-move.out
+
+"$YLANG" build tests/string-clone.yl -o "build/test-string-clone$EXEEXT" >/dev/null
+"./build/test-string-clone$EXEEXT" > build/string-clone.out
+normalize_output "build/string-clone.out"
+diff -u tests/expected-string-clone.txt build/string-clone.out
+
+if "$YLANG" check tests/string-use-after-move.yl > build/string-use-after-move.out 2>&1; then
+    echo "FAIL: string use after move was accepted" >&2
+    exit 1
+fi
+grep -q 'E2070' build/string-use-after-move.out
+
 # Borrowed scalar parameters: shared borrows read; exclusive borrows update the caller.
 "$YLANG" build tests/borrow-read.yl -o "build/test-borrow-read$EXEEXT" >/dev/null
 "./build/test-borrow-read$EXEEXT" > build/borrow-read.out
