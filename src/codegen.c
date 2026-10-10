@@ -190,6 +190,11 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             break;
         case EXPR_ARRAY: {
             YType element = expr->as.array.element_type;
+            if (expr->as.array.count == 0) {
+                sb_appendf(sb, "yl_array_make(sizeof(%s), NULL, 0, %d)",
+                           c_base_type(element), array_kind(expr->type));
+                break;
+            }
             sb_appendf(sb, "yl_array_make(sizeof(%s), (%s[]){",
                        c_base_type(element), c_base_type(element));
             for (size_t i = 0; i < expr->as.array.count; i++) {

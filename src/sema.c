@@ -215,6 +215,19 @@ static bool expr_contains_call_or_assignment(Expr *expr)
 static YType check_expr(Checker *checker, Expr *expr);
 static void check_stmt(Checker *checker, Stmt *stmt);
 
+static YType check_expr_as(Checker *checker, Expr *expr, YType expected)
+{
+    if (expr && expr->kind == EXPR_ARRAY && expr->as.array.count == 0) {
+        YType element = array_element_type(expected);
+        if (element != TYPE_ERROR) {
+            expr->as.array.element_type = element;
+            expr->type = expected;
+            return expected;
+        }
+    }
+    return check_expr(checker, expr);
+}
+
 /* The checker enforces source-level ownership. Heap strings are still tracked
  * until process exit by the bootstrap runtime; scope cleanup is a later stage. */
 static void consume_owned_value(Checker *checker, Expr *expr)
@@ -412,7 +425,7 @@ static YType check_expr(Checker *checker, Expr *expr)
             Expr *target = expr->as.assign.target;
             if (target && target->kind == EXPR_INDEX) {
                 YType target_type = check_expr(checker, target);
-                YType right_type = check_expr(checker, expr->as.assign.right);
+                YType right_type = check_expr_as(checker, expr->as.assign.right, target_type);
                 VarDecl *array_var = target->as.index.array &&
                     target->as.index.array->kind == EXPR_NAME
                     ? target->as.index.array->as.name.variable : NULL;
@@ -455,7 +468,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                     break;
                 }
             }
-            YType right = check_expr(checker, expr->as.assign.right);
+            YType right = check_expr_as(checker, expr->as.assign.right, var->type);
             if (var->is_const) {
                 diagnostic(c, expr->token, "error", "E2022",
                            "Cannot assign to a const variable.",
@@ -575,8 +588,8 @@ static YType check_expr(Checker *checker, Expr *expr)
         case EXPR_ARRAY: {
             if (expr->as.array.count == 0) {
                 diagnostic(c, expr->token, "error", "E2073",
-                           "An array literal must contain at least one element in this version.",
-                           "Add an initial element, such as [1], or initialize the array before use.");
+                           "An empty array literal needs a contextual array type.",
+                           "Declare it with an element type, for example: let int[] values = [].");
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
@@ -830,13 +843,14 @@ static YType check_expr(Checker *checker, Expr *expr)
             for (size_t i = 0; i < expr->as.call.count; i++) {
                 Expr *arg = expr->as.call.args[i];
                 bool is_borrow_expr = arg && arg->kind == EXPR_BORROW;
+                VarDecl *param = i < shared ? function->params[i] : NULL;
                 bool previous_allow = checker->allow_borrow_expr;
                 checker->allow_borrow_expr = is_borrow_expr;
-                YType arg_type = check_expr(checker, arg);
+                YType arg_type = param ? check_expr_as(checker, arg, param->type) :
+                                         check_expr(checker, arg);
                 checker->allow_borrow_expr = previous_allow;
 
                 if (i >= shared) continue;
-                VarDecl *param = function->params[i];
                 if (param->is_borrowed != is_borrow_expr) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
@@ -929,7 +943,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                            "Use a value type such as int, float, bool, char, or string.");
             }
             if (var->initializer) {
-                YType init_type = check_expr(checker, var->initializer);
+                YType init_type = check_expr_as(checker, var->initializer, var->type);
                 if (init_type != TYPE_ERROR && init_type != var->type) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
@@ -1079,7 +1093,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                                "Missing return value.", suggestion);
                 }
             } else {
-                YType actual = check_expr(checker, stmt->as.return_value);
+                YType actual = check_expr_as(checker, stmt->as.return_value, expected);
                 if (expected == TYPE_VOID) {
                     diagnostic(c, stmt->token, "error", "E2054",
                                "A void function cannot return a value.",
