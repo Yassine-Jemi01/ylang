@@ -120,7 +120,24 @@ See [`docs/language-spec.md`](docs/language-spec.md) for the complete supported 
 
 The development CLI now includes `ylang run <file.yl>`, which compiles source into a temporary directory, runs the resulting native program, removes its temporary files, and returns the program's exit status. Argument forwarding and debugger integration are not implemented yet.
 
-YLang 2.0 is being developed separately from the stable 1.0.0 contract. The current work is exploratory and is not a complete 2.0 release. See the [2.0 design](docs/v2-design.md), [development roadmap](docs/roadmap.md), [ownership model](docs/ownership-and-borrowing.md), and [standard-library plan](docs/standard-library.md). The native compiler backend, owned strings/arrays, modules, and standard library are gated on implementation and cross-platform tests; documentation does not imply those features already work.
+YLang 2.0 is being developed separately from the stable 1.0.0 contract. The current work is exploratory and is not a complete 2.0 release. The development branch now has experimental scalar borrowing, string move/use-after-move checking with `clone`, `read_line()`, `len(string)`, and typed one-dimensional arrays (`T[]`) with checked indexing, `append`, `len`, and `clone`. The runtime still tracks heap allocations until process exit; scope-based deterministic cleanup, modules, a full standard library, and the dedicated native backend remain unfinished. See the [2.0 design](docs/v2-design.md), [development roadmap](docs/roadmap.md), [ownership model](docs/ownership-and-borrowing.md), and [standard-library plan](docs/standard-library.md).
+
+### Experimental 2.0 array example
+
+```ylang
+function main() -> int {
+    let int[] scores = [10, 20, 30];
+    scores[1] = 42;
+    append(scores, 99);
+    print(scores[1], len(scores)); // 42 4
+    let int[] backup = clone(scores);
+    backup[0] = 7;
+    print(scores[0], backup[0]); // 10 7
+    return 0;
+}
+```
+
+This syntax is available on `dev/lsp-foundation`, not part of the stable 1.0.0 language contract. Array literals must currently contain at least one element, nested arrays are not supported, and arrays print as `[array len=N]`.
 
 ## What is included in 1.0.0
 
