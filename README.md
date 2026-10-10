@@ -82,6 +82,25 @@ ylang fix <file.yl> -o <fixed.yl>
 - `emit-c` writes the generated C source so it can be inspected.
 - `fix` applies only the currently supported high-confidence fix (`pritn(...)` to `print(...)`) and requires `-o`. The output is written to the requested path; always run `check` on it. This is intentionally not a general-purpose automatic repair engine.
 
+## Optional GUI runtime (SDL2)
+
+YLang now includes an optional SDL2-backed C GUI runtime for creating a window, processing close events, clearing/presenting frames, and drawing filled rectangles. SDL2 is cross-platform, but the current YLang compiler driver is still POSIX-based and native Windows builds are not supported yet. The GUI runtime is a C API today; direct calls from `.yl` code await a defined foreign-function interface.
+
+Install SDL2 development files and `pkg-config`, then build the runtime and example:
+
+Linux (Fedora): `sudo dnf install SDL2-devel pkgconf-pkg-config`
+
+Linux (Debian/Ubuntu): `sudo apt install libsdl2-dev pkg-config`
+
+macOS: `brew install sdl2 pkg-config`
+
+```sh
+make gui gui-example
+./build/gui-example
+```
+
+The example opens a window, paints the background, and draws a rectangle. On headless systems, compilation works but running it requires a display session. To install the optional static library and header, use `sudo make install-gui`.
+
 Errors include a stable diagnostic code, path, line/column, source excerpt, caret, and a hint when available. Exit status is nonzero when a command fails.
 
 ## Language overview
@@ -188,3 +207,4 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [Language specification](docs/language-spec.md)
 - [Architecture](docs/architecture.md)
 - [VS Code language support, compiler diagnostics, and Code Runner setup](editors/vscode/README.md)
+- [GUI runtime API](include/ylang/gui.h) and [example](examples/gui.c)
