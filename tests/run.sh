@@ -130,7 +130,6 @@ if command -v clang >/dev/null 2>&1; then
     diff -u tests/expected-demo.txt build/test-demo-clang.out
 fi
 
-echo "All YLang tests passed."
 
 # Standard math library: native calls, namespacing, and argument type checks.
 ./build/ylang check examples/math.yl >/dev/null
@@ -168,3 +167,5 @@ if ./build/ylang check tests/array-mixed-types.yl > build/array-mixed-types.out 
     exit 1
 fi
 grep -q 'All array elements must have the same type' build/array-mixed-types.out
+
+echo "All YLang tests passed."
