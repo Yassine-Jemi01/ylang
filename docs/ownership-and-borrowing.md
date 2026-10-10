@@ -49,7 +49,7 @@ function main() -> int {
 1. Stabilize borrow-mode and conflict diagnostics with positive and negative tests.
 2. Extend string move analysis to full control-flow and return paths; replace process-wide tracking with deterministic cleanup on all control-flow exits.
 3. Replace process-lifetime f-string buffers with deterministic ownership/cleanup.
-4. Harden array ownership, including moves into literals, indexed string copies, and complete drop/cleanup behavior.
+4. Add lexical-block and loop-iteration cleanup, re-home values moved into outer variables/arrays, and free overwritten owned values safely.
 5. Enable borrowing of strings and arrays only after lifetimes and cleanup are covered by tests.
 6. Update Tree-sitter parser generation and Neovim integration to the new grammar, then run the full platform pass.
 

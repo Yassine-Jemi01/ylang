@@ -18,8 +18,10 @@ Prioritize the core semantics and test harness over a long list of shallow featu
 
 - [x] Add initial string move/use-after-move checks and explicit `clone(string)`; finalize UTF-8 and cleanup semantics.
 - [x] Add conservative move-state analysis and reject common use-after-move cases.
-- [ ] Replace process-lifetime f-string allocations with deterministic ownership.
-- [ ] Generate cleanup on all control-flow exits and error paths.
+- [x] Add function-level allocation scopes and transfer owned string/array return values safely.
+- [ ] Add lexical-block and loop-iteration cleanup; re-home values moved into outer scopes and clean overwritten owners.
+- [x] Generate cleanup on explicit returns and normal function fallthrough.
+- [ ] Extend cleanup to every lexical scope and runtime error path.
 - [ ] Test early returns, nested scopes, loops, and repeated formatting.
 - [x] Keep references call-scoped; support remains limited to scalar parameters.
 - [x] Add tests for string elements moved into arrays and reject implicit moves out of indexed string values.
