@@ -270,4 +270,5 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [Language specification](docs/language-spec.md)
 - [Architecture](docs/architecture.md)
 - [VS Code language support, compiler diagnostics, and Code Runner setup](editors/vscode/README.md)
+- [Neovim native diagnostics integration](editors/nvim/README.md)
 - [GUI runtime API](include/ylang/gui.h) and [example](examples/gui.c)
