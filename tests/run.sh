@@ -142,3 +142,18 @@ if ./build/ylang check tests/math-type-error.yl > build/math-type-error.out 2>&1
     exit 1
 fi
 grep -q 'Math functions require float arguments' build/math-type-error.out
+
+# Fixed-size arrays: homogeneous initialization, indexed mutation, globals, and bounds checks.
+./build/ylang check examples/arrays.yl >/dev/null
+./build/ylang build examples/arrays.yl -o build/test-arrays >/dev/null
+./build/test-arrays > build/test-arrays.out
+diff -u tests/expected-arrays.txt build/test-arrays.out
+./build/ylang build tests/array-out-of-bounds.yl -o build/test-array-oob >/dev/null
+if ./build/test-array-oob > build/array-oob.out 2>&1; then
+    echo "FAIL: out-of-bounds array access was accepted at runtime" >&2
+    exit 1
+else
+    array_status=$?
+    [ "$array_status" -eq 70 ]
+fi
+grep -q 'array index out of bounds' build/array-oob.out
