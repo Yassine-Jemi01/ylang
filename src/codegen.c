@@ -538,7 +538,7 @@ static void emit_runtime(FILE *out)
         "    if (yl_tracked != string_mark) yl_runtime_error(\"string scope tracking mismatch\");\n"
         "    yl_tracked = string_mark->next; free(string_mark);\n"
         "}\n"
-        "static const char *yl_adopt_string(const char *value) { if (!value) yl_runtime_error(\"function returned a null string\"); return (const char *)yl_track((void *)value); }\n"
+        "static const char *yl_adopt_string(const char *value) { if (!value) yl_runtime_error(\"function returned a null string\"); if (yl_is_static_string(value)) return value; return (const char *)yl_track((void *)value); }\n"
         "static YLArray yl_adopt_array(YLArray array) { if (array.data) yl_track_array_buffer(array.data); if (array.kind == 5) { const char **items = (const char **)array.data; for (size_t i = 0; i < array.len; i++) (void)yl_adopt_string(items[i]); } return array; }\n"
         "static YLArray yl_promote_array(YLArray array) { if (array.kind == 5) { const char **items = (const char **)array.data; for (size_t i = 0; i < array.len; i++) if (!yl_untrack_string(items[i])) yl_runtime_error(\"string array contains an unowned element\"); } if (array.data) yl_untrack_array_buffer(array.data); return array; }\n"
         "static const char *yl_boolstr(bool value) { return value ? \"true\" : \"false\"; }\n"
