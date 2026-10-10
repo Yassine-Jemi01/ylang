@@ -206,11 +206,17 @@ module.exports = grammar({
       field("arguments", $.argument_list)
     )),
 
-    borrow_expression: $ => prec(PREC.UNARY, seq(
-      "&",
-      optional("mut"),
-      field("target", $.identifier)
-    )),
+    borrow_expression: $ => choice(
+      prec(PREC.UNARY, seq(
+        "&",
+        token(prec(2, "mut")),
+        field("target", $.identifier)
+      )),
+      prec(PREC.UNARY, seq(
+        "&",
+        field("target", $.identifier)
+      ))
+    ),
 
     argument_list: $ => seq(
       "(",

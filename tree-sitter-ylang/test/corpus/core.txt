@@ -44,7 +44,7 @@ function main() -> int {
     name: (identifier)
     (parameter_list
       (parameter
-        (type)
+        type: (type)
         name: (identifier)))
     return_type: (type)
     (block
@@ -56,7 +56,7 @@ function main() -> int {
     name: (identifier)
     (parameter_list
       (parameter
-        (type)
+        type: (type)
         name: (identifier)))
     return_type: (type)
     (block
@@ -67,8 +67,7 @@ function main() -> int {
             (binary_expression
               left: (expression
                 (identifier))
-              operator: "+"
-              right: (expression
+                            right: (expression
                 (integer_literal)))))))
   (function_definition
     name: (identifier)
