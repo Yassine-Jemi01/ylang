@@ -168,4 +168,14 @@ if ./build/ylang check tests/array-mixed-types.yl > build/array-mixed-types.out 
 fi
 grep -q 'All array elements must have the same type' build/array-mixed-types.out
 
+# String standard library and stdin line input.
+./build/ylang check examples/strings.yl >/dev/null
+./build/ylang build examples/strings.yl -o build/test-strings >/dev/null
+./build/test-strings > build/test-strings.out
+diff -u tests/expected-strings.txt build/test-strings.out
+./build/ylang check tests/read-line.yl >/dev/null
+./build/ylang build tests/read-line.yl -o build/test-read-line >/dev/null
+printf 'YLang\n' | ./build/test-read-line > build/read-line.out
+diff -u tests/expected-read-line.txt build/read-line.out
+
 echo "All YLang tests passed."
