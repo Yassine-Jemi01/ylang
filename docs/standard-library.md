@@ -1,6 +1,6 @@
 # YLang Standard Library Plan
 
-**Status:** Initial `read_line()`, `parse_int()`, `parse_float()`, `len()`, `clone()`, and array built-ins are implemented on `dev/lsp-foundation. The complete module API below remains a proposal; each API becomes supported only after tests exist on Linux and Windows.
+**Status:** Initial `read_line()`, `parse_int()`, `parse_float()`, `len()`, `clone()`, and array built-ins are implemented on `dev/lsp-foundation`. The complete module API below remains a proposal; each API becomes supported only after tests exist on Linux and Windows.
 
 ## Compatibility rule
 
