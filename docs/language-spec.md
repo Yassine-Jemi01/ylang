@@ -8,7 +8,7 @@ YLang is a compiled language. `ylang check` parses and performs semantic checks.
 
 ## 2. Source form and statements
 
-Statements end with `;`, blocks use `{` and `}`, and comments use `//` through the end of a line. Keywords are lowercase and case-sensitive. Each source file passed to the CLI is compiled as one program. A program must define `function main() -> int` or `function main() -> void`, with no parameters.
+Statements end with `;`, blocks use `{` and `}`, and comments use `//` through the end of a line. Keywords are lowercase and case-sensitive. Source files are text and embedded NUL bytes are rejected before lexing. Each source file passed to the CLI is compiled as one program. A program must define `function main() -> int` or `function main() -> void`, with no parameters.
 
 ## 3. Variables and constants
 
