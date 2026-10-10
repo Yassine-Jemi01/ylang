@@ -179,6 +179,18 @@ if "$YLANG" check tests/string-use-after-move.yl > build/string-use-after-move.o
 fi
 grep -q 'E2070' build/string-use-after-move.out
 
+# For-each iterates over a snapshot of the scalar array length.
+"$YLANG" build tests/for-each.yl -o "build/test-for-each$EXEEXT" >/dev/null
+"./build/test-for-each$EXEEXT" > build/for-each.out
+normalize_output "build/for-each.out"
+diff -u tests/expected-for-each.txt build/for-each.out
+
+if "$YLANG" check tests/for-each-type-error.yl > build/for-each-type-error.out 2>&1; then
+    echo "FAIL: for-each accepted a mismatched loop variable type" >&2
+    exit 1
+fi
+grep -q 'E2080' build/for-each-type-error.out
+
 # Typed arrays support literal creation, checked indexing, append, length, clone, and moves.
 "$YLANG" build tests/arrays.yl -o "build/test-arrays$EXEEXT" >/dev/null
 "./build/test-arrays$EXEEXT" > build/arrays.out

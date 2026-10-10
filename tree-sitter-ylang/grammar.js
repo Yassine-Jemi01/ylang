@@ -84,6 +84,7 @@ module.exports = grammar({
       $.expression_statement,
       $.if_statement,
       $.loop_statement,
+      $.for_each_statement,
       $.break_statement,
       $.continue_statement,
       $.return_statement
@@ -135,6 +136,17 @@ module.exports = grammar({
     loop_statement: $ => seq(
       "loop",
       "(",
+      ")",
+      $.block
+    ),
+
+    for_each_statement: $ => seq(
+      "for",
+      "(",
+      field("type", $.type),
+      field("name", $.identifier),
+      "in",
+      field("array", $.expression),
       ")",
       $.block
     ),

@@ -1,0 +1,9 @@
+function main() -> int {
+    let int[] values = [1, 2, 3, 4];
+    let int total = 0;
+    for (int value in values) {
+        total = total + value;
+    }
+    print(total);
+    return 0;
+}

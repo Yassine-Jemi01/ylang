@@ -173,3 +173,50 @@ function main() -> int {
         (return_statement
           value: (expression
             (integer_literal)))))))
+
+==================
+For-each over arrays
+==================
+
+function main() -> int {
+    let int[] values = [1, 2, 3];
+    for (int value in values) {
+        print(value);
+    }
+    return 0;
+}
+
+---
+
+(source_file
+  (function_definition
+    name: (identifier)
+    return_type: (type)
+    (block
+      (statement
+        (variable_declaration
+          type: (type)
+          name: (identifier)
+          value: (expression
+            (array_literal
+              (expression
+                (integer_literal))
+              (expression
+                (integer_literal))
+              (expression
+                (integer_literal))))))
+      (statement
+        (for_each_statement
+          type: (type)
+          name: (identifier)
+          array: (expression
+            (identifier))
+          (block
+            (statement
+              (print_statement
+                argument: (expression
+                  (identifier)))))))
+      (statement
+        (return_statement
+          value: (expression
+            (integer_literal)))))))

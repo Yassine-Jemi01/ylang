@@ -9,6 +9,8 @@
   "if"
   "else"
   "loop"
+  "for"
+  "in"
   "break"
   "continue"
   "return"
