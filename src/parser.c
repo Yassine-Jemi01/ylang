@@ -485,18 +485,20 @@ static Expr *parse_primary(Parser *p)
         if (match(p, TOKEN_DOT)) {
             Token member = consume(p, TOKEN_IDENTIFIER,
                 "Expected a member name after '.'.",
-                "For example: math.sqrt(value).");
-            if (token_is(&token, "math")) {
+                "For example: math.sqrt(value), string.length(value), or io.read_line().");
+            if (token_is(&token, "math") || token_is(&token, "string") ||
+                token_is(&token, "io")) {
                 StringBuilder qualified;
                 sb_init(&qualified);
-                sb_append(&qualified, "math.");
+                sb_append_n(&qualified, token.start, token.length);
+                sb_append(&qualified, ".");
                 sb_append_n(&qualified, member.start, member.length);
                 name = arena_strndup(&p->compiler->arena, qualified.data, qualified.length);
                 sb_destroy(&qualified);
             } else {
                 diagnostic(p->compiler, token, "error", "E1016",
-                           "Only the built-in math namespace is available in this release.",
-                           "Use math.sqrt(value), or call a user-defined function by name.");
+                           "Unknown standard-library namespace.",
+                           "Use a supported namespace such as math, string, or io.");
                 name = arena_strndup(&p->compiler->arena, "", 0);
             }
         }
