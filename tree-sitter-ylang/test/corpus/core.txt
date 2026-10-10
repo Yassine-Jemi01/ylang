@@ -87,7 +87,7 @@ function main() -> int {
               arguments: (argument_list
                 (expression
                   (borrow_expression
-                    target: (identifier)))))))
+                    target: (identifier))))))))
       (statement
         (expression_statement
           (expression
@@ -96,7 +96,7 @@ function main() -> int {
               arguments: (argument_list
                 (expression
                   (borrow_expression
-                    target: (identifier)))))))
+                    target: (identifier))))))))
       (statement
         (return_statement
           value: (expression
