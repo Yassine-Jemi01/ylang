@@ -1,0 +1,16 @@
+function main() -> int {
+    print("Image/file path to open:");
+    let string file = io.read_line();
+    if (not path.exists(file)) {
+        print("That path does not exist.");
+        return 1;
+    }
+    print("File:", path.basename(file));
+    print("Extension:", path.extension(file));
+    if (image.open(file)) {
+        print("Requested the system default viewer.");
+        return 0;
+    }
+    print("Could not launch the default viewer. Check your desktop session and file associations.");
+    return 1;
+}

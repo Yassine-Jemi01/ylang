@@ -219,3 +219,14 @@ printf 'YLang\n' | ./build/test-read-line > build/read-line.out
 diff -u tests/expected-read-line.txt build/read-line.out
 
 echo "All YLang tests passed."
+
+# Path utilities and safe OS image-opening integration.
+./build/ylang check examples/image-preview.yl >/dev/null
+./build/ylang build examples/path-utils.yl -o build/test-path-utils >/dev/null
+./build/test-path-utils > build/path-utils.out
+diff -u tests/expected-path-utils.txt build/path-utils.out
+if ./build/ylang check tests/path-type-error.yl > build/path-type-error.out 2>&1; then
+    echo "FAIL: path.exists accepted a non-string argument" >&2
+    exit 1
+fi
+grep -q 'requires string arguments' build/path-type-error.out

@@ -132,6 +132,10 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "io.read_line") == 0) return "yl_read_line";
     if (strcmp(name, "io.read_file") == 0) return "yl_read_file";
     if (strcmp(name, "io.write_file") == 0) return "yl_write_file";
+    if (strcmp(name, "path.exists") == 0) return "yl_path_exists";
+    if (strcmp(name, "path.basename") == 0) return "yl_path_basename";
+    if (strcmp(name, "path.extension") == 0) return "yl_path_extension";
+    if (strcmp(name, "image.open") == 0) return "yl_image_open";
     return NULL;
 }
 
@@ -399,7 +403,9 @@ static void emit_runtime(FILE *out)
         "#define _POSIX_C_SOURCE 200809L\n"
         "#include <stdbool.h>\n#include <stdint.h>\n#include <stdio.h>\n"
         "#include <stdlib.h>\n#include <stdarg.h>\n#include <string.h>\n"
-        "#include <limits.h>\n#include <stddef.h>\n#include <math.h>\n\n"
+        "#include <limits.h>\n#include <stddef.h>\n#include <math.h>\n"
+        "#include <errno.h>\n#include <sys/stat.h>\n#include <sys/types.h>\n"
+        "#include <sys/wait.h>\n#include <unistd.h>\n\n"
         "static void yl_runtime_error(const char *message) {\n"
         "    fprintf(stderr, \"YLang runtime error: %s\\n\", message);\n"
         "    exit(70);\n}\n"
@@ -435,7 +441,14 @@ static void emit_runtime(FILE *out)
         "static const char *yl_string_replace(const char *value, const char *needle, const char *replacement) { if (!*needle) return yl_format(\"%s\", value); size_t value_len = strlen(value), needle_len = strlen(needle), replacement_len = strlen(replacement), count = 0; const char *scan = value; while ((scan = strstr(scan, needle)) != NULL) { count++; scan += needle_len; } size_t result_len; if (replacement_len >= needle_len) { size_t delta = replacement_len - needle_len; if (delta && count > (SIZE_MAX - value_len - 1) / delta) yl_runtime_error(\"string replacement result is too large\"); result_len = value_len + count * delta; } else { result_len = value_len - count * (needle_len - replacement_len); } if (result_len == SIZE_MAX) yl_runtime_error(\"string replacement result is too large\"); char *result = malloc(result_len + 1); if (!result) yl_runtime_error(\"out of memory\"); const char *src = value; char *dst = result; const char *match; while ((match = strstr(src, needle)) != NULL) { size_t span = (size_t)(match - src); memcpy(dst, src, span); dst += span; memcpy(dst, replacement, replacement_len); dst += replacement_len; src = match + needle_len; } strcpy(dst, src); return (const char *)yl_track(result); }\n"
         "static const char *yl_read_line(void) { char *line = NULL; size_t capacity = 0; ssize_t got = getline(&line, &capacity, stdin); if (got < 0) { if (ferror(stdin)) { free(line); yl_runtime_error(\"failed to read standard input\"); } free(line); line = malloc(1); if (!line) yl_runtime_error(\"out of memory\"); line[0] = '\\0'; return (const char *)yl_track(line); } while (got > 0 && (line[got - 1] == '\\n' || line[got - 1] == '\\r')) line[--got] = '\\0'; return (const char *)yl_track(line); }\n"
         "static const char *yl_read_file(const char *path) { FILE *file = fopen(path, \"rb\"); if (!file) yl_runtime_error(\"cannot open file for reading\"); if (fseek(file, 0, SEEK_END) != 0) { fclose(file); yl_runtime_error(\"cannot seek input file\"); } long end = ftell(file); if (end < 0 || (uintmax_t)end >= (uintmax_t)SIZE_MAX) { fclose(file); yl_runtime_error(\"input file is too large\"); } rewind(file); size_t size = (size_t)end; char *data = malloc(size + 1); if (!data) { fclose(file); yl_runtime_error(\"out of memory\"); } size_t got = fread(data, 1, size, file); bool failed = ferror(file) != 0 || got != size; fclose(file); if (failed) { free(data); yl_runtime_error(\"failed to read input file\"); } if (memchr(data, '\\0', size)) { free(data); yl_runtime_error(\"binary files are not supported by string I/O\"); } data[size] = '\\0'; return (const char *)yl_track(data); }\n"
-        "static bool yl_write_file(const char *path, const char *content) { FILE *file = fopen(path, \"wb\"); if (!file) return false; size_t size = strlen(content); bool ok = fwrite(content, 1, size, file) == size; if (fclose(file) != 0) ok = false; return ok; }\n\n",
+        "static bool yl_write_file(const char *path, const char *content) { FILE *file = fopen(path, \"wb\"); if (!file) return false; size_t size = strlen(content); bool ok = fwrite(content, 1, size, file) == size; if (fclose(file) != 0) ok = false; return ok; }\n"
+        "static bool yl_path_exists(const char *path) { struct stat info; return path && stat(path, &info) == 0; }\n"
+        "static const char *yl_path_basename(const char *path) { if (!path) return \"\"; size_t n = strlen(path); while (n > 1 && path[n - 1] == '/') n--; size_t start = n; while (start > 0 && path[start - 1] != '/') start--; return path + start; }\n"
+        "static const char *yl_path_extension(const char *path) { const char *base = yl_path_basename(path); const char *dot = strrchr(base, '.'); if (!dot || dot == base) return \"\"; return dot + 1; }\n"
+        "static bool yl_image_open(const char *path) { if (!path || !*path || !yl_path_exists(path)) return false; pid_t child = fork(); if (child < 0) return false; if (child == 0) {\n"
+        "#if defined(__APPLE__)\n        execlp(\"open\", \"open\", path, (char *)NULL);\n"
+        "#else\n        execlp(\"xdg-open\", \"xdg-open\", path, (char *)NULL);\n"
+        "#endif\n        _exit(127); } int status = 0; while (waitpid(child, &status, 0) < 0) { if (errno == EINTR) continue; return false; } return WIFEXITED(status) && WEXITSTATUS(status) == 0; }\n\n",
         out);
 }
 

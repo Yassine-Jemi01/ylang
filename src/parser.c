@@ -487,7 +487,8 @@ static Expr *parse_primary(Parser *p)
                 "Expected a member name after '.'.",
                 "For example: math.sqrt(value), string.length(value), or io.read_line().");
             if (token_is(&token, "math") || token_is(&token, "string") ||
-                token_is(&token, "io")) {
+                token_is(&token, "io") || token_is(&token, "path") ||
+                token_is(&token, "image")) {
                 StringBuilder qualified;
                 sb_init(&qualified);
                 sb_append_n(&qualified, token.start, token.length);
@@ -498,7 +499,7 @@ static Expr *parse_primary(Parser *p)
             } else {
                 diagnostic(p->compiler, token, "error", "E1016",
                            "Unknown standard-library namespace.",
-                           "Use a supported namespace such as math, string, or io.");
+                           "Use a supported namespace such as math, string, io, path, or image.");
                 name = arena_strndup(&p->compiler->arena, "", 0);
             }
         }

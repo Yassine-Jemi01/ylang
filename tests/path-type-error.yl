@@ -1,0 +1,4 @@
+function main() -> int {
+    print(path.exists(42));
+    return 0;
+}

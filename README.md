@@ -170,7 +170,7 @@ function main() -> int {
 }
 ```
 
-String helpers and I/O are also available: `string.length`, `string.contains`, `string.starts_with`, `string.ends_with`, `string.concat`, `string.replace`, `io.read_line()`, `io.read_file(path)`, and `io.write_file(path, content)`. File I/O is synchronous and text-only; read errors terminate with a runtime error, while writes return a boolean status. Run `make test` to test these APIs alongside math, arrays, and bounds protection. Arrays cannot yet be passed to or returned from functions; object-oriented classes are not implemented yet.
+String helpers and I/O are also available: `string.length`, `string.contains`, `string.starts_with`, `string.ends_with`, `string.concat`, `string.replace`, `io.read_line()`, `io.read_file(path)`, and `io.write_file(path, content)`. The new `path` namespace provides `path.exists(path)`, `path.basename(path)`, and `path.extension(path)`. On Linux/macOS, `image.open(path)` safely launches the system default viewer (using an argument vector rather than a shell command), returning whether the viewer launcher succeeded; it does not decode/render images inside YLang yet. File I/O is synchronous and text-only; read errors terminate with a runtime error, while writes return a boolean status. Run `make test` to test these APIs alongside math, arrays, and bounds protection. Arrays cannot yet be passed to or returned from functions; object-oriented classes are not implemented yet.
 
 
 ## What is included in 1.0.0
@@ -180,7 +180,7 @@ String helpers and I/O are also available: `string.length`, `string.contains`, `
 - Functions and return statements
 - `if` / `else if` / `else`, `loop()`, `while`, C-style `for`, `break`, and `continue`
 - Arithmetic, comparisons, boolean operators, function calls, and assignments
-- `print(...)`, f-string interpolation, string utilities, standard-input line reading, and text file I/O
+- `print(...)`, f-string interpolation, string utilities, path inspection, OS image-viewer launching, standard-input line reading, and text file I/O
 - Name/type checks, uninitialized-read checks, constant-assignment checks, and source-located diagnostic messages
 - Runtime checks for integer overflow and division by zero
 - C code generation and native compilation using GCC or Clang

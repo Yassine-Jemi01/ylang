@@ -181,7 +181,11 @@ static const StringBuiltin string_builtins[] = {
     {"string.replace", 3, TYPE_STRING},
     {"io.read_line", 0, TYPE_STRING},
     {"io.read_file", 1, TYPE_STRING},
-    {"io.write_file", 2, TYPE_BOOL}
+    {"io.write_file", 2, TYPE_BOOL},
+    {"path.exists", 1, TYPE_BOOL},
+    {"path.basename", 1, TYPE_STRING},
+    {"path.extension", 1, TYPE_STRING},
+    {"image.open", 1, TYPE_BOOL}
 };
 
 static const StringBuiltin *find_string_builtin(const char *name)
