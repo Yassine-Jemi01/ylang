@@ -197,6 +197,12 @@ diff -u tests/expected-file-io.txt build/file-io.out
 printf 'YLang file I/O' > build/io-expected.txt
 cmp build/io-output.txt build/io-expected.txt
 
+# String standard library: replacement is non-overlapping and handles empty needles safely.
+./build/ylang check examples/string-replace.yl >/dev/null
+./build/ylang build examples/string-replace.yl -o build/test-string-replace >/dev/null
+./build/test-string-replace > build/string-replace.out
+diff -u tests/expected-string-replace.txt build/string-replace.out
+
 # String standard library and stdin line input.
 ./build/ylang check examples/strings.yl >/dev/null
 ./build/ylang build examples/strings.yl -o build/test-strings >/dev/null

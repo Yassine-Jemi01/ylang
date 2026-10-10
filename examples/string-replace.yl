@@ -1,0 +1,8 @@
+function main() -> int {
+    let const string text = "one fish, two fish";
+    print(string.replace(text, "fish", "bird"));
+    print(string.replace("aaaa", "aa", "b"));
+    print(string.replace("leave me", "", "X"));
+    print(string.replace("no matches", "cat", "dog"));
+    return 0;
+}

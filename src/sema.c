@@ -178,6 +178,7 @@ static const StringBuiltin string_builtins[] = {
     {"string.starts_with", 2, TYPE_BOOL},
     {"string.ends_with", 2, TYPE_BOOL},
     {"string.concat", 2, TYPE_STRING},
+    {"string.replace", 3, TYPE_STRING},
     {"io.read_line", 0, TYPE_STRING},
     {"io.read_file", 1, TYPE_STRING},
     {"io.write_file", 2, TYPE_BOOL}

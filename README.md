@@ -170,7 +170,7 @@ function main() -> int {
 }
 ```
 
-String helpers and I/O are also available: `string.length`, `string.contains`, `string.starts_with`, `string.ends_with`, `string.concat`, `io.read_line()`, `io.read_file(path)`, and `io.write_file(path, content)`. File I/O is synchronous and text-only; read errors terminate with a runtime error, while writes return a boolean status. Run `make test` to test these APIs alongside math, arrays, and bounds protection. Arrays cannot yet be passed to or returned from functions; object-oriented classes are not implemented yet.
+String helpers and I/O are also available: `string.length`, `string.contains`, `string.starts_with`, `string.ends_with`, `string.concat`, `string.replace`, `io.read_line()`, `io.read_file(path)`, and `io.write_file(path, content)`. File I/O is synchronous and text-only; read errors terminate with a runtime error, while writes return a boolean status. Run `make test` to test these APIs alongside math, arrays, and bounds protection. Arrays cannot yet be passed to or returned from functions; object-oriented classes are not implemented yet.
 
 
 ## What is included in 1.0.0
@@ -178,7 +178,7 @@ String helpers and I/O are also available: `string.length`, `string.contains`, `
 - Explicit declarations (`let type name`) and constants (`let const type name`)
 - `int` (signed 64-bit), `float` (64-bit), `bool`, single-byte `char`, `string`, and `void` return types
 - Functions and return statements
-- `if` / `else if` / `else`, `loop()`, `break`, and `continue`
+- `if` / `else if` / `else`, `loop()`, `while`, C-style `for`, `break`, and `continue`
 - Arithmetic, comparisons, boolean operators, function calls, and assignments
 - `print(...)`, f-string interpolation, string utilities, standard-input line reading, and text file I/O
 - Name/type checks, uninitialized-read checks, constant-assignment checks, and source-located diagnostic messages
