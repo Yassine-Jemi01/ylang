@@ -703,13 +703,51 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
             break;
         }
+        case STMT_WHILE: {
+            YType cond = check_expr(checker, stmt->as.while_stmt.condition);
+            if (cond != TYPE_BOOL && cond != TYPE_ERROR) {
+                diagnostic(c, stmt->as.while_stmt.condition->token, "error", "E2051",
+                           "while condition must have type bool.",
+                           "Write a comparison such as 'while (count < limit)'.");
+            }
+            size_t n = c->all_var_count;
+            bool *before = arena_alloc(&c->arena, n * sizeof(bool));
+            for (size_t i = 0; i < n; i++) before[i] = c->all_vars[i]->initialized;
+            checker->loop_depth++;
+            check_stmt(checker, stmt->as.while_stmt.body);
+            checker->loop_depth--;
+            for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
+            break;
+        }
+        case STMT_FOR: {
+            size_t n_before_init = c->all_var_count;
+            bool *before = arena_alloc(&c->arena, n_before_init * sizeof(bool));
+            for (size_t i = 0; i < n_before_init; i++) before[i] = c->all_vars[i]->initialized;
+            if (stmt->as.for_stmt.initializer)
+                check_stmt(checker, stmt->as.for_stmt.initializer);
+            if (stmt->as.for_stmt.condition) {
+                YType cond = check_expr(checker, stmt->as.for_stmt.condition);
+                if (cond != TYPE_BOOL && cond != TYPE_ERROR) {
+                    diagnostic(c, stmt->as.for_stmt.condition->token, "error", "E2051",
+                               "for condition must have type bool.",
+                               "Use a boolean comparison or omit the condition for an infinite loop.");
+                }
+            }
+            checker->loop_depth++;
+            check_stmt(checker, stmt->as.for_stmt.body);
+            if (stmt->as.for_stmt.increment)
+                (void)check_expr(checker, stmt->as.for_stmt.increment);
+            checker->loop_depth--;
+            for (size_t i = 0; i < n_before_init; i++) c->all_vars[i]->initialized = before[i];
+            break;
+        }
         case STMT_BREAK:
         case STMT_CONTINUE:
             if (checker->loop_depth == 0) {
                 diagnostic(c, stmt->token, "error", "E2052",
-                           stmt->kind == STMT_BREAK ? "break is only valid inside loop()." :
-                                                      "continue is only valid inside loop().",
-                           "Place this statement inside a loop() block.");
+                           stmt->kind == STMT_BREAK ? "break is only valid inside a loop." :
+                                                      "continue is only valid inside a loop.",
+                           "Place this statement inside loop(), while, or for.");
             }
             break;
         case STMT_RETURN: {
