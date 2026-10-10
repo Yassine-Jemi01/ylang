@@ -293,6 +293,18 @@ static void append_ptr(Compiler *c, void ***items, size_t *count, void *item)
     *items = grown;
 }
 
+static YType array_type_for(YType type)
+{
+    switch (type) {
+        case TYPE_INT: return TYPE_INT_ARRAY;
+        case TYPE_FLOAT: return TYPE_FLOAT_ARRAY;
+        case TYPE_BOOL: return TYPE_BOOL_ARRAY;
+        case TYPE_CHAR: return TYPE_CHAR_ARRAY;
+        case TYPE_STRING: return TYPE_STRING_ARRAY;
+        default: return TYPE_ERROR;
+    }
+}
+
 static YType parse_type(Parser *p)
 {
     Token token = consume(p, TOKEN_IDENTIFIER,
@@ -302,8 +314,38 @@ static YType parse_type(Parser *p)
     if (token_is(&token, "float")) return TYPE_FLOAT;
     if (token_is(&token, "bool")) return TYPE_BOOL;
     if (token_is(&token, "char")) return TYPE_CHAR;
-    if (token_is(&token, "string")) return TYPE_STRING;
-    if (token_is(&token, "void")) return TYPE_VOID;
+    if (token_is(&token, "string")) {
+        YType base = TYPE_STRING;
+        if (match(p, TOKEN_LEFT_BRACKET)) {
+            consume(p, TOKEN_RIGHT_BRACKET, "Expected ']' after '[' in array type.",
+                    "Write array types as string[].");
+            return array_type_for(base);
+        }
+        return base;
+    }
+    if (token_is(&token, "void")) {
+        if (match(p, TOKEN_LEFT_BRACKET)) {
+            consume(p, TOKEN_RIGHT_BRACKET, "Expected ']' after '[' in array type.",
+                    "void[] is not a valid value type.");
+            diagnostic(p->compiler, token, "error", "E2002",
+                       "Arrays cannot have void elements.",
+                       "Use a concrete element type such as int[] or string[].");
+            return TYPE_ERROR;
+        }
+        return TYPE_VOID;
+    }
+    if (token_is(&token, "int") || token_is(&token, "float") ||
+        token_is(&token, "bool") || token_is(&token, "char")) {
+        YType base = token_is(&token, "int") ? TYPE_INT :
+                     token_is(&token, "float") ? TYPE_FLOAT :
+                     token_is(&token, "bool") ? TYPE_BOOL : TYPE_CHAR;
+        if (match(p, TOKEN_LEFT_BRACKET)) {
+            consume(p, TOKEN_RIGHT_BRACKET, "Expected ']' after '[' in array type.",
+                    "Write array types as int[].");
+            return array_type_for(base);
+        }
+        return base;
+    }
     diagnostic(p->compiler, token, "error", "E2002", "Unknown type name.",
                "Available YLang 1.0 types: int, float, bool, char, string, void.");
     return TYPE_ERROR;
@@ -496,6 +538,18 @@ static Expr *parse_primary(Parser *p)
         }
         return expr;
     }
+    if (match(p, TOKEN_LEFT_BRACKET)) {
+        Expr *array = new_expr(p->compiler, EXPR_ARRAY, token);
+        while (p->current.type != TOKEN_RIGHT_BRACKET && p->current.type != TOKEN_EOF) {
+            Expr *item = parse_expression(p);
+            append_ptr(p->compiler, (void ***)&array->as.array.items,
+                       &array->as.array.count, item);
+            if (!match(p, TOKEN_COMMA)) break;
+        }
+        consume(p, TOKEN_RIGHT_BRACKET, "Expected ']' after array literal.",
+                "Close the array literal with ']'.");
+        return array;
+    }
     if (match(p, TOKEN_LEFT_PAREN)) {
         Expr *expr = parse_expression(p);
         consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after expression.",
@@ -537,6 +591,18 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
     }
 
     for (;;) {
+        if (p->current.type == TOKEN_LEFT_BRACKET && min_precedence <= 8) {
+            Token bracket = p->current;
+            advance_parser(p);
+            Expr *index = parse_expression(p);
+            consume(p, TOKEN_RIGHT_BRACKET, "Expected ']' after array index.",
+                    "Close the array index with ']'.");
+            Expr *indexed = new_expr(p->compiler, EXPR_INDEX, bracket);
+            indexed->as.index.array = left;
+            indexed->as.index.index = index;
+            left = indexed;
+            continue;
+        }
         int prec = precedence(p->current.type);
         if (prec == 0 || prec < min_precedence) break;
         op = p->current;
@@ -544,7 +610,7 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
         int next_min = prec + (op.type == TOKEN_EQUAL ? 0 : 1);
         Expr *right = parse_precedence(p, next_min);
         if (op.type == TOKEN_EQUAL) {
-            if (left->kind != EXPR_NAME) {
+            if (left->kind != EXPR_NAME && left->kind != EXPR_INDEX) {
                 diagnostic(p->compiler, op, "error", "E1004",
                            "The left side of an assignment must be a variable name.",
                            "Write an assignment such as 'count = count + 1;'.");

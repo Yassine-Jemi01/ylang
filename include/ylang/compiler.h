@@ -21,7 +21,12 @@ typedef enum {
     TYPE_BOOL,
     TYPE_CHAR,
     TYPE_STRING,
-    TYPE_VOID
+    TYPE_VOID,
+    TYPE_INT_ARRAY,
+    TYPE_FLOAT_ARRAY,
+    TYPE_BOOL_ARRAY,
+    TYPE_CHAR_ARRAY,
+    TYPE_STRING_ARRAY
 } YType;
 
 typedef enum {
@@ -37,7 +42,9 @@ typedef enum {
     EXPR_UNARY,
     EXPR_BINARY,
     EXPR_ASSIGN,
-    EXPR_CALL
+    EXPR_CALL,
+    EXPR_ARRAY,
+    EXPR_INDEX
 } ExprKind;
 
 typedef struct FPart {
@@ -58,6 +65,8 @@ struct Expr {
         struct { Expr *target; VarDecl *variable; bool is_mut; } borrow;
         struct { char *name; Expr **args; size_t count; Function *function; } call;
         struct { FPart *parts; size_t count; } fstring;
+        struct { Expr **items; size_t count; YType element_type; } array;
+        struct { Expr *array; Expr *index; YType element_type; } index;
     } as;
 };
 

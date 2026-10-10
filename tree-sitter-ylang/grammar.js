@@ -53,6 +53,7 @@ module.exports = grammar({
     ),
 
     type: $ => choice(
+      seq(choice("int", "float", "bool", "char", "string"), "[", "]"),
       "int",
       "float",
       "bool",
@@ -153,6 +154,8 @@ module.exports = grammar({
       $.unary_expression,
       $.call_expression,
       $.borrow_expression,
+      $.array_literal,
+      $.index_expression,
       $.parenthesized_expression,
       $.identifier,
       $.integer_literal,
@@ -204,6 +207,19 @@ module.exports = grammar({
     call_expression: $ => prec(PREC.CALL, seq(
       field("function", $.identifier),
       field("arguments", $.argument_list)
+    )),
+
+    array_literal: $ => seq(
+      "[",
+      commaSep1($.expression),
+      "]"
+    ),
+
+    index_expression: $ => prec(PREC.CALL, seq(
+      field("array", $.expression),
+      "[",
+      field("index", $.expression),
+      "]"
     )),
 
     borrow_expression: $ => choice(
