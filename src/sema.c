@@ -273,6 +273,11 @@ static YType check_expr(Checker *checker, Expr *expr)
                            "This value was moved and can no longer be used.",
                            "Use the destination that received the value, or explicitly clone it before moving.");
             }
+            if (var->moved && !checker->resolving_borrow_target) {
+                diagnostic(c, expr->token, "error", "E2080",
+                           "This value was moved and can no longer be used.",
+                           "Use the destination that received the value, or explicitly clone it before moving.");
+            }
             if (!checker->resolving_borrow_target) {
                 for (size_t i = 0; i < checker->active_borrow_count; i++) {
                     ActiveBorrow *borrow = &checker->active_borrows[i];
@@ -308,6 +313,16 @@ static YType check_expr(Checker *checker, Expr *expr)
                     diagnostic(c, expr->as.array_literal.items[i]->token, "error", "E2073",
                                "All elements in an array literal must have the same type.",
                                "Use elements of one type; implicit element conversions are not performed.");
+                }
+                if (item_type == TYPE_STRING &&
+                    expr->as.array_literal.items[i]->kind == EXPR_NAME &&
+                    expr->as.array_literal.items[i]->as.name.variable) {
+                    VarDecl *source = expr->as.array_literal.items[i]->as.name.variable;
+                    if (source->is_global || source->is_const) {
+                        diagnostic(c, expr->as.array_literal.items[i]->token, "error", "E2082",
+                                   "Moving a string into an array requires a mutable local owner.",
+                                   "Use clone(value) for a const string, and avoid moving strings out of globals.");
+                    } else source->moved = true;
                 }
             }
             if (element_type == TYPE_ERROR) {
@@ -570,6 +585,114 @@ static YType check_expr(Checker *checker, Expr *expr)
         }
         case EXPR_CALL: {
             size_t borrow_base = checker->active_borrow_count;
+            const char *builtin = expr->as.call.name;
+            bool is_input = strcmp(builtin, "input") == 0;
+            bool is_input_int = strcmp(builtin, "input_int") == 0;
+            bool is_input_float = strcmp(builtin, "input_float") == 0;
+            bool is_len = strcmp(builtin, "len") == 0;
+            bool is_clone = strcmp(builtin, "clone") == 0;
+            bool is_append = strcmp(builtin, "append") == 0;
+
+            if (is_input || is_input_int || is_input_float) {
+                if (expr->as.call.count != 0) {
+                    diagnostic(c, expr->token, "error", "E2083",
+                               "Input functions take no arguments.",
+                               "Print a prompt separately, then call input(), input_int(), or input_float().");
+                }
+                expr->type = is_input ? TYPE_STRING : (is_input_int ? TYPE_INT : TYPE_FLOAT);
+                return expr->type;
+            }
+            if (is_len) {
+                if (expr->as.call.count != 1) {
+                    diagnostic(c, expr->token, "error", "E2084",
+                               "len() expects exactly one string or array argument.",
+                               "Use len(value).");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                YType argument_type = check_expr(checker, expr->as.call.args[0]);
+                if (argument_type != TYPE_STRING && !ylang_type_is_array(argument_type) &&
+                    argument_type != TYPE_ERROR) {
+                    diagnostic(c, expr->as.call.args[0]->token, "error", "E2085",
+                               "len() expects a string or array.",
+                               "Pass a string or a one-dimensional array.");
+                    expr->type = TYPE_ERROR;
+                } else expr->type = TYPE_INT;
+                return expr->type;
+            }
+            if (is_clone) {
+                if (expr->as.call.count != 1) {
+                    diagnostic(c, expr->token, "error", "E2086",
+                               "clone() expects exactly one string or array argument.",
+                               "Use clone(value) when an explicit independent copy is required.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                YType argument_type = check_expr(checker, expr->as.call.args[0]);
+                if (argument_type != TYPE_STRING && !ylang_type_is_array(argument_type) &&
+                    argument_type != TYPE_ERROR) {
+                    diagnostic(c, expr->as.call.args[0]->token, "error", "E2087",
+                               "clone() only supports strings and arrays.",
+                               "Scalar values are already copied by value.");
+                    expr->type = TYPE_ERROR;
+                } else expr->type = argument_type;
+                return expr->type;
+            }
+            if (is_append) {
+                if (expr->as.call.count != 2) {
+                    diagnostic(c, expr->token, "error", "E2088",
+                               "append() expects an array and one element.",
+                               "Use values = append(values, new_value).");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                Expr *array_arg = expr->as.call.args[0];
+                YType array_type = check_expr(checker, array_arg);
+                YType element_type = ylang_array_element_type(array_type);
+                YType previous_expected = checker->expected_type;
+                checker->expected_type = element_type;
+                YType actual_element = check_expr(checker, expr->as.call.args[1]);
+                checker->expected_type = previous_expected;
+                if (!ylang_type_is_array(array_type)) {
+                    if (array_type != TYPE_ERROR) {
+                        diagnostic(c, array_arg->token, "error", "E2089",
+                                   "append() expects an array as its first argument.",
+                                   "Pass a typed array such as int[].");
+                    }
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (actual_element != element_type && actual_element != TYPE_ERROR) {
+                    diagnostic(c, expr->as.call.args[1]->token, "error", "E2090",
+                               "The appended value does not match the array element type.",
+                               "append() does not perform implicit type conversions.");
+                }
+                if (array_arg->kind == EXPR_NAME && array_arg->as.name.variable) {
+                    VarDecl *source = array_arg->as.name.variable;
+                    if (source->is_const) {
+                        diagnostic(c, array_arg->token, "error", "E2091",
+                                   "append() cannot consume a const array.",
+                                   "Use a mutable array or clone it first.");
+                    } else if (source->is_global) {
+                        diagnostic(c, array_arg->token, "error", "E2082",
+                                   "Moving an array out of a global is not supported.",
+                                   "Use a local array until global ownership rules are defined.");
+                    } else source->moved = true;
+                }
+                if (element_type == TYPE_STRING &&
+                    expr->as.call.args[1]->kind == EXPR_NAME &&
+                    expr->as.call.args[1]->as.name.variable) {
+                    VarDecl *source = expr->as.call.args[1]->as.name.variable;
+                    if (source->is_const || source->is_global) {
+                        diagnostic(c, expr->as.call.args[1]->token, "error", "E2082",
+                                   "Moving a string into an array requires a mutable local owner.",
+                                   "Use clone(value) for const strings, and avoid moving strings out of globals.");
+                    } else source->moved = true;
+                }
+                expr->type = array_type;
+                return expr->type;
+            }
+
             Function *function = find_function(c, expr->as.call.name);
             if (!function) {
                 const char *near = nearest_function(c, expr->as.call.name);
@@ -610,7 +733,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                 bool is_borrow_expr = arg && arg->kind == EXPR_BORROW;
                 bool previous_allow = checker->allow_borrow_expr;
                 checker->allow_borrow_expr = is_borrow_expr;
+                YType previous_expected = checker->expected_type;
+                if (i < function->param_count) checker->expected_type = function->params[i]->type;
                 YType arg_type = check_expr(checker, arg);
+                checker->expected_type = previous_expected;
                 checker->allow_borrow_expr = previous_allow;
 
                 if (i >= shared) continue;
@@ -641,6 +767,15 @@ static YType check_expr(Checker *checker, Expr *expr)
                         type_name(arg_type));
                     diagnostic(c, arg->token, "error", "E2042",
                                "Function argument type mismatch.", suggestion);
+                }
+                if (!param->is_borrowed && ylang_type_is_owned(param->type) &&
+                    arg->kind == EXPR_NAME && arg->as.name.variable) {
+                    VarDecl *source = arg->as.name.variable;
+                    if (source->is_global || source->is_const) {
+                        diagnostic(c, arg->token, "error", "E2082",
+                                   "Moving an owned value requires a mutable local owner.",
+                                   "Use clone(value) to make a distinct value, and avoid moving from globals.");
+                    } else source->moved = true;
                 }
             }
             checker->active_borrow_count = borrow_base;
