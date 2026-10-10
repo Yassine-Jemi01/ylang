@@ -97,7 +97,7 @@ Available functions (all arguments must be `float`, and all return `float`):
 
 YLang does not implicitly convert integers to floats, so use float literals such as `9.0`. Domain errors and non-finite results follow the platform C math library behavior.
 
-## 9. Conditions and loops
+## 8. Conditions and loops
 
 ```ylang
 if (age >= 18) {
