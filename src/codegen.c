@@ -507,7 +507,19 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); emit_var_type(out, var, false);
             fprintf(out, " %s", var->c_name);
             if (var->initializer) {
-                fputs(" = ", out); emit_expr_to_file(out, var->initializer);
+                fputs(" = ", out);
+                if (var->type == TYPE_STRING) {
+                    fputs("yl_rehome_string(", out);
+                    emit_expr_to_file(out, var->initializer);
+                    fputs(", ", out); write_scope_name(out, false, var->scope_depth); fputc(')', out);
+                } else if (type_is_array(var->type)) {
+                    fputs("yl_rehome_array(", out);
+                    emit_expr_to_file(out, var->initializer);
+                    fputs(", ", out); write_scope_name(out, false, var->scope_depth);
+                    fputs(", ", out); write_scope_name(out, true, var->scope_depth); fputc(')', out);
+                } else {
+                    emit_expr_to_file(out, var->initializer);
+                }
             }
             fputs(";\n", out);
             break;
@@ -805,6 +817,17 @@ bool generate_c(Compiler *c, const char *path)
         fputs(") {\n", out);
         fputs("    YLTracked *yl_scope_strings = yl_scope_enter_strings();\n", out);
         fputs("    YLTrackedArray *yl_scope_arrays = yl_scope_enter_arrays();\n", out);
+        for (size_t j = 0; j < fn->param_count; j++) {
+            VarDecl *param = fn->params[j];
+            if (param->is_borrowed) continue;
+            if (param->type == TYPE_STRING) {
+                fprintf(out, "    %s = yl_rehome_string(%s, yl_scope_strings);\n",
+                        param->c_name, param->c_name);
+            } else if (type_is_array(param->type)) {
+                fprintf(out, "    %s = yl_rehome_array(%s, yl_scope_strings, yl_scope_arrays);\n",
+                        param->c_name, param->c_name);
+            }
+        }
         if (fn->body && fn->body->kind == STMT_BLOCK) {
             for (size_t j = 0; j < fn->body->as.block.count; j++)
                 emit_stmt(out, fn->body->as.block.items[j], 1);
