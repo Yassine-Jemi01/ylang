@@ -615,6 +615,35 @@ static YType check_expr(Checker *checker, Expr *expr)
         case EXPR_CALL: {
             size_t borrow_base = checker->active_borrow_count;
             Function *function = find_function(c, expr->as.call.name);
+            if (!function &&
+                (strcmp(expr->as.call.name, "read_file") == 0 ||
+                 strcmp(expr->as.call.name, "write_file") == 0)) {
+                bool is_read = strcmp(expr->as.call.name, "read_file") == 0;
+                size_t expected_count = is_read ? 1 : 2;
+                if (expr->as.call.count != expected_count) {
+                    diagnostic(c, expr->token, "error", "E2041",
+                               is_read ? "read_file() expects one path string." :
+                                         "write_file() expects a path and content string.",
+                               is_read ? "Use read_file(path)." : "Use write_file(path, content).");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                } else {
+                    bool valid = true;
+                    for (size_t i = 0; i < expected_count; i++) {
+                        YType arg_type = check_expr(checker, expr->as.call.args[i]);
+                        if (arg_type != TYPE_STRING && arg_type != TYPE_ERROR) {
+                            diagnostic(c, expr->as.call.args[i]->token, "error", "E2042",
+                                       "File path and file content must be strings.",
+                                       "Pass a string path and, for write_file(), a string content value.");
+                            valid = false;
+                        }
+                    }
+                    expr->type = valid ? (is_read ? TYPE_STRING : TYPE_VOID) : TYPE_ERROR;
+                }
+                checker->active_borrow_count = borrow_base;
+                return expr->type;
+            }
             if (!function && strcmp(expr->as.call.name, "read_line") == 0) {
                 if (expr->as.call.count != 0) {
                     diagnostic(c, expr->token, "error", "E2041",

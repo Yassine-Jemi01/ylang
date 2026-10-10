@@ -223,6 +223,10 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             }
             if (expr->as.call.function) {
                 sb_append(sb, expr->as.call.function->c_name);
+            } else if (strcmp(expr->as.call.name, "read_file") == 0) {
+                sb_append(sb, "yl_read_file");
+            } else if (strcmp(expr->as.call.name, "write_file") == 0) {
+                sb_append(sb, "yl_write_file");
             } else if (strcmp(expr->as.call.name, "read_line") == 0) {
                 sb_append(sb, "yl_read_line");
             } else if (strcmp(expr->as.call.name, "parse_int") == 0) {
@@ -510,6 +514,26 @@ static void emit_runtime(FILE *out)
         "    if (ch == EOF && length == 0) { free(buffer); yl_runtime_error(\"end of input\"); }\n"
         "    if (length > 0 && buffer[length - 1] == '\\r') length--;\n"
         "    buffer[length] = '\\0'; return (const char *)yl_track(buffer);\n"
+        "}\n"
+        "static const char *yl_read_file(const char *path) {\n"
+        "    if (!path) yl_runtime_error(\"read_file() received a null path\");\n"
+        "    FILE *file = fopen(path, \"rb\"); if (!file) yl_runtime_error(\"cannot open file for reading\");\n"
+        "    size_t capacity = 4096, length = 0; char *buffer = malloc(capacity);\n"
+        "    if (!buffer) { fclose(file); yl_runtime_error(\"out of memory while reading file\"); }\n"
+        "    for (;;) {\n"
+        "        if (length + 1 >= capacity) { if (capacity > SIZE_MAX / 2) { free(buffer); fclose(file); yl_runtime_error(\"file is too large\"); } size_t next = capacity * 2; char *grown = realloc(buffer, next); if (!grown) { free(buffer); fclose(file); yl_runtime_error(\"out of memory while reading file\"); } buffer = grown; capacity = next; }\n"
+        "        size_t got = fread(buffer + length, 1, capacity - length - 1, file); length += got;\n"
+        "        if (got == 0) { if (ferror(file)) { free(buffer); fclose(file); yl_runtime_error(\"failed while reading file\"); } break; }\n"
+        "    }\n"
+        "    if (memchr(buffer, '\\0', length)) { free(buffer); fclose(file); yl_runtime_error(\"read_file() only supports text without NUL bytes\"); }\n"
+        "    if (fclose(file) != 0) { free(buffer); yl_runtime_error(\"failed to close file after reading\"); }\n"
+        "    buffer[length] = '\\0'; return (const char *)yl_track(buffer);\n"
+        "}\n"
+        "static void yl_write_file(const char *path, const char *content) {\n"
+        "    if (!path || !content) yl_runtime_error(\"write_file() received a null string\");\n"
+        "    FILE *file = fopen(path, \"wb\"); if (!file) yl_runtime_error(\"cannot open file for writing\");\n"
+        "    size_t length = strlen(content); bool ok = fwrite(content, 1, length, file) == length;\n"
+        "    if (fclose(file) != 0) ok = false; if (!ok) yl_runtime_error(\"failed while writing file\");\n"
         "}\n"
         "static int64_t yl_len_string(const char *value) { if (!value) yl_runtime_error(\"len() received a null string\"); size_t n = strlen(value); if (n > (size_t)INT64_MAX) yl_runtime_error(\"string is too large for len()\"); return (int64_t)n; }\n"
         "static const char *yl_clone_string(const char *value) { if (!value) yl_runtime_error(\"clone() received a null string\"); size_t n = strlen(value); char *copy = malloc(n + 1); if (!copy) yl_runtime_error(\"out of memory while cloning string\"); memcpy(copy, value, n + 1); return (const char *)yl_track(copy); }\n"
