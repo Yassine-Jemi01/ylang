@@ -59,6 +59,15 @@ If you installed YLang to `~/.local/bin/ylang`, use that absolute path instead.
 
 The checker runs `ylang check` and maps compiler errors/warnings to VS Code's Problems panel and source underlines. Run **YLang: Check Current File** from the Command Palette to request a check manually. Use **YLang: Show Output** to inspect compiler startup or checker logs.
 
+## Test the diagnostic parser
+
+No npm install is required. Run the parser regression tests with Node.js:
+
+```sh
+cd editors/vscode
+npm test
+```
+
 ## Run programs with Code Runner
 
 Save a `.yl` file and invoke **Run Code** (default shortcut: `Ctrl+Alt+N`). The configured executor compiles the source and runs the output executable in the same directory.
