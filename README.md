@@ -4,7 +4,7 @@
 
 YLang is implemented in C17. Its compiler tokenizes and parses `.yl` files, checks names, initialization and types, generates C, and invokes GCC or Clang to produce a native executable. The compiler currently targets POSIX systems; Linux and macOS are the supported portability targets. Native Windows support remains future work. It is a compiled language toolchain, not an interpreter.
 
-YLang **1.1.0** extends the first stable language subset with explicit conversions and checked integer parsing. It remains deliberately scoped and does not claim to implement every planned feature or Rust-level memory safety.
+YLang **1.1.0** is a stable release of the documented language subset. It includes explicit conversions and checked integer parsing, fixed-size arrays with bounds checks, `loop`/`while`/`for`, string and file-I/O helpers, path utilities, native optimization-level selection, and an optional SDL2-backed C GUI runtime. The implementation remains deliberately scoped and does not claim to implement every planned feature or Rust-level memory safety.
 
 ## Quick start
 
@@ -12,7 +12,7 @@ YLang **1.1.0** extends the first stable language subset with explicit conversio
 
 - Linux (Fedora and Ubuntu) or macOS 13+ (CI-tested targets; Windows is not supported yet)
 - A C17 compiler to build YLang itself (`gcc` or `clang`)
-- `make`
+- GNU Make (`make` on Linux; `gmake` on macOS)
 - GCC or Clang available on `PATH` to compile generated C into executables
 
 On Fedora:
@@ -50,7 +50,7 @@ make
 make test
 ```
 
-The compiler is written to `build/ylang`.
+On macOS, use `gmake` instead of `make` for these commands (Homebrew's GNU Make; Apple's built-in `make` is BSD Make). The compiler is written to `build/ylang`.
 
 ### Compile and run a program
 
@@ -109,7 +109,12 @@ Linux (Debian/Ubuntu): `sudo apt install libsdl2-dev pkg-config`
 macOS: `brew install sdl2 pkg-config`
 
 ```sh
+# Linux
+make gui gui-example
+
+# macOS
 gmake gui gui-example
+
 ./build/gui-example
 ```
 
@@ -173,13 +178,13 @@ function main() -> int {
 Explicit conversions include `to_float(int)`, range-checked `to_int(float)`, and `to_string(value)` for int/float/bool/char/string. Use `string.is_int(text)` before `string.parse_int(text)` for untrusted input; invalid or out-of-range parsing raises a runtime error. `io.file_exists(path)` lets programs check a path before reading. String helpers and I/O are also available: `string.length`, `string.contains`, `string.starts_with`, `string.ends_with`, `string.concat`, `string.replace`, `io.read_line()`, `io.read_file(path)`, and `io.write_file(path, content)`. The new `path` namespace provides `path.exists(path)`, `path.basename(path)`, and `path.extension(path)`. On Linux/macOS, `image.open(path)` safely launches the system default viewer (using an argument vector rather than a shell command), returning whether the viewer launcher succeeded; it does not decode/render images inside YLang yet. File I/O is synchronous and text-only; read errors terminate with a runtime error, while writes return a boolean status. Run `make test` to test these APIs alongside math, arrays, and bounds protection. Arrays can be passed to functions with their length supplied automatically, but cannot yet be returned or nested; object-oriented classes are not implemented yet.
 
 
-## What is included in 1.0.0
+## Supported language features
 
 - Explicit declarations (`let type name`) and constants (`let const type name`)
 - `int` (signed 64-bit), `float` (64-bit), `bool`, single-byte `char`, `string`, and `void` return types
 - Functions and return statements
 - `if` / `else if` / `else`, `loop()`, `while`, C-style `for`, `break`, and `continue`
-- Arithmetic, comparisons, boolean operators, function calls, and assignments
+- Integer literals support decimal and hexadecimal notation (for example, `0xFF`). Arithmetic, comparisons (including lexicographic string ordering), boolean operators, function calls, assignments (`=` and `+=`), and postfix numeric increment (`++`) are supported.
 - `print(...)`, f-string interpolation, string utilities, path inspection, OS image-viewer launching, standard-input line reading, and text file I/O
 - Name/type checks, uninitialized-read checks, constant-assignment checks, and source-located diagnostic messages
 - Runtime checks for integer overflow and division by zero
@@ -188,11 +193,13 @@ Explicit conversions include `to_float(int)`, range-checked `to_int(float)`, and
 
 ## Explicit non-goals for this release
 
-YLang's current language subset does **not** implement classes/OOP, raw pointers/references, `try`/`catch`, modules, generics, or a dedicated LLVM/native-code backend. Arrays are fixed-size and cannot yet be passed to or returned from functions; nested and const arrays are not supported. These are not silently approximated; programs using unsupported syntax are rejected. A final ownership/borrowing or garbage-collection model is not defined. `char` is one byte, not a Unicode scalar value.
+YLang's current language subset does **not** implement classes/OOP, raw pointers/references, `try`/`catch`, modules, generics, or a dedicated LLVM/native-code backend. Arrays are fixed-size: functions may accept array parameters (with the length passed automatically), but arrays cannot be returned or nested, and `const` arrays are not supported. These are not silently approximated; programs using unsupported syntax are rejected. A final ownership/borrowing or garbage-collection model is not defined. `char` is one byte, not a Unicode scalar value.
 
 The C backend uses generated runtime helpers and process-lifetime storage for some formatted strings. Long-running programs that repeatedly create f-string values may grow in memory usage. Do not use this release for security-critical code or to process hostile source as a hardened sandbox. Generated programs are ordinary native programs with the permissions of the user who runs them.
 
 ## Build and test
+
+On Linux:
 
 ```sh
 make clean
@@ -200,14 +207,22 @@ make
 make test
 ```
 
-Optional checks if tools are available:
+On macOS, use GNU Make (`gmake`):
+
+```sh
+gmake clean
+gmake
+gmake test
+```
+
+Optional checks if tools are available (replace `make` with `gmake` on macOS):
 
 ```sh
 make CC=clang test
 make sanitize
 ```
 
-The tests exercise successful compilation/output, GCC/Clang parity when Clang is installed, diagnostics, rejection of invalid programs, safe fixes, integer overflow, division by zero, math and string built-ins, line input, text file I/O, array mutation and bounds checks, `loop()`, `while`, C-style `for`, and native optimization-level selection.
+The tests exercise successful compilation/output, GCC/Clang parity when Clang is installed, diagnostics, rejection of invalid programs, safe fixes, integer overflow, division by zero, string comparisons and utilities, line input, text file I/O, array mutation and bounds checks, `loop()`, `while`, C-style `for`, and native optimization-level selection.
 
 ### Native optimization
 
