@@ -149,6 +149,9 @@ local function parse_diagnostics(lines)
 
       if source_line and source_col and source_line >= 1 and source_col >= 1 then
         local message = short_message(code, original)
+        if original and message ~= original:gsub("%.$", "") then
+          message = message .. "\nDetails: " .. original
+        end
         if hint then
           message = message .. "\nHint: " .. hint
         end
@@ -252,6 +255,9 @@ function M.check(bufnr)
         if not vim.api.nvim_buf_is_valid(bufnr) or generations[bufnr] ~= generation then
           return
         end
+        if output.timed_out then
+          return
+        end
 
         local combined = {}
         vim.list_extend(combined, output.stderr)
@@ -281,6 +287,7 @@ function M.check(bufnr)
   local timeout = tonumber(vim.g.ylang_check_timeout_ms) or 10000
   vim.defer_fn(function()
     if jobs[bufnr] == job_id then
+      output.timed_out = true
       vim.fn.jobstop(job_id)
       vim.notify(
         "YLang check timed out after " .. tostring(timeout) .. " ms.",
