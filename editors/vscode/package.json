@@ -2,7 +2,10 @@
   "name": "ylang-language-support",
   "displayName": "YLang Language Support",
   "description": "YLang syntax highlighting, compiler diagnostics, custom file icon, and Code Runner support.",
-  "version": "0.3.0",
+  "scripts": {
+    "test": "node test/diagnostics.test.js"
+  },
+  "version": "0.4.0",
   "publisher": "yassine-jemi01",
   "license": "MIT",
   "categories": [

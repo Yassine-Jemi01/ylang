@@ -50,3 +50,19 @@ jobs:
         run: ${{ steps.compiler.outputs.make }} test CC="${{ steps.compiler.outputs.cc }}"
       - name: Run AddressSanitizer and UndefinedBehaviorSanitizer tests
         run: ${{ steps.compiler.outputs.make }} sanitize CC="${{ steps.compiler.outputs.cc }}"
+
+  editor-diagnostics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Neovim
+        run: sudo apt-get update && sudo apt-get install -y neovim
+      - name: Test VS Code diagnostic parser
+        run: npm test --prefix editors/vscode
+      - name: Test Neovim diagnostic parser
+        run: nvim --headless -u NONE +'luafile editors/nvim/tests/diagnostics.lua'

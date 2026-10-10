@@ -8,7 +8,7 @@ This extension registers the `.yl` file extension as YLang and provides syntax h
 - Matching brackets, automatic closing pairs, comment toggling, and basic indentation.
 - Light/dark YLang icons for icon themes that support language icons.
 - A default Code Runner executor for `.yl` files: compile with YLang, then run the generated executable.
-- Syntax and semantic diagnostics from the real `ylang check` compiler command, including diagnostic codes and compiler hints.
+- Syntax and semantic diagnostics from the real `ylang check` compiler command, including current array/type diagnostics, diagnostic codes, full explanations, and actionable compiler hints in diagnostic details.
 - Checks on open, while editing, and on save. Checks use a temporary copy of the current editor buffer, so unsaved edits are checked too.
 
 ## Requirements
@@ -37,10 +37,15 @@ mkdir -p ~/.vscode/extensions
 rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.1.0
 rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.2.0
 rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.3.0
-ln -s "$PWD/editors/vscode" ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.3.0
+rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.4.0
+ln -s "$PWD/editors/vscode" ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.4.0
 ```
 
 Fully restart VS Code, or run **Developer: Reload Window** from the Command Palette.
+
+## Diagnostic details
+
+The Problems panel keeps inline messages compact. Hover over a diagnostic to read the compiler's full explanation and the `= help:` suggestion. Unknown or newly added diagnostic codes fall back to the compiler message, and unparsed compiler failures are logged to the YLang output channel rather than silently discarded.
 
 ## Configure the compiler path
 
@@ -53,6 +58,15 @@ VS Code started from the desktop may not inherit the PATH configured in fish. Op
 If you installed YLang to `~/.local/bin/ylang`, use that absolute path instead.
 
 The checker runs `ylang check` and maps compiler errors/warnings to VS Code's Problems panel and source underlines. Run **YLang: Check Current File** from the Command Palette to request a check manually. Use **YLang: Show Output** to inspect compiler startup or checker logs.
+
+## Test the diagnostic parser
+
+No npm install is required. Run the parser regression tests with Node.js:
+
+```sh
+cd editors/vscode
+npm test
+```
 
 ## Run programs with Code Runner
 
