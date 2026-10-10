@@ -8,6 +8,8 @@ function main() -> int {
     print(string.upper("YLang strings"));
     print(string.lower("YLANG STRINGS"));
     print("apple" < "banana");
+    print("apple" <= "apple");
     print("zebra" > "yak");
+    print("banana" >= "apple");
     return 0;
 }
