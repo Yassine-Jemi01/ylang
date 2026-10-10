@@ -142,7 +142,7 @@ function main() -> int {
 }
 ```
 
-This syntax is available on `dev/lsp-foundation`, not part of the stable 1.0.0 language contract. Array literals must currently contain at least one element, nested arrays are not supported, and arrays print as `[array len=N]`.
+This syntax is available on `dev/lsp-foundation`, not part of the stable 1.0.0 language contract. Empty array literals need an explicit contextual type (for example `let int[] values = []`); nested arrays are not supported, and arrays print as `[array len=N]`.
 
 ## What is included in 1.0.0
 

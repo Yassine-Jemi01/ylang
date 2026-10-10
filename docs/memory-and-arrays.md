@@ -1,6 +1,6 @@
 # YLang Memory and Arrays Design
 
-**Status:** The development branch implements a first slice: typed one-dimensional arrays, non-empty literals, checked indexing, `len`, `append`, `clone`, and move/use-after-move checks for named array values. The stable YLang 1.0.0 contract on `main` is unchanged.
+**Status:** The development branch implements a first slice: typed one-dimensional arrays, context-typed empty and non-empty literals, checked indexing, `len`, `append`, `clone`, and move/use-after-move checks for named array values. The stable YLang 1.0.0 contract on `main` is unchanged.
 
 ## Design direction
 
@@ -26,7 +26,7 @@ An array is a dynamically sized homogeneous one-dimensional sequence, with type 
 - `len(array)` returns the length.
 - `append(array, value)` appends to a named mutable array variable and checks the element type. Appending a named string to a `string[]` moves that string value.
 - All elements have one type. Implicit element conversions are not performed.
-- Empty array literals are not supported yet because they have no element type to infer. Nested arrays are deferred until the ownership/drop model is proven. Arrays currently print a length summary rather than all elements.
+- Empty array literals such as `[]` are supported when context provides the element type, for example `let int[] values = [];`. An empty literal without a contextual array type is rejected. Nested arrays are deferred until the ownership/drop model is proven. Arrays currently print a length summary rather than all elements.
 
 ## Function boundaries and lifetimes
 

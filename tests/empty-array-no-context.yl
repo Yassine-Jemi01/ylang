@@ -1,0 +1,4 @@
+function main() -> int {
+    let value = [];
+    return 0;
+}

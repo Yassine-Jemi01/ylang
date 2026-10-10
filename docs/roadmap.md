@@ -29,7 +29,8 @@ Prioritize the core semantics and test harness over a long list of shallow featu
 - [x] Add typed `T[]` types and non-empty literals for scalar/string element types.
 - [x] Add indexing reads/writes with runtime bounds checks.
 - [x] Add `len`, `append`, and `clone`, plus basic move checks; capacity API remains open.
-- [ ] Define empty-array typing and allocation failure behavior.
+- [x] Infer empty-array type from a declaration, assignment, return type, or matching function parameter; reject untyped `[]`.
+- [ ] Expand allocation-failure and zero-length-array coverage.
 - [ ] Test invalid indexes, zero-length arrays, overflow, and memory cleanup.
 
 ## Stage 3 — Essential language features
