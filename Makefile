@@ -2,6 +2,7 @@
 
 VERSION := $(shell cat VERSION)
 CC = gcc
+AR ?= ar
 CPPFLAGS += -Iinclude -DYLANG_VERSION=\"$(VERSION)\"
 CFLAGS ?= -std=c17 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes -g3 -O0
 LDFLAGS ?=
