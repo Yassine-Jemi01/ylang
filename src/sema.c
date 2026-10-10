@@ -211,7 +211,8 @@ static YType check_expr(Checker *checker, Expr *expr)
             char *text = token_copy(c, expr->token);
             errno = 0;
             char *end = NULL;
-            (void)strtoll(text, &end,\n                text[0] == '0' && (text[1] == 'x' || text[1] == 'X') ? 16 : 10);
+            (void)strtoll(text, &end,
+                text[0] == '0' && (text[1] == 'x' || text[1] == 'X') ? 16 : 10);
             if (errno == ERANGE || !end || *end != '\0') {
                 diagnostic(c, expr->token, "error", "E2010",
                            "Integer literal is outside the signed 64-bit range.",
