@@ -115,7 +115,10 @@ print(string.ends_with(name, "n"));
 - `string.length(value)` returns the number of bytes, not Unicode characters.
 - `string.contains(value, needle)`, `string.starts_with(value, prefix)`, and `string.ends_with(value, suffix)` return `bool`.
 - `string.concat(left, right)` returns a new string. The generated runtime tracks allocated strings until process exit, so repeated concatenation in a long-running loop can increase memory use.
-- `io.read_line()` reads one line from standard input and removes its trailing newline. At end-of-file it returns an empty string. Input is currently line-oriented; there is no structured file I/O or exception-based I/O error handling yet.
+- `io.read_line()` reads one line from standard input and removes its trailing newline. At end-of-file it returns an empty string.
+- `io.read_file(path)` reads an entire UTF-8/ASCII-compatible text file into a string. A file-open/read failure or embedded NUL byte terminates the program with a runtime error; binary files are not supported by the string API.
+- `io.write_file(path, content)` overwrites or creates a text file and returns `true` on success or `false` if it cannot open/write the file. It does not create missing parent directories.
+- File paths are interpreted relative to the process working directory. File I/O is synchronous and currently has no structured error/exception type.
 
 ## Standard math library
 
