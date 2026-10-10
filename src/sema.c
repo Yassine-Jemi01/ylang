@@ -469,6 +469,42 @@ static YType check_expr(Checker *checker, Expr *expr)
         case EXPR_CALL: {
             size_t borrow_base = checker->active_borrow_count;
             Function *function = find_function(c, expr->as.call.name);
+            if (!function && strcmp(expr->as.call.name, "read_line") == 0) {
+                if (expr->as.call.count != 0) {
+                    diagnostic(c, expr->token, "error", "E2041",
+                               "read_line() does not accept arguments.",
+                               "Call read_line() with empty parentheses.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                } else {
+                    expr->type = TYPE_STRING;
+                }
+                checker->active_borrow_count = borrow_base;
+                return expr->type;
+            }
+            if (!function && strcmp(expr->as.call.name, "len") == 0) {
+                if (expr->as.call.count != 1) {
+                    diagnostic(c, expr->token, "error", "E2041",
+                               "len() expects exactly one string argument.",
+                               "Use len(text) to get the UTF-8 byte length of a string.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                } else {
+                    YType arg_type = check_expr(checker, expr->as.call.args[0]);
+                    if (arg_type != TYPE_STRING && arg_type != TYPE_ERROR) {
+                        diagnostic(c, expr->as.call.args[0]->token, "error", "E2042",
+                                   "len() currently accepts a string, not this type.",
+                                   "Pass a string value; array length will be supported with arrays.");
+                        expr->type = TYPE_ERROR;
+                    } else {
+                        expr->type = arg_type == TYPE_ERROR ? TYPE_ERROR : TYPE_INT;
+                    }
+                }
+                checker->active_borrow_count = borrow_base;
+                return expr->type;
+            }
             if (!function) {
                 const char *near = nearest_function(c, expr->as.call.name);
                 if (edit_distance(expr->as.call.name, "print") <= 2) {

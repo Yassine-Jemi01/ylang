@@ -1,6 +1,6 @@
 # YLang Standard Library Plan
 
-**Status:** API proposal for YLang 2.0. These modules are not all implemented yet; each API becomes supported only after tests exist on Linux and Windows.
+**Status:** Initial `read_line()` and `len(string)` built-ins are implemented on `dev/lsp-foundation`. The complete module API below remains a proposal; each API becomes supported only after tests exist on Linux and Windows.
 
 ## Compatibility rule
 
@@ -10,8 +10,8 @@ Portable APIs have the same behavior and error semantics on supported platforms.
 
 | Module | Initial responsibilities | Important contract |
 |---|---|---|
-| `std.io` | print, stdin/stdout/stderr, read line | EOF differs from an empty line; I/O errors are not silently converted to empty strings |
-| `std.string` | length, equality, search, split/join, formatting | UTF-8 validity and whether length means bytes or Unicode scalar values are explicit |
+| `std.io` | print and `read_line()` | `read_line()` removes the line ending; EOF before any bytes and I/O errors are runtime errors in this initial API |
+| `std.string` | `len(string)` byte length, equality, search, split/join, formatting | `len` counts UTF-8 bytes, not Unicode scalar values; other operations remain planned |
 | `std.array` | length, append, capacity, clone | Bounds checks, allocation failure, and ownership are defined |
 | `std.math` | common math operations/constants | Domain errors and floating-point behavior are documented |
 | `std.fs` | read/write files, metadata, directory iteration | Handles close deterministically; permissions and errors are preserved |

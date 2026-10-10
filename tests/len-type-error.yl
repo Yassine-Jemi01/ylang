@@ -1,0 +1,4 @@
+function main() -> int {
+    print(len(42));
+    return 0;
+}

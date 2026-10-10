@@ -1,0 +1,6 @@
+function main() -> int {
+    let string answer = read_line();
+    print(answer);
+    print(len(answer));
+    return 0;
+}

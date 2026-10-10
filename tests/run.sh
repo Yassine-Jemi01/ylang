@@ -149,6 +149,19 @@ if command -v clang >/dev/null 2>&1; then
 fi
 
 
+# Standard input and byte-length builtins work with dynamic input on all platforms.
+"$YLANG" build tests/read-line.yl -o "build/test-read-line$EXEEXT" >/dev/null
+printf 'YLang\\r\\n' > build/read-line.in
+"./build/test-read-line$EXEEXT" < build/read-line.in > build/read-line.out
+normalize_output "build/read-line.out"
+diff -u tests/expected-read-line.txt build/read-line.out
+
+if "$YLANG" check tests/len-type-error.yl > build/len-type-error.out 2>&1; then
+    echo "FAIL: len accepted a non-string argument" >&2
+    exit 1
+fi
+grep -q 'E2042' build/len-type-error.out
+
 # Borrowed scalar parameters: shared borrows read; exclusive borrows update the caller.
 "$YLANG" build tests/borrow-read.yl -o "build/test-borrow-read$EXEEXT" >/dev/null
 "./build/test-borrow-read$EXEEXT" > build/borrow-read.out

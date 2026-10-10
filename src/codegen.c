@@ -154,7 +154,15 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             sb_append(sb, " = "); emit_expr(sb, expr->as.assign.right); sb_append(sb, ")");
             break;
         case EXPR_CALL:
-            sb_append(sb, expr->as.call.function ? expr->as.call.function->c_name : "yl_missing_function");
+            if (expr->as.call.function) {
+                sb_append(sb, expr->as.call.function->c_name);
+            } else if (strcmp(expr->as.call.name, "read_line") == 0) {
+                sb_append(sb, "yl_read_line");
+            } else if (strcmp(expr->as.call.name, "len") == 0) {
+                sb_append(sb, "yl_len_string");
+            } else {
+                sb_append(sb, "yl_missing_function");
+            }
             sb_append(sb, "(");
             for (size_t i = 0; i < expr->as.call.count; i++) {
                 if (i) sb_append(sb, ", ");
@@ -379,6 +387,30 @@ static void emit_runtime(FILE *out)
         "    char *buffer = malloc((size_t)needed + 1); if (!buffer) { va_end(args); yl_runtime_error(\"out of memory\"); }\n"
         "    (void)vsnprintf(buffer, (size_t)needed + 1, format, args); va_end(args);\n"
         "    return (const char *)yl_track(buffer);\n}\n"
+        "static const char *yl_read_line(void) {\n"
+        "    size_t capacity = 128, length = 0; char *buffer = malloc(capacity);\n"
+        "    if (!buffer) yl_runtime_error(\"out of memory while reading input\");\n"
+        "    int ch = EOF;\n"
+        "    while ((ch = fgetc(stdin)) != EOF && ch != '\\n') {\n"
+        "        if (length + 1 >= capacity) {\n"
+        "            if (capacity > SIZE_MAX / 2) { free(buffer); yl_runtime_error(\"input line is too large\"); }\n"
+        "            size_t next = capacity * 2; char *grown = realloc(buffer, next);\n"
+        "            if (!grown) { free(buffer); yl_runtime_error(\"out of memory while reading input\"); }\n"
+        "            buffer = grown; capacity = next;\n"
+        "        }\n"
+        "        buffer[length++] = (char)ch;\n"
+        "    }\n"
+        "    if (ch == EOF && ferror(stdin)) { free(buffer); yl_runtime_error(\"input failed\"); }\n"
+        "    if (ch == EOF && length == 0) { free(buffer); yl_runtime_error(\"end of input\"); }\n"
+        "    if (length > 0 && buffer[length - 1] == '\\r') length--;\n"
+        "    buffer[length] = '\\0'; return (const char *)yl_track(buffer);\n"
+        "}\n"
+        "static int64_t yl_len_string(const char *value) {\n"
+        "    if (!value) yl_runtime_error(\"len() received a null string\");\n"
+        "    size_t length = strlen(value);\n"
+        "    if (length > (size_t)INT64_MAX) yl_runtime_error(\"string is too large for len()\");\n"
+        "    return (int64_t)length;\n"
+        "}\n"
         "static int64_t yl_add_i64(int64_t a, int64_t b) { int64_t r; if (__builtin_add_overflow(a,b,&r)) yl_runtime_error(\"integer overflow in addition\"); return r; }\n"
         "static int64_t yl_sub_i64(int64_t a, int64_t b) { int64_t r; if (__builtin_sub_overflow(a,b,&r)) yl_runtime_error(\"integer overflow in subtraction\"); return r; }\n"
         "static int64_t yl_mul_i64(int64_t a, int64_t b) { int64_t r; if (__builtin_mul_overflow(a,b,&r)) yl_runtime_error(\"integer overflow in multiplication\"); return r; }\n"

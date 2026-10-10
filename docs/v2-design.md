@@ -60,6 +60,10 @@ No implicit narrowing conversions. Conversion functions must make failure or los
 
 ## Standard library scope
 
+**First implemented built-ins on `dev/lsp-foundation`:** `read_line()` reads one line from standard input, removes LF and an optional preceding CR, and `len(text)` returns the UTF-8 byte length of a string. End-of-input before any characters is currently a runtime error; this initial API does not conflate EOF with an empty line.
+
+
+
 The initial library should cover:
 - `std.io`: print, line input, standard streams, explicit I/O errors.
 - `std.string`: length, slicing boundaries, search, split/join, UTF-8 validation, formatting.
