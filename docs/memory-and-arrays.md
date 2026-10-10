@@ -1,6 +1,6 @@
 # YLang Memory and Arrays Design
 
-**Status:** Proposed for a future language iteration. See [Ownership and Borrowing](ownership-and-borrowing.md) for the chosen direction and the current, limited scalar-borrowing implementation. The stable YLang 1.0.0 contract on `main` is unchanged.
+**Status:** The development branch implements a first slice: typed one-dimensional arrays, non-empty literals, checked indexing, `len`, `append`, `clone`, and move/use-after-move checks for named array values. The stable YLang 1.0.0 contract on `main` is unchanged.
 
 ## Design direction
 
@@ -12,21 +12,21 @@ YLang should use compiler-checked ownership for heap-owned values rather than re
 
 ### Owned strings
 
-`string` values are planned to be owned and moved by default. The compiler will reject use after move, and callers will explicitly request cloning when they need two independent owners. String literals may use static storage, but the source-level rules must not depend on whether an implementation chose static storage or allocated bytes. Dynamic strings, including f-string results, must be released deterministically when their owner ends.
+`string` values move by default when transferred from a named local into another variable, a by-value function parameter, or a return. `clone(text)` creates an independent copy. The checker rejects use after move and conservatively merges move state across branches and loops. String literals may use static storage, while dynamic strings and f-string results are currently tracked until process exit; deterministic scope cleanup is still required before claiming a complete ownership model.
 
 The current C backend keeps f-string formatting buffers until process exit. Replacing that mechanism with deterministic ownership/cleanup is a prerequisite to claiming the string type is covered by the new safety model.
 
 ### Arrays
 
-An array is planned as a dynamically sized homogeneous one-dimensional sequence, with type spelling `T[]`, such as `int[]` or `string[]`.
+An array is a dynamically sized homogeneous one-dimensional sequence, with type spelling `T[]`, such as `int[]` or `string[]`. The initial implementation supports `int`, `float`, `bool`, `char`, and `string` elements.
 
 - Array values are owned and move by default; assignment does not silently create another owner.
 - Copying requires an explicit operation with a documented cost. A future implementation may use copy-on-write internally only if it preserves the language's explicit ownership and clone semantics.
 - Indexes are zero-based. Reads and writes must check `0 <= index < len(array)` unless the compiler can prove the check redundant.
 - `len(array)` returns the length.
-- `append(array, value)` should have documented move/ownership behavior. It may consume and return the array value to avoid repeated copies.
+- `append(array, value)` appends to a named mutable array variable and checks the element type. Appending a named string to a `string[]` moves that string value.
 - All elements have one type. Implicit element conversions are not performed.
-- Initially support one-dimensional arrays of `int`, `float`, `bool`, `char`, and `string`. Nested arrays are deferred until the ownership/drop model is proven.
+- Empty array literals are not supported yet because they have no element type to infer. Nested arrays are deferred until the ownership/drop model is proven. Arrays currently print a length summary rather than all elements.
 
 ## Function boundaries and lifetimes
 
@@ -40,14 +40,13 @@ Array operations must define behavior for negative/out-of-range indexes, capacit
 
 ## Implementation order
 
-1. Validate scalar-borrow checking and its regression tests.
-2. Implement ownership-state dataflow and move-after-use errors for owned strings.
-3. Replace process-lifetime f-string tracking with deterministic ownership and cleanup.
-4. Add typed array declarations/literals, then index reads/writes, `len`, and append.
-5. Add copy/move/parameter/return semantics and cleanup on every control-flow exit.
-6. Test positive and negative ownership cases, runtime bounds, allocation failures, and string/array behavior.
-7. Update language docs, Tree-sitter, VS Code, and Neovim together with the accepted syntax.
-8. Run the full Linux/Windows compatibility pass after the language core stabilizes.
+1. Harden scalar borrowing against aliasing and control-flow edge cases.
+2. Extend move analysis and replace process-lifetime tracking with deterministic scope cleanup.
+3. Add empty-array typing, capacity APIs, and more exhaustive allocation-failure tests.
+4. Extend arrays to nested containers only after recursive ownership is sound.
+5. Implement modules, typed error results, and the remaining standard-library modules.
+6. Update generated Tree-sitter parser artifacts and keep VS Code, Neovim, and LSP in sync.
+7. Run sanitizers, compiler fuzzing, and the full Linux/Windows compatibility pass.
 
 ## Explicitly deferred
 

@@ -10,9 +10,9 @@ Portable APIs have the same behavior and error semantics on supported platforms.
 
 | Module | Initial responsibilities | Important contract |
 |---|---|---|
-| `std.io` | print and `read_line()` | `read_line()` removes the line ending; EOF before any bytes and I/O errors are runtime errors in this initial API |
-| `std.string` | `len(string)` byte length, equality, search, split/join, formatting | `len` counts UTF-8 bytes, not Unicode scalar values; other operations remain planned |
-| `std.array` | length, append, capacity, clone | Bounds checks, allocation failure, and ownership are defined |
+| `std.io` | `print` and `read_line()` built-ins (dev branch) | `read_line()` removes the line ending; EOF before any bytes and I/O errors are runtime errors in this initial API |
+| `std.string` | `len(string)` byte length and `clone(string)` built-ins (dev branch); equality is supported | `len` counts UTF-8 bytes, not Unicode scalar values; other operations remain planned |
+| `std.array` | typed one-dimensional arrays, checked indexing, `len`, `append`, `clone` (dev branch); capacity API planned | Bounds checks, allocation failure, and ownership are defined |
 | `std.math` | common math operations/constants | Domain errors and floating-point behavior are documented |
 | `std.fs` | read/write files, metadata, directory iteration | Handles close deterministically; permissions and errors are preserved |
 | `std.path` | join, normalize, extension, filename | Uses platform-neutral path values and correct Windows path semantics |

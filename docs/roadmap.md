@@ -8,7 +8,7 @@ Prioritize the core semantics and test harness over a long list of shallow featu
 
 ## Stage 0 — Stabilize the development foundation
 
-- [ ] Review and stabilize scalar `&T` / `&mut T` borrowing.
+- [x] Add an initial call-scoped scalar `&T` / `&mut T` borrowing implementation; further soundness review remains required.
 - [ ] Ensure diagnostics reject all mismatched modes and conflicting aliases.
 - [ ] Fix parser/codegen edge cases before adding heap-backed types.
 - [ ] Add fuzz targets for lexer/parser and sanitizer CI.
@@ -16,8 +16,8 @@ Prioritize the core semantics and test harness over a long list of shallow featu
 
 ## Stage 1 — Ownership and deterministic cleanup
 
-- [ ] Define string representation, UTF-8 contract, and clone/move semantics.
-- [ ] Add move-state analysis and reject use-after-move.
+- [x] Add initial string move/use-after-move checks and explicit `clone(string)`; finalize UTF-8 and cleanup semantics.
+- [x] Add conservative move-state analysis and reject common use-after-move cases.
 - [ ] Replace process-lifetime f-string allocations with deterministic ownership.
 - [ ] Generate cleanup on all control-flow exits and error paths.
 - [ ] Test early returns, nested scopes, loops, and repeated formatting.
@@ -25,15 +25,15 @@ Prioritize the core semantics and test harness over a long list of shallow featu
 
 ## Stage 2 — Arrays
 
-- [ ] Add `T[]` types and typed literals.
-- [ ] Add indexing reads/writes with bounds checks.
-- [ ] Add `len`, append, capacity, and explicit clone/move rules.
+- [x] Add typed `T[]` types and non-empty literals for scalar/string element types.
+- [x] Add indexing reads/writes with runtime bounds checks.
+- [x] Add `len`, `append`, and `clone`, plus basic move checks; capacity API remains open.
 - [ ] Define empty-array typing and allocation failure behavior.
 - [ ] Test invalid indexes, zero-length arrays, overflow, and memory cleanup.
 
 ## Stage 3 — Essential language features
 
-- [ ] Line input and typed conversion APIs with EOF/error behavior.
+- [x] Add `read_line()` with documented EOF/error behavior; typed conversion APIs remain planned.
 - [ ] Range-based `for` iteration.
 - [ ] Match/enum or another explicit sum-type design for robust error handling.
 - [ ] Multi-file modules/imports and visibility.
@@ -42,9 +42,9 @@ Prioritize the core semantics and test harness over a long list of shallow featu
 
 ## Stage 4 — Standard library
 
-- [ ] `std.io`: output, line input, streams, I/O errors.
-- [ ] `std.string`: UTF-8 operations, formatting, split/join/search.
-- [ ] `std.array`: safe collections and capacity operations.
+- [ ] Expand `std.io` beyond `print` and `read_line()` to streams and typed I/O errors.
+- [ ] Expand `std.string` beyond byte `len` and `clone` to UTF-8 operations, formatting, split/join/search.
+- [ ] Expand `std.array` beyond basic literals/indexing/append/clone to capacity and iteration APIs.
 - [ ] `std.math`: numeric functions and documented domains.
 - [ ] `std.fs` and `std.path`: portable filesystem APIs.
 - [ ] `std.process`: args, environment, exit status, child processes.
