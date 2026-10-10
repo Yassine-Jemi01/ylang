@@ -458,7 +458,9 @@ static Expr *parse_primary(Parser *p)
     }
     if (match(p, TOKEN_NUMBER)) {
         Expr *expr = new_expr(p->compiler,
-            memchr(token.start, '.', token.length) ? EXPR_FLOAT : EXPR_INT, token);
+            (memchr(token.start, '.', token.length) ||
+             memchr(token.start, 'e', token.length) ||
+             memchr(token.start, 'E', token.length)) ? EXPR_FLOAT : EXPR_INT, token);
         return expr;
     }
     if (match(p, TOKEN_STRING)) return new_expr(p->compiler, EXPR_STRING, token);

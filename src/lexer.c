@@ -95,7 +95,7 @@ static bool is_digit(char c)
     return c >= '0' && c <= '9';
 }
 
-static void skip_spaces_and_comments(Lexer *lexer)
+static bool skip_spaces_and_comments(Lexer *lexer)
 {
     for (;;) {
         char c = peek(lexer);
@@ -107,8 +107,18 @@ static void skip_spaces_and_comments(Lexer *lexer)
             while (peek(lexer) != '\n' && peek(lexer) != '\0') {
                 advance_char(lexer);
             }
+        } else if (c == '/' && peek_next(lexer) == '*') {
+            advance_char(lexer);
+            advance_char(lexer);
+            while (!(peek(lexer) == '*' && peek_next(lexer) == '/') &&
+                   peek(lexer) != '\0') {
+                advance_char(lexer);
+            }
+            if (peek(lexer) == '\0') return false;
+            advance_char(lexer);
+            advance_char(lexer);
         } else {
-            return;
+            return true;
         }
     }
 }
@@ -156,17 +166,39 @@ static Token scan_identifier(Lexer *lexer)
     return make_token(lexer, identifier_type(lexer));
 }
 
+static bool is_hex_digit(char c)
+{
+    return is_digit(c) || (c >= 'a' && c <= 'f') ||
+           (c >= 'A' && c <= 'F');
+}
+
 static Token scan_number(Lexer *lexer)
 {
-    while (is_digit(peek(lexer))) {
+    if (lexer->source[lexer->start] == '0' &&
+        (peek(lexer) == 'x' || peek(lexer) == 'X')) {
         advance_char(lexer);
+        size_t digits_start = lexer->current;
+        while (is_hex_digit(peek(lexer))) advance_char(lexer);
+        if (lexer->current == digits_start) {
+            return error_token(lexer, "Hexadecimal integer literals require at least one digit.");
+        }
+        return make_token(lexer, TOKEN_NUMBER);
     }
+
+    while (is_digit(peek(lexer))) advance_char(lexer);
 
     if (peek(lexer) == '.' && is_digit(peek_next(lexer))) {
         advance_char(lexer);
-        while (is_digit(peek(lexer))) {
-            advance_char(lexer);
+        while (is_digit(peek(lexer))) advance_char(lexer);
+    }
+
+    if (peek(lexer) == 'e' || peek(lexer) == 'E') {
+        advance_char(lexer);
+        if (peek(lexer) == '+' || peek(lexer) == '-') advance_char(lexer);
+        if (!is_digit(peek(lexer))) {
+            return error_token(lexer, "Scientific notation requires exponent digits.");
         }
+        while (is_digit(peek(lexer))) advance_char(lexer);
     }
 
     return make_token(lexer, TOKEN_NUMBER);
@@ -202,7 +234,13 @@ static Token scan_string(Lexer *lexer, TokenType type)
 
 Token lexer_next(Lexer *lexer)
 {
-    skip_spaces_and_comments(lexer);
+    lexer->start = lexer->current;
+    lexer->token_line = lexer->line;
+    lexer->token_column = lexer->column;
+    if (!skip_spaces_and_comments(lexer)) {
+        lexer->start = lexer->current;
+        return error_token(lexer, "Unterminated block comment; expected '*/'.");
+    }
 
     lexer->start = lexer->current;
     lexer->token_line = lexer->line;

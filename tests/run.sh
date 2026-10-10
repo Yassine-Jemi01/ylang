@@ -250,3 +250,31 @@ if ./build/ylang check tests/array-param-type-error.yl > build/array-param-type-
     exit 1
 fi
 grep -q 'This parameter expects an array argument' build/array-param-type-error.out
+
+# Numeric literal forms and multiline comments.
+cat > build/literals-comments.yl <<'EOF'
+/* Block comments may
+   span multiple lines. */
+function main() -> int {
+    let int hex = 0xFF;
+    let float scientific = 1e3;
+    let float tiny = 2.5e-4;
+    print(hex, scientific, tiny);
+    return 0;
+}
+EOF
+./build/ylang check build/literals-comments.yl >/dev/null
+./build/ylang build build/literals-comments.yl -o build/test-literals-comments >/dev/null
+./build/test-literals-comments > build/literals-comments.out
+grep -q '255 1000 0.00025' build/literals-comments.out
+cat > build/unterminated-comment.yl <<'EOF'
+function main() -> int {
+    /* never closed
+    return 0;
+}
+EOF
+if ./build/ylang check build/unterminated-comment.yl > build/unterminated-comment.out 2>&1; then
+    echo "FAIL: unterminated block comment was accepted" >&2
+    exit 1
+fi
+grep -q 'Unterminated block comment' build/unterminated-comment.out

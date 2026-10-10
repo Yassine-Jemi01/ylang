@@ -18,7 +18,7 @@ YLang is a compiled language. `ylang check` parses and performs semantic checks.
 
 ## 2. Source form and statements
 
-Statements end with `;`, blocks use `{` and `}`, and comments use `//` through the end of a line. Keywords are lowercase and case-sensitive. Source files are text and embedded NUL bytes are rejected before lexing. Each source file passed to the CLI is compiled as one program. A program must define `function main() -> int` or `function main() -> void`, with no parameters.
+Statements end with `;`, blocks use `{` and `}`, and comments use `//` through the end of a line or `/* ... */` across lines. Block comments cannot be nested and must be closed. Keywords are lowercase and case-sensitive. Source files are text and embedded NUL bytes are rejected before lexing. Each source file passed to the CLI is compiled as one program. A program must define `function main() -> int` or `function main() -> void`, with no parameters.
 
 ## 3. Variables and constants
 
@@ -61,7 +61,7 @@ let string message = "Hello\n";
 let string greeting = f"Hello {message}";
 ```
 
-`char` is one byte, not a Unicode scalar. A string literal must be terminated. F-strings begin with `f"` and interpolate expressions inside `{}`. Supported interpolations include variables and operators. Function calls and assignments are not allowed inside interpolation expressions; compute the value in a preceding statement. Literal braces can be escaped as documented by the lexer (`{{`, `}}`, `\{`, and `\}`).
+`char` is one byte, not a Unicode scalar. Integer literals support decimal notation and hexadecimal notation such as `0xFF`; floating-point literals support decimal notation and scientific notation such as `1e3` or `2.5e-4`. A string literal must be terminated. F-strings begin with `f"` and interpolate expressions inside `{}`. Supported interpolations include variables and operators. Function calls and assignments are not allowed inside interpolation expressions; compute the value in a preceding statement. Literal braces can be escaped as documented by the lexer (`{{`, `}}`, `\{`, and `\}`).
 
 ## 6. Output
 
