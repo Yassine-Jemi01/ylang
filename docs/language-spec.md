@@ -78,6 +78,31 @@ Operator precedence is conventional: unary operators, multiplication/division/mo
 
 Signed integer overflow, integer division/modulo by zero, and floating-point division by zero are handled by generated runtime helpers and terminate the program with a runtime-error message and status 70. This does not mean every possible C-level issue is guarded or that the language is memory-safe.
 
+## Loops
+
+Three loop forms are supported:
+
+```ylang
+loop() {
+    // Repeat until break.
+    break;
+}
+
+while (count < limit) {
+    count = count + 1;
+}
+
+for (let int i = 0; i < limit; i = i + 1) {
+    print(i);
+}
+```
+
+- `loop()` is an unconditional loop.
+- `while (condition)` repeats while a boolean condition is true.
+- `for (initializer; condition; increment)` uses C-style clauses. The initializer may be a `let` declaration or expression; condition and increment may be omitted.
+- `break;` exits the innermost loop and `continue;` starts its next iteration.
+- A `for` initializer declaration is scoped to the loop and its body.
+
 ## Fixed-size arrays
 
 YLang supports fixed-size arrays with an explicit element type and an initializer. The length is inferred from the initializer. Arrays may be local or global, must contain at least one element, and all elements must have the same type.
@@ -183,6 +208,6 @@ Parameter and return types are explicit. Function overloading is not supported. 
 
 ## 11. Unsupported features and implementation limits
 
-The following are not supported by the current language subset: classes/OOP, exception syntax (`try`/`catch`), `for`/`while`, modules, generics, raw pointers/references, passing or returning arrays, nested/const arrays, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
+The following are not supported by the current language subset: classes/OOP, exception syntax (`try`/`catch`), modules, generics, raw pointers/references, passing or returning arrays, nested/const arrays, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
 
 The compiler generates C, so native code inherits ordinary process privileges and is not sandboxed. Some formatted string values are stored until process exit; creating many such values in a long-running loop can increase memory consumption. The language does not define ownership/borrowing or a garbage collector in this release. Do not assume Rust-like memory-safety guarantees.
