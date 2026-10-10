@@ -160,9 +160,17 @@ static int run_native_compiler(const char *cc, const char *c_path,
         return 1;
     }
     if (pid == 0) {
+#if defined(__APPLE__)
+        /* macOS uses Apple's linker; GNU ld's -z hardening flags are Linux-only. */
+        execlp(cc, cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic", "-Wno-unused-function",
+               "-O2", "-g", "-fstack-protector-strong", "-fPIE",
+               c_path, "-lm", "-pie", "-o", output_path, (char *)NULL);
+#else
+        /* Linux: enable fortification and GNU ld RELRO/NOW hardening. */
         execlp(cc, cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic", "-Wno-unused-function",
                "-O2", "-g", "-D_FORTIFY_SOURCE=3", "-fstack-protector-strong", "-fPIE",
                c_path, "-lm", "-pie", "-Wl,-z,relro,-z,now", "-o", output_path, (char *)NULL);
+#endif
         fprintf(stderr, "ylang: cannot execute '%s': %s\n", cc, strerror(errno));
         _exit(127);
     }
