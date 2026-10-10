@@ -4,13 +4,13 @@
 #include <string.h>
 
 #ifndef YLANG_VERSION
-#define YLANG_VERSION "1.0.0"
+#define YLANG_VERSION "2.0.0-dev"
 #endif
 
 static void usage(FILE *stream)
 {
     fputs(
-        "YLang v" YLANG_VERSION " — stable compiled language toolchain\n\n"
+        "YLang v" YLANG_VERSION " — language compiler development build\n\n"
         "Usage:\n"
         "  ylang check <file.yl>\n"
         "  ylang build <file.yl> [-o executable] [--cc gcc|clang]\n"
@@ -28,7 +28,7 @@ static void usage(FILE *stream)
 int main(int argc, char **argv)
 {
     if (argc == 2 && (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)) {
-        puts("YLang compiler " YLANG_VERSION " (C backend: GCC/Clang)");
+        puts("YLang compiler " YLANG_VERSION " (YLang front-end, C17 backend via GCC/Clang)");
         return 0;
     }
     if (argc == 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
