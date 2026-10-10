@@ -976,7 +976,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             checker->scope = outer;
             break;
         }
-        case STMT_BREAK;
+        case STMT_BREAK:
         case STMT_CONTINUE:
             if (checker->loop_depth == 0) {
                 diagnostic(c, stmt->token, "error", "E2052",
