@@ -32,7 +32,7 @@ On macOS, install the Xcode Command Line Tools and Homebrew toolchain:
 ```sh
 xcode-select --install
 brew install make llvm
-# Use gmake instead of the built-in BSD make
+# Use gmake instead of the built-in BSD make for every build/test command
 ```
 
 For the optional GUI runtime, also install SDL2 and pkg-config:
