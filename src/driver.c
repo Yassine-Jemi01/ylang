@@ -159,7 +159,7 @@ static int run_native_compiler(const char *cc, const char *c_path,
 {
     const char *requested_opt = getenv("YLANG_OPT_LEVEL");
     const char *optimization = "-O2";
-    if (requested_opt && requested_opt[0] != '\\0') {
+    if (requested_opt && requested_opt[0] != '\0') {
         if (strcmp(requested_opt, "0") == 0) optimization = "-O0";
         else if (strcmp(requested_opt, "1") == 0) optimization = "-O1";
         else if (strcmp(requested_opt, "2") == 0) optimization = "-O2";
@@ -167,7 +167,7 @@ static int run_native_compiler(const char *cc, const char *c_path,
         else if (strcmp(requested_opt, "s") == 0) optimization = "-Os";
         else {
             fprintf(stderr,
-                    "ylang: invalid YLANG_OPT_LEVEL '%s' (use 0, 1, 2, 3, or s)\\n",
+                    "ylang: invalid YLANG_OPT_LEVEL '%s' (use 0, 1, 2, 3, or s)\n",
                     requested_opt);
             return 64;
         }
