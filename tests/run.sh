@@ -22,6 +22,14 @@ if ./build/ylang fix tests/typo-print.yl > build/fix-missing-output.out 2>&1; th
 fi
 grep -q 'requires -o' build/fix-missing-output.out
 
+# Embedded NUL bytes must not silently truncate source parsing.
+printf 'function main() -> int { return 0; }\000function main() -> int { return 1; }\n' > build/embedded-nul.yl
+if ./build/ylang check build/embedded-nul.yl > build/embedded-nul.out 2>&1; then
+    echo "FAIL: source containing an embedded NUL byte was accepted" >&2
+    exit 1
+fi
+grep -q 'contains a NUL byte' build/embedded-nul.out
+
 ./build/ylang check examples/demo.yl
 ./build/ylang build examples/demo.yl -o build/test-demo >/dev/null
 ./build/test-demo > build/test-demo.out
