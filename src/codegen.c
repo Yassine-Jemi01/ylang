@@ -233,13 +233,6 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     sb_append(sb, "yl_array_clone");
                 else
                     sb_append(sb, "yl_clone_string");
-            } else if (strcmp(expr->as.call.name, "append") == 0) {
-                sb_append(sb, "yl_array_append");
-            } else {
-                    sb_append(sb, "yl_invalid_append");
-                }
-                sb_append(sb, ")");
-                break;
             } else {
                 sb_append(sb, "yl_missing_function");
             }
