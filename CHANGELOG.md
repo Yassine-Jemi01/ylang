@@ -10,8 +10,9 @@ This development line is experimental and is not a stable release.
 - Added C-style `for` loops, line-based `input()`, `input_int()`, and `input_float()`.
 - Added a first-pass owned-value move checker for strings/arrays and retained the scalar `&T` / `&mut T` borrow subset.
 - Added regression fixtures for arrays, loop execution, input, move-after-use, type mismatches, and bounds violations.
-- Updated compiler version output and the v2 preview documentation.
-- Windows development support remains based on MSYS2 UCRT64 / MinGW-w64. Do not treat this preview as Rust-equivalent memory-safe; cleanup on all early exits and the ownership checker are still under development.
+- Added `ylang run`, which compiles into a temporary directory, executes the generated program, removes temporary artifacts, and preserves the program's exit status.
+- Added code-generation cleanup on return, break, continue, and function exit, plus string replacement that releases a previous owned value.
+- Windows development support remains based on MSYS2 UCRT64 / MinGW-w64. Do not treat this preview as Rust-equivalent memory-safe; move analysis, string-array ownership, and complete cleanup guarantees still need more testing.
 
 ## [1.0.0] - 2026-10-09
 

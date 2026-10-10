@@ -21,7 +21,7 @@ This is the working roadmap for `v2/core`. It records current scope and next mil
 ## Phase 1 — Stabilize memory and safety
 
 1. Convert move-state checks to a real control-flow dataflow analysis with correct merge behavior for branches and loops.
-2. Generate cleanup for owned values on every exit path, including `return`, `break`, `continue`, and nested scopes.
+2. Expand and stress-test the new code-generation cleanup paths for `return`, `break`, `continue`, function parameters, nested scopes, and all owned array/string cases.
 3. Correct and expand tests for strings in arrays, clone behavior, repeated append, reinitialization after move, and allocation cleanup.
 4. Run sanitizer and malformed-source tests; document unsupported cases rather than silently accepting them.
 

@@ -1,0 +1,14 @@
+function main() -> int {
+    let int i = 0;
+    loop() {
+        let string item = f"item {i}";
+        item = f"updated {i}";
+        if (i == 0) {
+            i = i + 1;
+            continue;
+        }
+        print(len(item));
+        break;
+    }
+    return 0;
+}

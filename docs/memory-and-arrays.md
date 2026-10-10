@@ -26,7 +26,7 @@ other[0] = 7;
 
 Strings are immutable NUL-terminated byte strings. A named string or array is moved by supported assignments, by-value function arguments, and returns. `clone(value)` explicitly creates a separate copy. The compiler rejects detected reads after moves, moves from const owners in supported contexts, and some moves from globals.
 
-String literals can refer to static storage. Dynamically generated strings (including formatted strings and input) are tracked by the runtime. Normal local block exits drop owned local strings and array buffers; a process-exit registry provides fallback cleanup. Not all early control-flow exits currently emit deterministic drop code, and strings stored in string arrays may remain tracked until shutdown. This is a known memory-management gap.
+String literals can refer to static storage. Dynamically generated strings (including formatted strings and input) are tracked by the runtime. The development code generator emits drops for owned local strings and arrays on normal block exit, `return`, `break`, and `continue`, and drops owned function parameters on function exit. Replacing a named string uses the runtime replace helper to release its previous owned value. Strings stored within string arrays may still remain tracked until shutdown; cleanup and array/string aliasing need more work before this preview can promise fully deterministic resource release.
 
 ## Runtime checks
 

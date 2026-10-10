@@ -1,0 +1,12 @@
+function measure(string source) -> int {
+    let string decorated = f"prefix {source}";
+    return len(decorated);
+}
+
+function main() -> int {
+    for (let int i = 0; i < 3; i = i + 1) {
+        let string message = f"v{i}";
+        print(measure(message));
+    }
+    return 0;
+}

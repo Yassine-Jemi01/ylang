@@ -226,6 +226,14 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                            array_suffix(expr->type), expr->as.assign.variable->c_name);
                 emit_move_value(sb, expr->as.assign.right);
                 sb_append(sb, ")");
+            } else if (expr->type == TYPE_STRING &&
+                       expr->as.assign.target &&
+                       expr->as.assign.target->kind == EXPR_NAME &&
+                       expr->as.assign.variable) {
+                sb_appendf(sb, "yl_string_replace(&%s, ",
+                           expr->as.assign.variable->c_name);
+                emit_move_value(sb, expr->as.assign.right);
+                sb_append(sb, ")");
             } else {
                 sb_append(sb, "(");
                 emit_expr(sb, expr->as.assign.target);
@@ -420,49 +428,98 @@ static void emit_fstring_print(FILE *out, Expr *expr, unsigned indent)
     }
 }
 
-static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
+
+typedef struct EmitLocal {
+    VarDecl *variable;
+    struct EmitLocal *previous;
+} EmitLocal;
+
+typedef struct EmitLoop {
+    EmitLocal *locals_at_entry;
+    struct EmitLoop *previous;
+} EmitLoop;
+
+typedef struct {
+    Compiler *compiler;
+    EmitLocal *locals;
+    EmitLoop *loop;
+    unsigned return_temp_counter;
+    bool function_body;
+} EmitContext;
+
+static void emit_drop_var(FILE *out, VarDecl *var, unsigned indent)
+{
+    if (!var || !ylang_type_is_owned(var->type)) return;
+    emit_indent(out, indent);
+    if (ylang_type_is_array(var->type)) {
+        fprintf(out, "yl_array_%s_drop(&%s);\n",
+                array_suffix(var->type), var->c_name);
+    } else if (var->type == TYPE_STRING) {
+        fprintf(out, "yl_string_drop(&%s);\n", var->c_name);
+    }
+}
+
+static void emit_cleanup_until(FILE *out, EmitContext *context,
+                               EmitLocal *stop, unsigned indent)
+{
+    for (EmitLocal *local = context->locals;
+         local && local != stop; local = local->previous) {
+        emit_drop_var(out, local->variable, indent);
+    }
+}
+
+static void emit_track_local(EmitContext *context, VarDecl *variable)
+{
+    EmitLocal *local = arena_alloc(&context->compiler->arena, sizeof(*local));
+    local->variable = variable;
+    local->previous = context->locals;
+    context->locals = local;
+}
+
+
+static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent,
+                      EmitContext *context)
 {
     if (!stmt) return;
     switch (stmt->kind) {
-        case STMT_BLOCK:
-            emit_indent(out, indent); fputs("{\n", out);
-            for (size_t i = 0; i < stmt->as.block.count; i++)
-                emit_stmt(out, stmt->as.block.items[i], indent + 1);
-            for (size_t i = stmt->as.block.count; i > 0; i--) {
-                Stmt *item = stmt->as.block.items[i - 1];
-                if (item && item->kind == STMT_VAR) {
-                    VarDecl *var = item->as.variable;
-                    if (ylang_type_is_array(var->type)) {
-                        emit_indent(out, indent + 1);
-                        fprintf(out, "yl_array_%s_drop(&%s);\n",
-                                array_suffix(var->type), var->c_name);
-                    } else if (var->type == TYPE_STRING) {
-                        emit_indent(out, indent + 1);
-                        fprintf(out, "yl_string_drop(&%s);\n", var->c_name);
-                    }
-                }
+        case STMT_BLOCK: {
+            EmitLocal *scope_mark = context->function_body ? NULL : context->locals;
+            context->function_body = false;
+            emit_indent(out, indent);
+            fputs("{\n", out);
+            for (size_t i = 0; i < stmt->as.block.count; i++) {
+                emit_stmt(out, stmt->as.block.items[i], indent + 1, context);
             }
-            emit_indent(out, indent); fputs("}\n", out);
+            emit_cleanup_until(out, context, scope_mark, indent + 1);
+            context->locals = scope_mark;
+            emit_indent(out, indent);
+            fputs("}\n", out);
             break;
+        }
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
-            emit_indent(out, indent); emit_var_type(out, var, false);
+            emit_indent(out, indent);
+            emit_var_type(out, var, false);
             fprintf(out, " %s", var->c_name);
             if (var->initializer) {
                 fputs(" = ", out);
-                if (ylang_type_is_owned(var->type) && var->initializer->kind == EXPR_NAME) {
+                if (ylang_type_is_owned(var->type) &&
+                    var->initializer->kind == EXPR_NAME) {
                     StringBuilder moved;
                     sb_init(&moved);
                     emit_move_value(&moved, var->initializer);
                     fputs(moved.data ? moved.data : "0", out);
                     sb_destroy(&moved);
-                } else emit_expr_to_file(out, var->initializer);
+                } else {
+                    emit_expr_to_file(out, var->initializer);
+                }
             } else if (ylang_type_is_array(var->type)) {
                 fputs(" = {0}", out);
             } else if (var->type == TYPE_STRING) {
                 fputs(" = NULL", out);
             }
             fputs(";\n", out);
+            emit_track_local(context, var);
             break;
         }
         case STMT_PRINT:
@@ -472,24 +529,39 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
                     emit_indent(out, indent);
                     fputs("fputs(\" \", stdout);\n", out);
                 }
-                if (expr->kind == EXPR_FSTRING) emit_fstring_print(out, expr, indent);
-                else emit_print_value(out, expr, indent);
+                if (expr->kind == EXPR_FSTRING) {
+                    emit_fstring_print(out, expr, indent);
+                } else {
+                    emit_print_value(out, expr, indent);
+                }
             }
-            emit_indent(out, indent); fputs("putchar('\\n');\n", out);
+            emit_indent(out, indent);
+            fputs("putchar('\\n');\n", out);
             break;
         case STMT_IF:
-            emit_indent(out, indent); fputs("if (", out); emit_expr_to_file(out, stmt->as.if_stmt.condition); fputs(") ", out);
-            fputs("\n", out); emit_stmt(out, stmt->as.if_stmt.then_branch, indent);
+            emit_indent(out, indent);
+            fputs("if (", out);
+            emit_expr_to_file(out, stmt->as.if_stmt.condition);
+            fputs(") \n", out);
+            emit_stmt(out, stmt->as.if_stmt.then_branch, indent, context);
             if (stmt->as.if_stmt.else_branch) {
-                emit_indent(out, indent); fputs("else ", out); fputs("\n", out);
-                emit_stmt(out, stmt->as.if_stmt.else_branch, indent);
+                emit_indent(out, indent);
+                fputs("else \n", out);
+                emit_stmt(out, stmt->as.if_stmt.else_branch, indent, context);
             }
             break;
-        case STMT_LOOP:
-            emit_indent(out, indent); fputs("for (;;) ", out); fputs("\n", out);
-            emit_stmt(out, stmt->as.loop_body, indent);
+        case STMT_LOOP: {
+            EmitLoop loop_frame = { context->locals, context->loop };
+            context->loop = &loop_frame;
+            emit_indent(out, indent);
+            fputs("for (;;) \n", out);
+            emit_stmt(out, stmt->as.loop_body, indent, context);
+            context->loop = loop_frame.previous;
             break;
-        case STMT_FOR:
+        }
+        case STMT_FOR: {
+            EmitLoop loop_frame = { context->locals, context->loop };
+            context->loop = &loop_frame;
             emit_indent(out, indent);
             fputs("for (", out);
             if (stmt->as.for_stmt.initializer &&
@@ -503,34 +575,72 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
                 }
             }
             fputs("; ", out);
-            if (stmt->as.for_stmt.condition) emit_expr_to_file(out, stmt->as.for_stmt.condition);
-            else fputs("true", out);
+            if (stmt->as.for_stmt.condition) {
+                emit_expr_to_file(out, stmt->as.for_stmt.condition);
+            } else {
+                fputs("true", out);
+            }
             fputs("; ", out);
-            if (stmt->as.for_stmt.increment) emit_expr_to_file(out, stmt->as.for_stmt.increment);
+            if (stmt->as.for_stmt.increment) {
+                emit_expr_to_file(out, stmt->as.for_stmt.increment);
+            }
             fputs(")\n", out);
-            emit_stmt(out, stmt->as.for_stmt.body, indent);
+            emit_stmt(out, stmt->as.for_stmt.body, indent, context);
+            context->loop = loop_frame.previous;
             break;
+        }
         case STMT_BREAK:
-            emit_indent(out, indent); fputs("break;\n", out); break;
+            if (context->loop) {
+                emit_cleanup_until(out, context,
+                                   context->loop->locals_at_entry, indent);
+            }
+            emit_indent(out, indent);
+            fputs("break;\n", out);
+            break;
         case STMT_CONTINUE:
-            emit_indent(out, indent); fputs("continue;\n", out); break;
+            if (context->loop) {
+                emit_cleanup_until(out, context,
+                                   context->loop->locals_at_entry, indent);
+            }
+            emit_indent(out, indent);
+            fputs("continue;\n", out);
+            break;
         case STMT_RETURN:
-            emit_indent(out, indent); fputs("return", out);
             if (stmt->as.return_value) {
-                fputc(' ', out);
+                char return_name[64];
+                (void)snprintf(return_name, sizeof(return_name),
+                               "yl_return_temp_%u",
+                               context->return_temp_counter++);
+                emit_indent(out, indent);
+                fprintf(out, "%s %s = ",
+                        c_base_type(stmt->as.return_value->type), return_name);
                 if (ylang_type_is_owned(stmt->as.return_value->type)) {
                     StringBuilder moved;
                     sb_init(&moved);
                     emit_move_value(&moved, stmt->as.return_value);
                     fputs(moved.data ? moved.data : "0", out);
                     sb_destroy(&moved);
-                } else emit_expr_to_file(out, stmt->as.return_value);
+                } else {
+                    emit_expr_to_file(out, stmt->as.return_value);
+                }
+                fputs(";\n", out);
+                emit_cleanup_until(out, context, NULL, indent);
+                emit_indent(out, indent);
+                fprintf(out, "return %s;\n", return_name);
+            } else {
+                emit_cleanup_until(out, context, NULL, indent);
+                emit_indent(out, indent);
+                fputs("return;\n", out);
             }
-            fputs(";\n", out); break;
+            break;
         case STMT_EXPR:
-            emit_indent(out, indent); emit_expr_to_file(out, stmt->as.expression); fputs(";\n", out); break;
+            emit_indent(out, indent);
+            emit_expr_to_file(out, stmt->as.expression);
+            fputs(";\n", out);
+            break;
     }
 }
+
 
 #ifndef YLANG_VERSION
 #define YLANG_VERSION "2.0.0-dev"
@@ -598,7 +708,12 @@ bool generate_c(Compiler *c, const char *path)
             { emit_param_type(out, fn->params[j]); fprintf(out, " %s", fn->params[j]->c_name); }
         }
         fputs(") ", out); fputc('\n', out);
-        emit_stmt(out, fn->body, 0);
+        EmitContext context = { .compiler = c, .function_body = true };
+        for (size_t j = 0; j < fn->param_count; j++) {
+            emit_track_local(&context, fn->params[j]);
+        }
+        emit_stmt(out, fn->body, 0, &context);
+        context.locals = NULL;
         fputc('\n', out);
     }
 
