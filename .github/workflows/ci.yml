@@ -22,12 +22,14 @@ jobs:
         uses: actions/checkout@v4
       - name: Install toolchain (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y build-essential clang
+        run: sudo apt-get update && sudo apt-get install -y build-essential clang libsdl2-dev pkg-config
       - name: Install toolchain (macOS)
         if: runner.os == 'macOS'
         run: |
           xcode-select --install 2>/dev/null || true
           brew list llvm >/dev/null 2>&1 || brew install llvm
+          brew list sdl2 >/dev/null 2>&1 || brew install sdl2
+          brew list pkg-config >/dev/null 2>&1 || brew install pkg-config
       - name: Select compiler
         id: compiler
         shell: bash
@@ -39,5 +41,7 @@ jobs:
           fi
       - name: Build compiler
         run: make clean all CC="${{ steps.compiler.outputs.cc }}"
+      - name: Build optional GUI runtime
+        run: make gui gui-example CC="${{ steps.compiler.outputs.cc }}"
       - name: Run regression tests
         run: make test CC="${{ steps.compiler.outputs.cc }}"
