@@ -227,7 +227,7 @@ grep -q 'requires string arguments' build/string-type-error.out
 printf 'YLang\n' | ./build/test-read-line > build/read-line.out
 diff -u tests/expected-read-line.txt build/read-line.out
 
-echo "All YLang tests passed."
+
 
 # Path utilities and safe OS image-opening integration.
 ./build/ylang check examples/image-preview.yl >/dev/null
@@ -239,6 +239,40 @@ if ./build/ylang check tests/path-type-error.yl > build/path-type-error.out 2>&1
     exit 1
 fi
 grep -q 'requires string arguments' build/path-type-error.out
+
+# Compound assignment evaluates an indexed lvalue exactly once.
+./build/ylang check tests/array-compound-side-effect.yl >/dev/null
+./build/ylang build tests/array-compound-side-effect.yl -o build/test-array-compound-side-effect >/dev/null
+./build/test-array-compound-side-effect > build/array-compound-side-effect.out
+diff -u tests/expected-array-compound-side-effect.txt build/array-compound-side-effect.out
+
+# Capacity-aware vectors should handle larger declaration lists without quadratic copying.
+: > build/many-globals.yl
+i=0
+while [ "$i" -lt 1000 ]; do
+    printf 'let int global_%s = %s;\n' "$i" "$i" >> build/many-globals.yl
+    i=$((i + 1))
+done
+printf 'function main() -> int { return 0; }\n' >> build/many-globals.yl
+./build/ylang check build/many-globals.yl >/dev/null
+
+# Refuse attempts to overwrite an input file through output commands.
+cat > build/same-path.yl <<'EOF'
+function main() -> int {
+    return 0;
+}
+EOF
+cp build/same-path.yl build/same-path.before
+if ./build/ylang emit-c build/same-path.yl -o build/same-path.yl > build/same-path-emit.out 2>&1; then
+    echo "FAIL: emit-c overwrote its input file" >&2
+    exit 1
+fi
+cmp build/same-path.yl build/same-path.before
+if ./build/ylang fix build/same-path.yl -o build/same-path.yl > build/same-path-fix.out 2>&1; then
+    echo "FAIL: fix overwrote its input file" >&2
+    exit 1
+fi
+cmp build/same-path.yl build/same-path.before
 
 # Array parameters pass a checked pointer and length; length() works in callers and callees.
 ./build/ylang check examples/array-functions.yl >/dev/null
@@ -297,3 +331,5 @@ EOF
 ./build/test-compound-operators > build/compound-operators.out
 grep -q '^6$' build/compound-operators.out
 grep -q '^2$' build/compound-operators.out
+
+echo "All YLang tests passed."

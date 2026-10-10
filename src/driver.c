@@ -154,6 +154,19 @@ static char *read_source_file(const char *path, size_t *length)
     return data;
 }
 
+static bool paths_refer_same_file(const char *input_path, const char *output_path)
+{
+    if (!input_path || !output_path) return false;
+    if (strcmp(input_path, output_path) == 0) return true;
+
+    struct stat input_stat;
+    struct stat output_stat;
+    return stat(input_path, &input_stat) == 0 &&
+           stat(output_path, &output_stat) == 0 &&
+           input_stat.st_dev == output_stat.st_dev &&
+           input_stat.st_ino == output_stat.st_ino;
+}
+
 static int run_native_compiler(const char *cc, const char *c_path,
                                const char *output_path)
 {
@@ -226,6 +239,14 @@ int ylang_run(const char *command, const char *input_path,
         return 65;
     }
 
+    if (output_path && paths_refer_same_file(input_path, output_path)) {
+        fprintf(stderr,
+                "ylang: input '%s' and output '%s' refer to the same file; refusing to overwrite source.\n",
+                input_path, output_path);
+        free(source);
+        return 64;
+    }
+
     Compiler compiler;
     memset(&compiler, 0, sizeof(compiler));
     compiler.filename = (char *)input_path;
@@ -269,6 +290,15 @@ int ylang_run(const char *command, const char *input_path,
 
     const bool emit_c_command = strcmp(command, "emit-c") == 0;
     const char *c_path = output_path;
+    const char *native_target = output_path ? output_path : "a.out";
+    if (!emit_c_command && paths_refer_same_file(input_path, native_target)) {
+        fprintf(stderr,
+                "ylang: input '%s' and output '%s' refer to the same file; refusing to overwrite source.\n",
+                input_path, native_target);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return 64;
+    }
     char *generated_path = NULL;
     char *temporary_directory = NULL;
 
@@ -281,6 +311,14 @@ int ylang_run(const char *command, const char *input_path,
                 return 73;
             }
             c_path = "build/ylang-generated.c";
+        }
+        if (paths_refer_same_file(input_path, c_path)) {
+            fprintf(stderr,
+                    "ylang: input '%s' and output '%s' refer to the same file; refusing to overwrite source.\n",
+                    input_path, c_path);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 64;
         }
     } else {
         char *template = strdup("/tmp/ylang-build-XXXXXX");
@@ -322,7 +360,7 @@ int ylang_run(const char *command, const char *input_path,
     if (emit_c_command) {
         printf("Generated C source: %s\n", c_path);
     } else {
-        const char *target = output_path ? output_path : "a.out";
+        const char *target = native_target;
         result = run_native_compiler(cc ? cc : "gcc", c_path, target);
         if (result == 0) printf("Build succeeded: %s\n", target);
         else fprintf(stderr, "ylang: native compilation failed (exit %d).\n", result);

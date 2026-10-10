@@ -1,0 +1,17 @@
+let int calls = 0;
+
+function next_index() -> int {
+    calls++;
+    return calls - 1;
+}
+
+function main() -> int {
+    let int values[] = [10, 20];
+    values[next_index()] += 5;
+
+    let float ratios[] = [1.0, 2.0];
+    ratios[1] += 0.5;
+
+    print(calls, values[0], values[1], ratios[1]);
+    return 0;
+}
