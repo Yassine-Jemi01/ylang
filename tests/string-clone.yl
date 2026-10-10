@@ -1,0 +1,6 @@
+function main() -> int {
+    let string first = "YLang";
+    let string second = clone(first);
+    print(first, second);
+    return 0;
+}

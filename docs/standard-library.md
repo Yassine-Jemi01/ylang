@@ -1,6 +1,6 @@
 # YLang Standard Library Plan
 
-**Status:** Initial `read_line()` and `len(string)` built-ins are implemented on `dev/lsp-foundation`. The complete module API below remains a proposal; each API becomes supported only after tests exist on Linux and Windows.
+**Status:** Initial `read_line()`, `len(string)`, and `clone(string)` built-ins are implemented on `dev/lsp-foundation`. The complete module API below remains a proposal; each API becomes supported only after tests exist on Linux and Windows.
 
 ## Compatibility rule
 

@@ -60,7 +60,7 @@ No implicit narrowing conversions. Conversion functions must make failure or los
 
 ## Standard library scope
 
-**First implemented built-ins on `dev/lsp-foundation`:** `read_line()` reads one line from standard input, removes LF and an optional preceding CR, and `len(text)` returns the UTF-8 byte length of a string. End-of-input before any characters is currently a runtime error; this initial API does not conflate EOF with an empty line.
+**First implemented built-ins on `dev/lsp-foundation`:** `read_line()` reads one line from standard input, removes LF and an optional preceding CR; `len(text)` returns UTF-8 byte length; and `clone(text)` creates an independent heap copy. Named string values move on initialization, assignment, by-value function calls, and returns. The checker rejects use after move and conservatively merges move states across branches/loops. Heap strings are still tracked until process exit, so scope-based deterministic cleanup remains unfinished. End-of-input before any characters is currently a runtime error.
 
 
 

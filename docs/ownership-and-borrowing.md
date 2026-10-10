@@ -12,7 +12,7 @@
 
 ## Value and ownership direction
 
-`int`, `float`, `bool`, and `char` are copyable scalar values. `string` and future arrays are intended to be owned values, moved by default with explicit cloning. The compiler must eventually reject use after move and clean up owned values on all exits. That heap ownership work is **not implemented yet**.
+`int`, `float`, `bool`, and `char` are copyable scalar values. `string` values on `dev/lsp-foundation` now move when initialized from another named string, assigned from another named string, passed to a by-value string parameter, or returned by name. `clone(text)` explicitly copies a string. The checker rejects a named local string used after a move and conservatively merges move states across branches/loops. The runtime still tracks heap strings until process exit, so deterministic scope cleanup is not complete. Arrays and full Rust-equivalent ownership guarantees are not implemented.
 
 ## Borrowed function parameters
 
@@ -47,7 +47,7 @@ function main() -> int {
 ## Next milestones
 
 1. Stabilize borrow-mode and conflict diagnostics with positive and negative tests.
-2. Define move semantics for owned strings, use-after-move analysis, explicit cloning, and cleanup on all control-flow exits.
+2. Extend string move analysis to full control-flow and return paths; replace process-wide tracking with deterministic cleanup on all control-flow exits.
 3. Replace process-lifetime f-string buffers with deterministic ownership/cleanup.
 4. Add arrays as owned values, with explicit move/clone semantics and runtime bounds checks.
 5. Enable borrowing of strings and arrays only after lifetimes and cleanup are covered by tests.
