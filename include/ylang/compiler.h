@@ -69,6 +69,8 @@ typedef enum {
     STMT_PRINT,
     STMT_IF,
     STMT_LOOP,
+    STMT_WHILE,
+    STMT_FOR,
     STMT_BREAK,
     STMT_CONTINUE,
     STMT_RETURN,
@@ -97,6 +99,8 @@ struct Stmt {
         struct { Expr **args; size_t count; } print;
         struct { Expr *condition; Stmt *then_branch; Stmt *else_branch; } if_stmt;
         Stmt *loop_body;
+        struct { Expr *condition; Stmt *body; } while_stmt;
+        struct { Stmt *initializer; Expr *condition; Expr *increment; Stmt *body; } for_stmt;
         Expr *return_value;
         Expr *expression;
     } as;
