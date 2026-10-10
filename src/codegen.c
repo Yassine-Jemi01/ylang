@@ -358,6 +358,26 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); fputs("for (;;) ", out); fputs("\n", out);
             emit_stmt(out, stmt->as.loop_body, indent);
             break;
+        case STMT_WHILE:
+            emit_indent(out, indent); fputs("while (", out);
+            emit_expr_to_file(out, stmt->as.while_stmt.condition);
+            fputs(")\n", out);
+            emit_stmt(out, stmt->as.while_stmt.body, indent);
+            break;
+        case STMT_FOR:
+            emit_indent(out, indent); fputs("{\n", out);
+            if (stmt->as.for_stmt.initializer)
+                emit_stmt(out, stmt->as.for_stmt.initializer, indent + 1);
+            emit_indent(out, indent + 1); fputs("for (; ", out);
+            if (stmt->as.for_stmt.condition)
+                emit_expr_to_file(out, stmt->as.for_stmt.condition);
+            fputs("; ", out);
+            if (stmt->as.for_stmt.increment)
+                emit_expr_to_file(out, stmt->as.for_stmt.increment);
+            fputs(")\n", out);
+            emit_stmt(out, stmt->as.for_stmt.body, indent + 1);
+            emit_indent(out, indent); fputs("}\n", out);
+            break;
         case STMT_BREAK:
             emit_indent(out, indent); fputs("break;\n", out); break;
         case STMT_CONTINUE:
