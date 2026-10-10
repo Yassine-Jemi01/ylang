@@ -31,7 +31,13 @@ On macOS, install the Xcode Command Line Tools and Homebrew toolchain:
 
 ```sh
 xcode-select --install
-brew install make llvm sdl2 pkg-config
+brew install make llvm
+```
+
+For the optional GUI runtime, also install SDL2 and pkg-config:
+
+```sh
+brew install sdl2 pkg-config
 ```
 
 ### Build from source
