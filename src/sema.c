@@ -460,7 +460,7 @@ static YType check_expr(Checker *checker, Expr *expr)
             if (var->is_const) {
                 diagnostic(c, expr->token, "error", "E2022",
                            "Cannot assign to a const variable or mutate its array.",
-                           "Remove 'const' only when mutation is intended and safe.");
+                           "Keep 'const' and remove this assignment or array mutation, or remove 'const' only when mutation is intended and safe.");
             }
             if (right != TYPE_ERROR && target_type != TYPE_ERROR && right != target_type) {
                 char suggestion[256];
