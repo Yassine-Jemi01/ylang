@@ -38,7 +38,13 @@ const SHORT = {
   E2051:"if condition must be boolean", E2052:"'break' or 'continue' must be inside loop()",
   E2053:"Return value missing", E2054:"void function cannot return a value",
   E2055:"Return type mismatch", E2056:"Global value must be constant",
-  E2060:"Missing main() function", E2061:"Invalid main() function", E2062:"Some path is missing a return"
+  E2060:"Missing main() function", E2061:"Invalid main() function", E2062:"Some path is missing a return",
+  E2063:"Borrow only in a matching parameter", E2064:"Borrow type not supported", E2065:"Cannot borrow mutable global",
+  E2066:"Cannot mutably borrow const", E2067:"Read conflicts with mutable borrow", E2068:"Write conflicts with borrow",
+  E2070:"Use after move", E2071:"Cannot move a global owned value", E2072:"Cannot move a value into itself",
+  E2073:"Array literal needs an element", E2074:"Invalid array element type", E2075:"Array elements must match",
+  E2076:"Operation requires an array", E2077:"Array index must be int", E2078:"Array must be a named variable",
+  E2079:"Cannot modify const array", E2080:"For-each variable type mismatch", E2081:"String array iteration unsupported", E2082:"For-each requires a named array"
 };
 
 function shortMessage(code, original) {
@@ -223,6 +229,8 @@ const completions = [
   { label:"if", kind:CompletionItemKind.Keyword, detail:"Conditional", insertText:"if (" + "$" + "{1:condition}) {\n    " + "$" + "0\n}" },
   { label:"else", kind:CompletionItemKind.Keyword, detail:"Alternative branch" },
   { label:"loop", kind:CompletionItemKind.Keyword, detail:"Loop", insertText:"loop() {\n    " + "$" + "0\n}" },
+  { label:"for", kind:CompletionItemKind.Keyword, detail:"Iterate over an array", insertText:"for (" + "$" + "{1:int} " + "$" + "{2:item} in " + "$" + "{3:values}) {\n    " + "$" + "0\n}" },
+  { label:"in", kind:CompletionItemKind.Keyword, detail:"Array iteration separator" },
   { label:"break", kind:CompletionItemKind.Keyword, detail:"Exit the loop" },
   { label:"continue", kind:CompletionItemKind.Keyword, detail:"Continue loop" },
   { label:"return", kind:CompletionItemKind.Keyword, detail:"Return from function" },
@@ -237,16 +245,20 @@ const completions = [
   { label:"and", kind:CompletionItemKind.Operator, detail:"Boolean AND" },
   { label:"or", kind:CompletionItemKind.Operator, detail:"Boolean OR" },
   { label:"not", kind:CompletionItemKind.Operator, detail:"Boolean NOT" },
-  { label:"print", kind:CompletionItemKind.Function, detail:"Print values", insertText:"print(" + "$" + "{1:value});" }
+  { label:"print", kind:CompletionItemKind.Function, detail:"Print values", insertText:"print(" + "$" + "{1:value});" },
+  { label:"read_line", kind:CompletionItemKind.Function, detail:"Read one line from standard input", insertText:"read_line()" },
+  { label:"len", kind:CompletionItemKind.Function, detail:"String byte length or array element count", insertText:"len(" + "$" + "{1:value})" },
+  { label:"clone", kind:CompletionItemKind.Function, detail:"Copy an owned string or array", insertText:"clone(" + "$" + "{1:value})" },
+  { label:"append", kind:CompletionItemKind.Function, detail:"Append a value to a mutable array", insertText:"append(" + "$" + "{1:values}, " + "$" + "{2:value});" }
 ];
 
 const hovers = {
   int:"Signed 64-bit integer.", float:"64-bit floating-point value.", bool:"Boolean: true or false.",
   char:"One-byte character.", string:"Immutable string.", void:"Function return type with no value.",
   function:"Declares a function.", let:"Declares a variable.", const:"Makes a variable immutable.",
-  if:"Conditional statement.", else:"Alternative branch.", loop:"Repeats until break.",
+  if:"Conditional statement.", else:"Alternative branch.", loop:"Repeats until break.", for:"Iterates over each scalar element of an array.", in:"Separates the loop variable from the array.",
   break:"Exits the current loop.", continue:"Skips to the next loop iteration.",
-  return:"Returns from the current function.", print:"Built-in statement: print(value);",
+  return:"Returns from the current function.", print:"Built-in statement: print(value);", read_line:"Reads one line from standard input; EOF is a runtime error in this initial API.", len:"Returns UTF-8 byte length for strings or element count for arrays.", clone:"Creates an independent copy of an owned string or array.", append:"Appends one type-matching value to a named mutable array.",
   true:"Boolean true.", false:"Boolean false.", and:"Boolean AND.", or:"Boolean OR.", not:"Boolean negation."
 };
 
@@ -317,9 +329,9 @@ connection.onHover((params) => {
   if (hovers[target.word]) return { contents:{kind:MarkupKind.Markdown, value:"**" + target.word + "** — " + hovers[target.word]} };
   const escaped = escapeRegex(target.word);
   const text = doc.getText();
-  const fn = new RegExp("\\bfunction\\s+" + escaped + "\\s*\\(([^)]*)\\)\\s*->\\s*([A-Za-z_][A-Za-z0-9_]*)").exec(text);
+  const fn = new RegExp("\\bfunction\\s+" + escaped + "\\s*\\(([^)]*)\\)\\s*->\\s*((?:int|float|bool|char|string|void)(?:\\[\\])?)").exec(text);
   if (fn) return { contents:{kind:MarkupKind.Markdown, value:"**function " + target.word + "(" + fn[1].trim() + ") -> " + fn[2] + "**"} };
-  const variable = new RegExp("\\blet\\s+(?:const\\s+)?(int|float|bool|char|string|void)\\s+" + escaped + "\\b").exec(text);
+  const variable = new RegExp("\\blet\\s+(?:const\\s+)?((?:int|float|bool|char|string|void)(?:\\[\\])?)\\s+" + escaped + "\\b").exec(text);
   if (variable) return { contents:{kind:MarkupKind.Markdown, value:"**" + target.word + ": " + variable[1] + "**"} };
   return null;
 });
@@ -332,7 +344,7 @@ connection.onDefinition((params) => {
   const text = doc.getText();
   const patterns = [
     new RegExp("\\bfunction\\s+(" + escaped + ")\\s*\\("),
-    new RegExp("\\blet\\s+(?:const\\s+)?(?:int|float|bool|char|string)\\s+(" + escaped + ")\\b")
+    new RegExp("\\blet\\s+(?:const\\s+)?(?:int|float|bool|char|string)(?:\\[\\])?\\s+(" + escaped + ")\\b")
   ];
   for (const pattern of patterns) {
     const match = pattern.exec(text);
