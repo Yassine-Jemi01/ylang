@@ -99,7 +99,7 @@ module.exports = grammar({
     ),
 
     assignment_statement: $ => seq(
-      field("left", $.identifier),
+      field("left", choice($.identifier, $.index_expression)),
       "=",
       field("right", $.expression),
       ";"

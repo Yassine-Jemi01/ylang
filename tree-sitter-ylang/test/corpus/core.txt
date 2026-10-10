@@ -144,12 +144,11 @@ function main() -> int {
                 (integer_literal))))))
       (statement
         (assignment_statement
-          left: (expression
-            (index_expression
-              array: (expression
-                (identifier))
-              index: (expression
-                (integer_literal))))
+          left: (index_expression
+            array: (expression
+              (identifier))
+            index: (expression
+              (integer_literal)))
           right: (expression
             (integer_literal))))
       (statement

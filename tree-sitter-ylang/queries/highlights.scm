@@ -80,4 +80,6 @@
   ")"
   "{"
   "}"
+  "["
+  "]"
 ] @punctuation.bracket
