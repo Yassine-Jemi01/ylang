@@ -479,23 +479,23 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             Expr *value = stmt->as.return_value;
             if (!value) {
                 emit_indent(out, indent);
-                fputs("yl_cleanup_scope(yl_scope_strings, yl_scope_arrays); return;\\n", out);
+                fputs("yl_cleanup_scope(yl_scope_strings, yl_scope_arrays); return;\n", out);
                 break;
             }
-            emit_indent(out, indent); fputs("{\\n", out);
+            emit_indent(out, indent); fputs("{\n", out);
             emit_indent(out, indent + 1);
             fprintf(out, "%s yl_return_value = ", c_base_type(value->type));
-            emit_expr_to_file(out, value); fputs(";\\n", out);
+            emit_expr_to_file(out, value); fputs(";\n", out);
             emit_indent(out, indent + 1);
             if (value->type == TYPE_STRING) {
-                fputs("if (!yl_untrack_string(yl_return_value)) yl_runtime_error(\\\"attempted to return a string without ownership\\\");\\n", out);
+                fputs("if (!yl_untrack_string(yl_return_value)) yl_runtime_error(\"attempted to return a string without ownership\");\n", out);
             } else if (type_is_array(value->type)) {
-                fputs("yl_return_value = yl_promote_array(yl_return_value);\\n", out);
+                fputs("yl_return_value = yl_promote_array(yl_return_value);\n", out);
             }
             emit_indent(out, indent + 1);
-            fputs("yl_cleanup_scope(yl_scope_strings, yl_scope_arrays);\\n", out);
-            emit_indent(out, indent + 1); fputs("return yl_return_value;\\n", out);
-            emit_indent(out, indent); fputs("}\\n", out);
+            fputs("yl_cleanup_scope(yl_scope_strings, yl_scope_arrays);\n", out);
+            emit_indent(out, indent + 1); fputs("return yl_return_value;\n", out);
+            emit_indent(out, indent); fputs("}\n", out);
             break;
         }
         case STMT_EXPR:
@@ -673,17 +673,17 @@ bool generate_c(Compiler *c, const char *path)
             if (j) fputs(", ", out);
             { emit_param_type(out, fn->params[j]); fprintf(out, " %s", fn->params[j]->c_name); }
         }
-        fputs(") {\\n", out);
-        fputs("    YLTracked *yl_scope_strings = yl_scope_enter_strings();\\n", out);
-        fputs("    YLTrackedArray *yl_scope_arrays = yl_scope_enter_arrays();\\n", out);
+        fputs(") {\n", out);
+        fputs("    YLTracked *yl_scope_strings = yl_scope_enter_strings();\n", out);
+        fputs("    YLTrackedArray *yl_scope_arrays = yl_scope_enter_arrays();\n", out);
         if (fn->body && fn->body->kind == STMT_BLOCK) {
             for (size_t j = 0; j < fn->body->as.block.count; j++)
                 emit_stmt(out, fn->body->as.block.items[j], 1);
         } else {
             emit_stmt(out, fn->body, 1);
         }
-        fputs("    yl_cleanup_scope(yl_scope_strings, yl_scope_arrays);\\n", out);
-        fputs("}\\n\\n", out);
+        fputs("    yl_cleanup_scope(yl_scope_strings, yl_scope_arrays);\n", out);
+        fputs("}\n\n", out);
     }
 
     Function *main_fn = find_function(c, "main");
