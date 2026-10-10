@@ -1,0 +1,10 @@
+function main() -> int {
+    let string[] words = ["alpha", "beta"];
+    for (string word in words) {
+        print(word);
+        let string copy = clone(word);
+        print(copy);
+    }
+    print(words[0], words[1]);
+    return 0;
+}

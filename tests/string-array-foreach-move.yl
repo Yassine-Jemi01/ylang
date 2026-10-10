@@ -1,0 +1,8 @@
+function main() -> int {
+    let string[] words = ["alpha", "beta"];
+    for (string word in words) {
+        let string invalid = word;
+        print(invalid);
+    }
+    return 0;
+}

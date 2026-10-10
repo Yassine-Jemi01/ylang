@@ -226,6 +226,18 @@ if "$YLANG" check tests/for-each-type-error.yl > build/for-each-type-error.out 2
 fi
 grep -q 'E2080' build/for-each-type-error.out
 
+# For-each over string arrays exposes each item as a read-only borrow.
+"$YLANG" build tests/string-array-foreach.yl -o "build/test-string-array-foreach$EXEEXT" >/dev/null
+"./build/test-string-array-foreach$EXEEXT" > build/string-array-foreach.out
+normalize_output "build/string-array-foreach.out"
+diff -u tests/expected-string-array-foreach.txt build/string-array-foreach.out
+
+if "$YLANG" check tests/string-array-foreach-move.yl > build/string-array-foreach-move.out 2>&1; then
+    echo "FAIL: for-each allowed moving a borrowed string element" >&2
+    exit 1
+fi
+grep -q 'E2083' build/string-array-foreach-move.out
+
 # Moving string values into arrays transfers ownership; indexed string extraction requires clone().
 for case_name in string-array-move-use-after-move string-array-duplicate-move string-array-index-move; do
     if "$YLANG" check "tests/$case_name.yl" > "build/$case_name.out" 2>&1; then

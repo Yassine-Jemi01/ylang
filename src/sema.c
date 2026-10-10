@@ -233,6 +233,13 @@ static YType check_expr_as(Checker *checker, Expr *expr, YType expected)
 static void consume_owned_value(Checker *checker, Expr *expr)
 {
     if (!expr || !type_is_owned(expr->type)) return;
+    if (expr->kind == EXPR_NAME && expr->as.name.variable &&
+        expr->as.name.variable->is_borrowed_alias) {
+        diagnostic(checker->compiler, expr->token, "error", "E2083",
+                   "A borrowed string array element cannot be moved.",
+                   "Use clone(item) to make an independently owned string.");
+        return;
+    }
     if (expr->type == TYPE_STRING && expr->kind == EXPR_INDEX) {
         diagnostic(checker->compiler, expr->token, "error", "E2083",
                    "A string cannot be moved out of an array element.",
@@ -1033,10 +1040,6 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 diagnostic(c, array_expr->token, "error", "E2076",
                            "A for-each loop requires an array value.",
                            "Iterate over a typed array such as int[] values.");
-            } else if (element_type == TYPE_STRING) {
-                diagnostic(c, array_expr->token, "error", "E2081",
-                           "For-each over string[] is not supported in this initial version.",
-                           "Use an indexed loop or iterate over an array of scalar values.");
             } else if (element_type != TYPE_ERROR && variable->type != element_type) {
                 char suggestion[192];
                 (void)snprintf(suggestion, sizeof(suggestion),
@@ -1055,6 +1058,10 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             Scope *loop_scope = scope_new(c, previous_scope);
             checker->scope = loop_scope;
             variable->initialized = true;
+            if (element_type == TYPE_STRING && variable->type == TYPE_STRING) {
+                variable->is_const = true;
+                variable->is_borrowed_alias = true;
+            }
             (void)scope_add(checker, loop_scope, variable);
             size_t n = c->all_var_count;
             bool *before = arena_alloc(&c->arena, n * sizeof(bool));

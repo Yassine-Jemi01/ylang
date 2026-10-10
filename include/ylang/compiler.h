@@ -94,6 +94,7 @@ struct VarDecl {
     bool is_borrowed;
     bool is_mut_borrow;
     bool is_moved;
+    bool is_borrowed_alias;
     Expr *initializer;
 };
 
