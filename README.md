@@ -170,7 +170,7 @@ function main() -> int {
 }
 ```
 
-Run `make test` to test the compiler, math calls, array mutation, and out-of-bounds protection. Arrays cannot yet be passed to or returned from functions; object-oriented classes are not implemented yet.
+String helpers and line-based input are also available: `string.length`, `string.contains`, `string.starts_with`, `string.ends_with`, `string.concat`, and `io.read_line()`. Run `make test` to test these APIs alongside math, arrays, and bounds protection. Arrays cannot yet be passed to or returned from functions; object-oriented classes are not implemented yet.
 
 
 ## What is included in 1.0.0
@@ -180,7 +180,7 @@ Run `make test` to test the compiler, math calls, array mutation, and out-of-bou
 - Functions and return statements
 - `if` / `else if` / `else`, `loop()`, `break`, and `continue`
 - Arithmetic, comparisons, boolean operators, function calls, and assignments
-- `print(...)` and f-string interpolation for supported expressions
+- `print(...)`, f-string interpolation, string utilities, and standard-input line reading
 - Name/type checks, uninitialized-read checks, constant-assignment checks, and source-located diagnostic messages
 - Runtime checks for integer overflow and division by zero
 - C code generation and native compilation using GCC or Clang
@@ -188,7 +188,7 @@ Run `make test` to test the compiler, math calls, array mutation, and out-of-bou
 
 ## Explicit non-goals for this release
 
-YLang 1.0.0 does **not** implement arrays, raw pointers/references, classes/OOP, `try`/`catch`, `for`/`while`, modules, generics, or a dedicated LLVM/native-code backend. These are not silently approximated; programs using unsupported syntax are rejected. A final ownership/borrowing or garbage-collection model is not defined. `char` is one byte, not a Unicode scalar value.
+YLang's current language subset does **not** implement classes/OOP, raw pointers/references, `try`/`catch`, `for`/`while`, modules, generics, or a dedicated LLVM/native-code backend. Arrays are fixed-size and cannot yet be passed to or returned from functions; nested and const arrays are not supported. These are not silently approximated; programs using unsupported syntax are rejected. A final ownership/borrowing or garbage-collection model is not defined. `char` is one byte, not a Unicode scalar value.
 
 The C backend uses generated runtime helpers and process-lifetime storage for some formatted strings. Long-running programs that repeatedly create f-string values may grow in memory usage. Do not use this release for security-critical code or to process hostile source as a hardened sandbox. Generated programs are ordinary native programs with the permissions of the user who runs them.
 
@@ -207,7 +207,7 @@ make CC=clang test
 make sanitize
 ```
 
-The tests exercise successful compilation/output, GCC/Clang parity when Clang is installed, diagnostics, rejection of invalid programs, safe fixes, integer overflow, and division by zero.
+The tests exercise successful compilation/output, GCC/Clang parity when Clang is installed, diagnostics, rejection of invalid programs, safe fixes, integer overflow, division by zero, math and string built-ins, line input, array mutation, and bounds checks.
 
 ## Install (optional)
 
