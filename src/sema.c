@@ -886,30 +886,97 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             size_t n = c->all_var_count;
             bool *before = arena_alloc(&c->arena, n * sizeof(bool));
             bool *after_then = arena_alloc(&c->arena, n * sizeof(bool));
-            for (size_t i = 0; i < n; i++) before[i] = c->all_vars[i]->initialized;
+            bool *moved_before = arena_alloc(&c->arena, n * sizeof(bool));
+            bool *moved_after_then = arena_alloc(&c->arena, n * sizeof(bool));
+            for (size_t i = 0; i < n; i++) {
+                before[i] = c->all_vars[i]->initialized;
+                moved_before[i] = c->all_vars[i]->moved;
+            }
             check_stmt(checker, stmt->as.if_stmt.then_branch);
-            for (size_t i = 0; i < n; i++) after_then[i] = c->all_vars[i]->initialized;
-            for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
+            for (size_t i = 0; i < n; i++) {
+                after_then[i] = c->all_vars[i]->initialized;
+                moved_after_then[i] = c->all_vars[i]->moved;
+            }
+            for (size_t i = 0; i < n; i++) {
+                c->all_vars[i]->initialized = before[i];
+                c->all_vars[i]->moved = moved_before[i];
+            }
             if (stmt->as.if_stmt.else_branch) {
                 check_stmt(checker, stmt->as.if_stmt.else_branch);
-                for (size_t i = 0; i < n; i++)
+                for (size_t i = 0; i < n; i++) {
                     c->all_vars[i]->initialized = after_then[i] && c->all_vars[i]->initialized;
+                    c->all_vars[i]->moved = moved_after_then[i] || c->all_vars[i]->moved;
+                }
             } else {
-                for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
+                for (size_t i = 0; i < n; i++) {
+                    c->all_vars[i]->initialized = before[i];
+                    c->all_vars[i]->moved = moved_before[i] || moved_after_then[i];
+                }
             }
             break;
         }
         case STMT_LOOP: {
             size_t n = c->all_var_count;
             bool *before = arena_alloc(&c->arena, n * sizeof(bool));
-            for (size_t i = 0; i < n; i++) before[i] = c->all_vars[i]->initialized;
+            bool *moved_before = arena_alloc(&c->arena, n * sizeof(bool));
+            for (size_t i = 0; i < n; i++) {
+                before[i] = c->all_vars[i]->initialized;
+                moved_before[i] = c->all_vars[i]->moved;
+            }
             checker->loop_depth++;
             check_stmt(checker, stmt->as.loop_body);
             checker->loop_depth--;
-            for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
+            for (size_t i = 0; i < n; i++) {
+                c->all_vars[i]->initialized = before[i];
+                c->all_vars[i]->moved = moved_before[i] || c->all_vars[i]->moved;
+            }
             break;
         }
-        case STMT_BREAK:
+        case STMT_FOR: {
+            Scope *outer = checker->scope;
+            checker->scope = scope_new(c, outer);
+            if (stmt->as.for_stmt.initializer) {
+                check_stmt(checker, stmt->as.for_stmt.initializer);
+                if (stmt->as.for_stmt.initializer->kind == STMT_VAR &&
+                    ylang_type_is_owned(stmt->as.for_stmt.initializer->as.variable->type)) {
+                    diagnostic(c, stmt->as.for_stmt.initializer->token, "error", "E2093",
+                               "Owned values cannot be declared in the for-loop initializer.",
+                               "Use a scalar counter in the initializer and declare owned values in the loop body.");
+                }
+            }
+            if (stmt->as.for_stmt.condition) {
+                YType condition = check_expr(checker, stmt->as.for_stmt.condition);
+                if (condition != TYPE_BOOL && condition != TYPE_ERROR) {
+                    diagnostic(c, stmt->as.for_stmt.condition->token, "error", "E2051",
+                               "for-loop condition must have type bool.",
+                               "Use a comparison such as 'i < limit'.");
+                }
+            }
+            if (stmt->as.for_stmt.increment) {
+                Expr *previous_assignment = checker->allowed_assignment;
+                checker->allowed_assignment = stmt->as.for_stmt.increment->kind == EXPR_ASSIGN
+                    ? stmt->as.for_stmt.increment : NULL;
+                (void)check_expr(checker, stmt->as.for_stmt.increment);
+                checker->allowed_assignment = previous_assignment;
+            }
+            size_t n = c->all_var_count;
+            bool *initialized_before = arena_alloc(&c->arena, n * sizeof(bool));
+            bool *moved_before = arena_alloc(&c->arena, n * sizeof(bool));
+            for (size_t i = 0; i < n; i++) {
+                initialized_before[i] = c->all_vars[i]->initialized;
+                moved_before[i] = c->all_vars[i]->moved;
+            }
+            checker->loop_depth++;
+            check_stmt(checker, stmt->as.for_stmt.body);
+            checker->loop_depth--;
+            for (size_t i = 0; i < n; i++) {
+                c->all_vars[i]->initialized = initialized_before[i];
+                c->all_vars[i]->moved = moved_before[i] || c->all_vars[i]->moved;
+            }
+            checker->scope = outer;
+            break;
+        }
+        case STMT_BREAK;
         case STMT_CONTINUE:
             if (checker->loop_depth == 0) {
                 diagnostic(c, stmt->token, "error", "E2052",
