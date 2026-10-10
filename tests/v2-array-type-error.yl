@@ -1,0 +1,5 @@
+function main() -> int {
+    let int[] values = [1, "two"];
+    print(len(values));
+    return 0;
+}

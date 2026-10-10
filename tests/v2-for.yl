@@ -1,0 +1,8 @@
+function main() -> int {
+    let int sum = 0;
+    for (let int i = 0; i < 5; i = i + 1) {
+        sum = sum + i;
+    }
+    print(sum);
+    return 0;
+}

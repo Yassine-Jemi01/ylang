@@ -1,0 +1,7 @@
+function main() -> int {
+    let string first = "YLang";
+    let string second = first;
+    print(first);
+    print(second);
+    return 0;
+}

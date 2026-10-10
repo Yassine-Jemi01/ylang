@@ -1,0 +1,19 @@
+function main() -> int {
+    let int[] values = [1, 2, 3];
+    values[1] = 7;
+    values = append(values, 9);
+    print(len(values));
+    print(values[1]);
+    print(values[3]);
+
+    let int[] independent = clone(values);
+    independent[0] = 42;
+    print(values[0]);
+    print(independent[0]);
+
+    let int[] empty = [];
+    empty = append(empty, 5);
+    print(len(empty));
+    print(empty[0]);
+    return 0;
+}

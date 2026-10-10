@@ -1,0 +1,5 @@
+function main() -> int {
+    print(input_int());
+    print(input());
+    return 0;
+}
