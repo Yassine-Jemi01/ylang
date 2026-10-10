@@ -737,8 +737,14 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             }
             checker->loop_depth++;
             check_stmt(checker, stmt->as.for_stmt.body);
-            if (stmt->as.for_stmt.increment)
+            if (stmt->as.for_stmt.increment) {
+                Expr *previous_assignment = checker->allowed_assignment;
+                checker->allowed_assignment =
+                    stmt->as.for_stmt.increment->kind == EXPR_ASSIGN ?
+                    stmt->as.for_stmt.increment : NULL;
                 (void)check_expr(checker, stmt->as.for_stmt.increment);
+                checker->allowed_assignment = previous_assignment;
+            }
             checker->loop_depth--;
             for (size_t i = 0; i < n_before_init; i++) c->all_vars[i]->initialized = before[i];
             checker->scope = outer_scope;
