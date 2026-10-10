@@ -82,6 +82,8 @@ static const char *format_for_type(YType type)
         case TYPE_BOOL: return "%s";
         case TYPE_CHAR: return "%c";
         case TYPE_STRING: return "%s";
+        case TYPE_INT_ARRAY: case TYPE_FLOAT_ARRAY: case TYPE_BOOL_ARRAY:
+        case TYPE_CHAR_ARRAY: case TYPE_STRING_ARRAY:
         case TYPE_VOID: case TYPE_ERROR: return "%s";
     }
     return "%s";
