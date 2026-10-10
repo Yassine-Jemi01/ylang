@@ -163,8 +163,12 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             sb_append(sb, expr->token.type == TOKEN_TRUE ? "true" : "false");
             break;
         case EXPR_CHAR:
-        case EXPR_STRING:
             sb_append_n(sb, expr->token.start, expr->token.length);
+            break;
+        case EXPR_STRING:
+            sb_append(sb, "yl_literal(");
+            sb_append_n(sb, expr->token.start, expr->token.length);
+            sb_append(sb, ")");
             break;
         case EXPR_FSTRING:
             emit_fstring_expr(sb, expr);
@@ -226,6 +230,10 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 sb_appendf(sb, "}, sizeof(%s), %d)", c_base_type(element), array_kind(array_arg->type));
                 break;
             }
+            bool adopt_string = expr->as.call.function && expr->type == TYPE_STRING;
+            bool adopt_array = expr->as.call.function && type_is_array(expr->type);
+            if (adopt_string) sb_append(sb, "yl_adopt_string(");
+            else if (adopt_array) sb_append(sb, "yl_adopt_array(");
             if (expr->as.call.function) {
                 sb_append(sb, expr->as.call.function->c_name);
             } else if (strcmp(expr->as.call.name, "read_file") == 0) {
@@ -257,6 +265,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 emit_expr(sb, expr->as.call.args[i]);
             }
             sb_append(sb, ")");
+            if (adopt_string || adopt_array) sb_append(sb, ")");
             break;
         case EXPR_UNARY: {
             TokenType op = expr->as.unary.op.type;
@@ -466,10 +475,29 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); fputs("break;\n", out); break;
         case STMT_CONTINUE:
             emit_indent(out, indent); fputs("continue;\n", out); break;
-        case STMT_RETURN:
-            emit_indent(out, indent); fputs("return", out);
-            if (stmt->as.return_value) { fputc(' ', out); emit_expr_to_file(out, stmt->as.return_value); }
-            fputs(";\n", out); break;
+        case STMT_RETURN: {
+            Expr *value = stmt->as.return_value;
+            if (!value) {
+                emit_indent(out, indent);
+                fputs("yl_cleanup_scope(yl_scope_strings, yl_scope_arrays); return;\\n", out);
+                break;
+            }
+            emit_indent(out, indent); fputs("{\\n", out);
+            emit_indent(out, indent + 1);
+            fprintf(out, "%s yl_return_value = ", c_base_type(value->type));
+            emit_expr_to_file(out, value); fputs(";\\n", out);
+            emit_indent(out, indent + 1);
+            if (value->type == TYPE_STRING) {
+                fputs("if (!yl_untrack_string(yl_return_value)) yl_runtime_error(\\\"attempted to return a string without ownership\\\");\\n", out);
+            } else if (type_is_array(value->type)) {
+                fputs("yl_return_value = yl_promote_array(yl_return_value);\\n", out);
+            }
+            emit_indent(out, indent + 1);
+            fputs("yl_cleanup_scope(yl_scope_strings, yl_scope_arrays);\\n", out);
+            emit_indent(out, indent + 1); fputs("return yl_return_value;\\n", out);
+            emit_indent(out, indent); fputs("}\\n", out);
+            break;
+        }
         case STMT_EXPR:
             emit_indent(out, indent); emit_expr_to_file(out, stmt->as.expression); fputs(";\n", out); break;
     }
@@ -483,17 +511,33 @@ static void emit_runtime(FILE *out)
         "#include <stdlib.h>\n#include <stdarg.h>\n#include <string.h>\n#include <errno.h>\n#include <math.h>\n"
         "#include <limits.h>\n\n"
         "typedef struct { void *data; size_t len; size_t cap; int kind; } YLArray;\n"
-        "typedef struct YLTracked { void *ptr; struct YLTracked *next; } YLTracked;\n"
-        "typedef struct YLTrackedArray { void *ptr; struct YLTrackedArray *next; } YLTrackedArray;\n"
+        "typedef struct YLTracked { void *ptr; struct YLTracked *next; bool scope_marker; } YLTracked;\n"
+        "typedef struct YLTrackedArray { void *ptr; struct YLTrackedArray *next; bool scope_marker; } YLTrackedArray;\n"
         "static YLTracked *yl_tracked = NULL;\nstatic YLTrackedArray *yl_arrays = NULL;\n"
         "static void yl_runtime_error(const char *message) { fprintf(stderr, \"YLang runtime error: %s\\n\", message); exit(70); }\n"
         "static void yl_cleanup(void) {\n"
-        "    while (yl_tracked) { YLTracked *next = yl_tracked->next; free(yl_tracked->ptr); free(yl_tracked); yl_tracked = next; }\n"
-        "    while (yl_arrays) { YLTrackedArray *next = yl_arrays->next; free(yl_arrays->ptr); free(yl_arrays); yl_arrays = next; }\n"
+        "    while (yl_tracked) { YLTracked *next = yl_tracked->next; if (!yl_tracked->scope_marker) free(yl_tracked->ptr); free(yl_tracked); yl_tracked = next; }\n"
+        "    while (yl_arrays) { YLTrackedArray *next = yl_arrays->next; if (!yl_arrays->scope_marker) free(yl_arrays->ptr); free(yl_arrays); yl_arrays = next; }\n"
         "}\n"
-        "static void *yl_track(void *ptr) { YLTracked *node = malloc(sizeof(*node)); if (!node) yl_runtime_error(\"out of memory\"); node->ptr = ptr; node->next = yl_tracked; yl_tracked = node; return ptr; }\n"
-        "static void yl_track_array_buffer(void *ptr) { YLTrackedArray *node = malloc(sizeof(*node)); if (!node) yl_runtime_error(\"out of memory\"); node->ptr = ptr; node->next = yl_arrays; yl_arrays = node; }\n"
-        "static void yl_replace_array_buffer(void *old_ptr, void *new_ptr) { for (YLTrackedArray *node = yl_arrays; node; node = node->next) if (node->ptr == old_ptr) { node->ptr = new_ptr; return; } yl_runtime_error(\"array allocation tracking failed\"); }\n"
+        "static void *yl_track(void *ptr) { if (!ptr) yl_runtime_error(\"cannot track a null allocation\"); YLTracked *node = malloc(sizeof(*node)); if (!node) yl_runtime_error(\"out of memory\"); node->ptr = ptr; node->scope_marker = false; node->next = yl_tracked; yl_tracked = node; return ptr; }\n"
+        "static const char *yl_literal(const char *value) { size_t n = strlen(value); char *copy = malloc(n + 1); if (!copy) yl_runtime_error(\"out of memory while copying string literal\"); memcpy(copy, value, n + 1); return (const char *)yl_track(copy); }\n"
+        "static YLTracked *yl_scope_enter_strings(void) { YLTracked *marker = malloc(sizeof(*marker)); if (!marker) yl_runtime_error(\"out of memory while entering string scope\"); marker->ptr = NULL; marker->scope_marker = true; marker->next = yl_tracked; yl_tracked = marker; return marker; }\n"
+        "static YLTrackedArray *yl_scope_enter_arrays(void) { YLTrackedArray *marker = malloc(sizeof(*marker)); if (!marker) yl_runtime_error(\"out of memory while entering array scope\"); marker->ptr = NULL; marker->scope_marker = true; marker->next = yl_arrays; yl_arrays = marker; return marker; }\n"
+        "static bool yl_untrack_string(const char *value) { YLTracked **link = &yl_tracked; while (*link) { YLTracked *node = *link; if (!node->scope_marker && node->ptr == (const void *)value) { *link = node->next; free(node); return true; } link = &node->next; } return false; }\n"
+        "static void yl_track_array_buffer(void *ptr) { if (!ptr) return; YLTrackedArray *node = malloc(sizeof(*node)); if (!node) yl_runtime_error(\"out of memory\"); node->ptr = ptr; node->scope_marker = false; node->next = yl_arrays; yl_arrays = node; }\n"
+        "static void yl_untrack_array_buffer(void *ptr) { if (!ptr) return; YLTrackedArray **link = &yl_arrays; while (*link) { YLTrackedArray *node = *link; if (!node->scope_marker && node->ptr == ptr) { *link = node->next; free(node); return; } link = &node->next; } yl_runtime_error(\"array allocation tracking failed\"); }\n"
+        "static void yl_replace_array_buffer(void *old_ptr, void *new_ptr) { for (YLTrackedArray *node = yl_arrays; node; node = node->next) if (!node->scope_marker && node->ptr == old_ptr) { node->ptr = new_ptr; return; } yl_runtime_error(\"array allocation tracking failed\"); }\n"
+        "static void yl_cleanup_scope(YLTracked *string_mark, YLTrackedArray *array_mark) {\n"
+        "    while (yl_arrays && yl_arrays != array_mark) { YLTrackedArray *node = yl_arrays; yl_arrays = node->next; if (!node->scope_marker) free(node->ptr); free(node); }\n"
+        "    if (yl_arrays != array_mark) yl_runtime_error(\"array scope tracking mismatch\");\n"
+        "    yl_arrays = array_mark->next; free(array_mark);\n"
+        "    while (yl_tracked && yl_tracked != string_mark) { YLTracked *node = yl_tracked; yl_tracked = node->next; if (!node->scope_marker) free(node->ptr); free(node); }\n"
+        "    if (yl_tracked != string_mark) yl_runtime_error(\"string scope tracking mismatch\");\n"
+        "    yl_tracked = string_mark->next; free(string_mark);\n"
+        "}\n"
+        "static const char *yl_adopt_string(const char *value) { if (!value) yl_runtime_error(\"function returned a null string\"); return (const char *)yl_track((void *)value); }\n"
+        "static YLArray yl_adopt_array(YLArray array) { if (array.data) yl_track_array_buffer(array.data); if (array.kind == 5) { const char **items = (const char **)array.data; for (size_t i = 0; i < array.len; i++) (void)yl_track((void *)items[i]); } return array; }\n"
+        "static YLArray yl_promote_array(YLArray array) { if (array.kind == 5) { const char **items = (const char **)array.data; for (size_t i = 0; i < array.len; i++) if (!yl_untrack_string(items[i])) yl_runtime_error(\"string array contains an unowned element\"); } if (array.data) yl_untrack_array_buffer(array.data); return array; }\n"
         "static const char *yl_boolstr(bool value) { return value ? \"true\" : \"false\"; }\n"
         "static const char *yl_format(const char *format, ...) {\n"
         "    va_list args; va_start(args, format); va_list copy; va_copy(copy, args);\n"
@@ -588,7 +632,12 @@ bool generate_c(Compiler *c, const char *path)
         emit_var_type(out, var, true);
         fprintf(out, " %s", var->c_name);
         if (var->initializer) {
-            fputs(" = ", out); emit_expr_to_file(out, var->initializer);
+            fputs(" = ", out);
+            if (var->initializer->kind == EXPR_STRING) {
+                (void)fwrite(var->initializer->token.start, 1, var->initializer->token.length, out);
+            } else {
+                emit_expr_to_file(out, var->initializer);
+            }
         } else if (var->type == TYPE_STRING) {
             fputs(" = \"\"", out);
         } else if (var->type == TYPE_FLOAT) {
@@ -624,9 +673,17 @@ bool generate_c(Compiler *c, const char *path)
             if (j) fputs(", ", out);
             { emit_param_type(out, fn->params[j]); fprintf(out, " %s", fn->params[j]->c_name); }
         }
-        fputs(") ", out); fputc('\n', out);
-        emit_stmt(out, fn->body, 0);
-        fputc('\n', out);
+        fputs(") {\\n", out);
+        fputs("    YLTracked *yl_scope_strings = yl_scope_enter_strings();\\n", out);
+        fputs("    YLTrackedArray *yl_scope_arrays = yl_scope_enter_arrays();\\n", out);
+        if (fn->body && fn->body->kind == STMT_BLOCK) {
+            for (size_t j = 0; j < fn->body->as.block.count; j++)
+                emit_stmt(out, fn->body->as.block.items[j], 1);
+        } else {
+            emit_stmt(out, fn->body, 1);
+        }
+        fputs("    yl_cleanup_scope(yl_scope_strings, yl_scope_arrays);\\n", out);
+        fputs("}\\n\\n", out);
     }
 
     Function *main_fn = find_function(c, "main");
