@@ -1,10 +1,10 @@
-# YLang 1.0.0
+# YLang 2.0.0-dev
 
-**A small compiled programming language with explicit types and actionable diagnostics.**
+**A compiled programming language in active development, with explicit types, checked ownership, and actionable diagnostics.**
 
 YLang is implemented in C. Its compiler tokenizes and parses `.yl` files, checks names, initialization and types, generates C, and invokes GCC or Clang to produce a native executable. It is a compiled language toolchain, not an interpreter.
 
-YLang **1.0.0 is the first stable release of the language subset documented in the specification**. The syntax and behavior listed as supported below are the v1.0 contract. This release is deliberately small; it does not claim to implement every feature planned for YLang, and it does not claim Rust-level memory safety.
+This branch builds **YLang 2.0.0-dev**. It contains experimental language features beyond the stable 1.0.0 contract documented in `docs/language-spec.md`. It is not a final 2.0 release and does not claim Rust-level memory-safety guarantees.
 
 ## Quick start
 
@@ -30,7 +30,7 @@ sudo apt install build-essential clang make
 ### Build from source
 
 ```sh
-git clone https://github.com/Yassine-Jemi01/ylang.git
+git clone -b dev/lsp-foundation https://github.com/Yassine-Jemi01/ylang.git
 cd ylang
 make
 make test
