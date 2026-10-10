@@ -239,3 +239,14 @@ if ./build/ylang check tests/path-type-error.yl > build/path-type-error.out 2>&1
     exit 1
 fi
 grep -q 'requires string arguments' build/path-type-error.out
+
+# Array parameters pass a checked pointer and length; length() works in callers and callees.
+./build/ylang check examples/array-functions.yl >/dev/null
+./build/ylang build examples/array-functions.yl -o build/test-array-functions >/dev/null
+./build/test-array-functions > build/array-functions.out
+diff -u tests/expected-array-functions.txt build/array-functions.out
+if ./build/ylang check tests/array-param-type-error.yl > build/array-param-type-error.out 2>&1; then
+    echo "FAIL: scalar passed to array parameter" >&2
+    exit 1
+fi
+grep -q 'This parameter expects an array argument' build/array-param-type-error.out

@@ -525,6 +525,32 @@ static YType check_expr(Checker *checker, Expr *expr)
                 }
                 return expr->type;
             }
+            if (strcmp(expr->as.call.name, "length") == 0) {
+                if (expr->as.call.count != 1) {
+                    diagnostic(c, expr->token, "error", "E2043",
+                               "length expects exactly one array argument.",
+                               "Use length(values) to get the number of elements.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                Expr *arg = expr->as.call.args[0];
+                bool previous = checker->allow_array_name;
+                checker->allow_array_name = true;
+                (void)check_expr(checker, arg);
+                checker->allow_array_name = previous;
+                if (arg->kind != EXPR_NAME || !arg->as.name.variable ||
+                    !arg->as.name.variable->is_array) {
+                    diagnostic(c, arg->token, "error", "E2027",
+                               "length requires an array variable.",
+                               "Pass a declared array, for example length(values).");
+                    expr->type = TYPE_ERROR;
+                } else {
+                    expr->type = TYPE_INT;
+                }
+                return expr->type;
+            }
             const StringBuiltin *string_builtin = find_string_builtin(expr->as.call.name);
             if (string_builtin) {
                 if (expr->as.call.count != string_builtin->arity) {
@@ -602,15 +628,32 @@ static YType check_expr(Checker *checker, Expr *expr)
             size_t shared = expr->as.call.count < function->param_count ?
                             expr->as.call.count : function->param_count;
             for (size_t i = 0; i < expr->as.call.count; i++) {
-                YType arg_type = check_expr(checker, expr->as.call.args[i]);
-                if (i < shared && arg_type != TYPE_ERROR &&
-                    arg_type != function->params[i]->type) {
+                Expr *arg = expr->as.call.args[i];
+                bool array_parameter = i < shared && function->params[i]->is_array;
+                bool previous_allow_array = checker->allow_array_name;
+                checker->allow_array_name = array_parameter;
+                YType arg_type = check_expr(checker, arg);
+                checker->allow_array_name = previous_allow_array;
+                if (i >= shared || arg_type == TYPE_ERROR) continue;
+                VarDecl *param = function->params[i];
+                if (param->is_array) {
+                    if (arg->kind != EXPR_NAME || !arg->as.name.variable ||
+                        !arg->as.name.variable->is_array) {
+                        diagnostic(c, arg->token, "error", "E2029",
+                                   "This parameter expects an array argument.",
+                                   "Pass a declared array variable, for example sum(values).");
+                    } else if (arg->as.name.variable->type != param->type) {
+                        diagnostic(c, arg->token, "error", "E2042",
+                                   "Function array element type mismatch.",
+                                   "Pass an array whose element type matches the parameter declaration.");
+                    }
+                } else if (arg_type != param->type) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
                         "Argument %zu of '%s' expects %s, but received %s.",
-                        i + 1, function->name, type_name(function->params[i]->type),
+                        i + 1, function->name, type_name(param->type),
                         type_name(arg_type));
-                    diagnostic(c, expr->as.call.args[i]->token, "error", "E2042",
+                    diagnostic(c, arg->token, "error", "E2042",
                                "Function argument type mismatch.", suggestion);
                 }
             }

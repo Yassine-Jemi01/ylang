@@ -1,0 +1,16 @@
+function sum(int values[]) -> int {
+    let int i = 0;
+    let int total = 0;
+    while (i < length(values)) {
+        total = total + values[i];
+        i = i + 1;
+    }
+    return total;
+}
+
+function main() -> int {
+    let int numbers[] = [2, 4, 6, 8];
+    print("Length:", length(numbers));
+    print("Sum:", sum(numbers));
+    return 0;
+}

@@ -158,7 +158,7 @@ let float root = math.sqrt(81.0);
 let float power = math.pow(2.0, 8.0);
 ```
 
-Fixed-size arrays use an inferred length, homogeneous initializers, and bounds-checked indexing:
+Fixed-size arrays use an inferred length, homogeneous initializers, and bounds-checked indexing. Functions can accept arrays with `int values[]`; `length(values)` returns the array length, including for parameters:
 
 ```ylang
 let int scores[] = [10, 20, 30];
@@ -170,7 +170,7 @@ function main() -> int {
 }
 ```
 
-Explicit conversions include `to_float(int)`, range-checked `to_int(float)`, and `to_string(value)` for int/float/bool/char/string. Use `string.is_int(text)` before `string.parse_int(text)` for untrusted input; invalid or out-of-range parsing raises a runtime error. `io.file_exists(path)` lets programs check a path before reading. String helpers and I/O are also available: `string.length`, `string.contains`, `string.starts_with`, `string.ends_with`, `string.concat`, `string.replace`, `io.read_line()`, `io.read_file(path)`, and `io.write_file(path, content)`. The new `path` namespace provides `path.exists(path)`, `path.basename(path)`, and `path.extension(path)`. On Linux/macOS, `image.open(path)` safely launches the system default viewer (using an argument vector rather than a shell command), returning whether the viewer launcher succeeded; it does not decode/render images inside YLang yet. File I/O is synchronous and text-only; read errors terminate with a runtime error, while writes return a boolean status. Run `make test` to test these APIs alongside math, arrays, and bounds protection. Arrays cannot yet be passed to or returned from functions; object-oriented classes are not implemented yet.
+Explicit conversions include `to_float(int)`, range-checked `to_int(float)`, and `to_string(value)` for int/float/bool/char/string. Use `string.is_int(text)` before `string.parse_int(text)` for untrusted input; invalid or out-of-range parsing raises a runtime error. `io.file_exists(path)` lets programs check a path before reading. String helpers and I/O are also available: `string.length`, `string.contains`, `string.starts_with`, `string.ends_with`, `string.concat`, `string.replace`, `io.read_line()`, `io.read_file(path)`, and `io.write_file(path, content)`. The new `path` namespace provides `path.exists(path)`, `path.basename(path)`, and `path.extension(path)`. On Linux/macOS, `image.open(path)` safely launches the system default viewer (using an argument vector rather than a shell command), returning whether the viewer launcher succeeded; it does not decode/render images inside YLang yet. File I/O is synchronous and text-only; read errors terminate with a runtime error, while writes return a boolean status. Run `make test` to test these APIs alongside math, arrays, and bounds protection. Arrays can be passed to functions with their length supplied automatically, but cannot yet be returned or nested; object-oriented classes are not implemented yet.
 
 
 ## What is included in 1.0.0

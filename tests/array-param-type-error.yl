@@ -1,0 +1,7 @@
+function sum(int values[]) -> int {
+    return length(values);
+}
+function main() -> int {
+    let int scalar = 4;
+    return sum(scalar);
+}

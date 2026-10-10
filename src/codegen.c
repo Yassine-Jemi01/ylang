@@ -179,7 +179,13 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             emit_expr(sb, expr->as.index.target);
             sb_append(sb, "[yl_bounds(");
             emit_expr(sb, expr->as.index.index);
-            sb_appendf(sb, ", %zu)]", expr->as.index.variable ? expr->as.index.variable->array_length : 0U);
+            if (expr->as.index.variable && expr->as.index.variable->is_array &&
+                expr->as.index.variable->array_length == 0) {
+                sb_appendf(sb, ", %s_len)]", expr->as.index.variable->c_name);
+            } else {
+                sb_appendf(sb, ", %zu)]",
+                    expr->as.index.variable ? expr->as.index.variable->array_length : 0U);
+            }
             break;
         case EXPR_NAME:
             sb_append(sb, expr->as.name.variable ? expr->as.name.variable->c_name : "yl_missing_variable");
@@ -190,6 +196,15 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             sb_append(sb, " = "); emit_expr(sb, expr->as.assign.right); sb_append(sb, ")");
             break;
         case EXPR_CALL: {
+            if (strcmp(expr->as.call.name, "length") == 0 && expr->as.call.count == 1) {
+                Expr *arg = expr->as.call.args[0];
+                VarDecl *var = arg->kind == EXPR_NAME ? arg->as.name.variable : NULL;
+                if (var && var->is_array) {
+                    if (var->array_length == 0) sb_appendf(sb, "%s_len", var->c_name);
+                    else sb_appendf(sb, "INT64_C(%zu)", var->array_length);
+                } else sb_append(sb, "INT64_C(0)");
+                break;
+            }
             if (strcmp(expr->as.call.name, "to_string") == 0 && expr->as.call.count == 1) {
                 Expr *arg = expr->as.call.args[0];
                 switch (arg->type) {
@@ -216,7 +231,21 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             sb_append(sb, "(");
             for (size_t i = 0; i < expr->as.call.count; i++) {
                 if (i) sb_append(sb, ", ");
-                emit_expr(sb, expr->as.call.args[i]);
+                Expr *arg = expr->as.call.args[i];
+                bool array_param = expr->as.call.function &&
+                    i < expr->as.call.function->param_count &&
+                    expr->as.call.function->params[i]->is_array;
+                emit_expr(sb, arg);
+                if (array_param) {
+                    VarDecl *var = arg->kind == EXPR_NAME ? arg->as.name.variable : NULL;
+                    sb_append(sb, ", ");
+                    if (var && var->is_array && var->array_length == 0)
+                        sb_appendf(sb, "%s_len", var->c_name);
+                    else if (var && var->is_array)
+                        sb_appendf(sb, "((size_t)%zu)", var->array_length);
+                    else
+                        sb_append(sb, "((size_t)0)");
+                }
             }
             sb_append(sb, ")");
             break;
@@ -516,9 +545,17 @@ bool generate_c(Compiler *c, const char *path)
         Function *fn = c->program->functions[i];
         fprintf(out, "%s %s(", c_base_type(fn->return_type), fn->c_name);
         if (fn->param_count == 0) fputs("void", out);
+        bool first_param = true;
         for (size_t j = 0; j < fn->param_count; j++) {
-            if (j) fputs(", ", out);
-            fprintf(out, "%s %s", c_base_type(fn->params[j]->type), fn->params[j]->c_name);
+            VarDecl *param = fn->params[j];
+            if (!first_param) fputs(", ", out);
+            if (param->is_array) {
+                fprintf(out, "%s *%s, size_t %s_len",
+                        c_base_type(param->type), param->c_name, param->c_name);
+            } else {
+                fprintf(out, "%s %s", c_base_type(param->type), param->c_name);
+            }
+            first_param = false;
         }
         fputs(");\n", out);
     }
@@ -528,9 +565,17 @@ bool generate_c(Compiler *c, const char *path)
         Function *fn = c->program->functions[i];
         fprintf(out, "%s %s(", c_base_type(fn->return_type), fn->c_name);
         if (fn->param_count == 0) fputs("void", out);
+        bool first_param = true;
         for (size_t j = 0; j < fn->param_count; j++) {
-            if (j) fputs(", ", out);
-            fprintf(out, "%s %s", c_base_type(fn->params[j]->type), fn->params[j]->c_name);
+            VarDecl *param = fn->params[j];
+            if (!first_param) fputs(", ", out);
+            if (param->is_array) {
+                fprintf(out, "%s *%s, size_t %s_len",
+                        c_base_type(param->type), param->c_name, param->c_name);
+            } else {
+                fprintf(out, "%s %s", c_base_type(param->type), param->c_name);
+            }
+            first_param = false;
         }
         fputs(") ", out); fputc('\n', out);
         emit_stmt(out, fn->body, 0);

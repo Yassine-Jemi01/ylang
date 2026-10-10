@@ -824,6 +824,12 @@ static Function *parse_function(Parser *p)
                 "For example: function greet(string name) -> void.");
             VarDecl *param = new_var(p->compiler, param_name,
                 token_copy(p->compiler, param_name), type, false, false, NULL);
+            if (match(p, TOKEN_LEFT_BRACKET)) {
+                param->is_array = true;
+                consume(p, TOKEN_RIGHT_BRACKET,
+                        "Array parameters use empty brackets after the name.",
+                        "Use syntax such as function sum(int values[]) -> int.");
+            }
             param->initialized = true;
             (void)param_type_token;
             append_ptr(p->compiler, (void ***)&function->params,

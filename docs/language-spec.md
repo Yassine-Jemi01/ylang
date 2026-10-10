@@ -130,7 +130,7 @@ function main() -> int {
 - Indexing starts at zero.
 - Array indices must be `int`; every access performs a runtime bounds check and exits with status 70 on an invalid index.
 - Element assignment is supported, such as `scores[1] = 42;`.
-- Whole-array assignment, passing arrays to functions, returning arrays, nested arrays, and `const` arrays are not supported yet.
+- Whole-array assignment, returning arrays, nested arrays, and `const` arrays are not supported yet. Array parameters use `type name[]`; the generated native ABI passes a pointer and a separate length value.
 - Arrays must be initialized at declaration; their size cannot change at runtime.
 
 ## Standard string and input library
@@ -219,6 +219,6 @@ Parameter and return types are explicit. Function overloading is not supported. 
 
 ## 11. Unsupported features and implementation limits
 
-The following are not supported by the current language subset: classes/OOP, exception syntax (`try`/`catch`), modules, generics, raw pointers/references, passing or returning arrays, nested/const arrays, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
+The following are not supported by the current language subset: classes/OOP, exception syntax (`try`/`catch`), modules, generics, raw pointers/references, returning arrays, nested/const arrays, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
 
 The compiler generates C, so native code inherits ordinary process privileges and is not sandboxed. Some formatted string values are stored until process exit; creating many such values in a long-running loop can increase memory consumption. The language does not define ownership/borrowing or a garbage collector in this release. Do not assume Rust-like memory-safety guarantees.
