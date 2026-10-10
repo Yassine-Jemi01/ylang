@@ -58,6 +58,8 @@ No implicit narrowing conversions. Conversion functions must make failure or los
 - Prefer typed return values for recoverable failures; reserve process termination for entry-point/runtime-fatal failures. A generic `Result<T, E>` is a candidate only after generics are implemented soundly.
 - Do not ship exceptions, async, macros, classes, or unrestricted generics merely to match other languages. Each needs a separate design and motivating use cases.
 
+- `for (T item in values)` iterates over a snapshot of the array length for `int[]`, `float[]`, `bool[]`, and `char[]`. `string[]` iteration is deferred until element borrowing is designed. Numeric range loops remain planned.
+
 ## Standard library scope
 
 **First implemented built-ins on `dev/lsp-foundation`:** `read_line()` reads one line from standard input, removes LF and an optional preceding CR; `len(text)` returns UTF-8 byte length; and `clone(text)` creates an independent heap copy. Named string values move on initialization, assignment, by-value function calls, and returns. The checker rejects use after move and conservatively merges move states across branches/loops. Heap strings are still tracked until process exit, so scope-based deterministic cleanup remains unfinished. End-of-input before any characters is currently a runtime error.

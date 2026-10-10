@@ -130,6 +130,11 @@ function main() -> int {
     scores[1] = 42;
     append(scores, 99);
     print(scores[1], len(scores)); // 42 4
+    let int total = 0;
+    for (int score in scores) {
+        total = total + score;
+    }
+    print("Total:", total); // 181
     let int[] backup = clone(scores);
     backup[0] = 7;
     print(scores[0], backup[0]); // 10 7

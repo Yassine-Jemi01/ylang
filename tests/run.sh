@@ -179,6 +179,12 @@ if "$YLANG" check tests/string-use-after-move.yl > build/string-use-after-move.o
 fi
 grep -q 'E2070' build/string-use-after-move.out
 
+# The documented array example stays compilable and runnable.
+"$YLANG" build examples/arrays.yl -o "build/test-example-arrays$EXEEXT" >/dev/null
+"./build/test-example-arrays$EXEEXT" > build/example-arrays.out
+normalize_output "build/example-arrays.out"
+diff -u tests/expected-example-arrays.txt build/example-arrays.out
+
 # For-each iterates over a snapshot of the scalar array length.
 "$YLANG" build tests/for-each.yl -o "build/test-for-each$EXEEXT" >/dev/null
 "./build/test-for-each$EXEEXT" > build/for-each.out

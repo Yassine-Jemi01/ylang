@@ -175,7 +175,7 @@
       "name": "constant.language.boolean.ylang"
     },
     "keywords": {
-      "match": "\\b(?:function|return|let|const|mut|if|else|loop|break|continue|and|or|not)\\b",
+      "match": "\\b(?:function|return|let|const|mut|if|else|loop|for|in|break|continue|and|or|not)\\b",
       "name": "keyword.control.ylang"
     },
     "types": {
@@ -183,7 +183,7 @@
       "name": "storage.type.ylang"
     },
     "builtin-functions": {
-      "match": "\\bprint\\b",
+      "match": "\\b(?:print|read_line|len|clone|append)\\b",
       "name": "support.function.builtin.ylang"
     },
     "function-calls": {

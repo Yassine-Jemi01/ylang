@@ -34,7 +34,7 @@ Prioritize the core semantics and test harness over a long list of shallow featu
 ## Stage 3 — Essential language features
 
 - [x] Add `read_line()` with documented EOF/error behavior; typed conversion APIs remain planned.
-- [ ] Range-based `for` iteration.
+- [x] Add `for (T item in values)` iteration over scalar arrays; numeric range iteration remains planned.
 - [ ] Match/enum or another explicit sum-type design for robust error handling.
 - [ ] Multi-file modules/imports and visibility.
 - [ ] Structs/records and methods only after value layout and ownership are clear.
