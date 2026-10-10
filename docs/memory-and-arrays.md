@@ -14,7 +14,7 @@ YLang should use compiler-checked ownership for heap-owned values rather than re
 
 `string` values move by default when transferred from a named local into another variable, a by-value function parameter, or a return. `clone(text)` creates an independent copy. The checker rejects use after move and conservatively merges move state across branches and loops. String literals may use static storage, while dynamic strings and f-string results are currently tracked until process exit; deterministic scope cleanup is still required before claiming a complete ownership model.
 
-The current C backend keeps f-string formatting buffers until process exit. Replacing that mechanism with deterministic ownership/cleanup is a prerequisite to claiming the string type is covered by the new safety model.
+The current C backend keeps dynamic strings, f-string formatting buffers, and array backing buffers in a runtime registry until process exit. This avoids freeing them too early, but it is not deterministic scope cleanup and means long-running programs may retain all prior dynamic allocations.
 
 ### Arrays
 

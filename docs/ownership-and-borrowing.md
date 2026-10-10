@@ -12,7 +12,7 @@
 
 ## Value and ownership direction
 
-`int`, `float`, `bool`, and `char` are copyable scalar values. `string` values on `dev/lsp-foundation` now move when initialized from another named string, assigned from another named string, passed to a by-value string parameter, or returned by name. `clone(text)` explicitly copies a string. The checker rejects a named local string used after a move and conservatively merges move states across branches/loops. The runtime still tracks heap strings until process exit, so deterministic scope cleanup is not complete. Arrays and full Rust-equivalent ownership guarantees are not implemented.
+`int`, `float`, `bool`, and `char` are copyable scalar values. `string` values on `dev/lsp-foundation` now move when initialized from another named string, assigned from another named string, passed to a by-value string parameter, or returned by name. `clone(text)` explicitly copies a string. The checker rejects a named local string used after a move and conservatively merges move states across branches/loops. The runtime still tracks heap strings and array buffers until process exit, so deterministic scope cleanup is not complete. String values placed into array literals move from their named local; moving a string out of an indexed array slot is rejected, while `clone(values[index])` copies it. Arrays remain experimental, and full Rust-equivalent ownership guarantees are not implemented.
 
 ## Borrowed function parameters
 
@@ -49,7 +49,7 @@ function main() -> int {
 1. Stabilize borrow-mode and conflict diagnostics with positive and negative tests.
 2. Extend string move analysis to full control-flow and return paths; replace process-wide tracking with deterministic cleanup on all control-flow exits.
 3. Replace process-lifetime f-string buffers with deterministic ownership/cleanup.
-4. Add arrays as owned values, with explicit move/clone semantics and runtime bounds checks.
+4. Harden array ownership, including moves into literals, indexed string copies, and complete drop/cleanup behavior.
 5. Enable borrowing of strings and arrays only after lifetimes and cleanup are covered by tests.
 6. Update Tree-sitter parser generation and Neovim integration to the new grammar, then run the full platform pass.
 

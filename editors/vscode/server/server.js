@@ -44,7 +44,7 @@ const SHORT = {
   E2070:"Use after move", E2071:"Cannot move a global owned value", E2072:"Cannot move a value into itself",
   E2073:"Array literal needs an element", E2074:"Invalid array element type", E2075:"Array elements must match",
   E2076:"Operation requires an array", E2077:"Array index must be int", E2078:"Array must be a named variable",
-  E2079:"Cannot modify const array", E2080:"For-each variable type mismatch", E2081:"String array iteration unsupported", E2082:"For-each requires a named array"
+  E2079:"Cannot modify const array", E2080:"For-each variable type mismatch", E2081:"String array iteration unsupported", E2082:"For-each requires a named array", E2083:"Cannot move a string out of an array element"
 };
 
 function shortMessage(code, original) {

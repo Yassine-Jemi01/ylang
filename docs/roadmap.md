@@ -21,7 +21,8 @@ Prioritize the core semantics and test harness over a long list of shallow featu
 - [ ] Replace process-lifetime f-string allocations with deterministic ownership.
 - [ ] Generate cleanup on all control-flow exits and error paths.
 - [ ] Test early returns, nested scopes, loops, and repeated formatting.
-- [ ] Keep references call-scoped until lifetimes are implemented.
+- [x] Keep references call-scoped; support remains limited to scalar parameters.
+- [x] Add tests for string elements moved into arrays and reject implicit moves out of indexed string values.
 
 ## Stage 2 — Arrays
 
