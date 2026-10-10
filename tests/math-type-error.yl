@@ -1,0 +1,4 @@
+function main() -> int {
+    let float root = math.sqrt(9);
+    return 0;
+}
