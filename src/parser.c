@@ -465,6 +465,19 @@ static Expr *parse_primary(Parser *p)
     if (match(p, TOKEN_CHAR)) return new_expr(p->compiler, EXPR_CHAR, token);
     if (match(p, TOKEN_FSTRING)) return parse_fstring(p, token);
     if (match(p, TOKEN_TRUE) || match(p, TOKEN_FALSE)) return new_expr(p->compiler, EXPR_BOOL, token);
+    if (match(p, TOKEN_LEFT_BRACKET)) {
+        Expr *array = new_expr(p->compiler, EXPR_ARRAY, token);
+        if (p->current.type != TOKEN_RIGHT_BRACKET) {
+            do {
+                Expr *item = parse_expression(p);
+                append_ptr(p->compiler, (void ***)&array->as.array.items,
+                           &array->as.array.count, item);
+            } while (match(p, TOKEN_COMMA) && p->current.type != TOKEN_RIGHT_BRACKET);
+        }
+        consume(p, TOKEN_RIGHT_BRACKET, "Expected ']' after array literal.",
+                "Close the array literal, for example [1, 2, 3].");
+        return array;
+    }
     if (match(p, TOKEN_IDENTIFIER)) {
         Expr *expr = new_expr(p->compiler, EXPR_NAME, token);
         char *name = token_copy(p->compiler, token);
@@ -544,6 +557,18 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
     }
 
     for (;;) {
+        if (p->current.type == TOKEN_LEFT_BRACKET && min_precedence <= 8) {
+            Token bracket = p->current;
+            advance_parser(p);
+            Expr *index = parse_expression(p);
+            consume(p, TOKEN_RIGHT_BRACKET, "Expected ']' after array index.",
+                    "Close the index expression with ']'.");
+            Expr *indexed = new_expr(p->compiler, EXPR_INDEX, bracket);
+            indexed->as.index.target = left;
+            indexed->as.index.index = index;
+            left = indexed;
+            continue;
+        }
         int prec = precedence(p->current.type);
         if (prec == 0 || prec < min_precedence) break;
         op = p->current;
@@ -551,10 +576,10 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
         int next_min = prec + (op.type == TOKEN_EQUAL ? 0 : 1);
         Expr *right = parse_precedence(p, next_min);
         if (op.type == TOKEN_EQUAL) {
-            if (left->kind != EXPR_NAME) {
+            if (left->kind != EXPR_NAME && left->kind != EXPR_INDEX) {
                 diagnostic(p->compiler, op, "error", "E1004",
-                           "The left side of an assignment must be a variable name.",
-                           "Write an assignment such as 'count = count + 1;'.");
+                           "The left side of an assignment must be a variable or array element.",
+                           "Write an assignment such as 'count = count + 1;' or 'values[0] = 1;'.");
                 left = new_expr(p->compiler, EXPR_ERROR, op);
             } else {
                 Expr *assign = new_expr(p->compiler, EXPR_ASSIGN, op);
@@ -605,8 +630,29 @@ static Stmt *parse_variable(Parser *p, bool global)
     Token name_token = consume(p, TOKEN_IDENTIFIER,
         "Expected a variable name after the type.",
         "For example: let int count = 0;");
+    bool is_array = false;
+    if (match(p, TOKEN_LEFT_BRACKET)) {
+        is_array = true;
+        consume(p, TOKEN_RIGHT_BRACKET, "Array declarations use empty brackets after the name.",
+                "Use a declaration such as 'let int values[] = [1, 2, 3];'.");
+        if (is_const) {
+            diagnostic(p->compiler, name_token, "error", "E2017",
+                       "const arrays are not supported yet.",
+                       "Use a mutable array declaration for now.");
+        }
+    }
     Expr *initializer = NULL;
-    if (match(p, TOKEN_EQUAL)) initializer = parse_expression(p);
+    if (match(p, TOKEN_EQUAL)) initializer = parse_expression();
+    if (is_array && !initializer) {
+        diagnostic(p->compiler, name_token, "error", "E2018",
+                   "An array declaration requires an initializer in this release.",
+                   "Initialize it with an array literal, for example [1, 2, 3].");
+    }
+    if (!is_array && initializer && initializer->kind == EXPR_ARRAY) {
+        diagnostic(p->compiler, name_token, "error", "E2019",
+                   "An array literal requires an array declaration.",
+                   "Declare the variable with empty brackets after its name, such as 'let int values[] = [1, 2, 3];'.");
+    }
     if (is_const && !initializer) {
         diagnostic(p->compiler, name_token, "error", "E2003",
                    "A const variable must be initialized at declaration.",
@@ -616,6 +662,9 @@ static Stmt *parse_variable(Parser *p, bool global)
             "The declaration may be missing ';' before this token.");
     VarDecl *var = new_var(p->compiler, name_token, token_copy(p->compiler, name_token),
                            type, is_const, global, initializer);
+    var->is_array = is_array;
+    var->array_length = is_array && initializer && initializer->kind == EXPR_ARRAY ?
+                        initializer->as.array.count : 0;
     Stmt *stmt = new_stmt(p->compiler, STMT_VAR, start);
     stmt->as.variable = var;
     return stmt;
