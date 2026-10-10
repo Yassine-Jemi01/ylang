@@ -160,7 +160,7 @@ function main() -> int {
                 (expression
                   (identifier))
                 (expression
-                  (integer_literal))))))
+                  (integer_literal)))))))
       (statement
         (print_statement
           argument: (expression
