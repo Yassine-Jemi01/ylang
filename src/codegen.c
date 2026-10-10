@@ -200,7 +200,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 Expr *arg = expr->as.call.args[0];
                 VarDecl *var = arg->kind == EXPR_NAME ? arg->as.name.variable : NULL;
                 if (var && var->is_array) {
-                    if (var->array_length == 0) sb_appendf(sb, "%s_len", var->c_name);
+                    if (var->array_length == 0) sb_appendf(sb, "((int64_t)%s_len)", var->c_name);
                     else sb_appendf(sb, "INT64_C(%zu)", var->array_length);
                 } else sb_append(sb, "INT64_C(0)");
                 break;
