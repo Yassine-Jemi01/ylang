@@ -2,4 +2,4 @@
 *.c text eol=lf
 *.h text eol=lf
 *.sh text eol=lf
-*.yl text eol=lf
+*.yl text eol=lf linguist-language=C
