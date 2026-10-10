@@ -27,6 +27,13 @@ On Debian or Ubuntu:
 sudo apt install build-essential clang make
 ```
 
+On macOS, install the Xcode Command Line Tools and Homebrew toolchain:
+
+```sh
+xcode-select --install
+brew install make llvm sdl2 pkg-config
+```
+
 ### Build from source
 
 ```sh
