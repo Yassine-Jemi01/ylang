@@ -149,6 +149,30 @@ function main() -> int {
 
 See [`docs/language-spec.md`](docs/language-spec.md) for the complete supported syntax, type rules, runtime behavior, and explicit limitations. [`docs/architecture.md`](docs/architecture.md) explains the compiler pipeline.
 
+## Standard math and arrays
+
+YLang includes a checked `math` namespace for floating-point functions:
+
+```ylang
+let float root = math.sqrt(81.0);
+let float power = math.pow(2.0, 8.0);
+```
+
+Fixed-size arrays use an inferred length, homogeneous initializers, and bounds-checked indexing:
+
+```ylang
+let int scores[] = [10, 20, 30];
+
+function main() -> int {
+    scores[1] = 42;
+    print(scores[0], scores[1], scores[2]);
+    return 0;
+}
+```
+
+Run `make test` to test the compiler, math calls, array mutation, and out-of-bounds protection. Arrays cannot yet be passed to or returned from functions; object-oriented classes are not implemented yet.
+
+
 ## What is included in 1.0.0
 
 - Explicit declarations (`let type name`) and constants (`let const type name`)
