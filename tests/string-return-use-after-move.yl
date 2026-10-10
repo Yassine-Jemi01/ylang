@@ -1,0 +1,11 @@
+function take(string value) -> string {
+    return value;
+}
+
+function main() -> int {
+    let string first = "YLang";
+    let string second = take(first);
+    print(first);
+    print(second);
+    return 0;
+}

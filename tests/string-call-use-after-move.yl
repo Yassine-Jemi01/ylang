@@ -1,0 +1,10 @@
+function consume(string value) -> void {
+    print(value);
+}
+
+function main() -> int {
+    let string first = "YLang";
+    consume(first);
+    print(first);
+    return 0;
+}

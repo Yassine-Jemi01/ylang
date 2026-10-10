@@ -220,4 +220,13 @@ if "$YLANG" check tests/borrow-global.yl > build/borrow-global.out 2>&1; then
 fi
 grep -q 'E2065' build/borrow-global.out
 
+# Moving a string through a by-value call, a return, or one branch invalidates the source.
+for case_name in string-call-use-after-move string-return-use-after-move string-branch-move; do
+    if "$YLANG" check "tests/$case_name.yl" > "build/$case_name.out" 2>&1; then
+        echo "FAIL: $case_name was accepted" >&2
+        exit 1
+    fi
+    grep -q 'E2070' "build/$case_name.out"
+done
+
 echo "All YLang tests passed."
