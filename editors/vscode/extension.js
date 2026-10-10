@@ -58,6 +58,7 @@ const SHORT_MESSAGES = {
   E1013: "Empty f-string placeholder",
   E1014: "Invalid f-string expression",
   E1015: "print() needs a value",
+  E1016: "Unknown standard-library namespace",
   E2001: "Type mismatch",
   E2002: "Unknown type",
   E2003: "const needs a value",
@@ -68,10 +69,19 @@ const SHORT_MESSAGES = {
   E2012: "char must be one byte",
   E2013: "Cannot use void in an f-string",
   E2014: "No calls or assignments inside f-strings",
+  E2017: "const arrays are not supported",
+  E2018: "Array needs an initializer",
+  E2019: "Array literal needs an array declaration",
   E2020: "Unknown variable",
   E2021: "Variable may be uninitialized",
   E2022: "Cannot change a const variable",
   E2023: "Assignment cannot be used as a value",
+  E2024: "Array literal cannot be empty",
+  E2025: "Array elements must have the same type",
+  E2026: "Only named fixed-size arrays can be indexed",
+  E2027: "Indexing requires an array",
+  E2028: "Array index must be an integer",
+  E2029: "Array must be indexed before use",
   E2030: "Minus needs a number",
   E2031: "'not' needs true or false",
   E2032: "'and' and 'or' need true/false values",
@@ -79,10 +89,14 @@ const SHORT_MESSAGES = {
   E2034: "Use matching number types",
   E2035: "Compare matching types",
   E2036: "Compare values of the same type",
+  E2037: "Whole-array assignment is not supported",
+  E2038: "Array needs an array literal initializer",
   E2040: "Unknown function",
   E2041: "Wrong number of arguments",
   E2042: "Argument type mismatch",
-  E2043: "Function already exists",
+  E2043: "Check function declaration or argument count",
+  E2044: "This function requires string arguments",
+  E2045: "Invalid conversion argument type",
   E2050: "Cannot print a void value",
   E2051: "if condition must be true or false",
   E2052: "'break' or 'continue' must be inside loop()",
@@ -158,6 +172,27 @@ function parseDiagnostics(text, document) {
     const diagnostic = new vscode.Diagnostic(new vscode.Range(start, end), message, severity);
     diagnostic.source = "YLang";
     if (block.code) diagnostic.code = block.code;
+
+    // Keep inline diagnostics short, but retain the compiler's complete explanation
+    // and actionable help text in the hover/related-information UI.
+    const relatedInformation = [];
+    if (block.message && message !== block.message.replace(/\\.$/, "")) {
+      relatedInformation.push(new vscode.DiagnosticRelatedInformation(
+        new vscode.Location(document.uri, start),
+        block.message
+      ));
+    }
+    const helpLine = block.lines.find((line) => /^\\s*=\\s*help:\\s*/.test(line));
+    if (helpLine) {
+      const hint = helpLine.replace(/^\\s*=\\s*help:\\s*/, "").trim();
+      if (hint) {
+        relatedInformation.push(new vscode.DiagnosticRelatedInformation(
+          new vscode.Location(document.uri, start),
+          "Hint: " + hint
+        ));
+      }
+    }
+    if (relatedInformation.length) diagnostic.relatedInformation = relatedInformation;
     found.push(diagnostic);
   }
 
@@ -243,7 +278,9 @@ function checkDocument(document, revision) {
 
       if (error && error.killed) {
         output.appendLine("YLang check timed out after " + timeout + " ms.");
-      } else if (error && !parsed.length && error.code !== 1) {
+      } else if (error && !parsed.length && error.code !== 0) {
+        // Log all unparsed failures, including exit code 1, rather than silently
+        // clearing diagnostics if the compiler output format ever changes.
         output.appendLine("YLang check exited unexpectedly: " + error.message);
         if (combined.trim()) output.appendLine(combined.trim());
       } else if (parsed.length) {
