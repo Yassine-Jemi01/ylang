@@ -173,6 +173,11 @@ grep -q 'All array elements must have the same type' build/array-mixed-types.out
 ./build/ylang build examples/strings.yl -o build/test-strings >/dev/null
 ./build/test-strings > build/test-strings.out
 diff -u tests/expected-strings.txt build/test-strings.out
+if ./build/ylang check tests/string-type-error.yl > build/string-type-error.out 2>&1; then
+    echo "FAIL: string.length accepted an int argument" >&2
+    exit 1
+fi
+grep -q 'requires string arguments' build/string-type-error.out
 ./build/ylang check tests/read-line.yl >/dev/null
 ./build/ylang build tests/read-line.yl -o build/test-read-line >/dev/null
 printf 'YLang\n' | ./build/test-read-line > build/read-line.out
