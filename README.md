@@ -116,12 +116,14 @@ ylang --help
 ylang --version
 ylang check <file.yl>
 ylang build <file.yl> [-o executable] [--cc gcc|clang]
+ylang run <file.yl> [--cc gcc|clang]
 ylang emit-c <file.yl> [-o generated.c]
 ylang fix <file.yl> -o <fixed.yl>
 ```
 
 - `check` parses and performs semantic/type checks without running a native compiler.
 - `build` checks the source, emits temporary C17, then invokes GCC or Clang.
+- `run` compiles into a temporary directory, runs the native program, cleans up temporary artifacts, and returns the program's exit status.
 - `emit-c` writes generated C for inspection.
 - `fix` applies a narrow, high-confidence fix for a common `pritn(...)` typo. It writes to a separate file and is not a general repair engine.
 

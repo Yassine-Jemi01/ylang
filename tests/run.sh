@@ -31,6 +31,17 @@ fi
 grep -q 'requires -o' build/fix-missing-output.out
 
 "$YLANG" check examples/demo.yl
+
+# run builds in a temporary directory, forwards program output, and preserves its exit status.
+"$YLANG" run examples/demo.yl > build/run-demo.out
+normalize_output "build/run-demo.out"
+diff -u tests/expected-demo.txt build/run-demo.out
+set +e
+"$YLANG" run tests/run-exit.yl > build/run-exit.out 2>&1
+run_exit_status=$?
+set -e
+[ "$run_exit_status" -eq 7 ]
+
 "$YLANG" build examples/demo.yl -o "build/test-demo$EXEEXT" >/dev/null
 "./build/test-demo$EXEEXT" > build/test-demo.out
     normalize_output "build/test-demo.out"

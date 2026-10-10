@@ -45,6 +45,7 @@ The PowerShell script compiles the C compiler directly. The smoke test checks th
 ```powershell
 .\build\ylang.exe check .\examples\demo.yl
 .\build\ylang.exe build .\examples\demo.yl -o .\demo.exe
+.\build\ylang.exe run .\examples\demo.yl
 .\demo.exe
 ```
 

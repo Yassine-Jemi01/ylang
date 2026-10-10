@@ -4,6 +4,7 @@
 #include "internal.h"
 
 #include <errno.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -300,6 +301,44 @@ static int run_native_compiler(const char *cc, const char *c_path,
 #endif
 }
 
+
+static int run_native_program(const char *executable)
+{
+#ifdef _WIN32
+    const char *arguments[] = { executable, NULL };
+    intptr_t status = _spawnv(_P_WAIT, executable, arguments);
+    if (status == -1) {
+        fprintf(stderr, "ylang: cannot run generated program '%s': %s\n",
+                executable, strerror(errno));
+        return errno == ENOENT ? 127 : 1;
+    }
+    return (int)status;
+#else
+    pid_t pid = fork();
+    if (pid < 0) {
+        fprintf(stderr, "ylang: could not start generated program: %s\n", strerror(errno));
+        return 1;
+    }
+    if (pid == 0) {
+        char *const arguments[] = { (char *)executable, NULL };
+        execv(executable, arguments);
+        fprintf(stderr, "ylang: cannot execute generated program '%s': %s\n",
+                executable, strerror(errno));
+        _exit(errno == ENOENT ? 127 : 126);
+    }
+    int status = 0;
+    while (waitpid(pid, &status, 0) < 0) {
+        if (errno == EINTR) continue;
+        fprintf(stderr, "ylang: waitpid failed while running program: %s\n",
+                strerror(errno));
+        return 1;
+    }
+    if (WIFEXITED(status)) return WEXITSTATUS(status);
+    if (WIFSIGNALED(status)) return 128 + WTERMSIG(status);
+    return 1;
+#endif
+}
+
 int ylang_run(const char *command, const char *input_path,
               const char *output_path, const char *cc)
 {
@@ -352,9 +391,11 @@ int ylang_run(const char *command, const char *input_path,
     }
 
     const bool emit_c_command = strcmp(command, "emit-c") == 0;
+    const bool run_command = strcmp(command, "run") == 0;
     const char *c_path = output_path;
     char *generated_path = NULL;
     char *temporary_directory = NULL;
+    char *run_target = NULL;
 
     if (emit_c_command) {
         if (!c_path) {
@@ -387,13 +428,36 @@ int ylang_run(const char *command, const char *input_path,
         (void)snprintf(generated_path, path_size, "%s%s%s",
                        temporary_directory, YLANG_PATH_SEPARATOR, "generated.c");
         c_path = generated_path;
+        if (run_command) {
+#ifdef _WIN32
+            const char *run_name = "ylang-run.exe";
+#else
+            const char *run_name = "ylang-run";
+#endif
+            size_t target_path_size = strlen(temporary_directory) +
+                strlen(YLANG_PATH_SEPARATOR) + strlen(run_name) + 1;
+            run_target = malloc(target_path_size);
+            if (!run_target) {
+                fputs("ylang: out of memory while preparing run target\\n", stderr);
+                (void)ylang_remove_directory(temporary_directory);
+                free(generated_path);
+                free(temporary_directory);
+                arena_destroy(&compiler.arena);
+                free(source);
+                return 70;
+            }
+            (void)snprintf(run_target, target_path_size, "%s%s%s",
+                           temporary_directory, YLANG_PATH_SEPARATOR, run_name);
+        }
     }
 
     if (!generate_c(&compiler, c_path)) {
         if (temporary_directory) {
             (void)ylang_remove_file(c_path);
+            if (run_target) (void)ylang_remove_file(run_target);
             (void)ylang_remove_directory(temporary_directory);
         }
+        free(run_target);
         free(generated_path);
         free(temporary_directory);
         arena_destroy(&compiler.arena);
@@ -405,19 +469,32 @@ int ylang_run(const char *command, const char *input_path,
     if (emit_c_command) {
         printf("Generated C source: %s\n", c_path);
     } else {
-        const char *target = output_path ? output_path :
+        const char *target;
+        if (run_command) {
+            target = run_target;
+        } else if (output_path) {
+            target = output_path;
+        } else {
 #ifdef _WIN32
-            "a.exe";
+            target = "a.exe";
 #else
-            "a.out";
+            target = "a.out";
 #endif
+        }
         result = run_native_compiler(cc ? cc : "gcc", c_path, target);
-        if (result == 0) printf("Build succeeded: %s\n", target);
-        else fprintf(stderr, "ylang: native compilation failed (exit %d).\n", result);
+        if (result == 0 && run_command) {
+            result = run_native_program(target);
+        } else if (result == 0) {
+            printf("Build succeeded: %s\n", target);
+        } else {
+            fprintf(stderr, "ylang: native compilation failed (exit %d).\n", result);
+        }
         (void)ylang_remove_file(c_path);
+        if (run_target) (void)ylang_remove_file(run_target);
         (void)ylang_remove_directory(temporary_directory);
     }
 
+    free(run_target);
     free(generated_path);
     free(temporary_directory);
     arena_destroy(&compiler.arena);
