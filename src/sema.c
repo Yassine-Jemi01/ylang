@@ -143,6 +143,28 @@ static bool expr_contains_call_or_assignment(Expr *expr)
 static YType check_expr(Checker *checker, Expr *expr);
 static void check_stmt(Checker *checker, Stmt *stmt);
 
+typedef struct {
+    const char *name;
+    size_t arity;
+} MathBuiltin;
+
+static const MathBuiltin math_builtins[] = {
+    {"math.sqrt", 1}, {"math.sin", 1}, {"math.cos", 1}, {"math.tan", 1},
+    {"math.asin", 1}, {"math.acos", 1}, {"math.atan", 1}, {"math.exp", 1},
+    {"math.log", 1}, {"math.log10", 1}, {"math.floor", 1}, {"math.ceil", 1},
+    {"math.round", 1}, {"math.abs", 1}, {"math.sinh", 1}, {"math.cosh", 1},
+    {"math.tanh", 1}, {"math.pow", 2}, {"math.atan2", 2}, {"math.min", 2},
+    {"math.max", 2}, {"math.hypot", 2}, {"math.clamp", 3}
+};
+
+static const MathBuiltin *find_math_builtin(const char *name)
+{
+    for (size_t i = 0; i < sizeof(math_builtins) / sizeof(math_builtins[0]); i++) {
+        if (strcmp(name, math_builtins[i].name) == 0) return &math_builtins[i];
+    }
+    return NULL;
+}
+
 static YType check_expr(Checker *checker, Expr *expr)
 {
     if (!expr) return TYPE_VOID;
@@ -360,6 +382,27 @@ static YType check_expr(Checker *checker, Expr *expr)
             return expr->type;
         }
         case EXPR_CALL: {
+            const MathBuiltin *math_builtin = find_math_builtin(expr->as.call.name);
+            if (math_builtin) {
+                if (expr->as.call.count != math_builtin->arity) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion, sizeof(suggestion),
+                        "%s expects %zu argument(s), but received %zu.",
+                        math_builtin->name, math_builtin->arity, expr->as.call.count);
+                    diagnostic(c, expr->token, "error", "E2041",
+                               "Incorrect number of math function arguments.", suggestion);
+                }
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    YType arg_type = check_expr(checker, expr->as.call.args[i]);
+                    if (arg_type != TYPE_ERROR && arg_type != TYPE_FLOAT) {
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2042",
+                                   "Math functions require float arguments.",
+                                   "Use a float value, for example math.sqrt(9.0). YLang does not implicitly convert int to float.");
+                    }
+                }
+                expr->type = TYPE_FLOAT;
+                return expr->type;
+            }
             Function *function = find_function(c, expr->as.call.name);
             if (!function) {
                 const char *near = nearest_function(c, expr->as.call.name);
