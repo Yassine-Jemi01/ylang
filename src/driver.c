@@ -216,6 +216,33 @@ static int run_native_compiler(const char *cc, const char *c_path,
     return 1;
 }
 
+static int run_external(char *const argv[])
+{
+    pid_t pid = fork();
+    if (pid < 0) {
+        fprintf(stderr, "ylang: cannot start '%s': %s\n", argv[0], strerror(errno));
+        return 1;
+    }
+    if (pid == 0) {
+        execvp(argv[0], argv);
+        fprintf(stderr, "ylang: cannot execute '%s': %s\n", argv[0], strerror(errno));
+        _exit(127);
+    }
+
+    int status = 0;
+    for (;;) {
+        pid_t waited = waitpid(pid, &status, 0);
+        if (waited == pid) break;
+        if (waited < 0 && errno == EINTR) continue;
+        fprintf(stderr, "ylang: waitpid failed while running '%s': %s\n",
+                argv[0], strerror(errno));
+        return 1;
+    }
+    if (WIFEXITED(status)) return WEXITSTATUS(status);
+    if (WIFSIGNALED(status)) return 128 + WTERMSIG(status);
+    return 1;
+}
+
 int ylang_run(const char *command, const char *input_path,
               const char *output_path, const char *cc)
 {
@@ -275,6 +302,9 @@ int ylang_run(const char *command, const char *input_path,
         } else if (strcmp(command, "emit-asm") == 0) {
             fprintf(stderr, "ylang: emit-asm failed with %u error(s); no assembly was generated.\n",
                     compiler.error_count);
+        } else if (strcmp(command, "build-asm") == 0) {
+            fprintf(stderr, "ylang: build-asm failed with %u error(s); no executable was produced.\n",
+                    compiler.error_count);
         } else {
             fprintf(stderr, "ylang: build failed with %u error(s); no executable was produced.\n",
                     compiler.error_count);
@@ -289,6 +319,79 @@ int ylang_run(const char *command, const char *input_path,
         arena_destroy(&compiler.arena);
         free(source);
         return 0;
+    }
+
+    if (strcmp(command, "build-asm") == 0) {
+#if !defined(__linux__) || !defined(__x86_64__)
+        fputs("ylang: build-asm currently supports Linux x86-64 only.\n", stderr);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return 64;
+#else
+        const char *target = output_path ? output_path : "a.out";
+        if (paths_refer_same_file(input_path, target)) {
+            fprintf(stderr,
+                    "ylang: input '%s' and output '%s' refer to the same file; refusing to overwrite source.\n",
+                    input_path, target);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 64;
+        }
+
+        char *temporary_directory = strdup("/tmp/ylang-asm-build-XXXXXX");
+        if (!temporary_directory || !mkdtemp(temporary_directory)) {
+            fprintf(stderr, "ylang: cannot create temporary assembly build directory: %s\n",
+                    strerror(errno));
+            free(temporary_directory);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 73;
+        }
+        size_t asm_size = strlen(temporary_directory) + sizeof("/generated.asm");
+        size_t object_size = strlen(temporary_directory) + sizeof("/generated.o");
+        char *asm_path = malloc(asm_size);
+        char *object_path = malloc(object_size);
+        if (!asm_path || !object_path) {
+            fputs("ylang: out of memory preparing NASM build.\n", stderr);
+            free(asm_path);
+            free(object_path);
+            (void)rmdir(temporary_directory);
+            free(temporary_directory);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 70;
+        }
+        (void)snprintf(asm_path, asm_size, "%s/generated.asm", temporary_directory);
+        (void)snprintf(object_path, object_size, "%s/generated.o", temporary_directory);
+
+        int result = 1;
+        if (generate_asm(&compiler, asm_path)) {
+            char *nasm_args[] = {
+                "nasm", "-f", "elf64", asm_path, "-o", object_path, NULL
+            };
+            result = run_external(nasm_args);
+            if (result != 0) {
+                fprintf(stderr, "ylang: NASM failed (exit %d).\n", result);
+            } else {
+                char *ld_args[] = { "ld", "-o", (char *)target, object_path, NULL };
+                result = run_external(ld_args);
+                if (result != 0) {
+                    fprintf(stderr, "ylang: ld failed (exit %d).\n", result);
+                }
+            }
+        }
+        if (result == 0) printf("Build succeeded (NASM + ld): %s\n", target);
+
+        (void)unlink(asm_path);
+        (void)unlink(object_path);
+        (void)rmdir(temporary_directory);
+        free(asm_path);
+        free(object_path);
+        free(temporary_directory);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return result;
+#endif
     }
 
     if (strcmp(command, "emit-asm") == 0) {
