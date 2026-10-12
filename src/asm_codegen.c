@@ -144,7 +144,7 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
             if (target->kind == EXPR_INDEX) {
                 if (!variable->is_array || variable->array_length == 0U) {
                     return asm_reject(ctx, expr->token,
-                                      "array assignment except to fixed local arrays");
+                                      "array assignment except to fixed-size arrays");
                 }
                 return validate_expr(ctx, target->as.index.index) &&
                        validate_expr(ctx, expr->as.assign.right);
@@ -166,7 +166,7 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
                     return true;
                 }
                 return asm_reject(ctx, expr->token,
-                                  "length() except on fixed local arrays");
+                                  "length() except on fixed-size arrays");
             }
             if (!expr->as.call.function) {
                 return asm_reject(ctx, expr->token,
@@ -196,7 +196,7 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
             if (!variable || !variable->is_array ||
                 variable->array_length == 0U) {
                 return asm_reject(ctx, expr->token,
-                                  "indexing except on fixed local arrays");
+                                  "indexing except on fixed-size arrays");
             }
             return validate_expr(ctx, expr->as.index.index);
         }
