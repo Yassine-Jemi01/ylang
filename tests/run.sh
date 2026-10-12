@@ -564,6 +564,18 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     diff -u tests/expected-asm-string-concat.txt build/asm-string-concat.out
 fi
 
+# String search builtins cover positive, negative, and empty-needle cases.
+./build/ylang check tests/asm-string-search.yl >/dev/null
+./build/ylang emit-asm tests/asm-string-search.yl -o build/asm-string-search.asm >/dev/null
+grep -q 'yl_string_contains:' build/asm-string-search.asm
+grep -q 'yl_string_starts_with:' build/asm-string-search.asm
+grep -q 'yl_string_ends_with:' build/asm-string-search.asm
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+    ./build/ylang build-asm tests/asm-string-search.yl -o build/test-asm-string-search >/dev/null
+    ./build/test-asm-string-search > build/asm-string-search.out
+    diff -u tests/expected-asm-string-search.txt build/asm-string-search.out
+fi
+
 # Initialized global arrays support indexed reads/writes and length().
 ./build/ylang check tests/asm-global-arrays.yl >/dev/null
 ./build/ylang emit-asm tests/asm-global-arrays.yl -o build/asm-global-arrays.asm >/dev/null
