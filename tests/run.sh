@@ -474,7 +474,8 @@ function add_global(int amount) -> int {
 }
 
 function main() -> int {
-    print(prefix, counter, enabled, marker, empty_text);
+    print(prefix, counter, enabled, marker);
+    print(empty_text);
     print(add_global(2), counter);
     counter = counter + 1;
     print(counter);
@@ -482,7 +483,8 @@ function main() -> int {
 }
 EOF
 cat > build/expected-asm-globals.txt <<'EOF'
-global 40 true ! 
+global 40 true !
+ 
 42 42
 43
 EOF
