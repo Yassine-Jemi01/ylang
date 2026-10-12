@@ -452,13 +452,34 @@ if ./build/ylang check build/imports/cycle-a.yl > build/imports/cycle.out 2>&1; 
 fi
 grep -q 'E1023' build/imports/cycle.out
 
-# NASM rejects multi-file imports until its lowering supports module visibility.
-if ./build/ylang emit-asm build/imports/main.yl -o build/imports/main.asm > build/imports/nasm.out 2>&1; then
-    echo "FAIL: NASM accepted multi-file imports before lowering support" >&2
-    exit 1
-fi
-grep -q 'multi-file imports in the NASM backend' build/imports/nasm.out
-test ! -e build/imports/main.asm
+# NASM lowers nested imports into a single executable.
+cat > build/imports/asm-leaf.yl <<'EOF'
+let int module_offset = 5;
+function library_add(int value) -> int {
+    return value + module_offset;
+}
+EOF
+cat > build/imports/asm-library.yl <<'EOF'
+from "./asm-leaf.yl" import library_add;
+let int library_bias = 7;
+function library_value(int input) -> int {
+    return library_add(input) + library_bias;
+}
+EOF
+cat > build/imports/asm-main.yl <<'EOF'
+from "./asm-library.yl" import library_value;
+function main() -> int {
+    print(library_value(10));
+    return 0;
+}
+EOF
+./build/ylang check build/imports/asm-main.yl >/dev/null
+./build/ylang emit-asm build/imports/asm-main.yl -o build/imports/asm-main.asm >/dev/null
+grep -q 'call .*library_value' build/imports/asm-main.asm
+./build/ylang build-asm build/imports/asm-main.yl -o build/test-asm-module-imports >/dev/null
+./build/test-asm-module-imports > build/asm-module-imports.out
+printf '22\\n' > build/asm-module-imports.expected
+diff -u build/asm-module-imports.expected build/asm-module-imports.out
 
 # NASM scalar global variables: initialization, reads, writes, and function calls.
 cat > build/asm-globals.yl <<'EOF'
