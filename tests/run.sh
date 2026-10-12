@@ -489,7 +489,16 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     ./build/ylang build-asm build/asm-globals.yl -o build/test-asm-globals >/dev/null
     ./build/test-asm-globals > build/asm-globals.out
     diff -u build/expected-asm-globals.txt build/asm-globals.out
+
+    ./build/ylang build-asm tests/asm-global-arrays.yl -o build/test-asm-global-arrays >/dev/null
+    ./build/test-asm-global-arrays > build/asm-global-arrays.out
+    diff -u tests/expected-asm-global-arrays.txt build/asm-global-arrays.out
 fi
+
+# Initialized global arrays support indexed reads/writes and length().
+./build/ylang check tests/asm-global-arrays.yl >/dev/null
+./build/ylang emit-asm tests/asm-global-arrays.yl -o build/asm-global-arrays.asm >/dev/null
+grep -q 'resq 3' build/asm-global-arrays.asm
 
 # Fixed-size local arrays emit NASM with checked indices and compile-time length().
 ./build/ylang check tests/asm-arrays.yl >/dev/null
