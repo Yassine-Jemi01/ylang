@@ -289,7 +289,7 @@ int ylang_run(const char *command, const char *input_path,
         free(source);
         return fix_result;
     }
-    (void)parse_program(&compiler);
+    (void)load_program_modules(&compiler, input_path);
     if (!compiler.had_error) (void)check_program(&compiler);
 
     if (compiler.had_error) {

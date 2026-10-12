@@ -1063,6 +1063,16 @@ bool generate_asm(Compiler *compiler, const char *path)
     ctx.compiler = compiler;
     ctx.okay = true;
 
+    if (compiler->module_count > 1U) {
+        Token token = {0};
+        if (compiler->root_module && compiler->root_module->program &&
+            compiler->root_module->program->import_count > 0U) {
+            token = compiler->root_module->program->imports[0]->token;
+        }
+        (void)asm_reject(&ctx, token, "multi-file imports in the NASM backend");
+        return false;
+    }
+
     if (compiler->program->global_count != 0U) {
         Token token = compiler->program->globals[0]->token;
         (void)asm_reject(&ctx, token, "global declarations");
