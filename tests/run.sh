@@ -369,6 +369,16 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     fi
     grep -q 'YLang runtime error' build/asm-overflow.out
 
+    ./build/ylang build-asm tests/asm-increment-overflow.yl -o build/test-asm-increment-overflow >/dev/null
+    if ./build/test-asm-increment-overflow > build/asm-increment-overflow.out 2>&1; then
+        echo "FAIL: incrementing INT64_MAX did not trap" >&2
+        exit 1
+    else
+        status=$?
+        test "$status" -eq 70
+    fi
+    grep -q 'YLang runtime error' build/asm-increment-overflow.out
+
     ./build/ylang build-asm tests/asm-division-overflow.yl -o build/test-asm-division-overflow >/dev/null
     if ./build/test-asm-division-overflow > build/asm-division-overflow.out 2>&1; then
         echo "FAIL: INT64_MIN / -1 did not trap" >&2
