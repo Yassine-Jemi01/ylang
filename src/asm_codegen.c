@@ -429,12 +429,14 @@ static bool emit_condition_false_jump(AsmContext *ctx, Expr *condition,
         if (false_jump && is_local_scalar_name(left) &&
             left->type == TYPE_INT && (right_name || right_immediate)) {
             size_t left_offset = slot_offset(ctx, left->as.name.variable);
-            fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", left_offset);
             if (right_name) {
+                fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", left_offset);
                 size_t right_offset = slot_offset(ctx, right->as.name.variable);
                 fprintf(ctx->out, "    cmp rax, [rbp - %zu]\n", right_offset);
             } else {
-                fprintf(ctx->out, "    cmp rax, %d\n", (int)immediate);
+                /* Compare directly from the stack slot in hot loop conditions. */
+                fprintf(ctx->out, "    cmp qword [rbp - %zu], %d\n",
+                        left_offset, (int)immediate);
             }
             fprintf(ctx->out, "    %s .L%s_%u\n", false_jump, label_prefix, label);
             return ctx->okay;
@@ -876,8 +878,35 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
             }
             fprintf(ctx->out, "    jmp .Lreturn_%s\n", ctx->function->c_name);
             return true;
-        case STMT_EXPR:
-            return emit_expr(ctx, stmt->as.expression);
+        case STMT_EXPR: {
+            Expr *expression = stmt->as.expression;
+            /*
+             * For a standalone checked increment the expression result is
+             * discarded, so don't reload it into RAX after updating memory.
+             */
+            if (expression && expression->kind == EXPR_ASSIGN) {
+                VarDecl *variable = expression->as.assign.variable;
+                Expr *target = expression->as.assign.target;
+                Expr *value = expression->as.assign.right;
+                int32_t increment = 0;
+                if (!expression->as.assign.is_compound && variable &&
+                    variable->type == TYPE_INT && !variable->is_global &&
+                    !variable->is_array && is_local_scalar_name(target) &&
+                    target->as.name.variable == variable &&
+                    value && value->kind == EXPR_BINARY &&
+                    value->as.binary.op.type == TOKEN_PLUS &&
+                    value->as.binary.left == target &&
+                    parse_nonnegative_i32_literal(ctx, value->as.binary.right,
+                                                  &increment) &&
+                    increment == 1) {
+                    size_t offset = slot_offset(ctx, variable);
+                    fprintf(ctx->out, "    inc qword [rbp - %zu]\n"
+                                      "    jo __yl_runtime_error\n", offset);
+                    return ctx->okay;
+                }
+            }
+            return emit_expr(ctx, expression);
+        }
     }
     return false;
 }
