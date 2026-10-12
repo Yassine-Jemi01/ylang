@@ -5,9 +5,10 @@ YLang 1.0.0 uses a conventional multi-stage compiler pipeline:
 1. **Lexer (`src/lexer.c`)** — turns source text into positioned tokens.
 2. **Parser (`src/parser.c`)** — builds the program representation and emits syntax diagnostics.
 3. **Semantic analysis (`src/sema.c`)** — resolves names, validates initialization and constant assignment, and checks types.
-4. **C code generator (`src/codegen.c`)** — writes C for the checked program, including runtime helpers for supported checked arithmetic operations.
-5. **Driver (`src/driver.c`)** — reads the source, orchestrates checking, writes generated C, and invokes GCC or Clang without going through a shell.
-6. **CLI (`src/main.c`)** — parses user commands and their options.
+4. **Module loader (`src/module.c`)** — recursively loads imported files, detects cycles, resolves named imports, and merges module ASTs while retaining per-module visibility.
+5. **C code generator (`src/codegen.c`)** — writes C for the checked program, including runtime helpers for supported checked arithmetic operations.
+6. **Driver (`src/driver.c`)** — orchestrates module loading and checking, writes generated C, and invokes GCC or Clang without going through a shell.
+7. **CLI (`src/main.c`)** — parses user commands and their options.
 
 The internal compiler model is declared in `src/internal.h`; the public-facing compiler and token declarations are in `include/ylang/`.
 
@@ -37,8 +38,8 @@ continue, return, and print. Integer overflow and invalid integer
 division terminate the program with status 70.
 
 The experimental backend currently rejects global declarations, arrays,
-floats, f-strings, string comparisons, and/or, and standard-library or
-conversion calls. The standard build command continues to use the established C backend.
+floats, f-strings, string comparisons, and/or, standard-library or
+conversion calls, and multi-file imports. The standard build command continues to use the established C backend.
 The separate build-asm command runs NASM and ld for supported programs;
 emit-asm writes the assembly source for inspection. The experimental backend
 is Linux x86-64 specific and is not supported on macOS or other architectures.
@@ -53,4 +54,4 @@ The v1.0 backend generates C17 and invokes the selected native compiler (`gcc` b
 
 ## Scope
 
-This architecture documents the current implementation, not a promise of features outside `docs/language-spec.md`. Arrays, pointers/references, classes, exception syntax, modules, and a finalized memory model are intentionally outside the 1.0.0 feature set.
+This architecture documents the current implementation, not a promise of features outside `docs/language-spec.md`. Arrays, pointers/references, classes, exception syntax, and a finalized memory model are intentionally outside the original 1.0.0 feature set. Named imports are supported by the default C backend; the NASM backend remains a limited experimental subset.

@@ -214,14 +214,41 @@ function main() -> int {
 
 Parameter and return types are explicit. Function overloading is not supported. A non-void function must return a value on supported control-flow paths. `main` has no parameters and returns `int` or `void`.
 
-## 10. Diagnostics and tooling
+## 10. Modules and imports
+
+A source file can import named functions or global variables from another `.yl` file:
+
+```ylang
+from "./system_data.yl" import system_data, system_prefix;
+
+function main() -> int {
+    print(system_data(), system_prefix);
+    return 0;
+}
+```
+
+Import paths are resolved relative to the file containing the import, not the
+process working directory. Imports are transitive: an imported module may import
+names from another module. Every name used from another module must be imported
+explicitly. Functions and globals declared in a module are visible inside that
+module, but do not become visible to importers unless their names are imported.
+Different modules may define private helpers with the same name.
+
+The compiler rejects unknown imported names, conflicting or repeated imports,
+imports of the program entry point, missing module files, and circular imports.
+The root source file must define `main()`; an imported module cannot define it.
+Imports are currently supported by the default C backend. The experimental NASM
+backend rejects multi-file imports explicitly until module-aware assembly
+lowering is implemented.
+
+## 11. Diagnostics and tooling
 
 `check` reports parse and semantic/type diagnostics without invoking a native compiler. Diagnostics include an error code, file/line/column, source excerpt, caret, and a hint when one is available. `build` does not produce a successful executable if YLang diagnostics contain errors.
 
 `fix input.yl -o output.yl` currently implements one high-confidence source transformation: changing a `pritn(...)` call typo to `print(...)` when no function named `pritn` is declared. It requires an output path and does not intentionally modify comment/string text. It is not a general repair engine. Always run `check` after applying a fix.
 
-## 11. Unsupported features and implementation limits
+## 12. Unsupported features and implementation limits
 
-The following are not supported by the current language subset: classes/OOP, exception syntax (`try`/`catch`), modules, generics, raw pointers/references, returning arrays, nested/const arrays, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
+The following are not supported by the current language subset: classes/OOP, exception syntax (`try`/`catch`), generics, raw pointers/references, returning arrays, nested/const arrays, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
 
 The compiler generates C, so native code inherits ordinary process privileges and is not sandboxed. Some formatted string values are stored until process exit; creating many such values in a long-running loop can increase memory consumption. The language does not define ownership/borrowing or a garbage collector in this release. Do not assume Rust-like memory-safety guarantees.
