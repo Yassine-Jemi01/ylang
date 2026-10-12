@@ -54,35 +54,60 @@ static Module *new_module(Compiler *compiler, const char *path,
     return module;
 }
 
+static char *canonical_join(Compiler *compiler, const char *directory,
+                            size_t directory_length, const char *requested)
+{
+    size_t requested_length = strlen(requested);
+    size_t separator = directory_length > 0U &&
+                       directory[directory_length - 1U] == '/' ? 0U : 1U;
+    if (directory_length > SIZE_MAX - requested_length - separator - 1U) {
+        errno = ENAMETOOLONG;
+        return NULL;
+    }
+    size_t size = directory_length + separator + requested_length + 1U;
+    char *joined = arena_alloc(&compiler->arena, size);
+    memcpy(joined, directory, directory_length);
+    size_t offset = directory_length;
+    if (separator) joined[offset++] = '/';
+    memcpy(joined + offset, requested, requested_length + 1U);
+    return canonical_path(compiler, joined);
+}
+
 static char *resolve_import_path(Compiler *compiler, Module *from,
                                  const char *requested)
 {
     if (requested[0] == '/') return canonical_path(compiler, requested);
+
+    /* Prefer paths relative to the importing file. */
     const char *base = from->canonical_path ? from->canonical_path : from->path;
     const char *slash = strrchr(base, '/');
     size_t directory_length;
     if (!slash) {
         base = ".";
-        directory_length = 1;
+        directory_length = 1U;
     } else if (slash == base) {
-        directory_length = 1;
+        directory_length = 1U;
     } else {
         directory_length = (size_t)(slash - base);
     }
-    size_t requested_length = strlen(requested);
-    if (directory_length > SIZE_MAX - requested_length - 2U) {
-        errno = ENAMETOOLONG;
-        return NULL;
+    char *resolved = canonical_join(compiler, base, directory_length, requested);
+    if (resolved) return resolved;
+
+    /* YLANG_PATH is a colon-separated list of directories for reusable modules. */
+    const char *search_path = getenv("YLANG_PATH");
+    if (!search_path || !*search_path) return NULL;
+    const char *entry = search_path;
+    while (*entry) {
+        const char *end = strchr(entry, ':');
+        size_t entry_length = end ? (size_t)(end - entry) : strlen(entry);
+        if (entry_length > 0U) {
+            resolved = canonical_join(compiler, entry, entry_length, requested);
+            if (resolved) return resolved;
+        }
+        if (!end) break;
+        entry = end + 1;
     }
-    size_t size = directory_length + requested_length + 2U;
-    char *joined = arena_alloc(&compiler->arena, size);
-    if (directory_length == 1U && base[0] == '/') {
-        (void)snprintf(joined, size, "/%s", requested);
-    } else {
-        (void)snprintf(joined, size, "%.*s/%s",
-                       (int)directory_length, base, requested);
-    }
-    return canonical_path(compiler, joined);
+    return NULL;
 }
 
 static char *read_module_source(Compiler *compiler, const char *path,
