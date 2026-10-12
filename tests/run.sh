@@ -491,6 +491,11 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     diff -u build/expected-asm-globals.txt build/asm-globals.out
 fi
 
+# Fixed-size local arrays emit NASM with checked indices and compile-time length().
+./build/ylang check tests/asm-arrays.yl >/dev/null
+./build/ylang emit-asm tests/asm-arrays.yl -o build/asm-arrays.asm >/dev/null
+grep -q 'js __yl_runtime_error' build/asm-arrays.asm
+
 # Experimental NASM backend: test emission everywhere and execute it when NASM is present.
 ./build/ylang check tests/asm-basic.yl >/dev/null
 ./build/ylang emit-asm tests/asm-basic.yl -o build/asm-basic.asm >/dev/null
@@ -508,6 +513,30 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     ./build/ylang build-asm tests/asm-basic.yl -o build/test-asm-basic-cli >/dev/null
     ./build/test-asm-basic-cli > build/asm-basic-cli.out
     diff -u tests/expected-asm-basic.txt build/asm-basic-cli.out
+
+    ./build/ylang build-asm tests/asm-arrays.yl -o build/test-asm-arrays >/dev/null
+    ./build/test-asm-arrays > build/asm-arrays.out
+    diff -u tests/expected-asm-arrays.txt build/asm-arrays.out
+
+    ./build/ylang build-asm tests/array-out-of-bounds.yl -o build/test-asm-array-out-of-bounds >/dev/null
+    if ./build/test-asm-array-out-of-bounds > build/asm-array-out-of-bounds.out 2>&1; then
+        echo "FAIL: out-of-bounds array indexing did not trap" >&2
+        exit 1
+    else
+        status=$?
+        test "$status" -eq 70
+    fi
+    grep -q 'YLang runtime error' build/asm-array-out-of-bounds.out
+
+    ./build/ylang build-asm tests/asm-array-negative-index.yl -o build/test-asm-array-negative-index >/dev/null
+    if ./build/test-asm-array-negative-index > build/asm-array-negative-index.out 2>&1; then
+        echo "FAIL: negative array indexing did not trap" >&2
+        exit 1
+    else
+        status=$?
+        test "$status" -eq 70
+    fi
+    grep -q 'YLang runtime error' build/asm-array-negative-index.out
 
     ./build/ylang build-asm benchmarks/nasm-speed.yl -o build/test-nasm-speed >/dev/null
     ./build/test-nasm-speed > build/nasm-speed.out

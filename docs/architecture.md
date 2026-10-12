@@ -32,10 +32,12 @@ For the same steps in one command, use build-asm:
     ./build/asm-basic
 
 The initial subset supports scalar int, bool, char, and string values,
-local variables and scalar global variables, up to six scalar function
-parameters, user-defined function calls, integer arithmetic and comparisons,
-if/else, loops, break, continue, return, and print. Global initializers are
-evaluated in the startup stub before main(). Integer overflow and invalid integer
+local variables and scalar global variables, fixed-size local arrays, up to six
+scalar function parameters, user-defined function calls, integer arithmetic and
+comparisons, if/else, loops, break, continue, return, and print. Global
+initializers are evaluated in the startup stub before main(). Local array
+indices receive runtime bounds checks; `length(array)` is lowered to its
+compile-time length. Integer overflow and invalid integer
 division terminate the program with status 70.
 
 The experimental backend currently rejects global arrays, local arrays,
