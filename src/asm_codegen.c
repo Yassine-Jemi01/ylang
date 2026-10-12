@@ -186,6 +186,18 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
                 return validate_expr_list(ctx, expr->as.call.args,
                                           expr->as.call.count);
             }
+            if (strcmp(expr->as.call.name, "string.contains") == 0 ||
+                strcmp(expr->as.call.name, "string.starts_with") == 0 ||
+                strcmp(expr->as.call.name, "string.ends_with") == 0) {
+                if (expr->as.call.count != 2U ||
+                    expr->as.call.args[0]->type != TYPE_STRING ||
+                    expr->as.call.args[1]->type != TYPE_STRING) {
+                    return asm_reject(ctx, expr->token,
+                                      "string search calls with two string arguments");
+                }
+                return validate_expr_list(ctx, expr->as.call.args,
+                                          expr->as.call.count);
+            }
             if (!expr->as.call.function) {
                 return asm_reject(ctx, expr->token,
                                   "standard-library and conversion calls");
@@ -914,6 +926,30 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
                 if (padded) fputs("    add rsp, 8\n", ctx->out);
                 return true;
             }
+            if ((strcmp(expr->as.call.name, "string.contains") == 0 ||
+                 strcmp(expr->as.call.name, "string.starts_with") == 0 ||
+                 strcmp(expr->as.call.name, "string.ends_with") == 0) &&
+                expr->as.call.count == 2U) {
+                static const char *const registers[] = {"rdi", "rsi"};
+                const char *helper = strcmp(expr->as.call.name, "string.contains") == 0
+                    ? "yl_string_contains"
+                    : strcmp(expr->as.call.name, "string.starts_with") == 0
+                        ? "yl_string_starts_with" : "yl_string_ends_with";
+                for (size_t i = 0; i < 2U; i++) {
+                    if (!emit_expr(ctx, expr->as.call.args[i])) return false;
+                    fputs("    push rax\n", ctx->out);
+                    ctx->temporary_depth += 8U;
+                }
+                for (size_t i = 2U; i > 0U; i--) {
+                    fprintf(ctx->out, "    pop %s\n", registers[i - 1U]);
+                    if (ctx->temporary_depth >= 8U) ctx->temporary_depth -= 8U;
+                }
+                bool padded = (ctx->temporary_depth % 16U) != 0;
+                if (padded) fputs("    sub rsp, 8\n", ctx->out);
+                fprintf(ctx->out, "    call %s\n", helper);
+                if (padded) fputs("    add rsp, 8\n", ctx->out);
+                return true;
+            }
             return emit_call(ctx, expr);
         case EXPR_INDEX: {
             VarDecl *variable = expr->as.index.variable;
@@ -1275,6 +1311,72 @@ static void emit_runtime(AsmContext *ctx)
         "    mov edi, 1\n"
         "    syscall\n"
         "    leave\n"
+        "    ret\n"
+        "\n"
+        "yl_string_contains:\n"
+        "    mov r10, rdi\n"
+        "    cmp byte [rsi], 0\n"
+        "    je yl_string_search_true\n"
+        "yl_string_contains_outer:\n"
+        "    cmp byte [r10], 0\n"
+        "    je yl_string_search_false\n"
+        "    xor r11d, r11d\n"
+        "yl_string_contains_inner:\n"
+        "    mov al, [rsi + r11]\n"
+        "    test al, al\n"
+        "    jz yl_string_search_true\n"
+        "    cmp byte [r10 + r11], 0\n"
+        "    je yl_string_contains_next\n"
+        "    cmp al, [r10 + r11]\n"
+        "    jne yl_string_contains_next\n"
+        "    inc r11\n"
+        "    jmp yl_string_contains_inner\n"
+        "yl_string_contains_next:\n"
+        "    inc r10\n"
+        "    jmp yl_string_contains_outer\n"
+        "yl_string_starts_with:\n"
+        "    xor r10d, r10d\n"
+        "yl_string_starts_loop:\n"
+        "    mov al, [rsi + r10]\n"
+        "    test al, al\n"
+        "    jz yl_string_search_true\n"
+        "    cmp al, [rdi + r10]\n"
+        "    jne yl_string_search_false\n"
+        "    inc r10\n"
+        "    jmp yl_string_starts_loop\n"
+        "yl_string_ends_with:\n"
+        "    xor r8d, r8d\n"
+        "yl_string_ends_hay_len:\n"
+        "    cmp byte [rdi + r8], 0\n"
+        "    je yl_string_ends_hay_done\n"
+        "    inc r8\n"
+        "    jmp yl_string_ends_hay_len\n"
+        "yl_string_ends_hay_done:\n"
+        "    xor r9d, r9d\n"
+        "yl_string_ends_needle_len:\n"
+        "    cmp byte [rsi + r9], 0\n"
+        "    je yl_string_ends_needle_done\n"
+        "    inc r9\n"
+        "    jmp yl_string_ends_needle_len\n"
+        "yl_string_ends_needle_done:\n"
+        "    cmp r9, r8\n"
+        "    ja yl_string_search_false\n"
+        "    sub r8, r9\n"
+        "    lea r10, [rdi + r8]\n"
+        "    xor r11d, r11d\n"
+        "yl_string_ends_compare:\n"
+        "    mov al, [rsi + r11]\n"
+        "    test al, al\n"
+        "    jz yl_string_search_true\n"
+        "    cmp al, [r10 + r11]\n"
+        "    jne yl_string_search_false\n"
+        "    inc r11\n"
+        "    jmp yl_string_ends_compare\n"
+        "yl_string_search_true:\n"
+        "    mov eax, 1\n"
+        "    ret\n"
+        "yl_string_search_false:\n"
+        "    xor eax, eax\n"
         "    ret\n"
         "\n"
         "yl_string_concat:\n"
