@@ -378,6 +378,74 @@ static size_t intern_string(AsmContext *ctx, Expr *expr)
 
 static bool emit_expr(AsmContext *ctx, Expr *expr);
 
+static bool parse_nonnegative_i32_literal(AsmContext *ctx, Expr *expr,
+                                          int32_t *value)
+{
+    if (!expr || expr->kind != EXPR_INT || !value) return false;
+    char *literal = token_copy(ctx->compiler, expr->token);
+    char *end = NULL;
+    int base = (expr->token.length > 2 && literal[0] == '0' &&
+                (literal[1] == 'x' || literal[1] == 'X')) ? 16 : 10;
+    unsigned long long parsed = strtoull(literal, &end, base);
+    if (end == literal || !end || *end != '\0' ||
+        parsed > (unsigned long long)INT32_MAX) return false;
+    *value = (int32_t)parsed;
+    return true;
+}
+
+static bool is_local_scalar_name(const Expr *expr)
+{
+    return expr && expr->kind == EXPR_NAME && expr->as.name.variable &&
+           !expr->as.name.variable->is_global &&
+           !expr->as.name.variable->is_array;
+}
+
+static const char *false_jump_for_comparison(TokenType op)
+{
+    switch (op) {
+        case TOKEN_EQUAL_EQUAL: return "jne";
+        case TOKEN_BANG_EQUAL: return "je";
+        case TOKEN_LESS: return "jge";
+        case TOKEN_LESS_EQUAL: return "jg";
+        case TOKEN_GREATER: return "jle";
+        case TOKEN_GREATER_EQUAL: return "jl";
+        default: return NULL;
+    }
+}
+
+static bool emit_condition_false_jump(AsmContext *ctx, Expr *condition,
+                                      const char *label_prefix, unsigned label)
+{
+    if (condition && condition->kind == EXPR_BINARY &&
+        condition->type == TYPE_BOOL) {
+        Expr *left = condition->as.binary.left;
+        Expr *right = condition->as.binary.right;
+        const char *false_jump =
+            false_jump_for_comparison(condition->as.binary.op.type);
+        int32_t immediate = 0;
+        bool right_name = is_local_scalar_name(right) && right->type == TYPE_INT;
+        bool right_immediate = right && right->type == TYPE_INT &&
+                               parse_nonnegative_i32_literal(ctx, right, &immediate);
+        if (false_jump && is_local_scalar_name(left) &&
+            left->type == TYPE_INT && (right_name || right_immediate)) {
+            size_t left_offset = slot_offset(ctx, left->as.name.variable);
+            fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", left_offset);
+            if (right_name) {
+                size_t right_offset = slot_offset(ctx, right->as.name.variable);
+                fprintf(ctx->out, "    cmp rax, [rbp - %zu]\n", right_offset);
+            } else {
+                fprintf(ctx->out, "    cmp rax, %d\n", (int)immediate);
+            }
+            fprintf(ctx->out, "    %s .L%s_%u\n", false_jump, label_prefix, label);
+            return ctx->okay;
+        }
+    }
+    if (!emit_expr(ctx, condition)) return false;
+    fputs("    test rax, rax\n", ctx->out);
+    fprintf(ctx->out, "    jz .L%s_%u\n", label_prefix, label);
+    return true;
+}
+
 static bool emit_call(AsmContext *ctx, Expr *expr)
 {
     static const char *const argument_registers[] = {
@@ -466,6 +534,98 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             Expr *left = expr->as.binary.left;
             Expr *right = expr->as.binary.right;
             TokenType op = expr->as.binary.op.type;
+
+            /* Use memory operands for simple local integer arithmetic/comparisons. */
+            if (is_local_scalar_name(left) && is_local_scalar_name(right) &&
+                left->type != TYPE_STRING && right->type != TYPE_STRING) {
+                bool int_arithmetic = left->type == TYPE_INT && right->type == TYPE_INT;
+                bool arithmetic_op = op == TOKEN_PLUS || op == TOKEN_MINUS || op == TOKEN_STAR;
+                bool comparison_op = op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL ||
+                                     op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
+                                     op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL;
+                if ((int_arithmetic && arithmetic_op) || comparison_op) {
+                    size_t lo = slot_offset(ctx, left->as.name.variable);
+                    size_t ro = slot_offset(ctx, right->as.name.variable);
+                    fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", lo);
+                    switch (op) {
+                        case TOKEN_PLUS:
+                            fprintf(ctx->out, "    add rax, [rbp - %zu]\n"
+                                              "    jo __yl_runtime_error\n", ro); break;
+                        case TOKEN_MINUS:
+                            fprintf(ctx->out, "    sub rax, [rbp - %zu]\n"
+                                              "    jo __yl_runtime_error\n", ro); break;
+                        case TOKEN_STAR:
+                            fprintf(ctx->out, "    imul rax, [rbp - %zu]\n"
+                                              "    jo __yl_runtime_error\n", ro); break;
+                        case TOKEN_EQUAL_EQUAL:
+                            fprintf(ctx->out, "    cmp rax, [rbp - %zu]\n", ro);
+                            fputs("    sete al\n    movzx rax, al\n", ctx->out); break;
+                        case TOKEN_BANG_EQUAL:
+                            fprintf(ctx->out, "    cmp rax, [rbp - %zu]\n", ro);
+                            fputs("    setne al\n    movzx rax, al\n", ctx->out); break;
+                        case TOKEN_LESS:
+                            fprintf(ctx->out, "    cmp rax, [rbp - %zu]\n", ro);
+                            fputs("    setl al\n    movzx rax, al\n", ctx->out); break;
+                        case TOKEN_LESS_EQUAL:
+                            fprintf(ctx->out, "    cmp rax, [rbp - %zu]\n", ro);
+                            fputs("    setle al\n    movzx rax, al\n", ctx->out); break;
+                        case TOKEN_GREATER:
+                            fprintf(ctx->out, "    cmp rax, [rbp - %zu]\n", ro);
+                            fputs("    setg al\n    movzx rax, al\n", ctx->out); break;
+                        case TOKEN_GREATER_EQUAL:
+                            fprintf(ctx->out, "    cmp rax, [rbp - %zu]\n", ro);
+                            fputs("    setge al\n    movzx rax, al\n", ctx->out); break;
+                        default: break;
+                    }
+                    return ctx->okay;
+                }
+            }
+
+            /* Use direct immediates instead of pushing constants on the stack. */
+            int32_t immediate = 0;
+            if (is_local_scalar_name(left) && left->type == TYPE_INT &&
+                right && right->type == TYPE_INT &&
+                parse_nonnegative_i32_literal(ctx, right, &immediate)) {
+                bool arithmetic_op = op == TOKEN_PLUS || op == TOKEN_MINUS || op == TOKEN_STAR;
+                bool comparison_op = op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL ||
+                                     op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
+                                     op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL;
+                if (arithmetic_op || comparison_op) {
+                    size_t offset = slot_offset(ctx, left->as.name.variable);
+                    fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", offset);
+                    switch (op) {
+                        case TOKEN_PLUS:
+                            fprintf(ctx->out, "    add rax, %d\n"
+                                              "    jo __yl_runtime_error\n", (int)immediate); break;
+                        case TOKEN_MINUS:
+                            fprintf(ctx->out, "    sub rax, %d\n"
+                                              "    jo __yl_runtime_error\n", (int)immediate); break;
+                        case TOKEN_STAR:
+                            fprintf(ctx->out, "    imul rax, %d\n"
+                                              "    jo __yl_runtime_error\n", (int)immediate); break;
+                        case TOKEN_EQUAL_EQUAL:
+                        case TOKEN_BANG_EQUAL:
+                        case TOKEN_LESS:
+                        case TOKEN_LESS_EQUAL:
+                        case TOKEN_GREATER:
+                        case TOKEN_GREATER_EQUAL:
+                            fprintf(ctx->out, "    cmp rax, %d\n", (int)immediate);
+                            switch (op) {
+                                case TOKEN_EQUAL_EQUAL: fputs("    sete al\n", ctx->out); break;
+                                case TOKEN_BANG_EQUAL: fputs("    setne al\n", ctx->out); break;
+                                case TOKEN_LESS: fputs("    setl al\n", ctx->out); break;
+                                case TOKEN_LESS_EQUAL: fputs("    setle al\n", ctx->out); break;
+                                case TOKEN_GREATER: fputs("    setg al\n", ctx->out); break;
+                                case TOKEN_GREATER_EQUAL: fputs("    setge al\n", ctx->out); break;
+                                default: break;
+                            }
+                            fputs("    movzx rax, al\n", ctx->out); break;
+                        default: break;
+                    }
+                    return ctx->okay;
+                }
+            }
+
             if (!emit_expr(ctx, left)) return false;
             fputs("    push rax\n", ctx->out);
             ctx->temporary_depth += 8U;
@@ -524,6 +684,23 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
         }
         case EXPR_ASSIGN: {
             VarDecl *variable = expr->as.assign.variable;
+            Expr *target = expr->as.assign.target;
+            Expr *value = expr->as.assign.right;
+            int32_t increment = 0;
+            if (!expr->as.assign.is_compound && variable &&
+                variable->type == TYPE_INT && !variable->is_global &&
+                !variable->is_array && is_local_scalar_name(target) &&
+                value && value->kind == EXPR_BINARY &&
+                value->as.binary.op.type == TOKEN_PLUS &&
+                value->as.binary.left == target &&
+                parse_nonnegative_i32_literal(ctx, value->as.binary.right, &increment) &&
+                increment == 1) {
+                size_t inc_offset = slot_offset(ctx, variable);
+                fprintf(ctx->out, "    inc qword [rbp - %zu]\n"
+                                  "    jo __yl_runtime_error\n"
+                                  "    mov rax, [rbp - %zu]\n", inc_offset, inc_offset);
+                return ctx->okay;
+            }
             size_t offset = slot_offset(ctx, variable);
             if (expr->as.assign.is_compound) {
                 if (!emit_expr(ctx, expr->as.assign.right)) return false;
@@ -620,9 +797,8 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
         case STMT_IF: {
             unsigned else_label = new_label(ctx);
             unsigned end_label = new_label(ctx);
-            if (!emit_expr(ctx, stmt->as.if_stmt.condition)) return false;
-            fputs("    test rax, rax\n", ctx->out);
-            fprintf(ctx->out, "    jz .Lif_else_%u\n", else_label);
+            if (!emit_condition_false_jump(ctx, stmt->as.if_stmt.condition,
+                                           "if_else", else_label)) return false;
             if (!emit_stmt(ctx, stmt->as.if_stmt.then_branch)) return false;
             fprintf(ctx->out, "    jmp .Lif_end_%u\n", end_label);
             fprintf(ctx->out, ".Lif_else_%u:\n", else_label);
@@ -647,9 +823,8 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
             unsigned start_label = new_label(ctx);
             unsigned end_label = new_label(ctx);
             fprintf(ctx->out, ".Lwhile_start_%u:\n", start_label);
-            if (!emit_expr(ctx, stmt->as.while_stmt.condition)) return false;
-            fputs("    test rax, rax\n", ctx->out);
-            fprintf(ctx->out, "    jz .Lwhile_end_%u\n", end_label);
+            if (!emit_condition_false_jump(ctx, stmt->as.while_stmt.condition,
+                                           "while_end", end_label)) return false;
             AsmLoop loop = { end_label, start_label, "while_end", "while_start", ctx->loop };
             ctx->loop = &loop;
             bool okay = emit_stmt(ctx, stmt->as.while_stmt.body);
@@ -666,9 +841,8 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
             if (!emit_stmt(ctx, stmt->as.for_stmt.initializer)) return false;
             fprintf(ctx->out, ".Lfor_start_%u:\n", start_label);
             if (stmt->as.for_stmt.condition) {
-                if (!emit_expr(ctx, stmt->as.for_stmt.condition)) return false;
-                fputs("    test rax, rax\n", ctx->out);
-                fprintf(ctx->out, "    jz .Lfor_end_%u\n", end_label);
+                if (!emit_condition_false_jump(ctx, stmt->as.for_stmt.condition,
+                                               "for_end", end_label)) return false;
             }
             AsmLoop loop = { end_label, increment_label, "for_end", "for_increment", ctx->loop };
             ctx->loop = &loop;
