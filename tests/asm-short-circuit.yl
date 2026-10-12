@@ -1,13 +1,15 @@
-function should_not_run() -> bool {
-    print("FAIL");
+let int calls = 0;
+
+function side_effect() -> bool {
+    calls += 1;
     return true;
 }
 
 function main() -> int {
-    let bool both = false and should_not_run();
-    let bool either = true or should_not_run();
-    let bool evaluated_and = true and true;
-    let bool evaluated_or = false or true;
-    print(both, either, evaluated_and, evaluated_or);
+    let bool no = false and side_effect();
+    let bool yes = true or side_effect();
+    let bool both_true = true and side_effect();
+    let bool either_true = false or side_effect();
+    print(no, yes, both_true, either_true, calls);
     return 0;
 }
