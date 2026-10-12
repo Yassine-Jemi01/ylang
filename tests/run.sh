@@ -476,10 +476,12 @@ EOF
 ./build/ylang check build/imports/asm-main.yl >/dev/null
 ./build/ylang emit-asm build/imports/asm-main.yl -o build/imports/asm-main.asm >/dev/null
 grep -q 'call .*library_value' build/imports/asm-main.asm
-./build/ylang build-asm build/imports/asm-main.yl -o build/test-asm-module-imports >/dev/null
-./build/test-asm-module-imports > build/asm-module-imports.out
-printf '22\n' > build/asm-module-imports.expected
-diff -u build/asm-module-imports.expected build/asm-module-imports.out
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+    ./build/ylang build-asm build/imports/asm-main.yl -o build/test-asm-module-imports >/dev/null
+    ./build/test-asm-module-imports > build/asm-module-imports.out
+    printf '22\n' > build/asm-module-imports.expected
+    diff -u build/asm-module-imports.expected build/asm-module-imports.out
+fi
 
 # NASM scalar global variables: initialization, reads, writes, and function calls.
 cat > build/asm-globals.yl <<'EOF'
