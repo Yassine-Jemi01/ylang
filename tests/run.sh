@@ -516,6 +516,14 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     diff -u tests/expected-asm-global-arrays.txt build/asm-global-arrays.out
 fi
 
+# string.length scans NUL-terminated strings and returns byte lengths.
+./build/ylang check tests/asm-string-length.yl >/dev/null
+./build/ylang emit-asm tests/asm-string-length.yl -o build/asm-string-length.asm >/dev/null
+grep -q '__yl_strlen_loop_' build/asm-string-length.asm
+./build/ylang build-asm tests/asm-string-length.yl -o build/test-asm-string-length >/dev/null
+./build/test-asm-string-length > build/asm-string-length.out
+diff -u tests/expected-asm-string-length.txt build/asm-string-length.out
+
 # Initialized global arrays support indexed reads/writes and length().
 ./build/ylang check tests/asm-global-arrays.yl >/dev/null
 ./build/ylang emit-asm tests/asm-global-arrays.yl -o build/asm-global-arrays.asm >/dev/null
