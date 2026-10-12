@@ -524,6 +524,15 @@ grep -q '__yl_strlen_loop_' build/asm-string-length.asm
 ./build/test-asm-string-length > build/asm-string-length.out
 diff -u tests/expected-asm-string-length.txt build/asm-string-length.out
 
+# string.concat allocates a result and copies both NUL-terminated strings.
+./build/ylang check tests/asm-string-concat.yl >/dev/null
+./build/ylang emit-asm tests/asm-string-concat.yl -o build/asm-string-concat.asm >/dev/null
+grep -q 'call yl_string_concat' build/asm-string-concat.asm
+grep -q 'syscall' build/asm-string-concat.asm
+./build/ylang build-asm tests/asm-string-concat.yl -o build/test-asm-string-concat >/dev/null
+./build/test-asm-string-concat > build/asm-string-concat.out
+diff -u tests/expected-asm-string-concat.txt build/asm-string-concat.out
+
 # Initialized global arrays support indexed reads/writes and length().
 ./build/ylang check tests/asm-global-arrays.yl >/dev/null
 ./build/ylang emit-asm tests/asm-global-arrays.yl -o build/asm-global-arrays.asm >/dev/null
