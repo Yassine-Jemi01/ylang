@@ -176,6 +176,16 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
                 }
                 return validate_expr(ctx, expr->as.call.args[0]);
             }
+            if (strcmp(expr->as.call.name, "string.concat") == 0) {
+                if (expr->as.call.count != 2U ||
+                    expr->as.call.args[0]->type != TYPE_STRING ||
+                    expr->as.call.args[1]->type != TYPE_STRING) {
+                    return asm_reject(ctx, expr->token,
+                                      "string.concat calls with two string arguments");
+                }
+                return validate_expr_list(ctx, expr->as.call.args,
+                                          expr->as.call.count);
+            }
             if (!expr->as.call.function) {
                 return asm_reject(ctx, expr->token,
                                   "standard-library and conversion calls");
@@ -886,6 +896,24 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
                 fprintf(ctx->out, "__yl_strlen_done_%u:\n", done_label);
                 return true;
             }
+            if (strcmp(expr->as.call.name, "string.concat") == 0 &&
+                expr->as.call.count == 2U) {
+                static const char *const registers[] = {"rdi", "rsi"};
+                for (size_t i = 0; i < 2U; i++) {
+                    if (!emit_expr(ctx, expr->as.call.args[i])) return false;
+                    fputs("    push rax\n", ctx->out);
+                    ctx->temporary_depth += 8U;
+                }
+                for (size_t i = 2U; i > 0U; i--) {
+                    fprintf(ctx->out, "    pop %s\n", registers[i - 1U]);
+                    if (ctx->temporary_depth >= 8U) ctx->temporary_depth -= 8U;
+                }
+                bool padded = (ctx->temporary_depth % 16U) != 0;
+                if (padded) fputs("    sub rsp, 8\n", ctx->out);
+                fputs("    call yl_string_concat\n", ctx->out);
+                if (padded) fputs("    add rsp, 8\n", ctx->out);
+                return true;
+            }
             return emit_call(ctx, expr);
         case EXPR_INDEX: {
             VarDecl *variable = expr->as.index.variable;
@@ -1246,6 +1274,62 @@ static void emit_runtime(AsmContext *ctx)
         "    mov eax, 1\n"
         "    mov edi, 1\n"
         "    syscall\n"
+        "    leave\n"
+        "    ret\n"
+        "\n"
+        "yl_string_concat:\n"
+        "    push rbp\n"
+        "    mov rbp, rsp\n"
+        "    push rbx\n"
+        "    push r12\n"
+        "    push r13\n"
+        "    push r14\n"
+        "    push r15\n"
+        "    mov r12, rdi\n"
+        "    mov r13, rsi\n"
+        "    xor r14d, r14d\n"
+        "yl_string_concat_len1:\n"
+        "    cmp byte [r12 + r14], 0\n"
+        "    je yl_string_concat_len1_done\n"
+        "    inc r14\n"
+        "    jmp yl_string_concat_len1\n"
+        "yl_string_concat_len1_done:\n"
+        "    xor r15d, r15d\n"
+        "yl_string_concat_len2:\n"
+        "    cmp byte [r13 + r15], 0\n"
+        "    je yl_string_concat_len2_done\n"
+        "    inc r15\n"
+        "    jmp yl_string_concat_len2\n"
+        "yl_string_concat_len2_done:\n"
+        "    mov rsi, r14\n"
+        "    add rsi, r15\n"
+        "    jc __yl_runtime_error\n"
+        "    add rsi, 1\n"
+        "    jc __yl_runtime_error\n"
+        "    xor edi, edi\n"
+        "    mov edx, 3\n"
+        "    mov r10d, 0x22\n"
+        "    mov r8, -1\n"
+        "    xor r9d, r9d\n"
+        "    mov eax, 9\n"
+        "    syscall\n"
+        "    test rax, rax\n"
+        "    js __yl_runtime_error\n"
+        "    mov rbx, rax\n"
+        "    mov rdi, rax\n"
+        "    mov rsi, r12\n"
+        "    mov rcx, r14\n"
+        "    rep movsb\n"
+        "    mov rsi, r13\n"
+        "    mov rcx, r15\n"
+        "    rep movsb\n"
+        "    mov byte [rdi], 0\n"
+        "    mov rax, rbx\n"
+        "    pop r15\n"
+        "    pop r14\n"
+        "    pop r13\n"
+        "    pop r12\n"
+        "    pop rbx\n"
         "    leave\n"
         "    ret\n"
         "\n"
