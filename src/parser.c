@@ -1034,7 +1034,8 @@ static ImportDecl *parse_import(Parser *p, Token from_token)
     ImportDecl *import = arena_alloc(&p->compiler->arena, sizeof(*import));
     Token path_token = p->current;
     if (p->current.type == TOKEN_STRING) {
-        path_token = advance_parser(p), path_token = p->previous;
+        advance_parser(p);
+        path_token = p->previous;
         import->path = decode_import_path(p, path_token);
     } else if (p->current.type == TOKEN_IDENTIFIER) {
         StringBuilder path;
