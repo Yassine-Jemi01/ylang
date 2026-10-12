@@ -942,6 +942,57 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
                                  slot_offset(ctx, variable));
                     return ctx->okay;
                 }
+
+                /*
+                 * In an expression statement, x = x + y does not need a
+                 * value result in RAX. Update x's allocated register in
+                 * place, avoiding mov-to-RAX/mov-back on every hot-loop step.
+                 */
+                if (!expression->as.assign.is_compound && variable &&
+                    variable->type == TYPE_INT && !variable->is_global &&
+                    !variable->is_array && is_local_scalar_name(target) &&
+                    target->as.name.variable == variable &&
+                    variable_register(ctx, variable) && value &&
+                    value->kind == EXPR_BINARY && value->type == TYPE_INT &&
+                    value->as.binary.left &&
+                    value->as.binary.left->kind == EXPR_NAME &&
+                    value->as.binary.left->as.name.variable == variable) {
+                    const char *dst_reg = variable_register(ctx, variable);
+                    const char *mnemonic = NULL;
+                    switch (value->as.binary.op.type) {
+                        case TOKEN_PLUS: mnemonic = "add"; break;
+                        case TOKEN_MINUS: mnemonic = "sub"; break;
+                        case TOKEN_STAR: mnemonic = "imul"; break;
+                        default: break;
+                    }
+                    Expr *rhs = value->as.binary.right;
+                    if (mnemonic && rhs && rhs->type == TYPE_INT) {
+                        const char *rhs_reg = NULL;
+                        int32_t immediate = 0;
+                        bool can_emit = false;
+                        if (is_local_scalar_name(rhs)) {
+                            rhs_reg = variable_register(ctx, rhs->as.name.variable);
+                            if (rhs_reg) {
+                                fprintf(ctx->out, "    %s %s, %s\n",
+                                        mnemonic, dst_reg, rhs_reg);
+                                can_emit = true;
+                            } else {
+                                fprintf(ctx->out, "    %s %s, [rbp - %zu]\n",
+                                        mnemonic, dst_reg,
+                                        slot_offset(ctx, rhs->as.name.variable));
+                                can_emit = true;
+                            }
+                        } else if (parse_nonnegative_i32_literal(ctx, rhs, &immediate)) {
+                            fprintf(ctx->out, "    %s %s, %d\n",
+                                    mnemonic, dst_reg, (int)immediate);
+                            can_emit = true;
+                        }
+                        if (can_emit) {
+                            fputs("    jo __yl_runtime_error\n", ctx->out);
+                            return ctx->okay;
+                        }
+                    }
+                }
             }
             return emit_expr(ctx, expression);
         }
