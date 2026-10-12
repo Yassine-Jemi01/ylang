@@ -1,6 +1,15 @@
+let int calls = 0;
+
+function side_effect() -> bool {
+    calls += 1;
+    return true;
+}
+
 function main() -> int {
-    let bool no = false and (1 / 0 == 0);
-    let bool yes = true or (1 / 0 == 0);
-    print(no, yes, true and true, false or true);
+    let bool no = false and side_effect();
+    let bool yes = true or side_effect();
+    let bool both_true = true and side_effect();
+    let bool either_true = false or side_effect();
+    print(no, yes, both_true, either_true, calls);
     return 0;
 }
