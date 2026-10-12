@@ -168,6 +168,14 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
                 return asm_reject(ctx, expr->token,
                                   "length() except on fixed-size arrays");
             }
+            if (strcmp(expr->as.call.name, "string.length") == 0) {
+                if (expr->as.call.count != 1U ||
+                    expr->as.call.args[0]->type != TYPE_STRING) {
+                    return asm_reject(ctx, expr->token,
+                                      "string.length calls with one string argument");
+                }
+                return validate_expr(ctx, expr->as.call.args[0]);
+            }
             if (!expr->as.call.function) {
                 return asm_reject(ctx, expr->token,
                                   "standard-library and conversion calls");
@@ -860,6 +868,22 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
                 expr->as.call.args[0]->as.name.variable->is_array) {
                 fprintf(ctx->out, "    mov rax, %zu\n",
                         expr->as.call.args[0]->as.name.variable->array_length);
+                return true;
+            }
+            if (strcmp(expr->as.call.name, "string.length") == 0 &&
+                expr->as.call.count == 1U) {
+                unsigned loop_label = new_label(ctx);
+                unsigned done_label = new_label(ctx);
+                if (!emit_expr(ctx, expr->as.call.args[0])) return false;
+                fputs("    mov r10, rax\\n"
+                      "    xor eax, eax\\n",
+                      ctx->out);
+                fprintf(ctx->out, "__yl_strlen_loop_%u:\\n", loop_label);
+                fputs("    cmp byte [r10 + rax], 0\\n", ctx->out);
+                fprintf(ctx->out, "    je __yl_strlen_done_%u\\n", done_label);
+                fputs("    inc rax\\n", ctx->out);
+                fprintf(ctx->out, "    jmp __yl_strlen_loop_%u\\n", loop_label);
+                fprintf(ctx->out, "__yl_strlen_done_%u:\\n", done_label);
                 return true;
             }
             return emit_call(ctx, expr);
