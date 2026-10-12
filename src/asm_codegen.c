@@ -120,10 +120,6 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
             return validate_expr(ctx, expr->as.unary.right);
         case EXPR_BINARY: {
             TokenType op = expr->as.binary.op.type;
-            if (op == TOKEN_AND || op == TOKEN_OR) {
-                return asm_reject(ctx, expr->token,
-                                  "and/or expressions (short-circuit lowering is not implemented)");
-            }
             if (expr->as.binary.left && expr->as.binary.left->type == TYPE_STRING) {
                 return asm_reject(ctx, expr->token, "string comparisons");
             }
@@ -601,6 +597,39 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             Expr *left = expr->as.binary.left;
             Expr *right = expr->as.binary.right;
             TokenType op = expr->as.binary.op.type;
+
+            /* Logical operators must short-circuit and normalize results to 0/1. */
+            if (op == TOKEN_AND || op == TOKEN_OR) {
+                unsigned label = ctx->next_label++;
+                if (!emit_expr(ctx, left)) return false;
+                fputs("    test rax, rax\\n", ctx->out);
+                if (op == TOKEN_AND) {
+                    fprintf(ctx->out, "    jz .Llogic_false_%u\\n", label);
+                    if (!emit_expr(ctx, right)) return false;
+                    fputs("    test rax, rax\\n"
+                          "    setne al\\n"
+                          "    movzx rax, al\\n",
+                          ctx->out);
+                    fprintf(ctx->out, "    jmp .Llogic_end_%u\\n"
+                                      ".Llogic_false_%u:\\n"
+                                      "    xor eax, eax\\n"
+                                      ".Llogic_end_%u:\\n",
+                            label, label, label);
+                } else {
+                    fprintf(ctx->out, "    jnz .Llogic_true_%u\\n", label);
+                    if (!emit_expr(ctx, right)) return false;
+                    fputs("    test rax, rax\\n"
+                          "    setne al\\n"
+                          "    movzx rax, al\\n",
+                          ctx->out);
+                    fprintf(ctx->out, "    jmp .Llogic_end_%u\\n"
+                                      ".Llogic_true_%u:\\n"
+                                      "    mov eax, 1\\n"
+                                      ".Llogic_end_%u:\\n",
+                            label, label, label);
+                }
+                return ctx->okay;
+            }
 
             /* Use memory operands for simple local integer arithmetic/comparisons. */
             if (is_local_scalar_name(left) && is_local_scalar_name(right) &&
