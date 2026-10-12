@@ -62,5 +62,6 @@ Program *parse_program(Compiler *c);
 bool check_program(Compiler *c);
 Function *find_function(Compiler *c, const char *name);
 bool generate_c(Compiler *c, const char *path);
+bool generate_asm(Compiler *c, const char *path);
 
 #endif

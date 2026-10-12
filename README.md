@@ -80,6 +80,41 @@ To select Clang for the generated program:
 ./build/ylang build hello.yl -o hello --cc clang
 ```
 
+
+### Experimental NASM backend (Linux x86-64)
+
+The normal `ylang build` command still uses the C backend. An experimental
+backend can emit NASM assembly and build a restricted subset directly with
+NASM and `ld`, without GCC/Clang participating in compilation of that YLang
+program. The YLang compiler itself is still written in C and must be built
+using the normal C toolchain.
+
+On Fedora, install the assembler and linker tools:
+
+```sh
+sudo dnf install nasm binutils
+```
+
+Emit assembly for inspection:
+
+```sh
+./build/ylang emit-asm examples/your-program.yl -o build/your-program.asm
+```
+
+Or assemble and link in one step:
+
+```sh
+./build/ylang build-asm examples/your-program.yl -o build/your-program
+./build/your-program
+```
+
+This backend is currently limited to Linux x86-64 scalar programs using
+`int`, `bool`, `char`, and `string`, local variables, user-defined
+functions with up to six scalar parameters, integer expressions, branches,
+loops, returns, and `print`. Global declarations, arrays, floats, f-strings,
+string comparisons, short-circuit `and`/`or`, and standard-library calls
+are not supported yet. The established C backend remains the default.
+
 ## Command-line reference
 
 ```text

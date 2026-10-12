@@ -332,4 +332,50 @@ EOF
 grep -q '^6$' build/compound-operators.out
 grep -q '^2$' build/compound-operators.out
 
+
+# Experimental NASM backend: test emission everywhere and execute it when NASM is present.
+./build/ylang check tests/asm-basic.yl >/dev/null
+./build/ylang emit-asm tests/asm-basic.yl -o build/asm-basic.asm >/dev/null
+grep -q '^global _start$' build/asm-basic.asm
+grep -q '^__yl_runtime_error:' build/asm-basic.asm
+grep -q '^yl_print_i64:' build/asm-basic.asm
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+    if ! nasm -f elf64 build/asm-basic.asm -o build/asm-basic.o; then
+        nl -ba build/asm-basic.asm | sed -n '108,132p' >&2
+        exit 1
+    fi
+    ld -o build/test-asm-basic build/asm-basic.o
+    ./build/test-asm-basic > build/asm-basic.out
+    diff -u tests/expected-asm-basic.txt build/asm-basic.out
+    ./build/ylang build-asm tests/asm-basic.yl -o build/test-asm-basic-cli >/dev/null
+    ./build/test-asm-basic-cli > build/asm-basic-cli.out
+    diff -u tests/expected-asm-basic.txt build/asm-basic-cli.out
+
+    ./build/ylang build-asm tests/asm-overflow.yl -o build/test-asm-overflow >/dev/null
+    if ./build/test-asm-overflow > build/asm-overflow.out 2>&1; then
+        echo "FAIL: unary negation of INT64_MIN did not trap" >&2
+        exit 1
+    else
+        status=$?
+        test "$status" -eq 70
+    fi
+    grep -q 'YLang runtime error' build/asm-overflow.out
+
+    ./build/ylang build-asm tests/asm-division-overflow.yl -o build/test-asm-division-overflow >/dev/null
+    if ./build/test-asm-division-overflow > build/asm-division-overflow.out 2>&1; then
+        echo "FAIL: INT64_MIN / -1 did not trap" >&2
+        exit 1
+    else
+        status=$?
+        test "$status" -eq 70
+    fi
+    grep -q 'YLang runtime error' build/asm-division-overflow.out
+fi
+if ./build/ylang emit-asm examples/math.yl -o build/asm-unsupported.asm > build/asm-unsupported.out 2>&1; then
+    echo "FAIL: NASM backend accepted float/math features that are not implemented" >&2
+    exit 1
+fi
+grep -q 'NASM backend does not support float values' build/asm-unsupported.out
+test ! -e build/asm-unsupported.asm
+
 echo "All YLang tests passed."

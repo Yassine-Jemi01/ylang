@@ -14,13 +14,17 @@ static void usage(FILE *stream)
         "Usage:\n"
         "  ylang check <file.yl>\n"
         "  ylang build <file.yl> [-o executable] [--cc gcc|clang]\n"
+        "  ylang build-asm <file.yl> [-o executable]\n"
         "  ylang emit-c <file.yl> [-o generated.c]\n"
+        "  ylang emit-asm <file.yl> [-o generated.asm]\n"
         "  ylang fix <file.yl> -o fixed.yl\n"
         "  ylang --version\n\n"
         "Commands:\n"
         "  check   Parse the source and validate types without producing a binary.\n"
         "  build   Generate C and invoke GCC or Clang to create a native executable.\n"
+        "  build-asm Build the supported subset with NASM and ld (Linux x86-64).\n"
         "  emit-c  Write the generated C source for inspection.\n"
+        "  emit-asm Emit experimental Linux x86-64 NASM assembly for the supported subset.\n"
         "  fix     Apply high-confidence safe fixes to a new source file.\n",
         stream);
 }
@@ -28,7 +32,7 @@ static void usage(FILE *stream)
 int main(int argc, char **argv)
 {
     if (argc == 2 && (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)) {
-        puts("YLang compiler " YLANG_VERSION " (C backend: GCC/Clang)");
+        puts("YLang compiler " YLANG_VERSION " (C backend: GCC/Clang; experimental NASM output)");
         return 0;
     }
     if (argc == 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
@@ -41,7 +45,8 @@ int main(int argc, char **argv)
     }
     const char *command = argv[1];
     if (strcmp(command, "check") != 0 && strcmp(command, "build") != 0 &&
-        strcmp(command, "emit-c") != 0 && strcmp(command, "fix") != 0) {
+        strcmp(command, "emit-c") != 0 && strcmp(command, "emit-asm") != 0 &&
+        strcmp(command, "build-asm") != 0 && strcmp(command, "fix") != 0) {
         fprintf(stderr, "ylang: unknown command '%s'\n\n", command);
         usage(stderr);
         return 64;

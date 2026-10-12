@@ -11,6 +11,38 @@ YLang 1.0.0 uses a conventional multi-stage compiler pipeline:
 
 The internal compiler model is declared in `src/internal.h`; the public-facing compiler and token declarations are in `include/ylang/`.
 
+
+## Experimental NASM backend (Linux x86-64)
+
+The optional emit-asm command writes NASM syntax for a deliberately limited
+subset of YLang. Unlike the default C backend, the generated program uses the
+Linux x86-64 system-call ABI for output and process exit, so a generated
+program can be assembled with NASM and linked directly with ld without
+GCC/Clang or a C runtime:
+
+    ./build/ylang emit-asm tests/asm-basic.yl -o build/asm-basic.asm
+    nasm -f elf64 build/asm-basic.asm -o build/asm-basic.o
+    ld -o build/asm-basic build/asm-basic.o
+    ./build/asm-basic
+
+For the same steps in one command, use build-asm:
+
+    ./build/ylang build-asm tests/asm-basic.yl -o build/asm-basic
+    ./build/asm-basic
+
+The initial subset supports scalar int, bool, char, and string values,
+local variables, up to six scalar function parameters, user-defined function
+calls, integer arithmetic and comparisons, if/else, loops, break,
+continue, return, and print. Integer overflow and invalid integer
+division terminate the program with status 70.
+
+The experimental backend currently rejects global declarations, arrays,
+floats, f-strings, string comparisons, and/or, and standard-library or
+conversion calls. The standard build command continues to use the established C backend.
+The separate build-asm command runs NASM and ld for supported programs;
+emit-asm writes the assembly source for inspection. The experimental backend
+is Linux x86-64 specific and is not supported on macOS or other architectures.
+
 ## Diagnostic policy
 
 Compiler errors are intended to be stable, user-facing output. Changes should preserve useful codes where practical and include regression tests for source locations and hints. A check failure must not be reported as a native build failure. Code generation is only entered after parsing and semantic analysis report no errors.
