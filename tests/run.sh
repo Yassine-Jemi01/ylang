@@ -344,6 +344,9 @@ if command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
     ld -o build/test-asm-basic build/asm-basic.o
     ./build/test-asm-basic > build/asm-basic.out
     diff -u tests/expected-asm-basic.txt build/asm-basic.out
+    ./build/ylang build-asm tests/asm-basic.yl -o build/test-asm-basic-cli >/dev/null
+    ./build/test-asm-basic-cli > build/asm-basic-cli.out
+    diff -u tests/expected-asm-basic.txt build/asm-basic-cli.out
 fi
 if ./build/ylang emit-asm examples/math.yl -o build/asm-unsupported.asm > build/asm-unsupported.out 2>&1; then
     echo "FAIL: NASM backend accepted float/math features that are not implemented" >&2
