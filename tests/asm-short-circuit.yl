@@ -1,0 +1,6 @@
+function main() -> int {
+    let bool no = false and (1 / 0 == 0);
+    let bool yes = true or (1 / 0 == 0);
+    print(no, yes, true and true, false or true);
+    return 0;
+}

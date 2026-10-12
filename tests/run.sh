@@ -496,6 +496,12 @@ fi
 ./build/ylang emit-asm tests/asm-arrays.yl -o build/asm-arrays.asm >/dev/null
 grep -q 'js __yl_runtime_error' build/asm-arrays.asm
 
+# Logical operators must short-circuit and return normalized booleans.
+./build/ylang check tests/asm-short-circuit.yl >/dev/null
+./build/ylang emit-asm tests/asm-short-circuit.yl -o build/asm-short-circuit.asm >/dev/null
+grep -q 'Llogic_false_' build/asm-short-circuit.asm
+grep -q 'Llogic_true_' build/asm-short-circuit.asm
+
 # Experimental NASM backend: test emission everywhere and execute it when NASM is present.
 ./build/ylang check tests/asm-basic.yl >/dev/null
 ./build/ylang emit-asm tests/asm-basic.yl -o build/asm-basic.asm >/dev/null
@@ -517,6 +523,10 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     ./build/ylang build-asm tests/asm-arrays.yl -o build/test-asm-arrays >/dev/null
     ./build/test-asm-arrays > build/asm-arrays.out
     diff -u tests/expected-asm-arrays.txt build/asm-arrays.out
+
+    ./build/ylang build-asm tests/asm-short-circuit.yl -o build/test-asm-short-circuit >/dev/null
+    ./build/test-asm-short-circuit > build/asm-short-circuit.out
+    diff -u tests/expected-asm-short-circuit.txt build/asm-short-circuit.out
 
     ./build/ylang build-asm tests/array-out-of-bounds.yl -o build/test-asm-array-out-of-bounds >/dev/null
     if ./build/test-asm-array-out-of-bounds > build/asm-array-out-of-bounds.out 2>&1; then
