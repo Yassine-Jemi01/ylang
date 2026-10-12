@@ -41,7 +41,8 @@ bounds checks and `length(array)` is lowered to a compile-time constant.
 Integer overflow and invalid integer division terminate with status 70.
 
 The experimental backend still rejects array parameters, nested arrays, floats,
-f-strings, string comparisons, and standard-library or conversion calls. Named
+f-strings, string comparisons, most standard-library calls, and conversions.
+The byte-counting builtin `string.length(string)` is supported. Named
 imports are resolved by the shared module loader, and the NASM backend emits the
 merged, semantically checked module graph as one executable. Global arrays require fixed-size literal initializers.
 Scalar and array globals are stored in the generated program's BSS and
