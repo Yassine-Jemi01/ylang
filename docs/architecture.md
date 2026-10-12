@@ -41,8 +41,9 @@ bounds checks and `length(array)` is lowered to a compile-time constant.
 Integer overflow and invalid integer division terminate with status 70.
 
 The experimental backend still rejects array parameters, nested arrays, floats,
-f-strings, string comparisons, standard-library or conversion calls, and
-multi-file imports. Global arrays require fixed-size literal initializers.
+f-strings, string comparisons, and standard-library or conversion calls. Named
+imports are resolved by the shared module loader, and the NASM backend emits the
+merged, semantically checked module graph as one executable. Global arrays require fixed-size literal initializers.
 Scalar and array globals are stored in the generated program's BSS and
 initialized by its startup stub. The standard build command continues to use
 the established C backend. The separate `build-asm` command runs NASM and
