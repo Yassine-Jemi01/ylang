@@ -491,6 +491,12 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     diff -u build/expected-asm-globals.txt build/asm-globals.out
 fi
 
+# Boolean operators preserve short-circuit evaluation in NASM.
+./build/ylang check tests/asm-short-circuit.yl >/dev/null
+./build/ylang emit-asm tests/asm-short-circuit.yl -o build/asm-short-circuit.asm >/dev/null
+grep -q 'jz __yl_label_' build/asm-short-circuit.asm
+grep -q 'jnz __yl_label_' build/asm-short-circuit.asm
+
 # Fixed-size local arrays emit NASM with checked indices and compile-time length().
 ./build/ylang check tests/asm-arrays.yl >/dev/null
 ./build/ylang emit-asm tests/asm-arrays.yl -o build/asm-arrays.asm >/dev/null
@@ -513,6 +519,10 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     ./build/ylang build-asm tests/asm-basic.yl -o build/test-asm-basic-cli >/dev/null
     ./build/test-asm-basic-cli > build/asm-basic-cli.out
     diff -u tests/expected-asm-basic.txt build/asm-basic-cli.out
+
+    ./build/ylang build-asm tests/asm-short-circuit.yl -o build/test-asm-short-circuit >/dev/null
+    ./build/test-asm-short-circuit > build/asm-short-circuit.out
+    diff -u tests/expected-asm-short-circuit.txt build/asm-short-circuit.out
 
     ./build/ylang build-asm tests/asm-arrays.yl -o build/test-asm-arrays >/dev/null
     ./build/test-asm-arrays > build/asm-arrays.out

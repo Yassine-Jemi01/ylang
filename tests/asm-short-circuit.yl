@@ -1,0 +1,13 @@
+function should_not_run() -> bool {
+    print("FAIL");
+    return true;
+}
+
+function main() -> int {
+    let bool both = false and should_not_run();
+    let bool either = true or should_not_run();
+    let bool evaluated_and = true and true;
+    let bool evaluated_or = false or true;
+    print(both, either, evaluated_and, evaluated_or);
+    return 0;
+}

@@ -40,10 +40,13 @@ indices receive runtime bounds checks; `length(array)` is lowered to its
 compile-time length. Integer overflow and invalid integer
 division terminate the program with status 70.
 
-The experimental backend currently rejects global arrays, local arrays,
-floats, f-strings, string comparisons, and/or, standard-library or conversion
-calls, and multi-file imports. Scalar global variables of supported types are
-stored in the generated program's BSS and initialized by its startup stub. The standard build command continues to use the established C backend.
+The experimental backend currently rejects global arrays, array parameters,
+floats, f-strings, string comparisons, standard-library or conversion calls,
+and multi-file imports. Scalar global variables of supported types are stored
+in BSS and initialized by the startup stub. Fixed-size local arrays are
+allocated in function stack frames with runtime bounds checks; `length(array)`
+is lowered to a compile-time constant. Boolean `and` and `or` use short-circuit
+evaluation. The standard build command continues to use the established C backend.
 The separate build-asm command runs NASM and ld for supported programs;
 emit-asm writes the assembly source for inspection. The experimental backend
 is Linux x86-64 specific and is not supported on macOS or other architectures.
