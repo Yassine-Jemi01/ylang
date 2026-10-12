@@ -486,7 +486,7 @@ static bool emit_condition_false_jump(AsmContext *ctx, Expr *condition,
     return true;
 }
 
-static bool emit_call(AsmContext *ctx, Expr *expr)static bool emit_call(AsmContext *ctx, Expr *expr)
+static bool emit_call(AsmContext *ctx, Expr *expr)
 {
     static const char *const argument_registers[] = {
         "rdi", "rsi", "rdx", "rcx", "r8", "r9"
