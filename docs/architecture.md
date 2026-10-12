@@ -32,22 +32,22 @@ For the same steps in one command, use build-asm:
     ./build/asm-basic
 
 The initial subset supports scalar int, bool, char, and string values,
-local variables and scalar global variables, fixed-size local arrays, up to six
-scalar function parameters, user-defined function calls, integer arithmetic and
-comparisons, if/else, loops, break, continue, return, and print. Global
-initializers are evaluated in the startup stub before main(). Local array
-indices receive runtime bounds checks; `length(array)` is lowered to its
-compile-time length. Integer overflow and invalid integer
-division terminate the program with status 70.
+local variables, scalar globals, fixed-size local arrays, initialized global
+arrays, up to six scalar function parameters, user-defined function calls,
+integer arithmetic and comparisons, short-circuit boolean `and`/`or`,
+if/else, loops, break, continue, return, and print. Global initializers are
+evaluated in the startup stub before `main()`. Array indexing has runtime
+bounds checks and `length(array)` is lowered to a compile-time constant.
+Integer overflow and invalid integer division terminate with status 70.
 
-The experimental backend currently rejects global arrays, local arrays,
-floats, f-strings, string comparisons, and/or, standard-library or conversion
-calls, and multi-file imports. Scalar global variables of supported types are
-stored in the generated program's BSS and initialized by its startup stub. The standard build command continues to use the established C backend.
-The separate build-asm command runs NASM and ld for supported programs;
-emit-asm writes the assembly source for inspection. The experimental backend
-is Linux x86-64 specific and is not supported on macOS or other architectures.
-
+The experimental backend still rejects array parameters, nested arrays, floats,
+f-strings, string comparisons, standard-library or conversion calls, and
+multi-file imports. Global arrays require fixed-size literal initializers.
+Scalar and array globals are stored in the generated program's BSS and
+initialized by its startup stub. The standard build command continues to use
+the established C backend. The separate `build-asm` command runs NASM and
+`ld` for supported programs; `emit-asm` writes assembly for inspection.
+The experimental backend targets Linux x86-64 only.
 ## Diagnostic policy
 
 Compiler errors are intended to be stable, user-facing output. Changes should preserve useful codes where practical and include regression tests for source locations and hints. A check failure must not be reported as a native build failure. Code generation is only entered after parsing and semantic analysis report no errors.
