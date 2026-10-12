@@ -876,7 +876,8 @@ static void emit_runtime(AsmContext *ctx)
         "    syscall\n"
         "    mov eax, 60\n"
         "    mov edi, 70\n"
-        "    syscall\n",
+        "    syscall\n"
+        "\nsection .note.GNU-stack noalloc noexec nowrite progbits\n",
         ctx->out);
 }
 
