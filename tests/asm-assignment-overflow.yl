@@ -1,0 +1,6 @@
+function main() -> int {
+    let int maximum = 9223372036854775807;
+    maximum = maximum + 1;
+    print(maximum);
+    return 0;
+}
