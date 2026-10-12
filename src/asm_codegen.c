@@ -453,7 +453,8 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             }
             if (!emit_expr(ctx, expr->as.unary.right)) return false;
             if (expr->as.unary.op.type == TOKEN_MINUS) {
-                fputs("    cmp rax, 0x8000000000000000\n"
+                fputs("    mov r11, 0x8000000000000000\n"
+                      "    cmp rax, r11\n"
                       "    je __yl_runtime_error\n"
                       "    neg rax\n"
                       "    jo __yl_runtime_error\n", ctx->out);
@@ -489,7 +490,8 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
                     unsigned safe = new_label(ctx);
                     fputs("    test r10, r10\n"
                           "    jz __yl_runtime_error\n"
-                          "    cmp rax, 0x8000000000000000\n", ctx->out);
+                          "    mov r11, 0x8000000000000000\n"
+                          "    cmp rax, r11\n", ctx->out);
                     fprintf(ctx->out, "    jne .Ldiv_safe_%u\n", safe);
                     fputs("    cmp r10, -1\n    je __yl_runtime_error\n", ctx->out);
                     fprintf(ctx->out, ".Ldiv_safe_%u:\n", safe);
