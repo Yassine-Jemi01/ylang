@@ -759,11 +759,11 @@ static void emit_bytes(FILE *out, const char *label,
         fputs("0", out);
     } else {
         for (size_t i = 0; i < length; i++) {
-            if (i != 0U) fputs(", ", out);
-            fprintf(out, "%u", (unsigned)bytes[i]);
-            if ((i + 1U) % 16U == 0U && i + 1U < length) {
-                fputs("\n    db ", out);
+            if (i != 0U) {
+                if (i % 16U == 0U) fputs("\n    db ", out);
+                else fputs(", ", out);
             }
+            fprintf(out, "%u", (unsigned)bytes[i]);
         }
         if (terminate) fputs(", 0", out);
     }
