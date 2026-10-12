@@ -17,6 +17,7 @@
 typedef struct {
     VarDecl *variable;
     size_t slot;
+    const char *reg;
 } AsmVarSlot;
 
 typedef struct {
@@ -241,7 +242,7 @@ static bool add_slot(AsmContext *ctx, VarDecl *variable)
         ctx->slots = grown;
         ctx->slot_capacity = next;
     }
-    ctx->slots[ctx->slot_count] = (AsmVarSlot){ variable, ctx->slot_count };
+    ctx->slots[ctx->slot_count] = (AsmVarSlot){ variable, ctx->slot_count, NULL };
     ctx->slot_count++;
     return true;
 }
@@ -278,15 +279,43 @@ static bool collect_stmt_slots(AsmContext *ctx, Stmt *stmt)
     return true;
 }
 
-static size_t slot_offset(AsmContext *ctx, VarDecl *variable)
+static AsmVarSlot *find_var_slot(AsmContext *ctx, VarDecl *variable)
 {
     for (size_t i = 0; i < ctx->slot_count; i++) {
-        if (ctx->slots[i].variable == variable) return (ctx->slots[i].slot + 1U) * 8U;
+        if (ctx->slots[i].variable == variable) return &ctx->slots[i];
     }
     fprintf(stderr, "ylang: internal error: no NASM stack slot for variable '%s'.\n",
             variable && variable->name ? variable->name : "<unknown>");
     ctx->okay = false;
-    return 8;
+    return NULL;
+}
+
+static size_t slot_offset(AsmContext *ctx, VarDecl *variable)
+{
+    AsmVarSlot *slot = find_var_slot(ctx, variable);
+    return slot ? (slot->slot + 1U) * 8U : 8U;
+}
+
+static const char *variable_register(AsmContext *ctx, VarDecl *variable)
+{
+    AsmVarSlot *slot = find_var_slot(ctx, variable);
+    return slot ? slot->reg : NULL;
+}
+
+static bool emit_load_variable(AsmContext *ctx, VarDecl *variable)
+{
+    const char *reg = variable_register(ctx, variable);
+    if (reg) fprintf(ctx->out, "    mov rax, %s\n", reg);
+    else fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", slot_offset(ctx, variable));
+    return ctx->okay;
+}
+
+static bool emit_store_variable(AsmContext *ctx, VarDecl *variable)
+{
+    const char *reg = variable_register(ctx, variable);
+    if (reg) fprintf(ctx->out, "    mov %s, rax\n", reg);
+    else fprintf(ctx->out, "    mov [rbp - %zu], rax\n", slot_offset(ctx, variable));
+    return ctx->okay;
 }
 
 static unsigned new_label(AsmContext *ctx)
@@ -428,15 +457,24 @@ static bool emit_condition_false_jump(AsmContext *ctx, Expr *condition,
                                parse_nonnegative_i32_literal(ctx, right, &immediate);
         if (false_jump && is_local_scalar_name(left) &&
             left->type == TYPE_INT && (right_name || right_immediate)) {
-            size_t left_offset = slot_offset(ctx, left->as.name.variable);
+            const char *left_reg = variable_register(ctx, left->as.name.variable);
             if (right_name) {
-                fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", left_offset);
-                size_t right_offset = slot_offset(ctx, right->as.name.variable);
-                fprintf(ctx->out, "    cmp rax, [rbp - %zu]\n", right_offset);
+                const char *right_reg = variable_register(ctx, right->as.name.variable);
+                if (left_reg && right_reg) {
+                    fprintf(ctx->out, "    cmp %s, %s\n", left_reg, right_reg);
+                } else {
+                    if (left_reg) fprintf(ctx->out, "    mov rax, %s\n", left_reg);
+                    else fprintf(ctx->out, "    mov rax, [rbp - %zu]\n",
+                                slot_offset(ctx, left->as.name.variable));
+                    if (right_reg) fprintf(ctx->out, "    cmp rax, %s\n", right_reg);
+                    else fprintf(ctx->out, "    cmp rax, [rbp - %zu]\n",
+                                slot_offset(ctx, right->as.name.variable));
+                }
+            } else if (left_reg) {
+                fprintf(ctx->out, "    cmp %s, %d\n", left_reg, (int)immediate);
             } else {
-                /* Compare directly from the stack slot in hot loop conditions. */
                 fprintf(ctx->out, "    cmp qword [rbp - %zu], %d\n",
-                        left_offset, (int)immediate);
+                        slot_offset(ctx, left->as.name.variable), (int)immediate);
             }
             fprintf(ctx->out, "    %s .L%s_%u\n", false_jump, label_prefix, label);
             return ctx->okay;
@@ -448,7 +486,7 @@ static bool emit_condition_false_jump(AsmContext *ctx, Expr *condition,
     return true;
 }
 
-static bool emit_call(AsmContext *ctx, Expr *expr)
+static bool emit_call(AsmContext *ctx, Expr *expr)static bool emit_call(AsmContext *ctx, Expr *expr)
 {
     static const char *const argument_registers[] = {
         "rdi", "rsi", "rdx", "rcx", "r8", "r9"
@@ -511,11 +549,8 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             fprintf(ctx->out, "    lea rax, [rel yl_str_%zu]\n", id);
             return ctx->okay;
         }
-        case EXPR_NAME: {
-            size_t offset = slot_offset(ctx, expr->as.name.variable);
-            fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", offset);
-            return ctx->okay;
-        }
+        case EXPR_NAME:
+            return emit_load_variable(ctx, expr->as.name.variable);
         case EXPR_UNARY:
             if (expr->is_min_int) {
                 fputs("    mov rax, 0x8000000000000000\n", ctx->out);
@@ -537,7 +572,10 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             Expr *right = expr->as.binary.right;
             TokenType op = expr->as.binary.op.type;
 
-            /* Use memory operands for simple local integer arithmetic/comparisons. */
+            /*
+             * Emit simple scalar operations directly from their assigned
+             * registers or stack slots, avoiding temporary push/pop traffic.
+             */
             if (is_local_scalar_name(left) && is_local_scalar_name(right) &&
                 left->type != TYPE_STRING && right->type != TYPE_STRING) {
                 bool int_arithmetic = left->type == TYPE_INT && right->type == TYPE_INT;
@@ -546,40 +584,34 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
                                      op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
                                      op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL;
                 if ((int_arithmetic && arithmetic_op) || comparison_op) {
-                    size_t lo = slot_offset(ctx, left->as.name.variable);
-                    size_t ro = slot_offset(ctx, right->as.name.variable);
-                    fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", lo);
+                    const char *mnemonic = NULL;
+                    const char *condition = NULL;
+                    bool check_overflow = false;
                     switch (op) {
-                        case TOKEN_PLUS:
-                            fprintf(ctx->out, "    add rax, [rbp - %zu]\n"
-                                              "    jo __yl_runtime_error\n", ro); break;
-                        case TOKEN_MINUS:
-                            fprintf(ctx->out, "    sub rax, [rbp - %zu]\n"
-                                              "    jo __yl_runtime_error\n", ro); break;
-                        case TOKEN_STAR:
-                            fprintf(ctx->out, "    imul rax, [rbp - %zu]\n"
-                                              "    jo __yl_runtime_error\n", ro); break;
-                        case TOKEN_EQUAL_EQUAL:
-                            fprintf(ctx->out, "    cmp rax, [rbp - %zu]\n", ro);
-                            fputs("    sete al\n    movzx rax, al\n", ctx->out); break;
-                        case TOKEN_BANG_EQUAL:
-                            fprintf(ctx->out, "    cmp rax, [rbp - %zu]\n", ro);
-                            fputs("    setne al\n    movzx rax, al\n", ctx->out); break;
-                        case TOKEN_LESS:
-                            fprintf(ctx->out, "    cmp rax, [rbp - %zu]\n", ro);
-                            fputs("    setl al\n    movzx rax, al\n", ctx->out); break;
-                        case TOKEN_LESS_EQUAL:
-                            fprintf(ctx->out, "    cmp rax, [rbp - %zu]\n", ro);
-                            fputs("    setle al\n    movzx rax, al\n", ctx->out); break;
-                        case TOKEN_GREATER:
-                            fprintf(ctx->out, "    cmp rax, [rbp - %zu]\n", ro);
-                            fputs("    setg al\n    movzx rax, al\n", ctx->out); break;
-                        case TOKEN_GREATER_EQUAL:
-                            fprintf(ctx->out, "    cmp rax, [rbp - %zu]\n", ro);
-                            fputs("    setge al\n    movzx rax, al\n", ctx->out); break;
+                        case TOKEN_PLUS: mnemonic = "add"; check_overflow = true; break;
+                        case TOKEN_MINUS: mnemonic = "sub"; check_overflow = true; break;
+                        case TOKEN_STAR: mnemonic = "imul"; check_overflow = true; break;
+                        case TOKEN_EQUAL_EQUAL: mnemonic = "cmp"; condition = "sete"; break;
+                        case TOKEN_BANG_EQUAL: mnemonic = "cmp"; condition = "setne"; break;
+                        case TOKEN_LESS: mnemonic = "cmp"; condition = "setl"; break;
+                        case TOKEN_LESS_EQUAL: mnemonic = "cmp"; condition = "setle"; break;
+                        case TOKEN_GREATER: mnemonic = "cmp"; condition = "setg"; break;
+                        case TOKEN_GREATER_EQUAL: mnemonic = "cmp"; condition = "setge"; break;
                         default: break;
                     }
-                    return ctx->okay;
+                    if (mnemonic) {
+                        const char *right_reg = variable_register(ctx, right->as.name.variable);
+                        if (!emit_load_variable(ctx, left->as.name.variable)) return false;
+                        if (right_reg) fprintf(ctx->out, "    %s rax, %s\n", mnemonic, right_reg);
+                        else fprintf(ctx->out, "    %s rax, [rbp - %zu]\n", mnemonic,
+                                     slot_offset(ctx, right->as.name.variable));
+                        if (check_overflow) fputs("    jo __yl_runtime_error\n", ctx->out);
+                        else {
+                            fprintf(ctx->out, "    %s al\n", condition);
+                            fputs("    movzx rax, al\n", ctx->out);
+                        }
+                        return ctx->okay;
+                    }
                 }
             }
 
@@ -593,8 +625,7 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
                                      op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
                                      op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL;
                 if (arithmetic_op || comparison_op) {
-                    size_t offset = slot_offset(ctx, left->as.name.variable);
-                    fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", offset);
+                    if (!emit_load_variable(ctx, left->as.name.variable)) return false;
                     switch (op) {
                         case TOKEN_PLUS:
                             fprintf(ctx->out, "    add rax, %d\n"
@@ -692,28 +723,34 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             if (!expr->as.assign.is_compound && variable &&
                 variable->type == TYPE_INT && !variable->is_global &&
                 !variable->is_array && is_local_scalar_name(target) &&
+                target->as.name.variable == variable &&
                 value && value->kind == EXPR_BINARY &&
                 value->as.binary.op.type == TOKEN_PLUS &&
                 value->as.binary.left == target &&
                 parse_nonnegative_i32_literal(ctx, value->as.binary.right, &increment) &&
                 increment == 1) {
-                size_t inc_offset = slot_offset(ctx, variable);
-                fprintf(ctx->out, "    inc qword [rbp - %zu]\n"
-                                  "    jo __yl_runtime_error\n"
-                                  "    mov rax, [rbp - %zu]\n", inc_offset, inc_offset);
+                const char *reg = variable_register(ctx, variable);
+                if (reg) {
+                    fprintf(ctx->out, "    inc %s\n"
+                                      "    jo __yl_runtime_error\n"
+                                      "    mov rax, %s\n", reg, reg);
+                } else {
+                    size_t offset = slot_offset(ctx, variable);
+                    fprintf(ctx->out, "    inc qword [rbp - %zu]\n"
+                                      "    jo __yl_runtime_error\n"
+                                      "    mov rax, [rbp - %zu]\n", offset, offset);
+                }
                 return ctx->okay;
             }
-            size_t offset = slot_offset(ctx, variable);
             if (expr->as.assign.is_compound) {
                 if (!emit_expr(ctx, expr->as.assign.right)) return false;
                 fputs("    mov r10, rax\n", ctx->out);
-                fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", offset);
+                if (!emit_load_variable(ctx, variable)) return false;
                 fputs("    add rax, r10\n    jo __yl_runtime_error\n", ctx->out);
             } else if (!emit_expr(ctx, expr->as.assign.right)) {
                 return false;
             }
-            fprintf(ctx->out, "    mov [rbp - %zu], rax\n", offset);
-            return true;
+            return emit_store_variable(ctx, variable);
         }
         case EXPR_CALL:
             return emit_call(ctx, expr);
@@ -774,7 +811,6 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
             return true;
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
-            size_t offset = slot_offset(ctx, var);
             if (var->initializer) {
                 if (!emit_expr(ctx, var->initializer)) return false;
             } else if (var->type == TYPE_STRING) {
@@ -782,8 +818,7 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
             } else {
                 fputs("    xor eax, eax\n", ctx->out);
             }
-            fprintf(ctx->out, "    mov [rbp - %zu], rax\n", offset);
-            return true;
+            return emit_store_variable(ctx, var);
         }
         case STMT_PRINT:
             for (size_t i = 0; i < stmt->as.print.count; i++) {
@@ -899,9 +934,12 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
                     parse_nonnegative_i32_literal(ctx, value->as.binary.right,
                                                   &increment) &&
                     increment == 1) {
-                    size_t offset = slot_offset(ctx, variable);
-                    fprintf(ctx->out, "    inc qword [rbp - %zu]\n"
-                                      "    jo __yl_runtime_error\n", offset);
+                    const char *reg = variable_register(ctx, variable);
+                    if (reg) fprintf(ctx->out, "    inc %s\n"
+                                               "    jo __yl_runtime_error\n", reg);
+                    else fprintf(ctx->out, "    inc qword [rbp - %zu]\n"
+                                            "    jo __yl_runtime_error\n",
+                                 slot_offset(ctx, variable));
                     return ctx->okay;
                 }
             }
@@ -927,7 +965,17 @@ static bool prepare_function(AsmContext *ctx, Function *function)
         }
         if (!add_slot(ctx, function->params[i])) return false;
     }
-    return collect_stmt_slots(ctx, function->body);
+    if (!collect_stmt_slots(ctx, function->body)) return false;
+    static const char *const local_registers[] = { "rbx", "r12", "r13", "r14", "r15" };
+    size_t next_register = 0;
+    for (size_t i = 0; i < ctx->slot_count &&
+                        next_register < sizeof(local_registers) / sizeof(local_registers[0]); i++) {
+        VarDecl *variable = ctx->slots[i].variable;
+        if (!variable || variable->is_global || variable->is_array ||
+            variable->type != TYPE_INT) continue;
+        ctx->slots[i].reg = local_registers[next_register++];
+    }
+    return true;
 }
 
 static bool emit_function(AsmContext *ctx, Function *function)
@@ -942,14 +990,30 @@ static bool emit_function(AsmContext *ctx, Function *function)
     fprintf(ctx->out, "\n%s:\n    push rbp\n    mov rbp, rsp\n",
             function->c_name);
     if (frame_size != 0U) fprintf(ctx->out, "    sub rsp, %zu\n", frame_size);
+
+    /* Each promoted variable's stack slot saves the caller's original register. */
+    for (size_t i = 0; i < ctx->slot_count; i++) {
+        if (!ctx->slots[i].reg) continue;
+        size_t offset = (ctx->slots[i].slot + 1U) * 8U;
+        fprintf(ctx->out, "    mov [rbp - %zu], %s\n",
+                offset, ctx->slots[i].reg);
+    }
     for (size_t i = 0; i < function->param_count; i++) {
-        size_t offset = slot_offset(ctx, function->params[i]);
-        fprintf(ctx->out, "    mov [rbp - %zu], %s\n", offset,
-                argument_registers[i]);
+        const char *reg = variable_register(ctx, function->params[i]);
+        if (reg) fprintf(ctx->out, "    mov %s, %s\n", reg, argument_registers[i]);
+        else fprintf(ctx->out, "    mov [rbp - %zu], %s\n",
+                     slot_offset(ctx, function->params[i]), argument_registers[i]);
     }
     if (!emit_stmt(ctx, function->body)) return false;
     fputs("    xor eax, eax\n", ctx->out);
-    fprintf(ctx->out, ".Lreturn_%s:\n    leave\n    ret\n", function->c_name);
+    fprintf(ctx->out, ".Lreturn_%s:\n", function->c_name);
+    for (size_t i = ctx->slot_count; i > 0; i--) {
+        AsmVarSlot *slot = &ctx->slots[i - 1U];
+        if (!slot->reg) continue;
+        fprintf(ctx->out, "    mov %s, [rbp - %zu]\n",
+                slot->reg, (slot->slot + 1U) * 8U);
+    }
+    fputs("    leave\n    ret\n", ctx->out);
     return ctx->okay;
 }
 
