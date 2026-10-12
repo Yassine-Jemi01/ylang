@@ -332,4 +332,24 @@ EOF
 grep -q '^6$' build/compound-operators.out
 grep -q '^2$' build/compound-operators.out
 
+
+# Experimental NASM backend: test emission everywhere and execute it when NASM is present.
+./build/ylang check tests/asm-basic.yl >/dev/null
+./build/ylang emit-asm tests/asm-basic.yl -o build/asm-basic.asm >/dev/null
+grep -q '^global _start$' build/asm-basic.asm
+grep -q '^__yl_runtime_error:' build/asm-basic.asm
+grep -q '^yl_print_i64:' build/asm-basic.asm
+if command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+    nasm -f elf64 build/asm-basic.asm -o build/asm-basic.o
+    ld -o build/test-asm-basic build/asm-basic.o
+    ./build/test-asm-basic > build/asm-basic.out
+    diff -u tests/expected-asm-basic.txt build/asm-basic.out
+fi
+if ./build/ylang emit-asm examples/math.yl -o build/asm-unsupported.asm > build/asm-unsupported.out 2>&1; then
+    echo "FAIL: NASM backend accepted float/math features that are not implemented" >&2
+    exit 1
+fi
+grep -q 'NASM backend does not support float values' build/asm-unsupported.out
+test ! -e build/asm-unsupported.asm
+
 echo "All YLang tests passed."
