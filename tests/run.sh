@@ -476,10 +476,12 @@ EOF
 ./build/ylang check build/imports/asm-main.yl >/dev/null
 ./build/ylang emit-asm build/imports/asm-main.yl -o build/imports/asm-main.asm >/dev/null
 grep -q 'call .*library_value' build/imports/asm-main.asm
-./build/ylang build-asm build/imports/asm-main.yl -o build/test-asm-module-imports >/dev/null
-./build/test-asm-module-imports > build/asm-module-imports.out
-printf '22\n' > build/asm-module-imports.expected
-diff -u build/asm-module-imports.expected build/asm-module-imports.out
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+    ./build/ylang build-asm build/imports/asm-main.yl -o build/test-asm-module-imports >/dev/null
+    ./build/test-asm-module-imports > build/asm-module-imports.out
+    printf '22\n' > build/asm-module-imports.expected
+    diff -u build/asm-module-imports.expected build/asm-module-imports.out
+fi
 
 # NASM scalar global variables: initialization, reads, writes, and function calls.
 cat > build/asm-globals.yl <<'EOF'
@@ -520,9 +522,11 @@ fi
 ./build/ylang check tests/asm-string-length.yl >/dev/null
 ./build/ylang emit-asm tests/asm-string-length.yl -o build/asm-string-length.asm >/dev/null
 grep -q '__yl_strlen_loop_' build/asm-string-length.asm
-./build/ylang build-asm tests/asm-string-length.yl -o build/test-asm-string-length >/dev/null
-./build/test-asm-string-length > build/asm-string-length.out
-diff -u tests/expected-asm-string-length.txt build/asm-string-length.out
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+    ./build/ylang build-asm tests/asm-string-length.yl -o build/test-asm-string-length >/dev/null
+    ./build/test-asm-string-length > build/asm-string-length.out
+    diff -u tests/expected-asm-string-length.txt build/asm-string-length.out
+fi
 
 # Initialized global arrays support indexed reads/writes and length().
 ./build/ylang check tests/asm-global-arrays.yl >/dev/null
