@@ -798,8 +798,12 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
                                   "    cmp r11, rax\n"
                                   "    jae __yl_runtime_error\n",
                         variable->array_length);
-                size_t base_offset = slot_offset(ctx, variable);
-                fprintf(ctx->out, "    lea r9, [rbp - %zu]\n", base_offset);
+                if (variable->is_global) {
+                    fprintf(ctx->out, "    lea r9, [rel %s]\n", variable->c_name);
+                } else {
+                    size_t base_offset = slot_offset(ctx, variable);
+                    fprintf(ctx->out, "    lea r9, [rbp - %zu]\n", base_offset);
+                }
                 if (expr->as.assign.is_compound) {
                     fputs("    mov rax, [r9 + r11*8]\n"
                           "    add rax, r10\n"
@@ -870,10 +874,13 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             fputs("    cmp r10, r11\n"
                   "    jae __yl_runtime_error\n",
                   ctx->out);
-            size_t base_offset = slot_offset(ctx, variable);
-            fprintf(ctx->out, "    lea r11, [rbp - %zu]\n"
-                              "    mov rax, [r11 + r10*8]\n",
-                    base_offset);
+            if (variable->is_global) {
+                fprintf(ctx->out, "    lea r11, [rel %s]\n", variable->c_name);
+            } else {
+                size_t base_offset = slot_offset(ctx, variable);
+                fprintf(ctx->out, "    lea r11, [rbp - %zu]\n", base_offset);
+            }
+            fputs("    mov rax, [r11 + r10*8]\n", ctx->out);
             return ctx->okay;
         }
         case EXPR_FLOAT:
