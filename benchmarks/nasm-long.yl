@@ -1,0 +1,12 @@
+function main() -> int {
+    let int counter = 0;
+    let int total = 0;
+
+    while (counter < 1000000) {
+        total = total + counter;
+        counter++;
+    }
+
+    print(total);
+    return 0;
+}
