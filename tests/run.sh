@@ -348,27 +348,33 @@ cat > build/imports/data.yl <<'EOF'
 from "./suffix.yl" import make_suffix;
 let const string system_prefix = "module";
 function system_data() -> string {
-    return string.concat(system_prefix, make_suffix());
+    return string.concat(private_helper(), make_suffix());
 }
 function private_helper() -> string {
     return "data-private";
 }
+let int imported_counter = 4;
+function bump_counter(int amount) -> int {
+    imported_counter += amount;
+    return imported_counter;
+}
 EOF
 cat > build/imports/main.yl <<'EOF'
-from "./data.yl" import system_data, system_prefix;
+from "./data.yl" import system_data, system_prefix, imported_counter, bump_counter;
 function m1_private_helper() -> string {
     return "root-collision-test";
 }
 function main() -> int {
     print(system_data(), system_prefix);
     print(m1_private_helper());
+    print(bump_counter(3), imported_counter);
     return 0;
 }
 EOF
 ./build/ylang check build/imports/main.yl >/dev/null
 ./build/ylang build build/imports/main.yl -o build/test-module-imports >/dev/null
 ./build/test-module-imports > build/module-imports.out
-printf 'module-YLang module\nroot-collision-test\n' > build/module-imports.expected
+printf 'data-private-YLang module\nroot-collision-test\n7 7\n' > build/module-imports.expected
 diff -u build/module-imports.expected build/module-imports.out
 
 # Names from a module remain private unless imported.
@@ -395,6 +401,42 @@ if ./build/ylang check build/imports/missing-name.yl > build/imports/missing-nam
     exit 1
 fi
 grep -q 'E1024' build/imports/missing-name.out
+
+cat > build/imports/duplicate-import.yl <<'EOF'
+from "./data.yl" import system_data;
+from "./suffix.yl" import system_data;
+function main() -> int { return 0; }
+EOF
+if ./build/ylang check build/imports/duplicate-import.yl > build/imports/duplicate-import.out 2>&1; then
+    echo "FAIL: the same imported name was accepted twice" >&2
+    exit 1
+fi
+grep -q 'E1025' build/imports/duplicate-import.out
+
+cat > build/imports/missing-file.yl <<'EOF'
+from "./not-here.yl" import missing;
+function main() -> int { return 0; }
+EOF
+if ./build/ylang check build/imports/missing-file.yl > build/imports/missing-file.out 2>&1; then
+    echo "FAIL: a missing imported file was accepted" >&2
+    exit 1
+fi
+grep -q 'E1022' build/imports/missing-file.out
+
+cat > build/imports/contains-main.yl <<'EOF'
+function main() -> int { return 0; }
+function helper() -> int { return 1; }
+EOF
+cat > build/imports/import-main.yl <<'EOF'
+from "./contains-main.yl" import helper;
+function main() -> int { return helper(); }
+EOF
+if ./build/ylang check build/imports/import-main.yl > build/imports/import-main.out 2>&1; then
+    echo "FAIL: imported module entry point was accepted" >&2
+    exit 1
+fi
+grep -q 'E1026' build/imports/import-main.out
+
 cat > build/imports/cycle-a.yl <<'EOF'
 from "./cycle-b.yl" import cycle_b;
 function cycle_a() -> int { return 1; }
