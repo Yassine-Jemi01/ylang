@@ -482,12 +482,7 @@ function main() -> int {
     return 0;
 }
 EOF
-cat > build/expected-asm-globals.txt <<'EOF'
-global 40 true !
- 
-42 42
-43
-EOF
+printf 'global 40 true !\n\n42 42\n43\n' > build/expected-asm-globals.txt
 ./build/ylang check build/asm-globals.yl >/dev/null
 ./build/ylang emit-asm build/asm-globals.yl -o build/asm-globals.asm >/dev/null
 if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
