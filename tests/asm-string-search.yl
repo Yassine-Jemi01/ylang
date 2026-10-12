@@ -1,0 +1,13 @@
+function main() -> int {
+    print(
+        string.contains("YLang", "Lang"),
+        string.contains("YLang", "Rust"),
+        string.contains("YLang", ""),
+        string.starts_with("YLang", "YL"),
+        string.starts_with("YLang", "yl"),
+        string.ends_with("YLang", "ang"),
+        string.ends_with("YLang", "Lang"),
+        string.ends_with("YLang", "YLangs")
+    );
+    return 0;
+}
