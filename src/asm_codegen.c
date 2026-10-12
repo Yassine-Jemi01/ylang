@@ -603,9 +603,9 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             if (op == TOKEN_AND || op == TOKEN_OR) {
                 unsigned label = ctx->next_label++;
                 if (!emit_expr(ctx, left)) return false;
-                fputs("    test rax, rax\\n", ctx->out);
+                fputs("    test rax, rax\n", ctx->out);
                 if (op == TOKEN_AND) {
-                    fprintf(ctx->out, "    jz .Llogic_false_%u\\n", label);
+                    fprintf(ctx->out, "    jz .Llogic_false_%u\n", label);
                     if (!emit_expr(ctx, right)) return false;
                     fputs("    test rax, rax\\n"
                           "    setne al\\n"
