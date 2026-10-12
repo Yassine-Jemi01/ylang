@@ -339,7 +339,7 @@ grep -q '^2$' build/compound-operators.out
 grep -q '^global _start$' build/asm-basic.asm
 grep -q '^__yl_runtime_error:' build/asm-basic.asm
 grep -q '^yl_print_i64:' build/asm-basic.asm
-if command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
     if ! nasm -f elf64 build/asm-basic.asm -o build/asm-basic.o; then
         nl -ba build/asm-basic.asm | sed -n '108,132p' >&2
         exit 1
