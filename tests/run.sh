@@ -340,7 +340,10 @@ grep -q '^global _start$' build/asm-basic.asm
 grep -q '^__yl_runtime_error:' build/asm-basic.asm
 grep -q '^yl_print_i64:' build/asm-basic.asm
 if command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
-    nasm -f elf64 build/asm-basic.asm -o build/asm-basic.o
+    if ! nasm -f elf64 build/asm-basic.asm -o build/asm-basic.o; then
+        nl -ba build/asm-basic.asm | sed -n '108,132p' >&2
+        exit 1
+    fi
     ld -o build/test-asm-basic build/asm-basic.o
     ./build/test-asm-basic > build/asm-basic.out
     diff -u tests/expected-asm-basic.txt build/asm-basic.out
