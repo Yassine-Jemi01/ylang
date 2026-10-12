@@ -607,26 +607,26 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
                 if (op == TOKEN_AND) {
                     fprintf(ctx->out, "    jz .Llogic_false_%u\n", label);
                     if (!emit_expr(ctx, right)) return false;
-                    fputs("    test rax, rax\\n"
-                          "    setne al\\n"
-                          "    movzx rax, al\\n",
+                    fputs("    test rax, rax\n"
+                          "    setne al\n"
+                          "    movzx rax, al\n",
                           ctx->out);
-                    fprintf(ctx->out, "    jmp .Llogic_end_%u\\n"
-                                      ".Llogic_false_%u:\\n"
-                                      "    xor eax, eax\\n"
-                                      ".Llogic_end_%u:\\n",
+                    fprintf(ctx->out, "    jmp .Llogic_end_%u\n"
+                                      ".Llogic_false_%u:\n"
+                                      "    xor eax, eax\n"
+                                      ".Llogic_end_%u:\n",
                             label, label, label);
                 } else {
-                    fprintf(ctx->out, "    jnz .Llogic_true_%u\\n", label);
+                    fprintf(ctx->out, "    jnz .Llogic_true_%u\n", label);
                     if (!emit_expr(ctx, right)) return false;
-                    fputs("    test rax, rax\\n"
-                          "    setne al\\n"
-                          "    movzx rax, al\\n",
+                    fputs("    test rax, rax\n"
+                          "    setne al\n"
+                          "    movzx rax, al\n",
                           ctx->out);
-                    fprintf(ctx->out, "    jmp .Llogic_end_%u\\n"
-                                      ".Llogic_true_%u:\\n"
-                                      "    mov eax, 1\\n"
-                                      ".Llogic_end_%u:\\n",
+                    fprintf(ctx->out, "    jmp .Llogic_end_%u\n"
+                                      ".Llogic_true_%u:\n"
+                                      "    mov eax, 1\n"
+                                      ".Llogic_end_%u:\n",
                             label, label, label);
                 }
                 return ctx->okay;
