@@ -351,6 +351,14 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     ./build/test-asm-basic-cli > build/asm-basic-cli.out
     diff -u tests/expected-asm-basic.txt build/asm-basic-cli.out
 
+    ./build/ylang build-asm benchmarks/nasm-speed.yl -o build/test-nasm-speed >/dev/null
+    ./build/test-nasm-speed > build/nasm-speed.out
+    diff -u benchmarks/expected-nasm-speed.txt build/nasm-speed.out
+    if command -v python3 >/dev/null 2>&1; then
+        python3 benchmarks/bench-nasm.py build/test-nasm-speed --runs 5 --warmup 1 --target-ms 1000 > build/bench-nasm-smoke.out
+        grep -q 'Samples: 5' build/bench-nasm-smoke.out
+    fi
+
     ./build/ylang build-asm tests/asm-overflow.yl -o build/test-asm-overflow >/dev/null
     if ./build/test-asm-overflow > build/asm-overflow.out 2>&1; then
         echo "FAIL: unary negation of INT64_MIN did not trap" >&2
