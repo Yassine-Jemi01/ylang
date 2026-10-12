@@ -478,7 +478,7 @@ EOF
 grep -q 'call .*library_value' build/imports/asm-main.asm
 ./build/ylang build-asm build/imports/asm-main.yl -o build/test-asm-module-imports >/dev/null
 ./build/test-asm-module-imports > build/asm-module-imports.out
-printf '22\\n' > build/asm-module-imports.expected
+printf '22\n' > build/asm-module-imports.expected
 diff -u build/asm-module-imports.expected build/asm-module-imports.out
 
 # NASM scalar global variables: initialization, reads, writes, and function calls.
