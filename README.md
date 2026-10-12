@@ -108,6 +108,19 @@ Or assemble and link in one step:
 ./build/your-program
 ```
 
+To measure a small arithmetic workload's end-to-end process latency, build the
+benchmark and run it repeatedly with output redirected so terminal rendering
+does not dominate the measurement:
+
+```sh
+./build/ylang build-asm benchmarks/nasm-speed.yl -o build/nasm-speed
+python3 benchmarks/bench-nasm.py build/nasm-speed --runs 1000 --target-ms 1
+```
+
+The benchmark reports minimum, median, mean, and 95th-percentile latency.
+Its timing includes process launch and exit, so a median below 1 ms is a
+machine-dependent target rather than a guaranteed performance claim.
+
 This backend is currently limited to Linux x86-64 scalar programs using
 `int`, `bool`, `char`, and `string`, local variables, user-defined
 functions with up to six scalar parameters, integer expressions, branches,

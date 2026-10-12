@@ -453,10 +453,8 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             }
             if (!emit_expr(ctx, expr->as.unary.right)) return false;
             if (expr->as.unary.op.type == TOKEN_MINUS) {
-                fputs("    mov r11, 0x8000000000000000\n"
-                      "    cmp rax, r11\n"
-                      "    je __yl_runtime_error\n"
-                      "    neg rax\n"
+                /* NEG sets OF for INT64_MIN, so a separate comparison is redundant. */
+                fputs("    neg rax\n"
                       "    jo __yl_runtime_error\n", ctx->out);
             } else {
                 fputs("    test rax, rax\n"
