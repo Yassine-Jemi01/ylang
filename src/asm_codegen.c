@@ -42,6 +42,7 @@ typedef struct {
     AsmVarSlot *slots;
     size_t slot_count;
     size_t slot_capacity;
+    size_t stack_words;
     size_t temporary_depth;
     Function *function;
     AsmLoop *loop;
@@ -136,16 +137,42 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
             return validate_expr(ctx, expr->as.binary.left) &&
                    validate_expr(ctx, expr->as.binary.right);
         }
-        case EXPR_ASSIGN:
-            if (!expr->as.assign.target ||
-                expr->as.assign.target->kind != EXPR_NAME ||
-                !expr->as.assign.variable ||
-                expr->as.assign.variable->is_array) {
+        case EXPR_ASSIGN: {
+            Expr *target = expr->as.assign.target;
+            VarDecl *variable = expr->as.assign.variable;
+            if (!target || !variable) {
                 return asm_reject(ctx, expr->token,
-                                  "assignments except to scalar variables");
+                                  "assignments without a resolved target");
+            }
+            if (target->kind == EXPR_INDEX) {
+                if (!variable->is_array || variable->is_global ||
+                    variable->array_length == 0U) {
+                    return asm_reject(ctx, expr->token,
+                                      "array assignment except to fixed local arrays");
+                }
+                return validate_expr(ctx, target->as.index.index) &&
+                       validate_expr(ctx, expr->as.assign.right);
+            }
+            if (target->kind != EXPR_NAME || variable->is_array) {
+                return asm_reject(ctx, expr->token,
+                                  "assignments except to scalar variables and fixed local array elements");
             }
             return validate_expr(ctx, expr->as.assign.right);
+        }
         case EXPR_CALL:
+            if (strcmp(expr->as.call.name, "length") == 0 &&
+                expr->as.call.count == 1U) {
+                Expr *argument = expr->as.call.args[0];
+                if (argument && argument->kind == EXPR_NAME &&
+                    argument->as.name.variable &&
+                    argument->as.name.variable->is_array &&
+                    !argument->as.name.variable->is_global &&
+                    argument->as.name.variable->array_length > 0U) {
+                    return true;
+                }
+                return asm_reject(ctx, expr->token,
+                                  "length() except on fixed local arrays");
+            }
             if (!expr->as.call.function) {
                 return asm_reject(ctx, expr->token,
                                   "standard-library and conversion calls");
@@ -167,8 +194,17 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
         case EXPR_FSTRING:
             return asm_reject(ctx, expr->token, "f-strings");
         case EXPR_ARRAY:
-        case EXPR_INDEX:
-            return asm_reject(ctx, expr->token, "arrays and array indexing");
+            return asm_reject(ctx, expr->token,
+                              "array literals outside a local array initializer");
+        case EXPR_INDEX: {
+            VarDecl *variable = expr->as.index.variable;
+            if (!variable || !variable->is_array || variable->is_global ||
+                variable->array_length == 0U) {
+                return asm_reject(ctx, expr->token,
+                                  "indexing except on fixed local arrays");
+            }
+            return validate_expr(ctx, expr->as.index.index);
+        }
         case EXPR_ERROR:
             return asm_reject(ctx, expr->token, "invalid expressions");
     }
@@ -184,13 +220,23 @@ static bool validate_stmt(AsmContext *ctx, Stmt *stmt)
                 if (!validate_stmt(ctx, stmt->as.block.items[i])) return false;
             }
             return true;
-        case STMT_VAR:
-            if (stmt->as.variable->is_array) {
-                return asm_reject(ctx, stmt->token, "array declarations");
-            }
-            if (!asm_type_supported(ctx, stmt->as.variable->type,
+        case STMT_VAR: {
+            VarDecl *variable = stmt->as.variable;
+            if (!asm_type_supported(ctx, variable->type,
                                     stmt->token, false)) return false;
-            return validate_expr(ctx, stmt->as.variable->initializer);
+            if (variable->is_array) {
+                Expr *initializer = variable->initializer;
+                if (variable->is_global || variable->array_length == 0U ||
+                    !initializer || initializer->kind != EXPR_ARRAY ||
+                    initializer->as.array.count != variable->array_length) {
+                    return asm_reject(ctx, stmt->token,
+                                      "array declarations except fixed-size local arrays with literal initializers");
+                }
+                return validate_expr_list(ctx, initializer->as.array.items,
+                                          initializer->as.array.count);
+            }
+            return validate_expr(ctx, variable->initializer);
+        }
         case STMT_PRINT:
             return validate_expr_list(ctx, stmt->as.print.args,
                                       stmt->as.print.count);
@@ -241,8 +287,15 @@ static bool add_slot(AsmContext *ctx, VarDecl *variable)
         ctx->slots = grown;
         ctx->slot_capacity = next;
     }
-    ctx->slots[ctx->slot_count] = (AsmVarSlot){ variable, ctx->slot_count };
+    size_t words = variable->is_array ? variable->array_length : 1U;
+    if (words == 0U || words > SIZE_MAX - ctx->stack_words) {
+        fputs("ylang: NASM backend local storage size overflow.\n", stderr);
+        ctx->okay = false;
+        return false;
+    }
+    ctx->slots[ctx->slot_count] = (AsmVarSlot){ variable, ctx->stack_words };
     ctx->slot_count++;
+    ctx->stack_words += words;
     return true;
 }
 
@@ -281,7 +334,16 @@ static bool collect_stmt_slots(AsmContext *ctx, Stmt *stmt)
 static size_t slot_offset(AsmContext *ctx, VarDecl *variable)
 {
     for (size_t i = 0; i < ctx->slot_count; i++) {
-        if (ctx->slots[i].variable == variable) return (ctx->slots[i].slot + 1U) * 8U;
+        if (ctx->slots[i].variable == variable) {
+            size_t words = variable->is_array ? variable->array_length : 1U;
+            if (words > SIZE_MAX - ctx->slots[i].slot ||
+                ctx->slots[i].slot + words > SIZE_MAX / 8U) {
+                fputs("ylang: NASM backend local offset overflow.\n", stderr);
+                ctx->okay = false;
+                return 8U;
+            }
+            return (ctx->slots[i].slot + words) * 8U;
+        }
     }
     fprintf(stderr, "ylang: internal error: no NASM stack slot for variable '%s'.\n",
             variable && variable->name ? variable->name : "<unknown>");
@@ -692,6 +754,37 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             Expr *target = expr->as.assign.target;
             Expr *value = expr->as.assign.right;
             int32_t increment = 0;
+            if (target && target->kind == EXPR_INDEX) {
+                if (!emit_expr(ctx, target->as.index.index)) return false;
+                fputs("    push rax\n", ctx->out);
+                ctx->temporary_depth += 8U;
+                if (!emit_expr(ctx, value)) return false;
+                fputs("    mov r10, rax\n"
+                      "    pop r11\n",
+                      ctx->out);
+                if (ctx->temporary_depth >= 8U) ctx->temporary_depth -= 8U;
+                fputs("    test r11, r11\n"
+                      "    js __yl_runtime_error\n",
+                      ctx->out);
+                fprintf(ctx->out, "    mov rax, %zu\n"
+                                  "    cmp r11, rax\n"
+                                  "    jae __yl_runtime_error\n",
+                        variable->array_length);
+                size_t base_offset = slot_offset(ctx, variable);
+                fprintf(ctx->out, "    lea r9, [rbp - %zu]\n", base_offset);
+                if (expr->as.assign.is_compound) {
+                    fputs("    mov rax, [r9 + r11*8]\n"
+                          "    add rax, r10\n"
+                          "    jo __yl_runtime_error\n"
+                          "    mov [r9 + r11*8], rax\n",
+                          ctx->out);
+                } else {
+                    fputs("    mov [r9 + r11*8], r10\n"
+                          "    mov rax, r10\n",
+                          ctx->out);
+                }
+                return ctx->okay;
+            }
             if (!expr->as.assign.is_compound && variable &&
                 variable->type == TYPE_INT && !variable->is_global &&
                 !variable->is_array && is_local_scalar_name(target) &&
@@ -728,11 +821,36 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             return true;
         }
         case EXPR_CALL:
+            if (strcmp(expr->as.call.name, "length") == 0 &&
+                expr->as.call.count == 1U &&
+                expr->as.call.args[0]->kind == EXPR_NAME &&
+                expr->as.call.args[0]->as.name.variable &&
+                expr->as.call.args[0]->as.name.variable->is_array) {
+                fprintf(ctx->out, "    mov rax, %zu\n",
+                        expr->as.call.args[0]->as.name.variable->array_length);
+                return true;
+            }
             return emit_call(ctx, expr);
+        case EXPR_INDEX: {
+            VarDecl *variable = expr->as.index.variable;
+            if (!emit_expr(ctx, expr->as.index.index)) return false;
+            fputs("    test rax, rax\n"
+                  "    js __yl_runtime_error\n"
+                  "    mov r10, rax\n",
+                  ctx->out);
+            fprintf(ctx->out, "    mov r11, %zu\n", variable->array_length);
+            fputs("    cmp r10, r11\n"
+                  "    jae __yl_runtime_error\n",
+                  ctx->out);
+            size_t base_offset = slot_offset(ctx, variable);
+            fprintf(ctx->out, "    lea r11, [rbp - %zu]\n"
+                              "    mov rax, [r11 + r10*8]\n",
+                    base_offset);
+            return ctx->okay;
+        }
         case EXPR_FLOAT:
         case EXPR_FSTRING:
         case EXPR_ARRAY:
-        case EXPR_INDEX:
         case EXPR_ERROR:
             fputs("ylang: internal error: unsupported expression reached NASM emitter.\n",
                   stderr);
@@ -787,6 +905,16 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
             size_t offset = slot_offset(ctx, var);
+            if (var->is_array) {
+                Expr *initializer = var->initializer;
+                for (size_t i = 0; i < initializer->as.array.count; i++) {
+                    if (!emit_expr(ctx, initializer->as.array.items[i])) return false;
+                    size_t element_offset = offset - i * 8U;
+                    fprintf(ctx->out, "    mov [rbp - %zu], rax\n",
+                            element_offset);
+                }
+                return true;
+            }
             if (var->initializer) {
                 if (!emit_expr(ctx, var->initializer)) return false;
             } else if (var->type == TYPE_STRING) {
@@ -902,6 +1030,7 @@ static bool prepare_function(AsmContext *ctx, Function *function)
     ctx->slots = NULL;
     ctx->slot_count = 0;
     ctx->slot_capacity = 0;
+    ctx->stack_words = 0;
     ctx->temporary_depth = 0;
     ctx->loop = NULL;
     ctx->function = function;
@@ -922,7 +1051,12 @@ static bool emit_function(AsmContext *ctx, Function *function)
     };
     if (!prepare_function(ctx, function)) return false;
 
-    size_t raw_frame_size = ctx->slot_count * 8U;
+    if (ctx->stack_words > (SIZE_MAX - 15U) / 8U) {
+        fputs("ylang: NASM backend stack frame size overflow.\n", stderr);
+        ctx->okay = false;
+        return false;
+    }
+    size_t raw_frame_size = ctx->stack_words * 8U;
     size_t frame_size = (raw_frame_size + 15U) & ~(size_t)15U;
     fprintf(ctx->out, "\n%s:\n    push rbp\n    mov rbp, rsp\n",
             function->c_name);
