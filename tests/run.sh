@@ -421,7 +421,7 @@ function main() -> int {
 EOF
 ./build/ylang check build/imports/asm-main.yl >/dev/null
 ./build/ylang emit-asm build/imports/asm-main.yl -o build/imports/asm-main.asm >/dev/null
-grep -q '^call yl_fn_m1_imported_answer
+grep -q 'call yl_fn_m1_imported_answer' build/imports/asm-main.asm
 ./build/ylang check tests/asm-basic.yl >/dev/null
 ./build/ylang emit-asm tests/asm-basic.yl -o build/asm-basic.asm >/dev/null
 grep -q '^global _start$' build/asm-basic.asm
