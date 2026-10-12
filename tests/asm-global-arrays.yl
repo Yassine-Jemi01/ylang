@@ -1,0 +1,11 @@
+let int values[] = [3, 5, 8];
+let string colors[] = ["red", "green", "blue"];
+
+function main() -> int {
+    print(values[1], length(values));
+    values[1] = 42;
+    values[2] += 2;
+    print(values[1], values[2]);
+    print(colors[1], length(colors));
+    return 0;
+}
