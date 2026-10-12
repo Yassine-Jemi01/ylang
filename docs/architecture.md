@@ -5,7 +5,7 @@ YLang 1.0.0 uses a conventional multi-stage compiler pipeline:
 1. **Lexer (`src/lexer.c`)** — turns source text into positioned tokens.
 2. **Parser (`src/parser.c`)** — builds the program representation and emits syntax diagnostics.
 3. **Semantic analysis (`src/sema.c`)** — resolves names, validates initialization and constant assignment, and checks types.
-4. **Module loader (`src/module.c`)** — recursively loads imported files, detects cycles, resolves named imports, and merges module ASTs while retaining per-module visibility.
+4. **Module loader (`src/module.c`)** — recursively loads imported files, detects cycles, resolves named imports relative to the importing file or the colon-separated YLANG_PATH search path, and merges module ASTs while retaining per-module visibility. Imports accept quoted paths such as `from "./util.yl" import helper;` and dotted filenames such as `from util.yl import helper;`.
 5. **C code generator (`src/codegen.c`)** — writes C for the checked program, including runtime helpers for supported checked arithmetic operations.
 6. **Driver (`src/driver.c`)** — orchestrates module loading and checking, writes generated C, and invokes GCC or Clang without going through a shell.
 7. **CLI (`src/main.c`)** — parses user commands and their options.
