@@ -356,15 +356,19 @@ function private_helper() -> string {
 EOF
 cat > build/imports/main.yl <<'EOF'
 from "./data.yl" import system_data, system_prefix;
+function m1_private_helper() -> string {
+    return "root-collision-test";
+}
 function main() -> int {
     print(system_data(), system_prefix);
+    print(m1_private_helper());
     return 0;
 }
 EOF
 ./build/ylang check build/imports/main.yl >/dev/null
 ./build/ylang build build/imports/main.yl -o build/test-module-imports >/dev/null
 ./build/test-module-imports > build/module-imports.out
-printf 'module-YLang module\n' > build/module-imports.expected
+printf 'module-YLang module\nroot-collision-test\n' > build/module-imports.expected
 diff -u build/module-imports.expected build/module-imports.out
 
 # Names from a module remain private unless imported.

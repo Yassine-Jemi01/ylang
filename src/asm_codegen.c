@@ -1127,7 +1127,10 @@ bool generate_asm(Compiler *compiler, const char *path)
         "section .text\n"
         "_start:\n"
         "    and rsp, -16\n"
-        "    call yl_fn_main\n"
+        "    call ",
+        out);
+    fprintf(out, "%s\n", main_function->c_name);
+    fputs(
         "    mov rdi, rax\n"
         "    mov eax, 60\n"
         "    syscall\n",

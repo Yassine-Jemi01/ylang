@@ -229,7 +229,9 @@ static bool load_module(Compiler *compiler, Module *module)
                        "An imported module cannot define main().",
                        "Define main() only in the root program file.");
         }
-        if (!module->is_root) {
+        {
+            /* Namespace every function, including root functions, so no source
+               identifier can collide with a generated name from another module. */
             int needed = snprintf(NULL, 0, "yl_fn_m%zu_%s",
                                   module->id, function->name);
             if (needed < 0) {
