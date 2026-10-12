@@ -272,6 +272,9 @@ int ylang_run(const char *command, const char *input_path,
         } else if (strcmp(command, "emit-c") == 0) {
             fprintf(stderr, "ylang: emit-c failed with %u error(s); no C source was generated.\n",
                     compiler.error_count);
+        } else if (strcmp(command, "emit-asm") == 0) {
+            fprintf(stderr, "ylang: emit-asm failed with %u error(s); no assembly was generated.\n",
+                    compiler.error_count);
         } else {
             fprintf(stderr, "ylang: build failed with %u error(s); no executable was produced.\n",
                     compiler.error_count);
@@ -286,6 +289,33 @@ int ylang_run(const char *command, const char *input_path,
         arena_destroy(&compiler.arena);
         free(source);
         return 0;
+    }
+
+    if (strcmp(command, "emit-asm") == 0) {
+        const char *asm_path = output_path;
+        if (!asm_path) {
+            if (mkdir("build", 0755) != 0 && errno != EEXIST) {
+                fprintf(stderr, "ylang: cannot create build directory: %s\n",
+                        strerror(errno));
+                arena_destroy(&compiler.arena);
+                free(source);
+                return 73;
+            }
+            asm_path = "build/ylang-generated.asm";
+        }
+        if (paths_refer_same_file(input_path, asm_path)) {
+            fprintf(stderr,
+                    "ylang: input '%s' and output '%s' refer to the same file; refusing to overwrite source.\n",
+                    input_path, asm_path);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 64;
+        }
+        bool okay = generate_asm(&compiler, asm_path);
+        if (okay) printf("Generated NASM assembly: %s\n", asm_path);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return okay ? 0 : 1;
     }
 
     const bool emit_c_command = strcmp(command, "emit-c") == 0;
