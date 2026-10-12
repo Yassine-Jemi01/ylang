@@ -460,6 +460,40 @@ fi
 grep -q 'multi-file imports in the NASM backend' build/imports/nasm.out
 test ! -e build/imports/main.asm
 
+# NASM scalar global variables: initialization, reads, writes, and function calls.
+cat > build/asm-globals.yl <<'EOF'
+let int counter = 40;
+let const string prefix = "global";
+let bool enabled = true;
+let char marker = '!';
+let string empty_text;
+
+function add_global(int amount) -> int {
+    counter += amount;
+    return counter;
+}
+
+function main() -> int {
+    print(prefix, counter, enabled, marker, empty_text);
+    print(add_global(2), counter);
+    counter = counter + 1;
+    print(counter);
+    return 0;
+}
+EOF
+cat > build/expected-asm-globals.txt <<'EOF'
+global 40 true ! 
+42 42
+43
+EOF
+./build/ylang check build/asm-globals.yl >/dev/null
+./build/ylang emit-asm build/asm-globals.yl -o build/asm-globals.asm >/dev/null
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+    ./build/ylang build-asm build/asm-globals.yl -o build/test-asm-globals >/dev/null
+    ./build/test-asm-globals > build/asm-globals.out
+    diff -u build/expected-asm-globals.txt build/asm-globals.out
+fi
+
 # Experimental NASM backend: test emission everywhere and execute it when NASM is present.
 ./build/ylang check tests/asm-basic.yl >/dev/null
 ./build/ylang emit-asm tests/asm-basic.yl -o build/asm-basic.asm >/dev/null
