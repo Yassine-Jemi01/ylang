@@ -142,8 +142,7 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
                                   "assignments without a resolved target");
             }
             if (target->kind == EXPR_INDEX) {
-                if (!variable->is_array || variable->is_global ||
-                    variable->array_length == 0U) {
+                if (!variable->is_array || variable->array_length == 0U) {
                     return asm_reject(ctx, expr->token,
                                       "array assignment except to fixed local arrays");
                 }
@@ -163,7 +162,6 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
                 if (argument && argument->kind == EXPR_NAME &&
                     argument->as.name.variable &&
                     argument->as.name.variable->is_array &&
-                    !argument->as.name.variable->is_global &&
                     argument->as.name.variable->array_length > 0U) {
                     return true;
                 }
@@ -195,7 +193,7 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
                               "array literals outside a local array initializer");
         case EXPR_INDEX: {
             VarDecl *variable = expr->as.index.variable;
-            if (!variable || !variable->is_array || variable->is_global ||
+            if (!variable || !variable->is_array ||
                 variable->array_length == 0U) {
                 return asm_reject(ctx, expr->token,
                                   "indexing except on fixed local arrays");
@@ -1253,12 +1251,21 @@ bool generate_asm(Compiler *compiler, const char *path)
 
     for (size_t i = 0; ctx.okay && i < compiler->program->global_count; i++) {
         VarDecl *variable = compiler->program->globals[i];
-        if (variable->is_array) {
-            (void)asm_reject(&ctx, variable->token, "global arrays");
+        if (!asm_type_supported(&ctx, variable->type, variable->token, false)) {
             break;
         }
-        if (!asm_type_supported(&ctx, variable->type, variable->token, false) ||
-            !validate_expr(&ctx, variable->initializer)) {
+        if (variable->is_array) {
+            Expr *initializer = variable->initializer;
+            if (!initializer || initializer->kind != EXPR_ARRAY ||
+                initializer->as.array.count != variable->array_length ||
+                variable->array_length == 0U) {
+                (void)asm_reject(&ctx, variable->token,
+                                 "global arrays without fixed-size literal initializers");
+                break;
+            }
+            if (!validate_expr_list(&ctx, initializer->as.array.items,
+                                    initializer->as.array.count)) break;
+        } else if (!validate_expr(&ctx, variable->initializer)) {
             break;
         }
     }
@@ -1312,8 +1319,9 @@ bool generate_asm(Compiler *compiler, const char *path)
     if (compiler->program->global_count != 0U) {
         fputs("section .bss align=8\n", out);
         for (size_t i = 0; i < compiler->program->global_count; i++) {
-            fprintf(out, "%s: resq 1\n",
-                    compiler->program->globals[i]->c_name);
+            VarDecl *variable = compiler->program->globals[i];
+            fprintf(out, "%s: resq %zu\n", variable->c_name,
+                    variable->is_array ? variable->array_length : 1U);
         }
     }
     fputs(
@@ -1324,14 +1332,27 @@ bool generate_asm(Compiler *compiler, const char *path)
         out);
     for (size_t i = 0; i < compiler->program->global_count; i++) {
         VarDecl *variable = compiler->program->globals[i];
-        if (variable->initializer) {
-            if (!emit_expr(&ctx, variable->initializer)) ctx.okay = false;
-        } else if (variable->type == TYPE_STRING) {
-            fputs("    lea rax, [rel yl_empty]\n", out);
+        if (variable->is_array) {
+            Expr *initializer = variable->initializer;
+            for (size_t j = 0; j < initializer->as.array.count; j++) {
+                if (!emit_expr(&ctx, initializer->as.array.items[j])) {
+                    ctx.okay = false;
+                    break;
+                }
+                fprintf(out, "    mov [rel %s + %zu], rax\n",
+                        variable->c_name, j * 8U);
+            }
+            if (!ctx.okay) break;
         } else {
-            fputs("    xor eax, eax\n", out);
+            if (variable->initializer) {
+                if (!emit_expr(&ctx, variable->initializer)) ctx.okay = false;
+            } else if (variable->type == TYPE_STRING) {
+                fputs("    lea rax, [rel yl_empty]\n", out);
+            } else {
+                fputs("    xor eax, eax\n", out);
+            }
+            fprintf(out, "    mov [rel %s], rax\n", variable->c_name);
         }
-        fprintf(out, "    mov [rel %s], rax\n", variable->c_name);
     }
     fputs("    call ", out);
     fprintf(out, "%s\n", main_function->c_name);
