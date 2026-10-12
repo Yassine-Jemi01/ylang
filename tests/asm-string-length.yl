@@ -1,0 +1,5 @@
+function main() -> int {
+    let string label = "NASM";
+    print(string.length(label), string.length("YLang"), string.length(""));
+    return 0;
+}
