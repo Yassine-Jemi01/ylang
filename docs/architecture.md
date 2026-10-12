@@ -37,9 +37,10 @@ calls, integer arithmetic and comparisons, if/else, loops, break,
 continue, return, and print. Integer overflow and invalid integer
 division terminate the program with status 70.
 
-The experimental backend currently rejects global declarations, arrays,
-floats, f-strings, string comparisons, and/or, standard-library or
-conversion calls, and multi-file imports. The standard build command continues to use the established C backend.
+The experimental backend supports named function imports when all involved
+modules use its scalar subset. It still rejects global declarations (including
+imported globals), arrays, floats, f-strings, string comparisons, and/or, and
+standard-library or conversion calls. The standard build command continues to use the established C backend.
 The separate build-asm command runs NASM and ld for supported programs;
 emit-asm writes the assembly source for inspection. The experimental backend
 is Linux x86-64 specific and is not supported on macOS or other architectures.

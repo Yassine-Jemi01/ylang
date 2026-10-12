@@ -406,13 +406,101 @@ if ./build/ylang check build/imports/cycle-a.yl > build/imports/cycle.out 2>&1; 
 fi
 grep -q 'E1023' build/imports/cycle.out
 
-# NASM rejects multi-file imports until its lowering supports module visibility.
-if ./build/ylang emit-asm build/imports/main.yl -o build/imports/main.asm > build/imports/nasm.out 2>&1; then
-    echo "FAIL: NASM accepted multi-file imports before lowering support" >&2
+# NASM supports named function imports within its current scalar subset.
+cat > build/imports/asm-library.yl <<'EOF'
+function imported_answer() -> int {
+    return 40 + 2;
+}
+EOF
+cat > build/imports/asm-main.yl <<'EOF'
+from "./asm-library.yl" import imported_answer;
+function main() -> int {
+    print(imported_answer());
+    return 0;
+}
+EOF
+./build/ylang check build/imports/asm-main.yl >/dev/null
+./build/ylang emit-asm build/imports/asm-main.yl -o build/imports/asm-main.asm >/dev/null
+grep -q '^call yl_fn_m1_imported_answer
+./build/ylang check tests/asm-basic.yl >/dev/null
+./build/ylang emit-asm tests/asm-basic.yl -o build/asm-basic.asm >/dev/null
+grep -q '^global _start$' build/asm-basic.asm
+grep -q '^__yl_runtime_error:' build/asm-basic.asm
+grep -q '^yl_print_i64:' build/asm-basic.asm
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+    if ! nasm -f elf64 build/asm-basic.asm -o build/asm-basic.o; then
+        nl -ba build/asm-basic.asm | sed -n '108,132p' >&2
+        exit 1
+    fi
+    ld -o build/test-asm-basic build/asm-basic.o
+    ./build/test-asm-basic > build/asm-basic.out
+    diff -u tests/expected-asm-basic.txt build/asm-basic.out
+    ./build/ylang build-asm tests/asm-basic.yl -o build/test-asm-basic-cli >/dev/null
+    ./build/test-asm-basic-cli > build/asm-basic-cli.out
+    diff -u tests/expected-asm-basic.txt build/asm-basic-cli.out
+
+    ./build/ylang build-asm benchmarks/nasm-speed.yl -o build/test-nasm-speed >/dev/null
+    ./build/test-nasm-speed > build/nasm-speed.out
+    diff -u benchmarks/expected-nasm-speed.txt build/nasm-speed.out
+    if command -v python3 >/dev/null 2>&1; then
+        python3 benchmarks/bench-nasm.py build/test-nasm-speed --runs 5 --warmup 1 --target-ms 1000 > build/bench-nasm-smoke.out
+        grep -q 'Samples: 5' build/bench-nasm-smoke.out
+    fi
+
+    ./build/ylang build-asm tests/asm-overflow.yl -o build/test-asm-overflow >/dev/null
+    if ./build/test-asm-overflow > build/asm-overflow.out 2>&1; then
+        echo "FAIL: unary negation of INT64_MIN did not trap" >&2
+        exit 1
+    else
+        status=$?
+        test "$status" -eq 70
+    fi
+    grep -q 'YLang runtime error' build/asm-overflow.out
+
+    ./build/ylang build-asm tests/asm-increment-overflow.yl -o build/test-asm-increment-overflow >/dev/null
+    if ./build/test-asm-increment-overflow > build/asm-increment-overflow.out 2>&1; then
+        echo "FAIL: incrementing INT64_MAX did not trap" >&2
+        exit 1
+    else
+        status=$?
+        test "$status" -eq 70
+    fi
+    grep -q 'YLang runtime error' build/asm-increment-overflow.out
+
+    ./build/ylang build-asm tests/asm-division-overflow.yl -o build/test-asm-division-overflow >/dev/null
+    if ./build/test-asm-division-overflow > build/asm-division-overflow.out 2>&1; then
+        echo "FAIL: INT64_MIN / -1 did not trap" >&2
+        exit 1
+    else
+        status=$?
+        test "$status" -eq 70
+    fi
+    grep -q 'YLang runtime error' build/asm-division-overflow.out
+fi
+if ./build/ylang emit-asm examples/math.yl -o build/asm-unsupported.asm > build/asm-unsupported.out 2>&1; then
+    echo "FAIL: NASM backend accepted float/math features that are not implemented" >&2
     exit 1
 fi
-grep -q 'multi-file imports in the NASM backend' build/imports/nasm.out
+grep -q 'NASM backend does not support float values' build/asm-unsupported.out
+test ! -e build/asm-unsupported.asm
+
+echo "All YLang tests passed."
+ build/imports/asm-main.asm
+
+# Imported globals remain unsupported until NASM global-data lowering exists.
+if ./build/ylang emit-asm build/imports/main.yl -o build/imports/main.asm > build/imports/nasm.out 2>&1; then
+    echo "FAIL: NASM accepted imported global variables before lowering support" >&2
+    exit 1
+fi
+grep -q 'NASM backend does not support global declarations' build/imports/nasm.out
 test ! -e build/imports/main.asm
+
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+    ./build/ylang build-asm build/imports/asm-main.yl -o build/test-imported-asm >/dev/null
+    ./build/test-imported-asm > build/imported-asm.out
+    printf '42\n' > build/imported-asm.expected
+    diff -u build/imported-asm.expected build/imported-asm.out
+fi
 
 # Experimental NASM backend: test emission everywhere and execute it when NASM is present.
 ./build/ylang check tests/asm-basic.yl >/dev/null

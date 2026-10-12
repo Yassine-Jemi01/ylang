@@ -237,9 +237,10 @@ Different modules may define private helpers with the same name.
 The compiler rejects unknown imported names, conflicting or repeated imports,
 imports of the program entry point, missing module files, and circular imports.
 The root source file must define `main()`; an imported module cannot define it.
-Imports are currently supported by the default C backend. The experimental NASM
-backend rejects multi-file imports explicitly until module-aware assembly
-lowering is implemented.
+The default C backend supports imports of named functions and globals. The
+experimental NASM backend supports imported functions when all involved modules
+stay within its current scalar subset; it rejects imported globals and other
+unsupported language features explicitly.
 
 ## 11. Diagnostics and tooling
 
