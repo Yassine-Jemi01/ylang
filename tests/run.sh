@@ -481,6 +481,29 @@ grep -q 'call .*library_value' build/imports/asm-main.asm
 printf '22\n' > build/asm-module-imports.expected
 diff -u build/asm-module-imports.expected build/asm-module-imports.out
 
+# YLANG_PATH makes reusable third-party modules importable by filename.
+mkdir -p build/module-paths
+cat > build/module-paths/mathlib.yl <<'EOF'
+function library_double(int value) -> int {
+    return value * 2;
+}
+EOF
+cat > build/module-paths-main.yl <<'EOF'
+from mathlib.yl import library_double;
+function main() -> int {
+    print(library_double(21));
+    return 0;
+}
+EOF
+YLANG_PATH="$PWD/build/module-paths" ./build/ylang check build/module-paths-main.yl >/dev/null
+YLANG_PATH="$PWD/build/module-paths" ./build/ylang build build/module-paths-main.yl -o build/test-module-search-path >/dev/null
+./build/test-module-search-path > build/module-search-path.out
+printf '42\n' > build/module-search-path.expected
+diff -u build/module-search-path.expected build/module-search-path.out
+YLANG_PATH="$PWD/build/module-paths" ./build/ylang build-asm build/module-paths-main.yl -o build/test-nasm-module-search-path >/dev/null
+./build/test-nasm-module-search-path > build/nasm-module-search-path.out
+diff -u build/module-search-path.expected build/nasm-module-search-path.out
+
 # NASM scalar global variables: initialization, reads, writes, and function calls.
 cat > build/asm-globals.yl <<'EOF'
 let int counter = 40;
