@@ -123,7 +123,8 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
             if (expr->as.binary.left && expr->as.binary.left->type == TYPE_STRING) {
                 return asm_reject(ctx, expr->token, "string comparisons");
             }
-            if (op != TOKEN_PLUS && op != TOKEN_MINUS && op != TOKEN_STAR &&
+            if (op != TOKEN_AND && op != TOKEN_OR &&
+                op != TOKEN_PLUS && op != TOKEN_MINUS && op != TOKEN_STAR &&
                 op != TOKEN_SLASH && op != TOKEN_PERCENT &&
                 op != TOKEN_EQUAL_EQUAL && op != TOKEN_BANG_EQUAL &&
                 op != TOKEN_LESS && op != TOKEN_LESS_EQUAL &&
