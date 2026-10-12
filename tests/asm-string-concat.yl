@@ -1,0 +1,7 @@
+function main() -> int {
+    let string first = "Y";
+    let string second = "Lang";
+    print(string.concat(first, second), string.concat("", "NASM"));
+    print(string.length(string.concat("YLang", "")));
+    return 0;
+}
