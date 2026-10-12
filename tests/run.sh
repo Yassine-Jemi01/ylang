@@ -354,6 +354,12 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     ./build/ylang build-asm benchmarks/nasm-speed.yl -o build/test-nasm-speed >/dev/null
     ./build/test-nasm-speed > build/nasm-speed.out
     diff -u benchmarks/expected-nasm-speed.txt build/nasm-speed.out
+
+    # Exercise register-backed "total = total + counter" in the long-loop benchmark.
+    ./build/ylang build-asm benchmarks/nasm-long.yl -o build/test-nasm-long >/dev/null
+    ./build/test-nasm-long > build/nasm-long.out
+    diff -u benchmarks/expected-nasm-long.txt build/nasm-long.out
+
     if command -v python3 >/dev/null 2>&1; then
         python3 benchmarks/bench-nasm.py build/test-nasm-speed --runs 5 --warmup 1 --target-ms 1000 > build/bench-nasm-smoke.out
         grep -q 'Samples: 5' build/bench-nasm-smoke.out
