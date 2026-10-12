@@ -42,8 +42,9 @@ Integer overflow and invalid integer division terminate with status 70.
 
 The experimental backend still rejects array parameters, nested arrays, floats,
 f-strings, string comparisons, most standard-library calls, and conversions.
-The byte-counting builtin `string.length(string)` and allocating
-`string.concat(string, string)` are supported. Concatenation allocates process-lifetime
+The byte-counting builtin `string.length(string)`, allocating
+`string.concat(string, string)`, and boolean `string.contains`, `string.starts_with`,
+and `string.ends_with` are supported. Concatenation allocates process-lifetime
 storage with Linux `mmap`; there is no garbage collector or free operation yet. Named
 imports are resolved by the shared module loader, and the NASM backend emits the
 merged, semantically checked module graph as one executable. Global arrays require fixed-size literal initializers.
