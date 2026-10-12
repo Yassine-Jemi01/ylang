@@ -29,6 +29,8 @@ typedef struct {
 typedef struct AsmLoop {
     unsigned break_label;
     unsigned continue_label;
+    const char *break_prefix;
+    const char *continue_prefix;
     struct AsmLoop *previous;
 } AsmLoop;
 
@@ -91,7 +93,7 @@ static bool validate_expr_list(AsmContext *ctx, Expr **items, size_t count)
 static bool validate_expr(AsmContext *ctx, Expr *expr)
 {
     if (!expr) return true;
-    if (!asm_type_supported(ctx, expr->type, expr->token, false)) return false;
+    if (!asm_type_supported(ctx, expr->type, expr->token, true)) return false;
 
     switch (expr->kind) {
         case EXPR_INT:
@@ -632,7 +634,7 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
             unsigned start_label = new_label(ctx);
             unsigned end_label = new_label(ctx);
             fprintf(ctx->out, ".Lloop_start_%u:\n", start_label);
-            AsmLoop loop = { end_label, start_label, ctx->loop };
+            AsmLoop loop = { end_label, start_label, "loop_end", "loop_start", ctx->loop };
             ctx->loop = &loop;
             bool okay = emit_stmt(ctx, stmt->as.loop_body);
             ctx->loop = loop.previous;
@@ -648,7 +650,7 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
             if (!emit_expr(ctx, stmt->as.while_stmt.condition)) return false;
             fputs("    test rax, rax\n", ctx->out);
             fprintf(ctx->out, "    jz .Lwhile_end_%u\n", end_label);
-            AsmLoop loop = { end_label, start_label, ctx->loop };
+            AsmLoop loop = { end_label, start_label, "while_end", "while_start", ctx->loop };
             ctx->loop = &loop;
             bool okay = emit_stmt(ctx, stmt->as.while_stmt.body);
             ctx->loop = loop.previous;
@@ -668,7 +670,7 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
                 fputs("    test rax, rax\n", ctx->out);
                 fprintf(ctx->out, "    jz .Lfor_end_%u\n", end_label);
             }
-            AsmLoop loop = { end_label, increment_label, ctx->loop };
+            AsmLoop loop = { end_label, increment_label, "for_end", "for_increment", ctx->loop };
             ctx->loop = &loop;
             bool okay = emit_stmt(ctx, stmt->as.for_stmt.body);
             ctx->loop = loop.previous;
@@ -683,17 +685,14 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
             if (!ctx->loop) {
                 return asm_reject(ctx, stmt->token, "break outside a loop");
             }
-            fprintf(ctx->out, "    jmp .Lloop_end_%u\n", ctx->loop->break_label);
+            fprintf(ctx->out, "    jmp .L%s_%u\n", ctx->loop->break_prefix, ctx->loop->break_label);
             return true;
         case STMT_CONTINUE:
             if (!ctx->loop) {
                 return asm_reject(ctx, stmt->token, "continue outside a loop");
             }
-            if (ctx->loop->continue_label == 0U) {
-                return asm_reject(ctx, stmt->token, "this continue target");
-            }
             /* The labels are emitted by each loop form. */
-            fprintf(ctx->out, "    jmp .Lloop_start_%u\n", ctx->loop->continue_label);
+            fprintf(ctx->out, "    jmp .L%s_%u\n", ctx->loop->continue_prefix, ctx->loop->continue_label);
             return true;
         case STMT_RETURN:
             if (stmt->as.return_value) {
@@ -921,9 +920,9 @@ bool generate_asm(Compiler *compiler, const char *path)
     }
 
     if (!ctx.okay) {
+        for (size_t i = 0; i < ctx.string_count; i++) free(ctx.strings[i].bytes);
         free(ctx.strings);
         free(ctx.slots);
-        for (size_t i = 0; i < ctx.string_count; i++) free(ctx.strings[i].bytes);
         return false;
     }
 
