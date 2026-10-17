@@ -414,6 +414,25 @@ static EnumVariant *find_enum_variant(EnumDecl *enumeration, const char *name)
     return NULL;
 }
 
+static StructDecl *find_struct(Compiler *compiler, const char *name)
+{
+    for (size_t i = 0; i < compiler->struct_count; i++) {
+        StructDecl *structure = compiler->structs[i];
+        if ((!compiler->current_module || structure->module == compiler->current_module) &&
+            strcmp(structure->name, name) == 0) return structure;
+    }
+    return NULL;
+}
+
+static StructField *find_struct_field(StructDecl *structure, const char *name)
+{
+    if (!structure) return NULL;
+    for (size_t i = 0; i < structure->field_count; i++) {
+        if (strcmp(structure->fields[i]->name, name) == 0) return structure->fields[i];
+    }
+    return NULL;
+}
+
 static YType parse_type(Parser *p)
 {
     Token token = consume(p, TOKEN_IDENTIFIER,
@@ -427,13 +446,16 @@ static YType parse_type(Parser *p)
     if (token_is(&token, "void")) return TYPE_VOID;
     EnumDecl *enumeration = find_enum(p->compiler, token_copy(p->compiler, token));
     if (enumeration) return enumeration->type;
+    StructDecl *structure = find_struct(p->compiler, token_copy(p->compiler, token));
+    if (structure) return structure->type;
     diagnostic(p->compiler, token, "error", "E2002", "Unknown type name.",
-               "Available built-in types: int, float, bool, char, string, void; user-defined enums must be declared before use.");
+               "Available built-in types are int, float, bool, char, string, and void; user-defined enums and structs must be declared before use.");
     return TYPE_ERROR;
 }
 
 const char *type_name(YType type)
 {
+    if (type >= TYPE_STRUCT_BASE) return "<struct>";
     if (type >= TYPE_ENUM_BASE) return "<enum>";
     switch (type) {
         case TYPE_INT: return "int";
