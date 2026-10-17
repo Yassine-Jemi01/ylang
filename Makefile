@@ -12,7 +12,7 @@ SRC := $(wildcard src/*.c)
 OBJ := $(patsubst src/%.c,build/%.o,$(SRC))
 BIN := build/ylang
 
-.PHONY: all clean test sanitize install uninstall print-version gui gui-example install-gui check-sdl2 check-runtime-template regen-runtime-template
+.PHONY: all clean test sanitize install uninstall print-version gui gui-example install-gui check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
 
 all: $(BIN)
 
@@ -32,8 +32,27 @@ regen-runtime-template:
 print-version:
 	@printf '%s\n' '$(VERSION)'
 
-test: $(BIN)
+build/frontend-unit: tests/frontend_unit.c src/parser.c src/lexer.c src/internal.h include/ylang/compiler.h include/ylang/lexer.h
+	@mkdir -p build
+	$(CC) $(CPPFLAGS) -Isrc $(CFLAGS) tests/frontend_unit.c src/parser.c src/lexer.c $(LDFLAGS) -o $@
+
+frontend-unit-test: build/frontend-unit
+	./build/frontend-unit
+
+test: $(BIN) frontend-unit-test
 	sh tests/run.sh
+
+FUZZ_CC ?= clang
+FUZZ_CFLAGS ?= -std=c17 -O1 -g -Wall -Wextra -Wpedantic -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer
+
+fuzz-frontend:
+	@mkdir -p build
+	$(FUZZ_CC) $(CPPFLAGS) -Isrc $(FUZZ_CFLAGS) tests/fuzz_frontend.c src/parser.c src/lexer.c -o build/fuzz-frontend
+
+fuzz-smoke: fuzz-frontend
+	@mkdir -p build/fuzz-corpus
+	cp tests/fuzz-corpus/* build/fuzz-corpus/
+	./build/fuzz-frontend -runs=1000 -max_len=4096 build/fuzz-corpus
 
 sanitize:
 	$(MAKE) clean
