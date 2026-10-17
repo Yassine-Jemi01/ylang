@@ -1,0 +1,5 @@
+from cycle-b.yl import function_b()
+
+function function_a() -> int {
+    return function_b();
+}
