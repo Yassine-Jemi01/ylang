@@ -141,6 +141,15 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "path.basename") == 0) return "yl_path_basename";
     if (strcmp(name, "path.extension") == 0) return "yl_path_extension";
     if (strcmp(name, "image.open") == 0) return "yl_image_open";
+    if (strcmp(name, "gui.init") == 0) return "ylgui_api_init";
+    if (strcmp(name, "gui.create_window") == 0) return "ylgui_api_create_window";
+    if (strcmp(name, "gui.poll") == 0) return "ylgui_api_poll";
+    if (strcmp(name, "gui.clear") == 0) return "ylgui_api_clear";
+    if (strcmp(name, "gui.draw_rect") == 0) return "ylgui_api_draw_rect";
+    if (strcmp(name, "gui.present") == 0) return "ylgui_api_present";
+    if (strcmp(name, "gui.last_error") == 0) return "ylgui_api_last_error";
+    if (strcmp(name, "gui.close") == 0) return "ylgui_api_close";
+    if (strcmp(name, "gui.shutdown") == 0) return "ylgui_api_shutdown";
     return NULL;
 }
 
@@ -496,6 +505,15 @@ static void emit_runtime(FILE *out)
         "#include <limits.h>\n#include <stddef.h>\n#include <math.h>\n"
         "#include <errno.h>\n#include <sys/stat.h>\n#include <sys/types.h>\n"
         "#include <sys/wait.h>\n#include <unistd.h>\n\n"
+        "bool ylgui_api_init(void);\n"
+        "bool ylgui_api_create_window(const char *, int64_t, int64_t);\n"
+        "bool ylgui_api_poll(void);\n"
+        "bool ylgui_api_clear(int64_t, int64_t, int64_t);\n"
+        "bool ylgui_api_draw_rect(int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, int64_t);\n"
+        "bool ylgui_api_present(void);\n"
+        "const char *ylgui_api_last_error(void);\n"
+        "void ylgui_api_close(void);\n"
+        "void ylgui_api_shutdown(void);\n\n"
         "static void yl_runtime_error(const char *message) {\n"
         "    fprintf(stderr, \"YLang runtime error: %s\\n\", message);\n"
         "    exit(70);\n}\n"
