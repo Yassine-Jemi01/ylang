@@ -3,6 +3,11 @@ function main() -> int {
     print(hello);
     print(http_status_code());
 
+    let string redirect_body = http_get_with_headers(
+        "__BASE_URL__/redirect", "X-API-Key: secret");
+    print(redirect_body);
+    print(http_status_code());
+
     let string protected_body = http_get_with_headers(
         "__BASE_URL__/secret", "X-API-Key: secret");
     print(protected_body);
