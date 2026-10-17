@@ -71,3 +71,13 @@ jobs:
         run: npm test --prefix editors/vscode
       - name: Test Neovim diagnostic parser
         run: nvim --headless -u NONE +'luafile editors/nvim/tests/diagnostics.lua'
+
+
+  website-integrity:
+    name: English-only website integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Validate website
+        run: python3 tools/check_website.py
