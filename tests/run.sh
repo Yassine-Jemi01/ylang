@@ -256,6 +256,12 @@ if "$YLANG" check tests/imports/missing-symbol.yl > build/import-missing-symbol.
 fi
 grep -q "does not define function 'missing_fn'" build/import-missing-symbol.out
 
+if "$YLANG" check tests/imports/duplicate-symbol.yl > build/import-duplicate-symbol.out 2>&1; then
+    echo "FAIL: duplicate imported function name was accepted" >&2
+    exit 1
+fi
+grep -q "duplicate imported function 'system_value'" build/import-duplicate-symbol.out
+
 if "$YLANG" check tests/imports/missing-module.yl > build/import-missing-module.out 2>&1; then
     echo "FAIL: missing imported module was accepted" >&2
     exit 1
