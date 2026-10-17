@@ -9,8 +9,14 @@
 #include <string.h>
 
 /* --------------------------- C code generation -------------------------- */
-static const char *c_base_type(YType type)
+static const char *c_base_type(Compiler *compiler, YType type)
 {
+    if (type >= TYPE_STRUCT_BASE) {
+        for (size_t i = 0; i < compiler->struct_count; i++) {
+            if (compiler->structs[i]->type == type) return compiler->structs[i]->c_name;
+        }
+        return "int";
+    }
     if (type >= TYPE_ENUM_BASE) return "int64_t";
     switch (type) {
         case TYPE_INT: return "int64_t";
@@ -20,8 +26,8 @@ static const char *c_base_type(YType type)
         case TYPE_STRING: return "const char *";
         case TYPE_VOID: return "void";
         case TYPE_ERROR: return "int";
+        default: return "int64_t";
     }
-    return "int";
 }
 
 static void append_c_quoted(StringBuilder *sb, const char *text)
@@ -168,6 +174,30 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             sb_appendf(sb, "INT64_C(%lld)",
                        (long long)expr->as.enum_value.variant->value);
             break;
+        case EXPR_STRUCT_INIT: {
+            StructDecl *structure = expr->as.struct_init.structure;
+            sb_append(sb, "(");
+            sb_append(sb, structure ? structure->c_name : "int");
+            sb_append(sb, "){");
+            if (structure) {
+                size_t count = expr->as.struct_init.count < structure->field_count
+                    ? expr->as.struct_init.count : structure->field_count;
+                for (size_t i = 0; i < count; i++) {
+                    if (i) sb_append(sb, ", ");
+                    sb_append(sb, ".");
+                    sb_append(sb, structure->fields[i]->c_name);
+                    sb_append(sb, " = ");
+                    emit_expr(sb, expr->as.struct_init.args[i]);
+                }
+            }
+            sb_append(sb, "}");
+            break;
+        }
+        case EXPR_MEMBER:
+            emit_expr(sb, expr->as.member.target);
+            sb_append(sb, ".");
+            sb_append(sb, expr->as.member.field ? expr->as.member.field->c_name : expr->as.member.name);
+            break;
         case EXPR_INT: {
             const char *digits = expr->token.start;
             size_t digits_len = expr->token.length;
@@ -218,7 +248,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
         case EXPR_ASSIGN:
             if (expr->as.assign.is_compound &&
                 expr->as.assign.variable &&
-                expr->as.assign.variable->type == TYPE_INT) {
+                expr->as.assign.target && expr->as.assign.target->type == TYPE_INT) {
                 sb_append(sb, "yl_add_assign_i64(&(");
                 emit_expr(sb, expr->as.assign.target);
                 sb_append(sb, "), ");
@@ -226,7 +256,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 sb_append(sb, ")");
             } else if (expr->as.assign.is_compound &&
                        expr->as.assign.variable &&
-                       expr->as.assign.variable->type == TYPE_FLOAT) {
+                       expr->as.assign.target && expr->as.assign.target->type == TYPE_FLOAT) {
                 sb_append(sb, "yl_add_assign_f64(&(");
                 emit_expr(sb, expr->as.assign.target);
                 sb_append(sb, "), ");
@@ -364,11 +394,11 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
     }
 }
 
-static void emit_var_type(FILE *out, VarDecl *var, bool global)
+static void emit_var_type(Compiler *compiler, FILE *out, VarDecl *var, bool global)
 {
     if (global) fputs("static ", out);
     if (var->is_const && var->type != TYPE_STRING) fputs("const ", out);
-    fputs(c_base_type(var->type), out);
+    fputs(c_base_type(compiler, var->type), out);
     if (var->is_const && var->type == TYPE_STRING) fputs(" const", out);
 }
 
@@ -427,19 +457,19 @@ static void emit_fstring_print(FILE *out, Expr *expr, unsigned indent)
     }
 }
 
-static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
+static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
 {
     if (!stmt) return;
     switch (stmt->kind) {
         case STMT_BLOCK:
             emit_indent(out, indent); fputs("{\n", out);
             for (size_t i = 0; i < stmt->as.block.count; i++)
-                emit_stmt(out, stmt->as.block.items[i], indent + 1);
+                emit_stmt(c, out, stmt->as.block.items[i], indent + 1);
             emit_indent(out, indent); fputs("}\n", out);
             break;
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
-            emit_indent(out, indent); emit_var_type(out, var, false);
+            emit_indent(out, indent); emit_var_type(c, out, var, false);
             fprintf(out, " %s", var->c_name);
             if (var->is_array) fprintf(out, "[%zu]", var->array_length);
             if (var->initializer) {
@@ -462,26 +492,26 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             break;
         case STMT_IF:
             emit_indent(out, indent); fputs("if (", out); emit_expr_to_file(out, stmt->as.if_stmt.condition); fputs(") ", out);
-            fputs("\n", out); emit_stmt(out, stmt->as.if_stmt.then_branch, indent);
+            fputs("\n", out); emit_stmt(c, out, stmt->as.if_stmt.then_branch, indent);
             if (stmt->as.if_stmt.else_branch) {
                 emit_indent(out, indent); fputs("else ", out); fputs("\n", out);
-                emit_stmt(out, stmt->as.if_stmt.else_branch, indent);
+                emit_stmt(c, out, stmt->as.if_stmt.else_branch, indent);
             }
             break;
         case STMT_LOOP:
             emit_indent(out, indent); fputs("for (;;) ", out); fputs("\n", out);
-            emit_stmt(out, stmt->as.loop_body, indent);
+            emit_stmt(c, out, stmt->as.loop_body, indent);
             break;
         case STMT_WHILE:
             emit_indent(out, indent); fputs("while (", out);
             emit_expr_to_file(out, stmt->as.while_stmt.condition);
             fputs(")\n", out);
-            emit_stmt(out, stmt->as.while_stmt.body, indent);
+            emit_stmt(c, out, stmt->as.while_stmt.body, indent);
             break;
         case STMT_FOR:
             emit_indent(out, indent); fputs("{\n", out);
             if (stmt->as.for_stmt.initializer)
-                emit_stmt(out, stmt->as.for_stmt.initializer, indent + 1);
+                emit_stmt(c, out, stmt->as.for_stmt.initializer, indent + 1);
             emit_indent(out, indent + 1); fputs("for (; ", out);
             if (stmt->as.for_stmt.condition)
                 emit_expr_to_file(out, stmt->as.for_stmt.condition);
@@ -489,7 +519,7 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             if (stmt->as.for_stmt.increment)
                 emit_expr_to_file(out, stmt->as.for_stmt.increment);
             fputs(")\n", out);
-            emit_stmt(out, stmt->as.for_stmt.body, indent + 1);
+            emit_stmt(c, out, stmt->as.for_stmt.body, indent + 1);
             emit_indent(out, indent); fputs("}\n", out);
             break;
         case STMT_BREAK:
@@ -515,7 +545,7 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
                 fputs(i == 0 ? "if (" : "else if (", out);
                 fprintf(out, "%s == INT64_C(%lld))\n", match_name,
                         (long long)(arm->variant ? arm->variant->value : 0));
-                emit_stmt(out, arm->body, indent + 1);
+                emit_stmt(c, out, arm->body, indent + 1);
             }
             emit_indent(out, indent); fputs("}\n", out);
             break;
@@ -616,9 +646,19 @@ bool generate_c(Compiler *c, const char *path)
     }
     emit_runtime(out);
 
+    for (size_t i = 0; i < c->struct_count; i++) {
+        StructDecl *structure = c->structs[i];
+        fputs("typedef struct {\n", out);
+        for (size_t j = 0; j < structure->field_count; j++) {
+            StructField *field = structure->fields[j];
+            fprintf(out, "    %s %s;\n", c_base_type(c, field->type), field->c_name);
+        }
+        fprintf(out, "} %s;\n\n", structure->c_name);
+    }
+
     for (size_t i = 0; i < c->program->global_count; i++) {
         VarDecl *var = c->program->globals[i];
-        emit_var_type(out, var, true);
+        emit_var_type(c, out, var, true);
         fprintf(out, " %s", var->c_name);
         if (var->is_array) fprintf(out, "[%zu]", var->array_length);
         if (var->initializer) {
@@ -640,7 +680,7 @@ bool generate_c(Compiler *c, const char *path)
 
     for (size_t i = 0; i < c->program->function_count; i++) {
         Function *fn = c->program->functions[i];
-        fprintf(out, "%s %s(", c_base_type(fn->return_type), fn->c_name);
+        fprintf(out, "%s %s(", c_base_type(c, fn->return_type), fn->c_name);
         if (fn->param_count == 0) fputs("void", out);
         bool first_param = true;
         for (size_t j = 0; j < fn->param_count; j++) {
@@ -648,9 +688,9 @@ bool generate_c(Compiler *c, const char *path)
             if (!first_param) fputs(", ", out);
             if (param->is_array) {
                 fprintf(out, "%s *%s, size_t %s_len",
-                        c_base_type(param->type), param->c_name, param->c_name);
+                        c_base_type(c, param->type), param->c_name, param->c_name);
             } else {
-                fprintf(out, "%s %s", c_base_type(param->type), param->c_name);
+                fprintf(out, "%s %s", c_base_type(c, param->type), param->c_name);
             }
             first_param = false;
         }
@@ -660,7 +700,7 @@ bool generate_c(Compiler *c, const char *path)
 
     for (size_t i = 0; i < c->program->function_count; i++) {
         Function *fn = c->program->functions[i];
-        fprintf(out, "%s %s(", c_base_type(fn->return_type), fn->c_name);
+        fprintf(out, "%s %s(", c_base_type(c, fn->return_type), fn->c_name);
         if (fn->param_count == 0) fputs("void", out);
         bool first_param = true;
         for (size_t j = 0; j < fn->param_count; j++) {
@@ -668,14 +708,14 @@ bool generate_c(Compiler *c, const char *path)
             if (!first_param) fputs(", ", out);
             if (param->is_array) {
                 fprintf(out, "%s *%s, size_t %s_len",
-                        c_base_type(param->type), param->c_name, param->c_name);
+                        c_base_type(c, param->type), param->c_name, param->c_name);
             } else {
-                fprintf(out, "%s %s", c_base_type(param->type), param->c_name);
+                fprintf(out, "%s %s", c_base_type(c, param->type), param->c_name);
             }
             first_param = false;
         }
         fputs(") ", out); fputc('\n', out);
-        emit_stmt(out, fn->body, 0);
+        emit_stmt(c, out, fn->body, 0);
         fputc('\n', out);
     }
 
