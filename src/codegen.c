@@ -9,8 +9,14 @@
 #include <string.h>
 
 /* --------------------------- C code generation -------------------------- */
-static const char *c_base_type(YType type)
+static const char *c_base_type(Compiler *compiler, YType type)
 {
+    if (type >= TYPE_STRUCT_BASE) {
+        for (size_t i = 0; i < compiler->struct_count; i++) {
+            if (compiler->structs[i]->type == type) return compiler->structs[i]->c_name;
+        }
+        return "int";
+    }
     if (type >= TYPE_ENUM_BASE) return "int64_t";
     switch (type) {
         case TYPE_INT: return "int64_t";
@@ -20,8 +26,8 @@ static const char *c_base_type(YType type)
         case TYPE_STRING: return "const char *";
         case TYPE_VOID: return "void";
         case TYPE_ERROR: return "int";
+        default: return "int64_t";
     }
-    return "int";
 }
 
 static void append_c_quoted(StringBuilder *sb, const char *text)
@@ -167,6 +173,30 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
         case EXPR_ENUM_VALUE:
             sb_appendf(sb, "INT64_C(%lld)",
                        (long long)expr->as.enum_value.variant->value);
+            break;
+        case EXPR_STRUCT_INIT: {
+            StructDecl *structure = expr->as.struct_init.structure;
+            sb_append(sb, "(");
+            sb_append(sb, structure ? structure->c_name : "int");
+            sb_append(sb, "){");
+            if (structure) {
+                size_t count = expr->as.struct_init.count < structure->field_count
+                    ? expr->as.struct_init.count : structure->field_count;
+                for (size_t i = 0; i < count; i++) {
+                    if (i) sb_append(sb, ", ");
+                    sb_append(sb, ".");
+                    sb_append(sb, structure->fields[i]->name);
+                    sb_append(sb, " = ");
+                    emit_expr(sb, expr->as.struct_init.args[i]);
+                }
+            }
+            sb_append(sb, "}");
+            break;
+        }
+        case EXPR_MEMBER:
+            emit_expr(sb, expr->as.member.target);
+            sb_append(sb, ".");
+            sb_append(sb, expr->as.member.name);
             break;
         case EXPR_INT: {
             const char *digits = expr->token.start;
@@ -364,11 +394,11 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
     }
 }
 
-static void emit_var_type(FILE *out, VarDecl *var, bool global)
+static void emit_var_type(Compiler *compiler, FILE *out, VarDecl *var, bool global)
 {
     if (global) fputs("static ", out);
     if (var->is_const && var->type != TYPE_STRING) fputs("const ", out);
-    fputs(c_base_type(var->type), out);
+    fputs(c_base_type(compiler, var->type), out);
     if (var->is_const && var->type == TYPE_STRING) fputs(" const", out);
 }
 
@@ -439,7 +469,7 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             break;
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
-            emit_indent(out, indent); emit_var_type(out, var, false);
+            emit_indent(out, indent); emit_var_type(c, out, var, false);
             fprintf(out, " %s", var->c_name);
             if (var->is_array) fprintf(out, "[%zu]", var->array_length);
             if (var->initializer) {
@@ -616,9 +646,19 @@ bool generate_c(Compiler *c, const char *path)
     }
     emit_runtime(out);
 
+    for (size_t i = 0; i < c->struct_count; i++) {
+        StructDecl *structure = c->structs[i];
+        fputs("typedef struct {\\n", out);
+        for (size_t j = 0; j < structure->field_count; j++) {
+            StructField *field = structure->fields[j];
+            fprintf(out, "    %s %s;\\n", c_base_type(c, field->type), field->name);
+        }
+        fprintf(out, "} %s;\\n\\n", structure->c_name);
+    }
+
     for (size_t i = 0; i < c->program->global_count; i++) {
         VarDecl *var = c->program->globals[i];
-        emit_var_type(out, var, true);
+        emit_var_type(c, out, var, true);
         fprintf(out, " %s", var->c_name);
         if (var->is_array) fprintf(out, "[%zu]", var->array_length);
         if (var->initializer) {
@@ -640,7 +680,7 @@ bool generate_c(Compiler *c, const char *path)
 
     for (size_t i = 0; i < c->program->function_count; i++) {
         Function *fn = c->program->functions[i];
-        fprintf(out, "%s %s(", c_base_type(fn->return_type), fn->c_name);
+        fprintf(out, "%s %s(", c_base_type(c, fn->return_type), fn->c_name);
         if (fn->param_count == 0) fputs("void", out);
         bool first_param = true;
         for (size_t j = 0; j < fn->param_count; j++) {
@@ -648,7 +688,7 @@ bool generate_c(Compiler *c, const char *path)
             if (!first_param) fputs(", ", out);
             if (param->is_array) {
                 fprintf(out, "%s *%s, size_t %s_len",
-                        c_base_type(param->type), param->c_name, param->c_name);
+                        c_base_type(c, param->type), param->c_name, param->c_name);
             } else {
                 fprintf(out, "%s %s", c_base_type(param->type), param->c_name);
             }
