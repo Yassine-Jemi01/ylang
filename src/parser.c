@@ -569,7 +569,7 @@ static Expr *parse_primary(Parser *p)
                 "For example: math.sqrt(value), string.length(value), or io.read_line().");
             if (token_is(&token, "math") || token_is(&token, "string") ||
                 token_is(&token, "io") || token_is(&token, "path") ||
-                token_is(&token, "image")) {
+                token_is(&token, "image") || token_is(&token, "gui")) {
                 StringBuilder qualified;
                 sb_init(&qualified);
                 sb_append_n(&qualified, token.start, token.length);
