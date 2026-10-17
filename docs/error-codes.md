@@ -8,6 +8,12 @@ YLang diagnostics include stable codes to help users search documentation and re
 |---|---|---|
 | E1003 | An expression was expected but the current token cannot start one. | Check the preceding operator and use a supported expression. |
 | E1016 | Unknown standard-library namespace. | Use a documented namespace such as `math`, `string`, `io`, `path`, or `image`. |
+| E1020 | Malformed import declaration or path. | Use `from "./module.yl" import name;`. |
+| E1022 | Imported source file could not be resolved or read. | Check the path relative to the importing file. |
+| E1023 | Circular module dependency. | Break the import cycle. |
+| E1024 | Imported function or global does not exist. | Check the target module declarations and spelling. |
+| E1025 | Imported name is duplicated, ambiguous, or conflicts with a local declaration. | Import each name once and avoid local name conflicts. |
+| E1026 | An imported module defines or imports the program entry point. | Keep `main()` in the root program file. |
 
 ## Types, names, and expressions
 
