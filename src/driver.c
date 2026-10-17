@@ -559,6 +559,66 @@ static bool module_declares_function(const char *source, const char *name)
     }
 }
 
+static bool find_function_token(const char *source, const char *name,
+                               size_t name_length, Token *found)
+{
+    Lexer lexer = lexer_init(source);
+    for (;;) {
+        Token token = lexer_next(&lexer);
+        if (token.type == TOKEN_EOF) return false;
+        if (token.type != TOKEN_FUNCTION) continue;
+        Token candidate;
+        do {
+            candidate = lexer_next(&lexer);
+        } while (candidate.type == TOKEN_NEWLINE);
+        if (candidate.type == TOKEN_IDENTIFIER &&
+            candidate.length == name_length &&
+            memcmp(candidate.start, name, name_length) == 0) {
+            if (found) *found = candidate;
+            return true;
+        }
+    }
+}
+
+/* Imported files are currently concatenated into one compilation unit, so
+ * duplicate function names across files cannot have independent namespaces. */
+static bool report_duplicate_module_functions(const ImportContext *context)
+{
+    for (size_t i = 0; i < context->order_count; i++) {
+        const ImportModule *current = &context->modules[context->order[i]];
+        Lexer lexer = lexer_init(current->source);
+        for (;;) {
+            Token token = lexer_next(&lexer);
+            if (token.type == TOKEN_EOF) break;
+            if (token.type != TOKEN_FUNCTION) continue;
+
+            Token name;
+            do {
+                name = lexer_next(&lexer);
+            } while (name.type == TOKEN_NEWLINE);
+            if (name.type != TOKEN_IDENTIFIER) continue;
+
+            for (size_t j = 0; j < i; j++) {
+                const ImportModule *previous =
+                    &context->modules[context->order[j]];
+                Token first;
+                if (find_function_token(previous->source, name.start,
+                                        name.length, &first)) {
+                    fprintf(stderr,
+                            "error[E1103]: function '%.*s' is defined in multiple source modules\n"
+                            "  --> %s:%zu:%zu\n"
+                            "  note: first definition is in %s:%zu:%zu\n\n",
+                            (int)name.length, name.start,
+                            current->display_path, name.line, name.column,
+                            previous->display_path, first.line, first.column);
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
 static size_t find_loaded_module(const ImportContext *context,
                                  const char *canonical_path)
 {
@@ -772,6 +832,7 @@ static bool build_source_bundle(const char *input_path,
     context->total_source_bytes = source_length;
 
     bool okay = process_import_module(context, 0U, 0U);
+    if (okay) okay = report_duplicate_module_functions(context);
     size_t combined_length = 0;
     if (okay) {
         for (size_t i = 0; i < context->order_count; i++) {
