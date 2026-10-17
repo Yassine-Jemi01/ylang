@@ -262,15 +262,21 @@ static char *read_source_file(const char *path, size_t *length)
 }
 
 static int run_native_compiler(const char *cc, const char *c_path,
-                               const char *output_path)
+                               const char *output_path, bool uses_http)
 {
 #ifdef _WIN32
-    const char *arguments[] = {
+    const char *arguments_plain[] = {
         cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic", "-Wno-unused-function",
         "-O2", "-g", "-fstack-protector-strong",
         c_path, "-lm", "-o", output_path, NULL
     };
-    intptr_t status = _spawnvp(_P_WAIT, cc, arguments);
+    const char *arguments_http[] = {
+        cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic", "-Wno-unused-function",
+        "-O2", "-g", "-fstack-protector-strong",
+        c_path, "-lcurl", "-lm", "-o", output_path, NULL
+    };
+    intptr_t status = _spawnvp(_P_WAIT, cc,
+                               uses_http ? arguments_http : arguments_plain);
     if (status == -1) {
         fprintf(stderr, "ylang: cannot execute native compiler '%s': %s\n",
                 cc, strerror(errno));
@@ -284,9 +290,17 @@ static int run_native_compiler(const char *cc, const char *c_path,
         return 1;
     }
     if (pid == 0) {
-        execlp(cc, cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic", "-Wno-unused-function",
-               "-O2", "-g", "-D_FORTIFY_SOURCE=3", "-fstack-protector-strong", "-fPIE",
-               c_path, "-lm", "-pie", "-Wl,-z,relro,-z,now", "-o", output_path, (char *)NULL);
+        if (uses_http) {
+            execlp(cc, cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic",
+                   "-Wno-unused-function", "-O2", "-g", "-D_FORTIFY_SOURCE=3",
+                   "-fstack-protector-strong", "-fPIE", c_path, "-lcurl", "-lm",
+                   "-pie", "-Wl,-z,relro,-z,now", "-o", output_path, (char *)NULL);
+        } else {
+            execlp(cc, cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic",
+                   "-Wno-unused-function", "-O2", "-g", "-D_FORTIFY_SOURCE=3",
+                   "-fstack-protector-strong", "-fPIE", c_path, "-lm",
+                   "-pie", "-Wl,-z,relro,-z,now", "-o", output_path, (char *)NULL);
+        }
         fprintf(stderr, "ylang: cannot execute '%s': %s\n", cc, strerror(errno));
         _exit(127);
     }
@@ -481,7 +495,7 @@ int ylang_run(const char *command, const char *input_path,
             target = "a.out";
 #endif
         }
-        result = run_native_compiler(cc ? cc : "gcc", c_path, target);
+        result = run_native_compiler(cc ? cc : "gcc", c_path, target, compiler.uses_http);
         if (result == 0 && run_command) {
             result = run_native_program(target);
         } else if (result == 0) {

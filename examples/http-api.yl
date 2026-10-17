@@ -1,0 +1,16 @@
+// Example only: check this file before running it; it contacts the configured URL.
+function main() -> int {
+    let string body = http_get("https://api.example.com/health");
+    let int status = http_status_code();
+
+    if (status >= 200 and status < 300) {
+        print(body);
+    } else {
+        print("HTTP status:", status);
+        print(body);
+        if (status == 0) {
+            print(http_last_error());
+        }
+    }
+    return 0;
+}

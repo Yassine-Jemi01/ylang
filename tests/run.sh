@@ -240,4 +240,91 @@ diff -u tests/expected-v2-control-cleanup.txt build/v2-control-cleanup.out
 normalize_output build/v2-return-cleanup.out
 diff -u tests/expected-v2-return-cleanup.txt build/v2-return-cleanup.out
 
+
+# Experimental HTTP/HTTPS client. Exercise real generated code against a local,
+# deterministic server; no external internet service is needed.
+HTTP_PYTHON=
+if command -v python3 >/dev/null 2>&1; then
+    HTTP_PYTHON=python3
+elif command -v python >/dev/null 2>&1; then
+    HTTP_PYTHON=python
+fi
+if command -v pkg-config >/dev/null 2>&1 &&
+   pkg-config --exists libcurl &&
+   [ -n "$HTTP_PYTHON" ]; then
+    rm -f build/http-server-port
+    "$HTTP_PYTHON" tests/http_test_server.py build/http-server-port &
+    HTTP_SERVER_PID=$!
+    cleanup_http_server() {
+        kill "$HTTP_SERVER_PID" 2>/dev/null || true
+        wait "$HTTP_SERVER_PID" 2>/dev/null || true
+    }
+    trap cleanup_http_server EXIT HUP INT TERM
+
+    tries=0
+    while [ ! -s build/http-server-port ]; do
+        if ! kill -0 "$HTTP_SERVER_PID" 2>/dev/null; then
+            echo "FAIL: local HTTP test server exited before it was ready" >&2
+            exit 1
+        fi
+        tries=$((tries + 1))
+        if [ "$tries" -ge 50 ]; then
+            echo "FAIL: timed out waiting for local HTTP test server" >&2
+            exit 1
+        fi
+        sleep 0.1
+    done
+
+    HTTP_PORT=$(cat build/http-server-port)
+    sed "s|__BASE_URL__|http://127.0.0.1:$HTTP_PORT|g" \
+        tests/http-api.yl.in > build/http-api.yl
+    "$YLANG" check build/http-api.yl >/dev/null
+    "$YLANG" build build/http-api.yl -o "build/test-http-api$EXEEXT" >/dev/null
+    "./build/test-http-api$EXEEXT" > build/http-api.out
+    normalize_output build/http-api.out
+    diff -u tests/expected-http-api.txt build/http-api.out
+
+    cleanup_http_server
+    trap - EXIT HUP INT TERM
+    echo "HTTP API integration tests passed."
+else
+    if [ "${YLANG_REQUIRE_HTTP_TESTS-0}" = "1" ]; then
+        echo "FAIL: CI requires HTTP API integration tests, but libcurl/pkg-config/Python were not found." >&2
+        exit 1
+    fi
+    echo "SKIP: HTTP API integration tests (install libcurl development files, pkg-config, and Python)." >&2
+fi
+
+
+# JSON parser/accessors are part of the generated runtime and do not require libcurl.
+"$YLANG" check tests/json-api.yl >/dev/null
+"$YLANG" build tests/json-api.yl -o "build/test-json-api$EXEEXT" >/dev/null
+"./build/test-json-api$EXEEXT" > build/json-api.out
+normalize_output build/json-api.out
+diff -u tests/expected-json-api.txt build/json-api.out
+
+# A JSON-only program should not acquire an HTTP/libcurl dependency.
+if command -v ldd >/dev/null 2>&1; then
+    if ldd "./build/test-json-api$EXEEXT" | grep -q 'libcurl'; then
+        echo "FAIL: JSON-only program unexpectedly links against libcurl" >&2
+        exit 1
+    fi
+fi
+
+if "$YLANG" check tests/json-type-error.yl > build/json-type-error.out 2>&1; then
+    echo "FAIL: json_get_int accepted a non-string JSON argument" >&2
+    exit 1
+fi
+grep -q 'E2096' build/json-type-error.out
+
+if "$YLANG" check tests/http-type-error.yl > build/http-type-error.out 2>&1; then
+    echo "FAIL: invalid HTTP builtin arguments were accepted" >&2
+    exit 1
+fi
+grep -q 'E2098' build/http-type-error.out
+grep -q 'E2099' build/http-type-error.out
+
+# Keep the documented API example syntactically/type-correct without network access.
+"$YLANG" check examples/http-api.yl >/dev/null
+
 echo "All YLang 2.0 preview tests passed."

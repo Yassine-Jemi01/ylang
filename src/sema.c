@@ -590,6 +590,124 @@ static YType check_expr(Checker *checker, Expr *expr)
             bool is_len = strcmp(builtin, "len") == 0;
             bool is_clone = strcmp(builtin, "clone") == 0;
             bool is_append = strcmp(builtin, "append") == 0;
+            bool is_json_get_raw = strcmp(builtin, "json_get_raw") == 0;
+            bool is_json_get_string = strcmp(builtin, "json_get_string") == 0;
+            bool is_json_get_int = strcmp(builtin, "json_get_int") == 0;
+            bool is_json_get_float = strcmp(builtin, "json_get_float") == 0;
+            bool is_json_get_bool = strcmp(builtin, "json_get_bool") == 0;
+            bool is_json_has = strcmp(builtin, "json_has") == 0;
+            bool is_json_array_length = strcmp(builtin, "json_array_length") == 0;
+            bool is_json_array_item = strcmp(builtin, "json_array_item") == 0;
+            bool is_json_quote = strcmp(builtin, "json_quote") == 0;
+            bool is_json_last_error = strcmp(builtin, "json_last_error") == 0;
+
+            if (is_json_get_raw || is_json_get_string || is_json_get_int ||
+                is_json_get_float || is_json_get_bool || is_json_has ||
+                is_json_array_length || is_json_array_item ||
+                is_json_quote || is_json_last_error) {
+                c->uses_json = true;
+                size_t expected_count =
+                    is_json_last_error ? 0U :
+                    (is_json_array_length || is_json_quote) ? 1U : 2U;
+                if (expr->as.call.count != expected_count) {
+                    diagnostic(c, expr->token, "error", "E2095",
+                               "JSON function received the wrong number of arguments.",
+                               "Use json_get_string(json, key), json_get_int(json, key), "
+                               "json_get_raw(json, key), json_array_length(json), "
+                               "json_array_item(array, index), json_quote(string), "
+                               "or json_last_error() with the documented arguments.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+
+                bool arguments_ok = true;
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    YType actual = check_expr(checker, expr->as.call.args[i]);
+                    YType expected = (is_json_array_item && i == 1)
+                        ? TYPE_INT : TYPE_STRING;
+                    if (actual != expected && actual != TYPE_ERROR) {
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2096",
+                                   is_json_array_item && i == 1
+                                       ? "json_array_item() expects an integer index."
+                                       : "JSON function arguments must be strings, except the array index.",
+                                   is_json_array_item && i == 1
+                                       ? "Pass a non-negative int index."
+                                       : "Pass JSON text, an object key, or a string value.");
+                        arguments_ok = false;
+                    } else if (actual == TYPE_ERROR) {
+                        arguments_ok = false;
+                    }
+                }
+                if (!arguments_ok) {
+                    expr->type = TYPE_ERROR;
+                } else if (is_json_get_int || is_json_array_length) {
+                    expr->type = TYPE_INT;
+                } else if (is_json_get_float) {
+                    expr->type = TYPE_FLOAT;
+                } else if (is_json_get_bool || is_json_has) {
+                    expr->type = TYPE_BOOL;
+                } else {
+                    expr->type = TYPE_STRING;
+                }
+                return expr->type;
+            }
+
+            bool is_http_get = strcmp(builtin, "http_get") == 0;
+            bool is_http_get_with_headers = strcmp(builtin, "http_get_with_headers") == 0;
+            bool is_http_post = strcmp(builtin, "http_post") == 0;
+            bool is_http_post_with_headers = strcmp(builtin, "http_post_with_headers") == 0;
+            bool is_http_request = strcmp(builtin, "http_request") == 0;
+            bool is_http_status_code = strcmp(builtin, "http_status_code") == 0;
+            bool is_http_last_error = strcmp(builtin, "http_last_error") == 0;
+
+            if (is_http_status_code || is_http_last_error) {
+                c->uses_http = true;
+                if (expr->as.call.count != 0) {
+                    diagnostic(c, expr->token, "error", "E2097",
+                               "HTTP status/error accessors take no arguments.",
+                               "Use http_status_code() or http_last_error() without arguments.");
+                    expr->type = TYPE_ERROR;
+                } else {
+                    expr->type = is_http_status_code ? TYPE_INT : TYPE_STRING;
+                }
+                return expr->type;
+            }
+
+            if (is_http_get || is_http_get_with_headers || is_http_post ||
+                is_http_post_with_headers || is_http_request) {
+                c->uses_http = true;
+                size_t expected_count = is_http_get ? 1U :
+                    is_http_get_with_headers ? 2U :
+                    is_http_post ? 2U :
+                    is_http_post_with_headers ? 3U : 4U;
+                if (expr->as.call.count != expected_count) {
+                    diagnostic(c, expr->token, "error", "E2098",
+                               "HTTP request function received the wrong number of arguments.",
+                               "Use http_get(url), http_get_with_headers(url, headers), "
+                               "http_post(url, body), http_post_with_headers(url, body, headers), "
+                               "or http_request(method, url, body, headers).");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                bool arguments_ok = true;
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    YType argument_type = check_expr(checker, expr->as.call.args[i]);
+                    if (argument_type != TYPE_STRING && argument_type != TYPE_ERROR) {
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2099",
+                                   "HTTP request arguments must be strings.",
+                                   "Pass URL, method, body, and headers as string values.");
+                        arguments_ok = false;
+                    } else if (argument_type == TYPE_ERROR) {
+                        arguments_ok = false;
+                    }
+                }
+                expr->type = arguments_ok ? TYPE_STRING : TYPE_ERROR;
+                return expr->type;
+            }
 
             if (is_input || is_input_int || is_input_float) {
                 if (expr->as.call.count != 0) {

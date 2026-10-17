@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      YLANG_REQUIRE_HTTP_TESTS: "1"
     strategy:
       fail-fast: false
       matrix:
@@ -16,7 +18,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
       - name: Install toolchain
-        run: sudo apt-get update && sudo apt-get install -y build-essential clang
+        run: sudo apt-get update && sudo apt-get install -y build-essential clang libcurl4-openssl-dev pkg-config python3
       - name: Build compiler
         run: make clean all CC=${{ matrix.compiler }}
       - name: Run regression tests
@@ -24,6 +26,8 @@ jobs:
 
   windows:
     runs-on: windows-latest
+    env:
+      YLANG_REQUIRE_HTTP_TESTS: "1"
     defaults:
       run:
         shell: msys2 {0}
@@ -37,6 +41,9 @@ jobs:
           update: true
           install: >-
             mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-curl
+            mingw-w64-ucrt-x86_64-python
+            pkgconf
             make
             diffutils
             grep

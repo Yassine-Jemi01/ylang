@@ -1,0 +1,6 @@
+function main() -> int {
+    let string bad_type = http_get(42);
+    let string bad_count = http_get();
+    print(bad_type, bad_count);
+    return 0;
+}

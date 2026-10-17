@@ -1,0 +1,17 @@
+YLang
+42
+3.5
+true
+hello
+world
+é
+{"level":2}
+2
+3
+2
+false
+"A \"quote\""
+0
+JSON object key was not found
+0
+expected a string key in JSON object

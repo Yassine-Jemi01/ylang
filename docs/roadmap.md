@@ -1,6 +1,6 @@
 # YLang Development Roadmap
 
-This is the working roadmap for `v2/core`. It records current scope and next milestones; it is not a stable-release promise. `main` remains the YLang 1.0.0 contract until a future release is intentionally prepared.
+This is the working roadmap for YLang 2.0 development. It records current scope and next milestones; it is not a stable-release promise. `main` remains the stable YLang 1.1.x line until a future release is intentionally prepared.
 
 ## Working principles
 
@@ -36,15 +36,27 @@ This is the working roadmap for `v2/core`. It records current scope and next mil
 
 Design imports and modules before implementation: file resolution, name visibility, duplicate symbols, cycles, compile order, and diagnostics. Add tests for missing modules and circular imports. Build an incremental module model before proposing package management.
 
-## Phase 4 — Performance
+## Phase 4 — HTTP/JSON API support
 
-Add repeatable benchmarks for arithmetic, loops, array indexing/append, string formatting, and function calls. Measure release builds with GCC and Clang. Preserve runtime checks unless the compiler can prove they are redundant. Track compile time and executable size as well as runtime.
+An initial synchronous HTTP/HTTPS client and JSON helper runtime now exist on `v2/http-api-client`. The client supports common REST verbs, custom headers, bounded response bodies, TLS verification, timeouts, and status/error accessors. JSON helpers support checked scalar properties, raw nested objects/arrays, array length/items, and string quoting. Linux GCC and Clang integration tests exercise the HTTP client against a local server and JSON behavior without an external JSON dependency.
 
-## Phase 5 — Compiler independence
+Remaining work before stabilization:
+1. Replace the process-global HTTP status/error accessors with a response value that carries status, body, and transport errors.
+2. Expand JSON edge-case tests, including invalid syntax, numeric range, duplicate keys, Unicode/surrogate handling, depth and size limits.
+3. Make `http` and `json` importable modules after the multi-file import model is stable.
+4. Add timeouts, TLS/connection-failure, oversized body, redirect, and header-injection tests; keep verifying Windows CI and generated application behavior.
+5. Document the optional libcurl dependency and avoid requiring it when a program does not use HTTP.
+Hosting REST endpoints is a later milestone, not part of the initial client.
+
+## Phase 5 — Performance
+
+Add repeatable benchmarks for arithmetic, loops, array indexing/append, string formatting, function calls, JSON parsing, and HTTP response handling with a local mock server. Measure release builds with GCC and Clang. Preserve runtime checks unless the compiler can prove they are redundant. Track compile time and executable size as well as runtime.
+
+## Phase 6 — Compiler independence
 
 The current compiler has a dedicated YLang front-end but emits C17 and delegates machine-code generation to GCC/Clang. A direct LLVM or custom native backend is a separate strategic decision; it must be justified by measurable benefits and should not arrive before the language semantics and standard library settle.
 
-## Phase 6 — Platform and editor release review
+## Phase 7 — Platform and editor release review
 
 - GCC and Clang regression tests on Linux.
 - MSYS2 UCRT64 Windows build, full regression suite, PowerShell build/smoke test, and generated Windows executable runs.
@@ -54,4 +66,4 @@ The current compiler has a dedicated YLang front-end but emits C17 and delegates
 
 ## Explicitly not ready to promise
 
-Rust-level memory safety, MSVC support, full Unicode string semantics, nested arrays, generics, classes, exceptions, async/concurrency, modules/imports, broad filesystem/network libraries, and a direct machine-code backend.
+Rust-level memory safety, MSVC support, full Unicode string semantics, nested arrays, generics, classes, exceptions, async/concurrency, modules/imports, and a direct machine-code backend remain unsupported until their respective milestones and tests are complete. Full typed JSON values, importable HTTP/JSON modules, a stable response/error model, and an HTTP server remain unfinished.

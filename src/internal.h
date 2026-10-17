@@ -27,6 +27,8 @@ struct Compiler {
     bool had_error;
     unsigned error_count;
     unsigned warning_count;
+    bool uses_http;
+    bool uses_json;
     Program *program;
     VarDecl **all_vars;
     size_t all_var_count;

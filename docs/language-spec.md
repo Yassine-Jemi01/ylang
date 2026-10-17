@@ -1,6 +1,6 @@
 # YLang Language Specification — 2.0.0-dev
 
-**Status:** development specification. This document describes the current `v2/core` preview, not a stable release guarantee. The stable `main` branch continues to document YLang 1.0.0.
+**Status:** development specification. This document describes the current `v2/http-api-client` preview, not a stable release guarantee. The stable `main` branch continues to document YLang 1.1.0.
 
 ## 1. Language philosophy
 

@@ -1,0 +1,29 @@
+function main() -> int {
+    let string payload = "{\"name\":\"YLang\",\"count\":42,\"pi\":3.5,\"active\":true,\"meta\":{\"level\":2},\"items\":[1,2,3],\"escaped\":\"hello\\nworld\",\"unicode\":\"\\u00e9\"}";
+    print(json_get_string(payload, "name"));
+    print(json_get_int(payload, "count"));
+    print(json_get_float(payload, "pi"));
+    print(json_get_bool(payload, "active"));
+    print(json_get_string(payload, "escaped"));
+    print(json_get_string(payload, "unicode"));
+
+    let string meta = json_get_raw(payload, "meta");
+    print(meta);
+    print(json_get_int(meta, "level"));
+
+    let string items = json_get_raw(payload, "items");
+    print(json_array_length(items));
+    print(json_array_item(items, 1));
+    print(json_has(payload, "missing"));
+
+    print(json_quote("A \"quote\""));
+
+    let int missing = json_get_int(payload, "missing");
+    print(missing);
+    print(json_last_error());
+
+    let int malformed = json_get_int("{bad", "x");
+    print(malformed);
+    print(json_last_error());
+    return 0;
+}

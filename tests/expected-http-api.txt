@@ -1,0 +1,19 @@
+hello
+200
+secret-ok
+200
+post-ok
+201
+updated
+202
+missing
+404
+patched
+203
+
+204
+
+200
+
+0
+Unsupported HTTP method

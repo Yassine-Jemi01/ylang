@@ -1,0 +1,45 @@
+function main() -> int {
+    let string hello = http_get("__BASE_URL__/hello");
+    print(hello);
+    print(http_status_code());
+
+    let string protected_body = http_get_with_headers(
+        "__BASE_URL__/secret", "X-API-Key: secret");
+    print(protected_body);
+    print(http_status_code());
+
+    let string posted = http_post("__BASE_URL__/post", "{\"x\":1}");
+    print(posted);
+    print(http_status_code());
+
+    let string updated = http_request(
+        "PUT", "__BASE_URL__/update", "updated", "");
+    print(updated);
+    print(http_status_code());
+
+    let string missing = http_get("__BASE_URL__/missing");
+    print(missing);
+    print(http_status_code());
+
+    let string patched = http_request(
+        "PATCH", "__BASE_URL__/patch", "patched", "");
+    print(patched);
+    print(http_status_code());
+
+    let string deleted = http_request(
+        "DELETE", "__BASE_URL__/delete", "", "");
+    print(deleted);
+    print(http_status_code());
+
+    let string headed = http_request(
+        "HEAD", "__BASE_URL__/head", "", "");
+    print(headed);
+    print(http_status_code());
+
+    let string invalid_method = http_request(
+        "INVALID", "__BASE_URL__/hello", "", "");
+    print(invalid_method);
+    print(http_status_code());
+    print(http_last_error());
+    return 0;
+}
