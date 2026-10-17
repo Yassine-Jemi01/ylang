@@ -90,10 +90,69 @@ jobs:
       - name: Test Neovim diagnostic parser
         run: nvim --headless -u NONE +'luafile editors/nvim/tests/diagnostics.lua'
 
+  website-integrity:
+    name: English-only website integrity
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Validate page language, navigation, and links
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import re
+
+          files = [
+              Path("website/index.html"),
+              Path("website/docs.html"),
+              Path("website/styles.css"),
+              Path("website/docs.css"),
+              Path("website/script.js"),
+              Path("website/README.md"),
+          ]
+          arabic = re.compile("[\\u0600-\\u06FF]")
+          for path in files:
+              text = path.read_text(encoding="utf-8")
+              if arabic.search(text):
+                  raise SystemExit(f"Arabic text or Arabic font/translation remains in {path}")
+              if path.suffix == ".html" and 'lang="en" dir="ltr"' not in text:
+                  raise SystemExit(f"{path} must declare English left-to-right markup")
+              if path.suffix in {".html", ".js", ".css"} and any(
+                  marker in text for marker in ("lang-toggle", "IBM Plex Sans Arabic", "العربية")
+              ):
+                  raise SystemExit(f"Old language switch or Arabic localization remains in {path}")
+
+          class Links(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.ids = set()
+                  self.fragments = []
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  if attrs.get("id"):
+                      self.ids.add(attrs["id"])
+                  href = attrs.get("href", "")
+                  if href.startswith("#") and len(href) > 1:
+                      self.fragments.append(href[1:])
+
+          for path in (Path("website/index.html"), Path("website/docs.html")):
+              parser = Links()
+              parser.feed(path.read_text(encoding="utf-8"))
+              missing = sorted(set(parser.fragments) - parser.ids)
+              if missing:
+                  raise SystemExit(f"{path} has missing in-page anchors: {', '.join(missing)}")
+
+          print("PASS: English-only markup, no Arabic localization, and all in-page links resolve.")
+          PY
+
   publish:
     if: github.ref == 'refs/heads/main'
     name: Publish source-only GitHub prerelease
-    needs: [build-and-test, editor-diagnostics]
+    needs: [build-and-test, editor-diagnostics, website-integrity]
     runs-on: ubuntu-latest
     steps:
       - name: Check out tested commit
@@ -106,6 +165,12 @@ jobs:
         run: |
           test "$(tr -d '\r\n' < VERSION)" = "$EXPECTED_VERSION"
           test "$(tr -d '\r\n' < .github/PUBLISH_BETA)" = "$EXPECTED_VERSION"
+      - name: Ensure release checklist has no open gates
+        run: |
+          if grep -nF -- '- [ ]' docs/BETA-RELEASE-CHECKLIST.md; then
+            echo "Release blocked: docs/BETA-RELEASE-CHECKLIST.md contains an unchecked item." >&2
+            exit 1
+          fi
       - name: Create prerelease from the tested commit
         env:
           GH_TOKEN: ${{ github.token }}
