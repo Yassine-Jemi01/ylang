@@ -104,6 +104,14 @@ static const char *nearest_variable(Checker *checker, const char *name)
     return best_name;
 }
 
+static EnumDecl *enum_for_type(Compiler *compiler, YType type)
+{
+    for (size_t i = 0; i < compiler->enum_count; i++) {
+        if (compiler->enums[i]->type == type) return compiler->enums[i];
+    }
+    return NULL;
+}
+
 static Function *module_local_function(Module *module, const char *name)
 {
     if (!module || !module->program) return NULL;
@@ -807,6 +815,13 @@ static bool stmt_guarantees_return(Stmt *stmt)
                stmt_guarantees_return(stmt->as.if_stmt.then_branch) &&
                stmt_guarantees_return(stmt->as.if_stmt.else_branch);
     }
+    if (stmt->kind == STMT_MATCH) {
+        if (stmt->as.match_stmt.arm_count == 0) return false;
+        for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++) {
+            if (!stmt_guarantees_return(stmt->as.match_stmt.arms[i]->body)) return false;
+        }
+        return true;
+    }
     return false;
 }
 
@@ -962,6 +977,62 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             checker->loop_depth--;
             for (size_t i = 0; i < n_before_init; i++) c->all_vars[i]->initialized = before[i];
             checker->scope = outer_scope;
+            break;
+        }
+        case STMT_MATCH: {
+            YType value_type = check_expr(checker, stmt->as.match_stmt.value);
+            EnumDecl *enumeration = enum_for_type(c, value_type);
+            if (!enumeration) {
+                diagnostic(c, stmt->as.match_stmt.value->token, "error", "E2057",
+                           "match currently requires a user-defined enum value.",
+                           "Match a value declared with an enum type.");
+            }
+
+            size_t variable_count = c->all_var_count;
+            bool *before = arena_alloc(&c->arena, variable_count * sizeof(bool));
+            for (size_t i = 0; i < variable_count; i++)
+                before[i] = c->all_vars[i]->initialized;
+
+            for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++) {
+                MatchArm *arm = stmt->as.match_stmt.arms[i];
+                if (arm->variant && arm->variant->enumeration->type != value_type) {
+                    diagnostic(c, arm->token, "error", "E2058",
+                               "This match arm belongs to a different enum type.",
+                               "Use variants from the same enum as the matched value.");
+                }
+                for (size_t j = 0; j < i; j++) {
+                    if (arm->variant &&
+                        arm->variant == stmt->as.match_stmt.arms[j]->variant) {
+                        diagnostic(c, arm->token, "error", "E2059",
+                                   "This enum variant appears in more than one match arm.",
+                                   "Keep exactly one arm for each enum variant.");
+                    }
+                }
+                for (size_t j = 0; j < variable_count; j++)
+                    c->all_vars[j]->initialized = before[j];
+                check_stmt(checker, arm->body);
+            }
+
+            if (enumeration) {
+                for (size_t i = 0; i < enumeration->variant_count; i++) {
+                    EnumVariant *variant = enumeration->variants[i];
+                    bool found = false;
+                    for (size_t j = 0; j < stmt->as.match_stmt.arm_count; j++) {
+                        if (stmt->as.match_stmt.arms[j]->variant == variant) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        diagnostic(c, stmt->token, "error", "E2063",
+                                   "This match is not exhaustive.",
+                                   "Add an arm for every variant of the enum.");
+                        break;
+                    }
+                }
+            }
+            for (size_t i = 0; i < variable_count; i++)
+                c->all_vars[i]->initialized = before[i];
             break;
         }
         case STMT_BREAK:
