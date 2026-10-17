@@ -1,0 +1,5 @@
+from value.yl import system_value, system_value()
+
+function main() -> int {
+    return 0;
+}
