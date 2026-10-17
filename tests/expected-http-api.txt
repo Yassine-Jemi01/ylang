@@ -19,3 +19,9 @@ patched
 
 0
 Unsupported HTTP method
+
+0
+Invalid HTTP header; expected Name: value
+
+0
+true
