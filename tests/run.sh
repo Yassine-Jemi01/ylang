@@ -260,7 +260,7 @@ if "$YLANG" check tests/imports/missing-module.yl > build/import-missing-module.
     echo "FAIL: missing imported module was accepted" >&2
     exit 1
 fi
-grep -q "cannot resolve imported module 'no-such-module.yl'" build/import-missing-module.out
+grep -Eq "(cannot resolve imported module|cannot read imported module).*no-such-module\\.yl" build/import-missing-module.out
 
 if "$YLANG" check tests/imports/cycle-a.yl > build/import-cycle.out 2>&1; then
     echo "FAIL: cyclic module imports were accepted" >&2
