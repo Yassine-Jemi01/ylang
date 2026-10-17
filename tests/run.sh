@@ -454,20 +454,27 @@ grep -q 'E1023' build/imports/cycle.out
 
 # Repeated imports of one canonical file should reuse the module and bind different names.
 cat > build/imports/reusable.yl <<'EOF'
+let int reusable_counter = 3;
 function reusable_one() -> int { return 11; }
 function reusable_two() -> int { return 22; }
+function increment_reusable(int amount) -> int {
+    reusable_counter += amount;
+    return reusable_counter;
+}
 EOF
 cat > build/imports/repeated.yl <<'EOF'
 from "./reusable.yl" import reusable_one;
-from "./reusable.yl" import reusable_two;
+from "./reusable.yl" import reusable_two, reusable_counter, increment_reusable;
 function main() -> int {
     print(reusable_one(), reusable_two());
+    print(reusable_counter);
+    print(increment_reusable(4));
     return 0;
 }
 EOF
 ./build/ylang build build/imports/repeated.yl -o build/test-repeated-imports >/dev/null
 ./build/test-repeated-imports > build/repeated-imports.out
-printf '11 22\n' > build/repeated-imports.expected
+printf '11 22\n3\n7\n' > build/repeated-imports.expected
 diff -u build/repeated-imports.expected build/repeated-imports.out
 
 # Quoted import paths must preserve spaces in filenames.
