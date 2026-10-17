@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "website/**"
+      - "docs/book/**"
       - ".github/workflows/deploy-website.yml"
   workflow_dispatch:
 
@@ -30,6 +31,8 @@ jobs:
         uses: actions/configure-pages@v5
         with:
           enablement: true
+      - name: Add the versioned language book
+        run: cp docs/book/YLang-Book.pdf website/YLang-Book.pdf
       - name: Upload website
         uses: actions/upload-pages-artifact@v3
         with:
