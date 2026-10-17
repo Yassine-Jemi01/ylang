@@ -72,20 +72,9 @@ h1, h2, h3, p, dl, dd, figure { margin: 0; }
   border-bottom: 1px solid var(--line-soft);
 }
 .nav-wrap { display: flex; align-items: center; gap: 24px; min-height: 68px; }
-.brand { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; font-size: 1.3rem; }
-.brand img { width: 36px; height: 36px; }
-
-/* Official YLang wordmark: keep its full source aspect ratio and constrain it to the header. */
-.brand .brand-full-logo {
-  display: block;
-  width: 136px;
-  height: auto;
-  max-height: 52px;
-  object-fit: contain;
-  border-radius: 7px;
-  background: #e8eeee;
-}
-.wordmark { letter-spacing: -.01em; direction: ltr; }
+.brand { display: inline-flex; align-items: center; gap: 12px; color: var(--text); font-weight: 700; font-size: 1.3rem; }
+.brand img { width: 36px; height: 36px; flex: 0 0 auto; object-fit: contain; border-radius: 8px; }
+.wordmark { color: var(--text); letter-spacing: -.01em; direction: ltr; }
 
 .site-nav { display: flex; align-items: center; gap: 4px; margin-inline-start: auto; font-size: .95rem; }
 .site-nav a { padding: 8px 12px; border-radius: var(--radius-sm); color: var(--muted); transition: color var(--fast), background var(--fast); }
