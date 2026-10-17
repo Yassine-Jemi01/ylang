@@ -23,6 +23,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     compiler.filename = "<fuzz-input>";
     compiler.source = source;
     compiler.source_length = size;
+    compiler.quiet_diagnostics = true;
     (void)parse_program(&compiler);
 
     arena_destroy(&compiler.arena);
