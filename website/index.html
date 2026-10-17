@@ -1,51 +1,103 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f5f6f1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0a1215">
   <meta name="description" content="YLang is an open-source compiled programming language with readable syntax and explicit types.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="YLang — Write clearly. Compile deliberately.">
+  <meta property="og:description" content="YLang is an open-source compiled programming language with readable syntax and explicit types.">
   <title>YLang — Write clearly. Compile deliberately.</title>
-  <link rel="icon" href="assets/ylang-logo-icon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="styles.css">
-  <script src="script.js" defer></script>
+  <script>
+    /* Set language and direction before first paint to avoid a flash. */
+    (function () {
+      var root = document.documentElement;
+      root.classList.add("js");
+      var lang = "en";
+      try {
+        var q = new URLSearchParams(location.search).get("lang");
+        var saved = localStorage.getItem("ylang-lang");
+        lang = q || saved || ((navigator.language || "").toLowerCase().indexOf("ar") === 0 ? "ar" : "en");
+      } catch (e) {}
+      if (lang !== "ar") lang = "en";
+      root.lang = lang;
+      root.dir = lang === "ar" ? "rtl" : "ltr";
+    })();
+  </script>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
+
   <header class="site-header">
     <div class="container nav-wrap">
-      <a class="brand" href="#top" aria-label="YLang home">
-        <img class="brand-logo" src="assets/ylang-logo-full.svg" alt="YLang — Compiled, Explicit, Friendly" width="520" height="200">
+      <a class="brand" href="#top" aria-label="YLang">
+        <img
+          class="brand-full-logo"
+          src="assets/ylang-logo-full.svg"
+          alt="YLang — Compiled, Explicit, Friendly"
+          width="136"
+          height="52"
+        >
       </a>
-      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open navigation">
-        <span></span><span></span>
-      </button>
-      <nav id="site-nav" class="site-nav" aria-label="Main navigation">
-        <a href="#language">The language</a>
-        <a href="#learn">Learn</a>
-        <a href="#downloads">Downloads</a>
-        <a class="nav-github" href="https://github.com/Yassine-Jemi01/ylang" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+
+      <nav id="site-nav" class="site-nav" aria-label="Main navigation" data-i18n-attr="aria-label:nav.label">
+        <a href="#language" data-i18n="nav.language">The language</a>
+        <a href="#pipeline" data-i18n="nav.pipeline">How it builds</a>
+        <a href="#learn" data-i18n="nav.learn">Learn</a>
+        <a href="#start" data-i18n="nav.start">Get started</a>
+        <a class="nav-github" href="https://github.com/Yassine-Jemi01/ylang" target="_blank" rel="noreferrer">GitHub <span class="ext" aria-hidden="true">↗</span></a>
       </nav>
+
+      <div class="header-tools">
+        <button class="lang-toggle" type="button" id="lang-toggle" lang="ar" aria-label="العربية">العربية</button>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open navigation">
+          <span></span><span></span>
+        </button>
+      </div>
     </div>
   </header>
+
   <main id="main">
     <section class="hero" id="top">
       <div class="container hero-grid">
         <div class="hero-copy">
-          <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> An open-source language project</p>
-          <h1>Write clearly.<br><span>Compile deliberately.</span></h1>
-          <p class="hero-lede">YLang is a compiled programming language built around readable syntax, explicit types, and a toolchain you can inspect, learn from, and help improve.</p>
+          <h1>
+            <span class="h1-line" data-i18n="hero.title1">Write clearly.</span>
+            <span class="h1-line" data-i18n="hero.title2">Compile deliberately.</span>
+          </h1>
+          <p class="hero-lede" data-i18n="hero.lede">YLang is an open-source compiled programming language built around readable syntax, explicit types, and a toolchain you can inspect, learn from, and help improve.</p>
           <div class="hero-actions">
-            <a class="button button-primary" href="#learn">Start learning <span aria-hidden="true">→</span></a>
-            <a class="button button-secondary" href="https://github.com/Yassine-Jemi01/ylang" target="_blank" rel="noreferrer">Explore the source</a>
+            <a class="button button-primary" href="#learn" data-i18n="hero.cta1">Start learning</a>
+            <a class="button button-secondary" href="https://github.com/Yassine-Jemi01/ylang" target="_blank" rel="noreferrer"><span data-i18n="hero.cta2">Explore the source</span> <span class="ext" aria-hidden="true">↗</span></a>
           </div>
-          <p class="hero-note"><span class="release-label">Current release line</span><strong>1.1.0</strong><span class="note-divider" aria-hidden="true"></span>C backend · Experimental NASM on Linux x86-64</p>
+
+          <dl class="facts">
+            <div>
+              <dt data-i18n="facts.release">Release line</dt>
+              <dd>1.1.0</dd>
+            </div>
+            <div>
+              <dt data-i18n="facts.stable">Stable backend</dt>
+              <dd data-i18n="facts.stable.v">C, via GCC or Clang</dd>
+            </div>
+            <div>
+              <dt data-i18n="facts.exp">Experimental</dt>
+              <dd data-i18n="facts.exp.v">NASM on Linux x86-64</dd>
+            </div>
+          </dl>
         </div>
-        <div class="code-card" aria-label="YLang code example">
+
+        <div class="code-card" role="group" aria-label="YLang code example" data-i18n-attr="aria-label:code.label">
           <div class="code-card-top">
-            <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
             <span class="file-name">hello.yl</span>
-            <button class="copy-button" type="button" data-copy="code-example">Copy code</button>
+            <button class="copy-button" type="button" data-copy="code-example" data-i18n="copy.code">Copy code</button>
           </div>
           <pre><code id="code-example"><span class="tok-comment"># hello.yl</span>
 <span class="tok-keyword">function</span> <span class="tok-function">main</span>() <span class="tok-op">-&gt;</span> <span class="tok-type">int</span> {
@@ -56,98 +108,197 @@
     <span class="tok-function">print</span>(<span class="tok-string">"Answer:"</span>, answer);
     <span class="tok-keyword">return</span> <span class="tok-number">0</span>;
 }</code></pre>
-          <div class="code-card-bottom"><span><span class="live-dot" aria-hidden="true"></span> Readable syntax</span><span>Compiled language</span></div>
         </div>
       </div>
-      <div class="hero-grid-pattern" aria-hidden="true"></div>
     </section>
-    <section class="principles" aria-label="YLang project characteristics">
-      <div class="container principles-grid">
-        <div><span class="principle-index">01</span><span>Readable syntax</span></div>
-        <div><span class="principle-index">02</span><span>Explicit types</span></div>
-        <div><span class="principle-index">03</span><span>Native builds</span></div>
-        <div><span class="principle-index">04</span><span>Open development</span></div>
-      </div>
-    </section>
-    <section class="section language-section container" id="language">
-      <div class="section-intro">
-        <p class="eyebrow">01 / The language</p>
-        <h2>Familiar to read.<br><span>Built to be explored.</span></h2>
-        <p>YLang brings approachable syntax to a small compiled language project. Its implementation is open, so the design decisions are part of the learning experience too.</p>
-      </div>
-      <div class="feature-grid">
-        <article class="feature-card">
-          <div class="feature-top"><span class="feature-number">01</span><span class="feature-mark mark-teal" aria-hidden="true">{ }</span></div>
-          <h3>Readable code</h3>
-          <p>Familiar control flow and function signatures keep programs approachable without hiding how they work.</p>
-        </article>
-        <article class="feature-card">
-          <div class="feature-top"><span class="feature-number">02</span><span class="feature-mark mark-orange" aria-hidden="true">T</span></div>
-          <h3>Explicit types</h3>
-          <p>Types and conversions are visible in the code, with diagnostics designed to help you understand mistakes.</p>
-        </article>
-        <article class="feature-card">
-          <div class="feature-top"><span class="feature-number">03</span><span class="feature-mark mark-blue" aria-hidden="true">&lt;/&gt;</span></div>
-          <h3>A compiler you can inspect</h3>
-          <p>The stable path generates C and uses GCC or Clang. The NASM backend remains experimental and limited.</p>
-        </article>
-      </div>
-      <p class="project-note"><strong>Project status</strong><span>YLang is still evolving. Feature coverage and its safety model are not equivalent to Rust, and support varies by backend.</span></p>
-    </section>
-    <section class="learn-section" id="learn">
-      <div class="container learn-grid">
-        <div class="learn-copy">
-          <p class="eyebrow">02 / Learn YLang</p>
-          <h2>Start with the<br><span>guide or the code.</span></h2>
-          <p>Read the book, browse the documentation, or build the compiler locally. You can follow the project from its source rather than relying on a black box.</p>
-          <a class="text-link" href="https://github.com/Yassine-Jemi01/ylang/tree/main/docs">Browse documentation <span aria-hidden="true">↗</span></a>
+
+    <section class="section" id="language">
+      <div class="container">
+        <div class="section-head">
+          <h2 data-i18n="lang.title">Familiar to read. Built to be explored.</h2>
+          <p data-i18n="lang.lede">YLang brings approachable syntax to a small compiled language project. Its implementation is open, so the design decisions are part of the learning experience too.</p>
         </div>
+
+        <div class="cols-3">
+          <article class="col">
+            <h3 data-i18n="lang.f1.t">Readable code</h3>
+            <p data-i18n="lang.f1.d">Familiar control flow and function signatures keep programs approachable without hiding how they work.</p>
+          </article>
+          <article class="col">
+            <h3 data-i18n="lang.f2.t">Explicit types</h3>
+            <p data-i18n="lang.f2.d">Types and conversions are visible in the code, with diagnostics designed to help you understand mistakes.</p>
+          </article>
+          <article class="col">
+            <h3 data-i18n="lang.f3.t">A compiler you can inspect</h3>
+            <p data-i18n="lang.f3.d">The stable path generates C and uses GCC or Clang. The NASM backend remains experimental and limited.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="pipeline">
+      <div class="container">
+        <div class="section-head">
+          <h2 data-i18n="pipe.title">From a .yl file to a native program</h2>
+          <p data-i18n="pipe.lede">The compiler has two paths. The C path is the stable one. The NASM path is experimental and covers less of the language.</p>
+        </div>
+
+        <figure class="flow" aria-labelledby="flow-caption">
+          <figcaption id="flow-caption" class="sr-only" data-i18n="pipe.caption">Build pipeline: a source file goes to the YLang compiler, which has a stable C backend built with GCC or Clang, and an experimental NASM backend.</figcaption>
+
+          <div class="trunk">
+            <div class="node">
+              <strong class="node-title mono">hello.yl</strong>
+              <span class="node-desc" data-i18n="pipe.source">Your source code</span>
+            </div>
+            <span class="link" aria-hidden="true"></span>
+            <div class="node">
+              <strong class="node-title" data-i18n="pipe.compiler">YLang compiler</strong>
+              <span class="node-desc" data-i18n="pipe.compiler.d">Reads and checks your code</span>
+            </div>
+          </div>
+
+          <div class="branches">
+            <div class="branch branch-stable">
+              <div class="node node-stable">
+                <span class="tag tag-stable" data-i18n="tag.stable">Stable</span>
+                <strong class="node-title" data-i18n="pipe.c">C backend</strong>
+                <span class="node-desc" data-i18n="pipe.c.d">Generates C source</span>
+              </div>
+              <span class="link link-stable" aria-hidden="true"></span>
+              <div class="node node-stable">
+                <strong class="node-title">GCC / Clang</strong>
+                <span class="node-desc" data-i18n="pipe.cc.d">Builds the generated C</span>
+              </div>
+              <span class="link link-stable" aria-hidden="true"></span>
+              <div class="node node-stable">
+                <strong class="node-title" data-i18n="pipe.exe">Native executable</strong>
+                <span class="node-desc" data-i18n="pipe.exe.d">Runs on its own</span>
+              </div>
+            </div>
+
+            <div class="branch branch-exp">
+              <div class="node node-exp">
+                <span class="tag tag-exp" data-i18n="tag.exp">Experimental</span>
+                <strong class="node-title" data-i18n="pipe.nasm">NASM backend</strong>
+                <span class="node-desc" data-i18n="pipe.nasm.d">Linux x86-64 only, limited coverage</span>
+              </div>
+            </div>
+          </div>
+        </figure>
+
+        <h3 class="subhead" data-i18n="status.title">What works today</h3>
+        <dl class="status-list">
+          <div class="status-row">
+            <dt data-i18n="status.c">C backend</dt>
+            <dd><span class="tag tag-stable" data-i18n="tag.stable">Stable</span><span data-i18n="status.c.d">Generates C and builds with GCC or Clang.</span></dd>
+          </div>
+          <div class="status-row">
+            <dt data-i18n="status.nasm">NASM backend</dt>
+            <dd><span class="tag tag-exp" data-i18n="tag.exp">Experimental</span><span data-i18n="status.nasm.d">Linux x86-64 only, with limited feature coverage.</span></dd>
+          </div>
+          <div class="status-row">
+            <dt data-i18n="status.inst">Prebuilt installers</dt>
+            <dd><span class="tag tag-none" data-i18n="tag.none">Not yet</span><span data-i18n="status.inst.d">None are published. Build from source instead.</span></dd>
+          </div>
+          <div class="status-row">
+            <dt data-i18n="status.safe">Safety model</dt>
+            <dd><span class="tag tag-none" data-i18n="tag.evolving">Evolving</span><span data-i18n="status.safe.d">Not equivalent to Rust. Support varies by backend.</span></dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="section" id="learn">
+      <div class="container split">
+        <div class="split-copy">
+          <h2 data-i18n="learn.title">Start with the guide or the code.</h2>
+          <p data-i18n="learn.lede">Read the book, browse the documentation, or build the compiler locally. You can follow the project from its source rather than relying on a black box.</p>
+          <a class="text-link" href="https://github.com/Yassine-Jemi01/ylang/tree/main/docs" target="_blank" rel="noreferrer"><span data-i18n="learn.link">Browse documentation</span> <span class="ext" aria-hidden="true">↗</span></a>
+        </div>
+
         <div class="resource-list">
-          <a class="resource-card" href="https://github.com/Yassine-Jemi01/ylang/blob/main/docs/book/YLang-Book.pdf" target="_blank" rel="noreferrer">
-            <span class="resource-icon icon-book" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21z"/><path d="M4 5.5v13A2.5 2.5 0 0 1 6.5 16H20M8 7h8M8 10h7"/></svg></span>
-            <span class="resource-copy"><strong>The YLang book</strong><small>Read the existing language book in PDF format.</small></span><span class="resource-arrow" aria-hidden="true">↗</span>
+          <a class="resource" href="https://github.com/Yassine-Jemi01/ylang/blob/main/docs/book/YLang-Book.pdf" target="_blank" rel="noreferrer">
+            <span class="resource-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21z"/><path d="M4 5.5v13A2.5 2.5 0 0 1 6.5 16H20M8 7h8M8 10h7"/></svg></span>
+            <span class="resource-copy"><strong data-i18n="res.book.t">The YLang book</strong><small data-i18n="res.book.d">Read the existing language book in PDF format.</small></span>
+            <span class="ext" aria-hidden="true">↗</span>
           </a>
-          <a class="resource-card" href="https://github.com/Yassine-Jemi01/ylang/tree/main/docs" target="_blank" rel="noreferrer">
-            <span class="resource-icon icon-docs" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></svg></span>
-            <span class="resource-copy"><strong>Language documentation</strong><small>Architecture, language specification, and compiler notes.</small></span><span class="resource-arrow" aria-hidden="true">↗</span>
+          <a class="resource" href="https://github.com/Yassine-Jemi01/ylang/tree/main/docs" target="_blank" rel="noreferrer">
+            <span class="resource-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></svg></span>
+            <span class="resource-copy"><strong data-i18n="res.docs.t">Language documentation</strong><small data-i18n="res.docs.d">Architecture, language specification, and compiler notes.</small></span>
+            <span class="ext" aria-hidden="true">↗</span>
           </a>
-          <a class="resource-card" href="https://github.com/Yassine-Jemi01/ylang/tree/main/examples" target="_blank" rel="noreferrer">
-            <span class="resource-icon icon-code" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg></span>
-            <span class="resource-copy"><strong>Example programs</strong><small>Explore small programs and learn by changing them.</small></span><span class="resource-arrow" aria-hidden="true">↗</span>
+          <a class="resource" href="https://github.com/Yassine-Jemi01/ylang/tree/main/examples" target="_blank" rel="noreferrer">
+            <span class="resource-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg></span>
+            <span class="resource-copy"><strong data-i18n="res.ex.t">Example programs</strong><small data-i18n="res.ex.d">Explore small programs and learn by changing them.</small></span>
+            <span class="ext" aria-hidden="true">↗</span>
           </a>
         </div>
       </div>
     </section>
-    <section class="section setup-section container" id="downloads">
-      <div class="setup-copy">
-        <p class="eyebrow">03 / Get started</p>
-        <h2>Build it from<br><span>the source.</span></h2>
-        <p>Prebuilt installers are not published yet. To try YLang today, clone the repository and build the current compiler.</p>
-        <div class="setup-actions">
-          <a class="button button-primary" href="https://github.com/Yassine-Jemi01/ylang/releases" target="_blank" rel="noreferrer">View releases <span aria-hidden="true">→</span></a>
-          <a class="text-link" href="https://github.com/Yassine-Jemi01/ylang#quick-start">Build instructions <span aria-hidden="true">↗</span></a>
+
+    <section class="section section-alt" id="start">
+      <div class="container split">
+        <div class="split-copy">
+          <h2 data-i18n="start.title">Build it from source.</h2>
+          <p data-i18n="start.lede">Prebuilt installers are not published yet. To try YLang today, clone the repository and build the current compiler.</p>
+          <div class="setup-actions">
+            <a class="button button-primary" href="https://github.com/Yassine-Jemi01/ylang/releases" target="_blank" rel="noreferrer" data-i18n="start.releases">View releases</a>
+            <a class="text-link" href="https://github.com/Yassine-Jemi01/ylang#quick-start" target="_blank" rel="noreferrer"><span data-i18n="start.build">Build instructions</span> <span class="ext" aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+
+        <div class="terminal">
+          <div class="terminal-top">
+            <span>Linux / macOS</span>
+            <button class="copy-button" type="button" data-copy-text="git clone https://github.com/Yassine-Jemi01/ylang.git&#10;cd ylang&#10;make&#10;make test" data-i18n="copy.cmds">Copy commands</button>
+          </div>
+          <div class="terminal-body">
+            <p><span class="prompt">$</span> git clone https://github.com/Yassine-Jemi01/ylang.git</p>
+            <p><span class="prompt">$</span> cd ylang</p>
+            <p><span class="prompt">$</span> make</p>
+            <p><span class="prompt">$</span> make test</p>
+          </div>
+          <p class="terminal-foot" data-i18n="start.req">Requires a C17 compiler and GNU Make. See the README for platform notes.</p>
         </div>
       </div>
-      <div class="terminal-card">
-        <div class="terminal-top"><span class="terminal-indicator" aria-hidden="true"></span><span>Terminal</span><span class="terminal-os">Linux / macOS</span></div>
-        <div class="terminal-body"><p><span class="terminal-prompt">$</span> git clone https://github.com/Yassine-Jemi01/ylang.git</p><p><span class="terminal-prompt">$</span> cd ylang</p><p><span class="terminal-prompt">$</span> make</p><p><span class="terminal-prompt">$</span> make test</p></div>
-        <div class="terminal-foot">Requires a C17 compiler and GNU Make. See the README for platform notes.</div>
-      </div>
     </section>
-    <section class="community-section">
+
+    <section class="community">
       <div class="container community-inner">
-        <div><p class="eyebrow">Built in the open</p><h2>Help shape what comes next.</h2><p>Read the implementation, report a bug, or contribute to the language.</p></div>
-        <a class="button button-inverse" href="https://github.com/Yassine-Jemi01/ylang" target="_blank" rel="noreferrer">Visit YLang on GitHub <span aria-hidden="true">↗</span></a>
+        <div>
+          <h2 data-i18n="comm.title">Help shape what comes next.</h2>
+          <p data-i18n="comm.lede">Read the implementation, report a bug, or contribute to the language.</p>
+        </div>
+        <a class="button button-primary" href="https://github.com/Yassine-Jemi01/ylang" target="_blank" rel="noreferrer"><span data-i18n="comm.cta">Visit YLang on GitHub</span> <span class="ext" aria-hidden="true">↗</span></a>
       </div>
     </section>
   </main>
+
   <footer class="site-footer">
     <div class="container footer-main">
-      <a class="brand footer-brand" href="#top" aria-label="YLang home"><img class="brand-logo" src="assets/ylang-logo-full.svg" alt="YLang — Compiled, Explicit, Friendly" width="520" height="200"></a>
-      <p class="footer-description">An open-source compiled language project, made to be explored.</p>
-      <div class="footer-links"><a href="https://github.com/Yassine-Jemi01/ylang">GitHub</a><a href="https://github.com/Yassine-Jemi01/ylang/blob/main/LICENSE">MIT License</a><a href="https://github.com/Yassine-Jemi01/ylang/blob/main/docs/book/YLang-Book.pdf">The book</a></div>
+      <a class="brand" href="#top" aria-label="YLang">
+        <img
+          class="brand-full-logo"
+          src="assets/ylang-logo-full.svg"
+          alt="YLang — Compiled, Explicit, Friendly"
+          width="136"
+          height="52"
+        >
+      </a>
+      <p class="footer-description" data-i18n="foot.desc">An open-source compiled language project, made to be explored.</p>
+      <div class="footer-links">
+        <a href="https://github.com/Yassine-Jemi01/ylang" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://github.com/Yassine-Jemi01/ylang/blob/main/LICENSE" target="_blank" rel="noreferrer" data-i18n="foot.license">MIT License</a>
+        <a href="https://github.com/Yassine-Jemi01/ylang/blob/main/docs/book/YLang-Book.pdf" target="_blank" rel="noreferrer" data-i18n="foot.book">The book</a>
+      </div>
     </div>
-    <div class="container footer-bottom"><span>© <span id="year">2026</span> YLang contributors</span><span>Designed for clarity.</span></div>
+    <div class="container footer-bottom">
+      <span>© <span id="year">2026</span> <span data-i18n="foot.contrib">YLang contributors</span></span>
+      <span data-i18n="foot.tag">Designed for clarity.</span>
+    </div>
   </footer>
+
+  <script src="script.js"></script>
 </body>
 </html>
