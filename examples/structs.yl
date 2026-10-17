@@ -9,6 +9,7 @@ function move_right(Point point, int amount) -> Point {
 
 function main() -> int {
     let Point origin = Point(3, 4);
+    origin.x += 1;
     let Point moved = move_right(origin, 5);
     print(moved.x, ",", moved.y);
     return 0;
