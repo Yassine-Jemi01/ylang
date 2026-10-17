@@ -279,6 +279,22 @@ grep -q 'E2059' build/enum-duplicate-arm.out
 printf '9 , 4\n' > build/structs-example.expected
 diff -u build/structs-example.expected build/structs-example.out
 
+# Mutable struct field assignment: update one field without changing the others.
+cat > build/struct-field-assignment.yl <<'EOF'
+struct Point { int x; int y; }
+function main() -> int {
+    let Point p = Point(2, 7);
+    p.x = 12;
+    print(p.x, ",", p.y);
+    return 0;
+}
+EOF
+./build/ylang check build/struct-field-assignment.yl >/dev/null
+./build/ylang build build/struct-field-assignment.yl -o build/test-struct-field-assignment >/dev/null
+./build/test-struct-field-assignment > build/struct-field-assignment.out
+printf '12 , 7\\n' > build/struct-field-assignment.expected
+diff -u build/struct-field-assignment.expected build/struct-field-assignment.out
+
 cat > build/struct-wrong-field-type.yl <<'EOF'
 struct Point { int x; string label; }
 function main() -> int {
