@@ -1,6 +1,6 @@
 # YLang GUI API Contract (Proposal)
 
-Status: initial implementation is in PR #34. The API below is the supported first binding surface for that change; do not treat it as released until the PR passes CI and merges.
+Status: implemented on `main` as an optional SDL2-backed binding surface. The API below describes the current first milestone; native GUI builds require SDL2 development files, while `check` and ordinary non-GUI builds do not.
 
 This document defines a deliberately small first binding milestone. The contract must be agreed before changing the parser, semantic checker, C generator, and native build driver together.
 
@@ -61,7 +61,7 @@ function main() -> int {
 }
 ```
 
-The final example must be added to executable regression tests only after the compiler and build driver support the API.
+The example is available as `examples/gui.yl`. The regression suite checks its types and generated C; an SDL2 runtime smoke test runs when the development package is available.
 
 ## Compiler and build requirements
 
