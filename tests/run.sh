@@ -158,6 +158,55 @@ YLANG_PATH=stdlib ./build/ylang build build/game2d-collision.yl -o build/test-ga
 printf 'true\nfalse\nfalse\ntrue\nfalse\n' > build/game2d-collision.expected
 diff -u build/game2d-collision.expected build/game2d-collision.out
 
+# User-defined enums have distinct types and can be passed, compared, and lowered.
+cat > build/enum-basic.yl <<'EOF'
+enum Direction { North, East, South, West }
+function is_east(Direction direction) -> bool {
+    return direction == Direction.East;
+}
+function main() -> int {
+    let Direction facing = Direction.North;
+    if (facing == Direction.North) { print("north"); }
+    if (is_east(Direction.East)) { print("east"); }
+    if (facing != Direction.South) { print("not-south"); }
+    return 0;
+}
+EOF
+./build/ylang check build/enum-basic.yl >/dev/null
+./build/ylang build build/enum-basic.yl -o build/test-enum-basic >/dev/null
+./build/test-enum-basic > build/enum-basic.out
+printf 'north\neast\nnot-south\n' > build/enum-basic.expected
+diff -u build/enum-basic.expected build/enum-basic.out
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
+    ./build/ylang build-asm build/enum-basic.yl -o build/test-enum-basic-asm >/dev/null
+    ./build/test-enum-basic-asm > build/enum-basic-asm.out
+    diff -u build/enum-basic.expected build/enum-basic-asm.out
+fi
+cat > build/enum-mismatch.yl <<'EOF'
+enum Direction { North, East }
+enum Color { Red, Blue }
+function main() -> int {
+    let Direction direction = Color.Red;
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-mismatch.yl > build/enum-mismatch.out 2>&1; then
+    echo "FAIL: assigning one enum type to another was accepted" >&2
+    exit 1
+fi
+cat > build/enum-unknown-variant.yl <<'EOF'
+enum Direction { North, East }
+function main() -> int {
+    let Direction direction = Direction.West;
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-unknown-variant.yl > build/enum-unknown-variant.out 2>&1; then
+    echo "FAIL: unknown enum variant was accepted" >&2
+    exit 1
+fi
+grep -q 'E2052' build/enum-unknown-variant.out
+
 # Standard math library: native calls, namespacing, and argument type checks.
 ./build/ylang check examples/math.yl >/dev/null
 ./build/ylang build examples/math.yl -o build/test-math >/dev/null
