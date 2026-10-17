@@ -128,6 +128,27 @@ loops, returns, and `print`. Global declarations, arrays, floats, f-strings,
 string comparisons, short-circuit `and`/`or`, and standard-library calls
 are not supported yet. The established C backend remains the default.
 
+## Typed enums (experimental)
+
+Unit enums are available in the current development branch, including type-checked variants and exhaustive `match` statements. The feature is not part of the stable 1.1.0 language subset yet.
+
+```yl
+enum Direction { North, East, South, West }
+
+function main() -> int {
+    let Direction facing = Direction.North;
+    match (facing) {
+        Direction.North -> { print("north"); }
+        Direction.East -> { print("east"); }
+        Direction.South -> { print("south"); }
+        Direction.West -> { print("west"); }
+    }
+    return 0;
+}
+```
+
+See [enum reference](docs/ENUMS.md) and [runnable example](examples/enums.yl). Payload variants, generic enums, and matching bindings are not implemented in this milestone.
+
 ## Multi-file imports (experimental)
 
 YLang can import named functions and global variables from another source file. Paths are resolved relative to the importing file first.
