@@ -106,8 +106,27 @@ static const char *nearest_variable(Checker *checker, const char *name)
 
 static EnumDecl *enum_for_type(Compiler *compiler, YType type)
 {
+    if (type < TYPE_ENUM_BASE || type >= TYPE_STRUCT_BASE) return NULL;
     for (size_t i = 0; i < compiler->enum_count; i++) {
         if (compiler->enums[i]->type == type) return compiler->enums[i];
+    }
+    return NULL;
+}
+
+static StructDecl *struct_for_type(Compiler *compiler, YType type)
+{
+    if (type < TYPE_STRUCT_BASE) return NULL;
+    for (size_t i = 0; i < compiler->struct_count; i++) {
+        if (compiler->structs[i]->type == type) return compiler->structs[i];
+    }
+    return NULL;
+}
+
+static StructField *sema_struct_field(StructDecl *structure, const char *name)
+{
+    if (!structure) return NULL;
+    for (size_t i = 0; i < structure->field_count; i++) {
+        if (strcmp(structure->fields[i]->name, name) == 0) return structure->fields[i];
     }
     return NULL;
 }
@@ -293,6 +312,58 @@ static YType check_expr(Checker *checker, Expr *expr)
         case EXPR_ENUM_VALUE:
             expr->type = expr->as.enum_value.enumeration->type;
             return expr->type;
+        case EXPR_STRUCT_INIT: {
+            StructDecl *structure = expr->as.struct_init.structure;
+            if (!structure) {
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            if (expr->as.struct_init.count != structure->field_count) {
+                char suggestion[256];
+                (void)snprintf(suggestion, sizeof(suggestion),
+                    "Struct %s expects %zu field value(s), but received %zu.",
+                    structure->name, structure->field_count, expr->as.struct_init.count);
+                diagnostic(c, expr->token, "error", "E2074",
+                           "Incorrect number of struct constructor arguments.", suggestion);
+            }
+            for (size_t i = 0; i < expr->as.struct_init.count; i++) {
+                YType actual = check_expr(checker, expr->as.struct_init.args[i]);
+                if (i < structure->field_count && actual != TYPE_ERROR &&
+                    actual != structure->fields[i]->type) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion, sizeof(suggestion),
+                        "Field '%s' expects %s, but received %s.",
+                        structure->fields[i]->name, type_name(structure->fields[i]->type),
+                        type_name(actual));
+                    diagnostic(c, expr->as.struct_init.args[i]->token, "error", "E2075",
+                               "Struct field initializer type mismatch.", suggestion);
+                }
+            }
+            expr->type = structure->type;
+            return expr->type;
+        }
+        case EXPR_MEMBER: {
+            YType target_type = check_expr(checker, expr->as.member.target);
+            StructDecl *structure = struct_for_type(c, target_type);
+            if (!structure) {
+                diagnostic(c, expr->token, "error", "E2076",
+                           "Field access requires a struct value.",
+                           "Use field access only on a variable or expression whose type is a declared struct.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            StructField *field = sema_struct_field(structure, expr->as.member.name);
+            if (!field) {
+                diagnostic(c, expr->token, "error", "E2077",
+                           "This struct has no field with that name.",
+                           "Check the field spelling against the struct declaration.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            expr->as.member.field = field;
+            expr->type = field->type;
+            return expr->type;
+        }
         case EXPR_INT: {
             char *text = token_copy(c, expr->token);
             errno = 0;
