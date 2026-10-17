@@ -13,6 +13,7 @@ static void set_module_context(Compiler *compiler, Module *module)
     compiler->filename = module->path;
     compiler->source = module->source;
     compiler->source_length = module->source_length;
+    compiler->current_module = module;
 }
 
 static char *canonical_path(Compiler *compiler, const char *path)
