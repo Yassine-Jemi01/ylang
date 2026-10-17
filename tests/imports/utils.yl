@@ -1,0 +1,5 @@
+from value.yl import system_value()
+
+function system_data() -> string {
+    return system_value();
+}
