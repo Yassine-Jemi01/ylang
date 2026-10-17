@@ -1,0 +1,8 @@
+function main() -> int {
+    if (true) {
+        return 0;
+    } else {
+        return 1;
+    }
+    print("this must be diagnosed as unreachable");
+}
