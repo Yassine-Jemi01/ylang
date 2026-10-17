@@ -285,6 +285,8 @@ struct Point { int x; int y; }
 function main() -> int {
     let Point p = Point(2, 7);
     p.x = 12;
+    p.x += 3;
+    p.y++;
     print(p.x, ",", p.y);
     return 0;
 }
@@ -292,7 +294,7 @@ EOF
 ./build/ylang check build/struct-field-assignment.yl >/dev/null
 ./build/ylang build build/struct-field-assignment.yl -o build/test-struct-field-assignment >/dev/null
 ./build/test-struct-field-assignment > build/struct-field-assignment.out
-printf '12 , 7\\n' > build/struct-field-assignment.expected
+printf '15 , 8\\n' > build/struct-field-assignment.expected
 diff -u build/struct-field-assignment.expected build/struct-field-assignment.out
 
 cat > build/struct-wrong-field-type.yl <<'EOF'
