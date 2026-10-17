@@ -28,4 +28,6 @@ YLang diagnostics include stable codes to help users search documentation and re
 | E2044 | A string standard-library function received a non-string argument. | Pass strings. |
 | E2045 | An explicit conversion received an unsupported source type. | Check the conversion function's accepted input type. |
 
+| E2057 | Statement is unreachable after a statement that always exits the current path. | Remove it or move it before the terminating statement. |
+
 Runtime arithmetic and bounds failures currently use descriptive text rather than compiler error codes. Runtime source line and function attribution are not yet implemented.
