@@ -122,6 +122,15 @@ grep -q 'Unreachable code' build/unreachable-after-return.out
 # An if without an else does not make following statements unreachable.
 ./build/ylang check tests/reachable-after-if.yl >/dev/null
 
+# An if whose two branches return makes following code unreachable.
+if ./build/ylang check tests/unreachable-after-if-branches.yl > build/unreachable-after-if-branches.out 2>&1; then
+    echo "FAIL: code after an if whose branches both return was accepted" >&2
+    exit 1
+fi
+grep -q 'E2057' build/unreachable-after-if-branches.out
+grep -q 'Unreachable code' build/unreachable-after-if-branches.out
+
+
 if ./build/ylang check tests/uninitialized.yl > build/uninitialized.out 2>&1; then
     echo "FAIL: uninitialized read was accepted" >&2
     exit 1
