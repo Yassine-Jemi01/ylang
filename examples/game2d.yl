@@ -1,4 +1,4 @@
-from game2d.yl import game2d_open, game2d_begin_frame, game2d_draw_rect, game2d_end_frame, game2d_close, game2d_last_error, game2d_key_down, game2d_mouse_x, game2d_mouse_y, game2d_mouse_button_down, game2d_delta_ms;
+from "../stdlib/game2d.yl" import game2d_open, game2d_begin_frame, game2d_draw_rect, game2d_end_frame, game2d_close, game2d_last_error, game2d_key_down, game2d_mouse_x, game2d_mouse_y, game2d_mouse_button_down, game2d_delta_ms;
 
 function main() -> int {
     if (not game2d_open("YLang 2D", 800, 500)) {
