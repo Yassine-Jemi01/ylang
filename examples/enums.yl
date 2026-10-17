@@ -1,0 +1,22 @@
+enum Direction { North, East, South, West }
+
+function is_horizontal(Direction direction) -> bool {
+    return direction == Direction.East or direction == Direction.West;
+}
+
+function main() -> int {
+    let Direction facing = Direction.North;
+    if (is_horizontal(facing)) {
+        print("horizontal");
+    } else {
+        print("vertical");
+    }
+
+    match (facing) {
+        Direction.North -> { print("north"); }
+        Direction.East -> { print("east"); }
+        Direction.South -> { print("south"); }
+        Direction.West -> { print("west"); }
+    }
+    return 0;
+}
