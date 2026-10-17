@@ -5,8 +5,8 @@
  * YLang GUI runtime — SDL2-backed, optional C API.
  *
  * Build with `make gui` after installing SDL2 development files.
- * This runtime is currently a C API; direct .yl bindings require a future
- * foreign-function interface in the YLang language/compiler.
+ * YLang's C backend can optionally link this runtime when a .yl program
+ * uses the gui.* standard-library namespace.
  */
 
 #include <stdbool.h>
