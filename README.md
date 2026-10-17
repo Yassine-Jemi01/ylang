@@ -1,10 +1,10 @@
-# YLang 1.1.0
+# YLang 2.0.0-beta.1
 
 **A small compiled programming language with explicit types and actionable diagnostics.**
 
 YLang is implemented in C17. Its compiler tokenizes and parses `.yl` files, checks names, initialization and types, generates C, and invokes GCC or Clang to produce a native executable. The compiler currently targets POSIX systems; Linux and macOS are the supported portability targets. Native Windows support remains future work. It is a compiled language toolchain, not an interpreter.
 
-YLang **1.1.0** is a stable release of the documented language subset. It includes explicit conversions and checked integer parsing, fixed-size arrays with bounds checks, `loop`/`while`/`for`, string and file-I/O helpers, path utilities, native optimization-level selection, and an optional SDL2-backed C GUI runtime. The implementation remains deliberately scoped and does not claim to implement every planned feature or Rust-level memory safety.
+YLang **2.0.0-beta.1** is an experimental prerelease for testing the expanded compiler and standard library. The latest stable release remains **1.1.0**. The beta adds named imports and multi-file compilation, experimental typed enums and structs, and SDL2-backed GUI/2D helpers. The C backend remains the default; the NASM backend is experimental and supports only a restricted subset. This project does not claim Rust-level memory safety or production stability.
 
 ## Quick start
 
@@ -364,7 +364,7 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [Language specification](docs/language-spec.md)
 - [Architecture](docs/architecture.md)
 - [YLang 2.0 design roadmap](docs/YLANG-2.0-DESIGN.md)
-- [YLang 2.0 beta draft changelog and limitations](docs/CHANGELOG-2.0-BETA.md)
+- [YLang 2.0.0-beta.1 draft changelog and limitations](docs/CHANGELOG-2.0-BETA.md)
 - [VS Code language support, compiler diagnostics, and Code Runner setup](editors/vscode/README.md)
 - [Neovim native diagnostics integration](editors/nvim/README.md)
 - [GUI runtime API](include/ylang/gui.h) and [example](examples/gui.c)
