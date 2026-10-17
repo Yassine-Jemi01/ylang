@@ -1149,6 +1149,77 @@ static EnumDecl *parse_enum(Parser *p, Token enum_token)
     return enumeration;
 }
 
+static StructDecl *parse_struct(Parser *p, Token struct_token)
+{
+    Token name_token = consume(p, TOKEN_IDENTIFIER,
+        "Expected a struct name after 'struct'.",
+        "Use a declaration such as struct Point { float x; float y; }.");
+    if (name_token.length == 0) return NULL;
+    char *name = token_copy(p->compiler, name_token);
+
+    if (find_struct(p->compiler, name) || find_enum(p->compiler, name)) {
+        diagnostic(p->compiler, name_token, "error", "E2070",
+                   "This type name is already declared in the current module.",
+                   "Choose a unique name for the struct or enum.");
+    }
+
+    StructDecl *structure = arena_alloc(&p->compiler->arena, sizeof(*structure));
+    structure->token = struct_token;
+    structure->name = name;
+    structure->type = (YType)(TYPE_STRUCT_BASE + p->compiler->struct_count);
+    structure->module = p->compiler->current_module;
+    size_t c_name_size = strlen(name) + 48;
+    structure->c_name = arena_alloc(&p->compiler->arena, c_name_size);
+    (void)snprintf(structure->c_name, c_name_size, "yl_struct_%zu_%s",
+                   p->compiler->struct_count, name);
+    append_ptr(p->compiler, (void ***)&p->compiler->structs,
+               &p->compiler->struct_count, structure);
+
+    consume(p, TOKEN_LEFT_BRACE, "Expected '{' after the struct name.",
+            "List typed fields inside the braces.");
+    while (p->current.type != TOKEN_RIGHT_BRACE &&
+           p->current.type != TOKEN_EOF) {
+        Token field_type_token = p->current;
+        YType field_type = parse_type(p);
+        Token field_name_token = consume(p, TOKEN_IDENTIFIER,
+            "Expected a field name after its type.",
+            "Use fields such as 'int x;' or 'string name;'.");
+        if (field_name_token.length == 0) break;
+        char *field_name = token_copy(p->compiler, field_name_token);
+        bool duplicate = find_struct_field(structure, field_name) != NULL;
+        if (duplicate) {
+            diagnostic(p->compiler, field_name_token, "error", "E2071",
+                       "This struct field is declared more than once.",
+                       "Every field name must be unique within its struct.");
+        }
+        if (field_type == TYPE_VOID || field_type == TYPE_ERROR ||
+            field_type == structure->type) {
+            diagnostic(p->compiler, field_type_token, "error", "E2072",
+                       "This field type is not supported in a struct.",
+                       "Fields must use a valid non-void type; recursive by-value struct fields are not supported.");
+        } else if (!duplicate) {
+            StructField *field = arena_alloc(&p->compiler->arena, sizeof(*field));
+            field->token = field_name_token;
+            field->name = field_name;
+            field->type = field_type;
+            field->index = structure->field_count;
+            append_ptr(p->compiler, (void ***)&structure->fields,
+                       &structure->field_count, field);
+        }
+        consume(p, TOKEN_SEMICOLON, "Expected ';' after the struct field.",
+                "Terminate each struct field declaration with ';'.");
+    }
+    if (structure->field_count == 0) {
+        diagnostic(p->compiler, name_token, "error", "E2073",
+                   "A struct must declare at least one supported field.",
+                   "Add a field such as 'int value;'.");
+    }
+    consume(p, TOKEN_RIGHT_BRACE, "Expected '}' after struct fields.",
+            "Close the struct declaration with '}'.");
+    (void)match(p, TOKEN_SEMICOLON);
+    return structure;
+}
+
 static char *decode_import_path(Parser *p, Token token)
 {
     if (token.length < 2 || token.start[0] != '"' ||
@@ -1311,6 +1382,11 @@ Program *parse_program(Compiler *c)
             Token enum_token = p.current;
             advance_parser(&p);
             (void)parse_enum(&p, enum_token);
+        } else if (p.current.type == TOKEN_IDENTIFIER &&
+                   token_is(&p.current, "struct")) {
+            Token struct_token = p.current;
+            advance_parser(&p);
+            (void)parse_struct(&p, struct_token);
         } else if (p.current.type == TOKEN_IDENTIFIER &&
                    token_is(&p.current, "from")) {
             Token from_token = p.current;
