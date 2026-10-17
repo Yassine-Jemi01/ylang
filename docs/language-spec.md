@@ -71,6 +71,29 @@ function main() -> int {
 
 Declare an enum before using its type. Refer to variants with `EnumName.Variant`. Values of different enum types cannot be mixed, and a variant can be passed to or returned from a function with the same enum type. Variants currently have no payloads. A statement `match (value) { EnumName.Variant -> { ... } }` must contain exactly one arm for every variant; missing and duplicate arms are errors. For this milestone, the matched expression must not contain calls or assignments. Enum formatting with `print`, importing enum types across module boundaries, payload variants, and explicit numeric discriminants are not implemented yet. The C backend and the experimental NASM backend represent these unit variants as integer values while semantic analysis preserves their distinct YLang types.
 
+### User-defined structs (experimental)
+
+Structs are value types with named fields. Declare fields using the built-in type-first syntax, then construct values positionally:
+
+```yl
+struct Point { int x; int y; }
+
+function moved(Point point, int dx, int dy) -> Point {
+    point.x += dx;
+    point.y += dy;
+    return point;
+}
+
+function main() -> int {
+    let Point start = Point(3, 4);
+    let Point finish = moved(start, 5, 2);
+    print(finish.x, finish.y);
+    return 0;
+}
+```
+
+The compiler checks field names, constructor arity, and field types. Structs can be passed to and returned from functions by value, and fields can be read or assigned. Struct declarations must precede their use; nested field access, recursive-by-value layouts, named constructor arguments, and importing struct types across module boundaries are not supported yet. The C backend supports structs; the experimental NASM backend rejects them explicitly until struct lowering is implemented.
+
 ## 5. Literals and strings
 
 ```ylang
@@ -270,6 +293,6 @@ lowering is implemented.
 
 ## 12. Unsupported features and implementation limits
 
-The following are not supported by the current language subset: structs/classes/OOP, payload enums, generic `Option<T>`/`Result<T, E>`, exception syntax (`try`/`catch`), generics, raw pointers/references, returning arrays, nested/const arrays, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
+The following are not supported by the current language subset: classes/OOP, payload enums, generic `Option<T>`/`Result<T, E>`, exception syntax (`try`/`catch`), generics, raw pointers/references, returning arrays, nested/const arrays, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
 
 The compiler generates C, so native code inherits ordinary process privileges and is not sandboxed. Some formatted string values are stored until process exit; creating many such values in a long-running loop can increase memory consumption. The language does not define ownership/borrowing or a garbage collector in this release. Do not assume Rust-like memory-safety guarantees.
