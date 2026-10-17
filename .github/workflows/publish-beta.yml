@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   build-and-test:
+    if: github.ref == 'refs/heads/main'
     name: build-and-test (${{ matrix.os }}, ${{ matrix.compiler }})
     strategy:
       fail-fast: false
@@ -70,6 +71,7 @@ jobs:
         run: ${{ steps.compiler.outputs.make }} sanitize CC="${{ steps.compiler.outputs.cc }}"
 
   editor-diagnostics:
+    if: github.ref == 'refs/heads/main'
     name: Editor diagnostics
     runs-on: ubuntu-latest
     steps:
@@ -89,6 +91,7 @@ jobs:
         run: nvim --headless -u NONE +'luafile editors/nvim/tests/diagnostics.lua'
 
   publish:
+    if: github.ref == 'refs/heads/main'
     name: Publish source-only GitHub prerelease
     needs: [build-and-test, editor-diagnostics]
     runs-on: ubuntu-latest
