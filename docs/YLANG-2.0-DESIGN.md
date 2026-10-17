@@ -63,7 +63,7 @@ Then add enums with exhaustive matching. Do not add pattern matching syntax unti
 
 ## Milestone 2 — Explicit absence and errors
 
-Introduce Option<T> and Result<T, E> after the compiler has a reliable generic/type representation.
+Introduce Option&lt;T&gt; and Result&lt;T, E&gt; after the compiler has a reliable generic/type representation.
 
 Illustrative syntax (not currently guaranteed to compile):
 
@@ -77,8 +77,8 @@ match result {
 
 Rules:
 - Missing values must not be represented by undocumented magic integers or null strings.
-- Option<T> must force callers to handle the absent case, using matching or a documented unwrap API.
-- Result<T, E> must distinguish success from failure and preserve the error value.
+- Option&lt;T&gt; must force callers to handle the absent case, using matching or a documented unwrap API.
+- Result&lt;T, E&gt; must distinguish success from failure and preserve the error value.
 - Exhaustiveness checks must reject missing cases.
 - Generic instantiation and diagnostics need tests for nested types and invalid type arguments.
 
