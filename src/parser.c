@@ -864,9 +864,53 @@ static Stmt *parse_if_after_keyword(Parser *p, Token token)
     return stmt;
 }
 
+static Stmt *parse_match_after_keyword(Parser *p, Token token)
+{
+    Stmt *stmt = new_stmt(p->compiler, STMT_MATCH, token);
+    consume(p, TOKEN_LEFT_PAREN, "Expected '(' after match.",
+            "Write match (value) { EnumName.Variant -> { ... } }.");
+    stmt->as.match_stmt.value = parse_expression(p);
+    consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after match value.",
+            "Close the matched expression with ')'.");
+    consume(p, TOKEN_LEFT_BRACE, "Expected '{' before match arms.",
+            "Place one EnumName.Variant -> statement arm inside braces for each variant.");
+    while (p->current.type != TOKEN_RIGHT_BRACE &&
+           p->current.type != TOKEN_EOF) {
+        Token arm_token = p->current;
+        Expr *pattern = parse_expression(p);
+        MatchArm *arm = arena_alloc(&p->compiler->arena, sizeof(*arm));
+        arm->token = arm_token;
+        if (pattern->kind != EXPR_ENUM_VALUE) {
+            diagnostic(p->compiler, pattern->token, "error", "E2055",
+                       "A match arm must name an enum variant.",
+                       "Use a pattern such as Direction.North -> { ... }.");
+        } else {
+            arm->variant = pattern->as.enum_value.variant;
+        }
+        consume(p, TOKEN_ARROW, "Expected '->' after the match variant.",
+                "Use EnumName.Variant -> { ... }.");
+        arm->body = parse_statement(p);
+        append_ptr(p->compiler, (void ***)&stmt->as.match_stmt.arms,
+                   &stmt->as.match_stmt.arm_count, arm);
+        if (match(p, TOKEN_COMMA) || match(p, TOKEN_SEMICOLON)) continue;
+        if (p->current.type != TOKEN_RIGHT_BRACE &&
+            p->current.start == arm_token.start &&
+            p->current.type == arm_token.type) {
+            advance_parser(p);
+        }
+    }
+    consume(p, TOKEN_RIGHT_BRACE, "Expected '}' after match arms.",
+            "Close the match statement with '}'.");
+    return stmt;
+}
+
 static Stmt *parse_statement(Parser *p)
 {
     Token token = p->current;
+    if (p->current.type == TOKEN_IDENTIFIER && token_is(&p->current, "match")) {
+        advance_parser(p);
+        return parse_match_after_keyword(p, token);
+    }
     if (match(p, TOKEN_LET)) return parse_variable(p, false);
     if (match(p, TOKEN_LEFT_BRACE)) return parse_block_after_open(p, token);
 
