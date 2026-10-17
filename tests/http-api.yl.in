@@ -46,5 +46,17 @@ function main() -> int {
     print(invalid_method);
     print(http_status_code());
     print(http_last_error());
+
+    let string invalid_header = http_get_with_headers(
+        "__BASE_URL__/hello", "Bad Header: value");
+    print(invalid_header);
+    print(http_status_code());
+    print(http_last_error());
+
+    let string forbidden_protocol = http_get("file:///etc/passwd");
+    print(forbidden_protocol);
+    print(http_status_code());
+    let string protocol_error = http_last_error();
+    print(len(protocol_error) > 0);
     return 0;
 }
