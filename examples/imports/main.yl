@@ -1,0 +1,7 @@
+from string_tools.yl import system_data()
+
+function main() -> int {
+    let string data = system_data();
+    print(data);
+    return 0;
+}
