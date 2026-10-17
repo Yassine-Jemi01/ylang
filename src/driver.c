@@ -949,6 +949,20 @@ int ylang_run(const char *command, const char *input_path,
         free(source);
         return fix_result;
     }
+
+    SourceBundle source_bundle = {0};
+    if (!build_source_bundle(input_path, source, source_length, &source_bundle)) {
+        free(source);
+        return 66;
+    }
+    free(source);
+    source = source_bundle.source;
+    source_length = source_bundle.length;
+    compiler.source = source;
+    compiler.source_length = source_length;
+    compiler.source_units = source_bundle.units;
+    compiler.source_unit_count = source_bundle.unit_count;
+
     (void)parse_program(&compiler);
     if (!compiler.had_error) (void)check_program(&compiler);
 
@@ -964,14 +978,14 @@ int ylang_run(const char *command, const char *input_path,
                     compiler.error_count);
         }
         arena_destroy(&compiler.arena);
-        free(source);
+        source_bundle_destroy(&source_bundle);
         return 1;
     }
 
     if (strcmp(command, "check") == 0) {
         printf("YLang check: no errors found (%s).\n", input_path);
         arena_destroy(&compiler.arena);
-        free(source);
+        source_bundle_destroy(&source_bundle);
         return 0;
     }
 
@@ -987,7 +1001,7 @@ int ylang_run(const char *command, const char *input_path,
             if (ylang_make_directory("build") != 0 && errno != EEXIST) {
                 fprintf(stderr, "ylang: cannot create build directory: %s\n", strerror(errno));
                 arena_destroy(&compiler.arena);
-                free(source);
+                source_bundle_destroy(&source_bundle);
                 return 73;
             }
             c_path = "build/ylang-generated.c";
@@ -997,7 +1011,7 @@ int ylang_run(const char *command, const char *input_path,
         if (!temporary_directory) {
             fprintf(stderr, "ylang: cannot create a temporary build directory: %s\n", strerror(errno));
             arena_destroy(&compiler.arena);
-            free(source);
+            source_bundle_destroy(&source_bundle);
             return 73;
         }
         size_t path_size = strlen(temporary_directory) + sizeof(YLANG_PATH_SEPARATOR "generated.c");
@@ -1007,7 +1021,7 @@ int ylang_run(const char *command, const char *input_path,
             (void)ylang_remove_directory(temporary_directory);
             free(temporary_directory);
             arena_destroy(&compiler.arena);
-            free(source);
+            source_bundle_destroy(&source_bundle);
             return 70;
         }
         (void)snprintf(generated_path, path_size, "%s%s%s",
@@ -1028,7 +1042,7 @@ int ylang_run(const char *command, const char *input_path,
                 free(generated_path);
                 free(temporary_directory);
                 arena_destroy(&compiler.arena);
-                free(source);
+                source_bundle_destroy(&source_bundle);
                 return 70;
             }
             (void)snprintf(run_target, target_path_size, "%s%s%s",
@@ -1046,7 +1060,7 @@ int ylang_run(const char *command, const char *input_path,
         free(generated_path);
         free(temporary_directory);
         arena_destroy(&compiler.arena);
-        free(source);
+        source_bundle_destroy(&source_bundle);
         return 1;
     }
 
@@ -1083,6 +1097,6 @@ int ylang_run(const char *command, const char *input_path,
     free(generated_path);
     free(temporary_directory);
     arena_destroy(&compiler.arena);
-    free(source);
+    source_bundle_destroy(&source_bundle);
     return result;
 }
