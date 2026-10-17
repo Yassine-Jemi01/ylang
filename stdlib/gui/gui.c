@@ -1,6 +1,7 @@
 #include "ylang/gui.h"
 
 #include <SDL.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -189,4 +190,86 @@ void ylgui_shutdown(void)
     SDL_Quit();
     gui_initialized = false;
     gui_error[0] = '\0';
+}
+
+/* Narrow adapter used by the YLang C backend; keeps raw pointers out of .yl. */
+static YlguiWindow *ylgui_active_window;
+
+static bool ylgui_api_channel(int64_t value, uint8_t *out)
+{
+    if (value < 0 || value > 255) {
+        set_error("Color channels must be between 0 and 255");
+        return false;
+    }
+    *out = (uint8_t)value;
+    return true;
+}
+
+bool ylgui_api_init(void)
+{
+    return ylgui_init();
+}
+
+bool ylgui_api_create_window(const char *title, int64_t width, int64_t height)
+{
+    if (width <= 0 || height <= 0 || width > INT_MAX || height > INT_MAX) {
+        set_error("Window dimensions must be positive and fit in int");
+        return false;
+    }
+    if (ylgui_active_window != NULL) {
+        set_error("Only one active YLang GUI window is supported");
+        return false;
+    }
+    ylgui_active_window = ylgui_window_create(title, (int)width, (int)height);
+    return ylgui_active_window != NULL;
+}
+
+bool ylgui_api_poll(void)
+{
+    return ylgui_window_poll(ylgui_active_window);
+}
+
+bool ylgui_api_clear(int64_t red, int64_t green, int64_t blue)
+{
+    uint8_t r, g, b;
+    if (!ylgui_api_channel(red, &r) || !ylgui_api_channel(green, &g) ||
+        !ylgui_api_channel(blue, &b)) return false;
+    return ylgui_clear(ylgui_active_window, r, g, b);
+}
+
+bool ylgui_api_draw_rect(int64_t x, int64_t y, int64_t width, int64_t height,
+                         int64_t red, int64_t green, int64_t blue)
+{
+    uint8_t r, g, b;
+    if (x < INT_MIN || x > INT_MAX || y < INT_MIN || y > INT_MAX ||
+        width <= 0 || width > INT_MAX || height <= 0 || height > INT_MAX) {
+        set_error("Rectangle coordinates must fit in int and dimensions must be positive");
+        return false;
+    }
+    if (!ylgui_api_channel(red, &r) || !ylgui_api_channel(green, &g) ||
+        !ylgui_api_channel(blue, &b)) return false;
+    return ylgui_draw_rect(ylgui_active_window, (int)x, (int)y,
+                           (int)width, (int)height, r, g, b);
+}
+
+bool ylgui_api_present(void)
+{
+    return ylgui_present(ylgui_active_window);
+}
+
+const char *ylgui_api_last_error(void)
+{
+    return ylgui_last_error();
+}
+
+void ylgui_api_close(void)
+{
+    ylgui_window_destroy(ylgui_active_window);
+    ylgui_active_window = NULL;
+}
+
+void ylgui_api_shutdown(void)
+{
+    ylgui_api_close();
+    ylgui_shutdown();
 }
