@@ -4,7 +4,7 @@ A responsive, English-only landing page and documentation index built with plain
 
 ## Design
 
-The website uses an editorial layout with warm paper backgrounds, dark ink, forest green, and a restrained copper accent. It is deliberately text-led, accessible, and responsive. The homepage separates the stable 1.1.0 release from the experimental 2.0.0-beta.1 preview.
+The website uses a compact, responsive blue-and-gold palette with a slightly tinted blue-gray background, readable sans-serif headings, simple rounded cards, and high-contrast code samples. It takes general usability cues from developer-focused sites such as Python.org without reusing their logo or page design. The homepage separates the stable 1.1.0 release from the experimental 2.0.0-beta.1 preview.
 
 ## Files
 
