@@ -140,6 +140,24 @@ if command -v clang >/dev/null 2>&1; then
 fi
 
 
+# The first game2d module provides checked rectangle collision helpers.
+cat > build/game2d-collision.yl <<'EOF'
+from game2d.yl import game2d_rects_overlap, game2d_point_in_rect;
+function main() -> int {
+    print(game2d_rects_overlap(0, 0, 10, 10, 5, 5, 10, 10));
+    print(game2d_rects_overlap(0, 0, 10, 10, 10, 0, 4, 4));
+    print(game2d_rects_overlap(0, 0, 0, 10, 5, 5, 10, 10));
+    print(game2d_point_in_rect(5, 5, 0, 0, 10, 10));
+    print(game2d_point_in_rect(10, 5, 0, 0, 10, 10));
+    return 0;
+}
+EOF
+YLANG_PATH=stdlib ./build/ylang check build/game2d-collision.yl >/dev/null
+YLANG_PATH=stdlib ./build/ylang build build/game2d-collision.yl -o build/test-game2d-collision >/dev/null
+./build/test-game2d-collision > build/game2d-collision.out
+printf 'true\nfalse\nfalse\ntrue\nfalse\n' > build/game2d-collision.expected
+diff -u build/game2d-collision.expected build/game2d-collision.out
+
 # Standard math library: native calls, namespacing, and argument type checks.
 ./build/ylang check examples/math.yl >/dev/null
 ./build/ylang build examples/math.yl -o build/test-math >/dev/null
@@ -606,6 +624,24 @@ if ./build/ylang emit-asm examples/math.yl -o build/asm-unsupported.asm > build/
 fi
 grep -q 'NASM backend does not support float values' build/asm-unsupported.out
 test ! -e build/asm-unsupported.asm
+
+# Game2D input/timing wrappers compile through the imported optional GUI API.
+YLANG_PATH=stdlib ./build/ylang check examples/game2d.yl >/dev/null
+YLANG_PATH=stdlib ./build/ylang emit-c examples/game2d.yl -o build/game2d-generated.c >/dev/null
+grep -q 'ylgui_api_key_down' build/game2d-generated.c
+grep -q 'ylgui_api_mouse_button_down' build/game2d-generated.c
+grep -q 'ylgui_api_ticks_ms' build/game2d-generated.c
+cat > build/gui-key-type-error.yl <<'EOF'
+function main() -> int {
+    gui.key_down(123);
+    return 0;
+}
+EOF
+if ./build/ylang check build/gui-key-type-error.yl > build/gui-key-type-error.out 2>&1; then
+    echo "FAIL: gui.key_down accepted a non-string key name" >&2
+    exit 1
+fi
+grep -q 'E2044' build/gui-key-type-error.out
 
 # GUI namespace checking must not require SDL2; type errors are caught before build.
 ./build/ylang check examples/gui.yl >/dev/null

@@ -1,0 +1,89 @@
+/*
+ * YLang 2D helpers — experimental first milestone.
+ * This module requires the optional SDL2 GUI runtime when linked.
+ */
+
+let int game2d_previous_tick = 0;
+
+function game2d_open(string title, int width, int height) -> bool {
+    if (not gui.init()) {
+        return false;
+    }
+    if (not gui.create_window(title, width, height)) {
+        gui.close();
+        gui.shutdown();
+        return false;
+    }
+    game2d_previous_tick = gui.ticks_ms();
+    return true;
+}
+
+function game2d_begin_frame(int red, int green, int blue) -> bool {
+    if (not gui.poll()) {
+        return false;
+    }
+    return gui.clear(red, green, blue);
+}
+
+function game2d_draw_rect(int x, int y, int width, int height,
+                          int red, int green, int blue) -> bool {
+    return gui.draw_rect(x, y, width, height, red, green, blue);
+}
+
+function game2d_end_frame() -> bool {
+    return gui.present();
+}
+
+function game2d_last_error() -> string {
+    return gui.last_error();
+}
+
+function game2d_key_down(string key) -> bool {
+    return gui.key_down(key);
+}
+
+function game2d_mouse_x() -> int {
+    return gui.mouse_x();
+}
+
+function game2d_mouse_y() -> int {
+    return gui.mouse_y();
+}
+
+function game2d_mouse_button_down(int button) -> bool {
+    return gui.mouse_button_down(button);
+}
+
+function game2d_ticks_ms() -> int {
+    return gui.ticks_ms();
+}
+
+function game2d_delta_ms() -> int {
+    let int current_tick = gui.ticks_ms();
+    let int delta = current_tick - game2d_previous_tick;
+    game2d_previous_tick = current_tick;
+    return delta;
+}
+
+function game2d_close() -> void {
+    gui.close();
+    gui.shutdown();
+}
+
+function game2d_rects_overlap(int ax, int ay, int aw, int ah,
+                              int bx, int by, int bw, int bh) -> bool {
+    if (aw <= 0 or ah <= 0 or bw <= 0 or bh <= 0) {
+        return false;
+    }
+    return ax < bx + bw and ax + aw > bx and
+           ay < by + bh and ay + ah > by;
+}
+
+function game2d_point_in_rect(int px, int py, int rx, int ry,
+                              int width, int height) -> bool {
+    if (width <= 0 or height <= 0) {
+        return false;
+    }
+    return px >= rx and py >= ry and
+           px < rx + width and py < ry + height;
+}

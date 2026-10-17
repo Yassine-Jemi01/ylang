@@ -229,6 +229,77 @@ bool ylgui_api_poll(void)
     return ylgui_window_poll(ylgui_active_window);
 }
 
+bool ylgui_api_key_down(const char *key)
+{
+    if (ylgui_active_window == NULL || !gui_initialized) {
+        set_error("Call gui.init() and create a window before reading keyboard state");
+        return false;
+    }
+    if (key == NULL || key[0] == '\0') {
+        set_error("Key name must not be empty");
+        return false;
+    }
+    SDL_Scancode scancode = SDL_GetScancodeFromName(key);
+    int key_count = 0;
+    const Uint8 *state = SDL_GetKeyboardState(&key_count);
+    if (scancode == SDL_SCANCODE_UNKNOWN || state == NULL ||
+        (int)scancode < 0 || (int)scancode >= key_count) {
+        set_error("Unknown key name; try Left, Right, Up, Down, Space, Escape, Return, or a letter");
+        return false;
+    }
+    gui_error[0] = '\0';
+    return state[scancode] != 0;
+}
+
+int64_t ylgui_api_mouse_x(void)
+{
+    if (ylgui_active_window == NULL || !gui_initialized) {
+        set_error("Call gui.init() and create a window before reading mouse state");
+        return 0;
+    }
+    int x = 0;
+    (void)SDL_GetMouseState(&x, NULL);
+    gui_error[0] = '\0';
+    return (int64_t)x;
+}
+
+int64_t ylgui_api_mouse_y(void)
+{
+    if (ylgui_active_window == NULL || !gui_initialized) {
+        set_error("Call gui.init() and create a window before reading mouse state");
+        return 0;
+    }
+    int y = 0;
+    (void)SDL_GetMouseState(NULL, &y);
+    gui_error[0] = '\0';
+    return (int64_t)y;
+}
+
+bool ylgui_api_mouse_button_down(int64_t button)
+{
+    if (ylgui_active_window == NULL || !gui_initialized) {
+        set_error("Call gui.init() and create a window before reading mouse state");
+        return false;
+    }
+    if (button < 1 || button > 5) {
+        set_error("Mouse button must be between 1 and 5 (left is 1, middle is 2, right is 3)");
+        return false;
+    }
+    Uint32 buttons = SDL_GetMouseState(NULL, NULL);
+    gui_error[0] = '\0';
+    return (buttons & SDL_BUTTON((Uint8)button)) != 0;
+}
+
+int64_t ylgui_api_ticks_ms(void)
+{
+    if (!gui_initialized) {
+        set_error("Call gui.init() before reading the timer");
+        return 0;
+    }
+    gui_error[0] = '\0';
+    return (int64_t)SDL_GetTicks64();
+}
+
 bool ylgui_api_clear(int64_t red, int64_t green, int64_t blue)
 {
     uint8_t r, g, b;

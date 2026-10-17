@@ -1,0 +1,39 @@
+from "../stdlib/game2d.yl" import game2d_open, game2d_begin_frame, game2d_draw_rect, game2d_end_frame, game2d_close, game2d_last_error, game2d_key_down, game2d_mouse_x, game2d_mouse_y, game2d_mouse_button_down, game2d_delta_ms;
+
+function main() -> int {
+    if (not game2d_open("YLang 2D", 800, 500)) {
+        print(game2d_last_error());
+        return 1;
+    }
+
+    let int x = 80;
+    let int y = 80;
+    loop() {
+        if (not game2d_begin_frame(24, 28, 38)) {
+            break;
+        }
+
+        let int delta = game2d_delta_ms();
+        let int step = delta / 8;
+        if (game2d_key_down("Left")) { x = x - step; }
+        if (game2d_key_down("Right")) { x = x + step; }
+        if (game2d_key_down("Up")) { y = y - step; }
+        if (game2d_key_down("Down")) { y = y + step; }
+        if (game2d_mouse_button_down(1)) {
+            x = game2d_mouse_x() - 20;
+            y = game2d_mouse_y() - 20;
+        }
+
+        if (not game2d_draw_rect(x, y, 40, 40, 22, 160, 180)) {
+            print(game2d_last_error());
+            break;
+        }
+        if (not game2d_end_frame()) {
+            print(game2d_last_error());
+            break;
+        }
+    }
+
+    game2d_close();
+    return 0;
+}
