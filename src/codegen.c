@@ -229,16 +229,16 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             break;
         case EXPR_ASSIGN:
             if (expr->as.assign.is_compound &&
-                expr->as.assign.variable &&
-                expr->as.assign.variable->type == TYPE_INT) {
+                expr->as.assign.target &&
+                expr->as.assign.target->type == TYPE_INT) {
                 sb_append(sb, "yl_add_assign_i64(&(");
                 emit_expr(sb, expr->as.assign.target);
                 sb_append(sb, "), ");
                 emit_expr(sb, expr->as.assign.right);
                 sb_append(sb, ")");
             } else if (expr->as.assign.is_compound &&
-                       expr->as.assign.variable &&
-                       expr->as.assign.variable->type == TYPE_FLOAT) {
+                       expr->as.assign.target &&
+                       expr->as.assign.target->type == TYPE_FLOAT) {
                 sb_append(sb, "yl_add_assign_f64(&(");
                 emit_expr(sb, expr->as.assign.target);
                 sb_append(sb, "), ");
