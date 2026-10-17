@@ -1,4 +1,4 @@
-from game2d.yl import game2d_open, game2d_begin_frame, game2d_draw_rect, game2d_end_frame, game2d_close, game2d_last_error;
+from "../stdlib/game2d.yl" import game2d_open, game2d_begin_frame, game2d_draw_rect, game2d_end_frame, game2d_close, game2d_last_error;
 
 function main() -> int {
     if (not game2d_open("YLang 2D", 800, 500)) {
