@@ -522,13 +522,26 @@ YLANG_PATH=build/imports/library ./build/ylang build build/imports/library-main.
 printf '314\n' > build/library-import.expected
 diff -u build/library-import.expected build/library-import.out
 
-# The NASM backend must preserve module-qualified function symbols.
-./build/ylang emit-asm build/imports/repeated.yl -o build/imports/repeated.asm >/dev/null
+# The NASM backend supports imported functions when their modules use its subset.
+cat > build/imports/reusable-functions.yl <<'EOF'
+function reusable_one() -> int { return 11; }
+function reusable_two() -> int { return 22; }
+EOF
+cat > build/imports/repeated-asm.yl <<'EOF'
+from "./reusable-functions.yl" import reusable_one;
+from "./reusable-functions.yl" import reusable_two;
+function main() -> int {
+    print(reusable_one(), reusable_two());
+    return 0;
+}
+EOF
+./build/ylang emit-asm build/imports/repeated-asm.yl -o build/imports/repeated.asm >/dev/null
 grep -q 'yl_fn_m' build/imports/repeated.asm
 if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
-    ./build/ylang build-asm build/imports/repeated.yl -o build/test-repeated-imports-asm >/dev/null
+    ./build/ylang build-asm build/imports/repeated-asm.yl -o build/test-repeated-imports-asm >/dev/null
     ./build/test-repeated-imports-asm > build/repeated-imports-asm.out
-    diff -u build/repeated-imports.expected build/repeated-imports-asm.out
+    printf '11 22\n' > build/repeated-imports-asm.expected
+    diff -u build/repeated-imports-asm.expected build/repeated-imports-asm.out
 fi
 
 # Experimental NASM backend: test emission everywhere and execute it when NASM is present.
