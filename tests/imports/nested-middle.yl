@@ -1,0 +1,5 @@
+from nested-leaf.yl import leaf_value()
+
+function middle_value() -> int {
+    return leaf_value() + 1;
+}
