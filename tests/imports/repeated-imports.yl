@@ -1,0 +1,8 @@
+from reused-module.yl import first_value()
+from reused-module.yl import second_value()
+
+function main() -> int {
+    print(first_value());
+    print(second_value());
+    return 0;
+}
