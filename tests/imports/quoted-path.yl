@@ -1,0 +1,6 @@
+from "string tools.yl" import space_value()
+
+function main() -> int {
+    print(space_value());
+    return 0;
+}
