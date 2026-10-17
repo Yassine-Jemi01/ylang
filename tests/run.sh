@@ -452,6 +452,40 @@ if ./build/ylang check build/imports/cycle-a.yl > build/imports/cycle.out 2>&1; 
 fi
 grep -q 'E1023' build/imports/cycle.out
 
+# Repeated imports of one canonical file should reuse the module and bind different names.
+cat > build/imports/reusable.yl <<'EOF'
+function reusable_one() -> int { return 11; }
+function reusable_two() -> int { return 22; }
+EOF
+cat > build/imports/repeated.yl <<'EOF'
+from "./reusable.yl" import reusable_one;
+from "./reusable.yl" import reusable_two;
+function main() -> int {
+    print(reusable_one(), reusable_two());
+    return 0;
+}
+EOF
+./build/ylang build build/imports/repeated.yl -o build/test-repeated-imports >/dev/null
+./build/test-repeated-imports > build/repeated-imports.out
+printf '11 22\n' > build/repeated-imports.expected
+diff -u build/repeated-imports.expected build/repeated-imports.out
+
+# Quoted import paths must preserve spaces in filenames.
+cat > "build/imports/string tools.yl" <<'EOF'
+function spaced_import() -> string { return "path with spaces"; }
+EOF
+cat > build/imports/spaced-path.yl <<'EOF'
+from "./string tools.yl" import spaced_import();
+function main() -> int {
+    print(spaced_import());
+    return 0;
+}
+EOF
+./build/ylang build build/imports/spaced-path.yl -o build/test-spaced-import >/dev/null
+./build/test-spaced-import > build/spaced-import.out
+printf 'path with spaces\n' > build/spaced-import.expected
+diff -u build/spaced-import.expected build/spaced-import.out
+
 # NASM rejects multi-file imports until its lowering supports module visibility.
 if ./build/ylang emit-asm build/imports/main.yl -o build/imports/main.asm > build/imports/nasm.out 2>&1; then
     echo "FAIL: NASM accepted multi-file imports before lowering support" >&2
