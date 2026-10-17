@@ -13,6 +13,10 @@ typedef struct Stmt Stmt;
 typedef struct VarDecl VarDecl;
 typedef struct Function Function;
 typedef struct Scope Scope;
+typedef struct Module Module;
+typedef struct ImportName ImportName;
+typedef struct ImportDecl ImportDecl;
+typedef struct Program Program;
 
 typedef enum {
     TYPE_ERROR,
@@ -88,6 +92,7 @@ struct VarDecl {
     bool is_array;
     size_t array_length;
     Expr *initializer;
+    Module *module;
 };
 
 struct Stmt {
@@ -114,14 +119,46 @@ struct Function {
     size_t param_count;
     YType return_type;
     Stmt *body;
+    Module *module;
 };
 
-typedef struct {
+struct ImportName {
+    Token token;
+    char *name;
+    Function *function;
+    VarDecl *variable;
+};
+
+struct ImportDecl {
+    Token token;
+    char *path;
+    ImportName **names;
+    size_t name_count;
+    Module *target;
+};
+
+struct Program {
     VarDecl **globals;
     size_t global_count;
     Function **functions;
     size_t function_count;
-} Program;
+    ImportDecl **imports;
+    size_t import_count;
+    Module *module;
+};
+
+struct Module {
+    char *path;
+    char *canonical_path;
+    char *source;
+    size_t source_length;
+    Program *program;
+    Scope *global_scope;
+    size_t id;
+    bool is_root;
+    bool loading;
+    bool loaded;
+};
 
 /* Returns 0 on success and nonzero if checking/building failed. */
 int ylang_run(const char *command, const char *input_path,
