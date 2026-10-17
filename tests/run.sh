@@ -131,6 +131,14 @@ grep -q 'E2057' build/unreachable-after-if-branches.out
 grep -q 'Unreachable code' build/unreachable-after-if-branches.out
 
 
+# Statements after break and continue are unreachable within the current loop body.
+if ./build/ylang check tests/unreachable-after-loop-control.yl > build/unreachable-after-loop-control.out 2>&1; then
+    echo "FAIL: code after break/continue was accepted" >&2
+    exit 1
+fi
+[ "$(grep -c 'E2057' build/unreachable-after-loop-control.out)" -ge 2 ]
+
+
 if ./build/ylang check tests/uninitialized.yl > build/uninitialized.out 2>&1; then
     echo "FAIL: uninitialized read was accepted" >&2
     exit 1
