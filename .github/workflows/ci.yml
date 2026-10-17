@@ -42,6 +42,8 @@ jobs:
             echo "cc=${{ matrix.compiler }}" >> "$GITHUB_OUTPUT"
             echo "make=make" >> "$GITHUB_OUTPUT"
           fi
+      - name: Verify generated C runtime template
+        run: python3 tools/embed_text.py runtime/runtime_template.c src/runtime_template.h --check
       - name: Build compiler
         run: ${{ steps.compiler.outputs.make }} clean all CC="${{ steps.compiler.outputs.cc }}"
       - name: Build optional GUI runtime
