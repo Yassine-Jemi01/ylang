@@ -1,0 +1,7 @@
+function first_value() -> int {
+    return 11;
+}
+
+function second_value() -> int {
+    return 22;
+}
