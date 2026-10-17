@@ -104,6 +104,14 @@ static const char *nearest_variable(Checker *checker, const char *name)
     return best_name;
 }
 
+static StructDecl *struct_for_type(Compiler *compiler, YType type)
+{
+    for (size_t i = 0; i < compiler->struct_count; i++) {
+        if (compiler->structs[i]->type == type) return compiler->structs[i];
+    }
+    return NULL;
+}
+
 static EnumDecl *enum_for_type(Compiler *compiler, YType type)
 {
     for (size_t i = 0; i < compiler->enum_count; i++) {
@@ -562,6 +570,34 @@ static YType check_expr(Checker *checker, Expr *expr)
             expr->type = element_type;
             return expr->type;
         }
+        case EXPR_FIELD: {
+            YType target_type = check_expr(checker, expr->as.field.target);
+            StructDecl *structure = struct_for_type(c, target_type);
+            if (!structure) {
+                diagnostic(c, expr->token, "error", "E2071",
+                           "Field access requires a struct value.",
+                           "Use field access on a variable whose type is a declared struct.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            StructField *field = NULL;
+            for (size_t i = 0; i < structure->field_count; i++) {
+                if (strcmp(structure->fields[i]->name, expr->as.field.name) == 0) {
+                    field = structure->fields[i];
+                    break;
+                }
+            }
+            if (!field) {
+                diagnostic(c, expr->token, "error", "E2072",
+                           "This field is not declared by the struct type.",
+                           "Check the field spelling against the struct declaration.");
+                expr->type = TYPE_ERROR;
+            } else {
+                expr->as.field.field = field;
+                expr->type = field->type;
+            }
+            return expr->type;
+        }
         case EXPR_INDEX: {
             Expr *target = expr->as.index.target;
             if (!target || target->kind != EXPR_NAME) {
@@ -727,6 +763,34 @@ static YType check_expr(Checker *checker, Expr *expr)
                     }
                 }
                 expr->type = TYPE_FLOAT;
+                return expr->type;
+            }
+            if (expr->as.call.struct_type) {
+                StructDecl *structure = expr->as.call.struct_type;
+                if (expr->as.call.count != structure->field_count) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion, sizeof(suggestion),
+                        "Struct '%s' expects %zu field value(s), but received %zu.",
+                        structure->name, structure->field_count, expr->as.call.count);
+                    diagnostic(c, expr->token, "error", "E2073",
+                               "Incorrect number of struct constructor arguments.", suggestion);
+                }
+                size_t shared = expr->as.call.count < structure->field_count ?
+                                expr->as.call.count : structure->field_count;
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    YType actual = check_expr(checker, expr->as.call.args[i]);
+                    if (i < shared && actual != TYPE_ERROR &&
+                        actual != structure->fields[i]->type) {
+                        char suggestion[256];
+                        (void)snprintf(suggestion, sizeof(suggestion),
+                            "Field '%s' expects %s, but received %s.",
+                            structure->fields[i]->name,
+                            type_name(structure->fields[i]->type), type_name(actual));
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2074",
+                                   "Struct constructor field type mismatch.", suggestion);
+                    }
+                }
+                expr->type = structure->type;
                 return expr->type;
             }
             Function *function = resolve_function(checker, expr->as.call.name);
