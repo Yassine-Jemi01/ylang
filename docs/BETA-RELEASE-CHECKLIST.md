@@ -1,59 +1,56 @@
-# YLang 2.0 Beta Release Checklist
+# YLang 2.0.0-beta.1 Release Gate
 
-This checklist is the release gate for `2.0.0-beta.1`. A feature being present on a development branch is not the same as being included in the beta.
+This checklist defines the scope and automated gates for the source-only `2.0.0-beta.1` prerelease. It does not promise that experimental features are production-ready. The stable 1.1.0 release remains the recommended choice for the documented stable subset.
 
-## Release policy
+## Version and publication safeguards
 
-- Keep `1.1.0` as the latest stable release until the beta is intentionally published.
-- Publish the beta as a prerelease named `2.0.0-beta.1`; do not label it stable.
-- Do not advertise a feature as supported until its implementation, tests, examples, and documentation are included in the release candidate.
-- Keep the NASM backend explicitly experimental unless the supported language subset passes backend-parity tests.
-- Do not merge stacked feature pull requests until the dependency below them is reviewed and CI is green.
+- [x] `VERSION` and `.github/PUBLISH_BETA` must both equal `2.0.0-beta.1`.
+- [x] The release workflow only publishes from `main`; a workflow dispatch from another branch cannot publish.
+- [x] The release workflow checks out and tests the event commit, then creates tag `v2.0.0-beta.1` at that same SHA.
+- [x] Publication is blocked if any checklist item is unchecked.
+- [x] Publication is blocked if the target tag exists without a release; an existing release is never overwritten.
+- [x] Publication is a GitHub prerelease, not a stable release.
 
-## Current repository state
+## Automated source and build checks
 
-The current `main` branch contains the named-import/module system, experimental SDL2-backed GUI and 2D helpers, unit enums with exhaustive `match`, typed structs, and mutable struct-field assignment. The merged development snapshot has a successful CI run on Linux GCC, Linux Clang, macOS Clang, sanitizer checks, and editor-diagnostic tests. Re-check CI against the exact release-candidate commit before publishing.
+The publication workflow must pass all of these on the exact commit it releases:
 
-PR #47 concerns Option/Result design documentation only. It does **not** implement `Option<T>` or `Result<T, E>`; these are excluded from beta unless a separately implemented and tested feature is merged.
+- [x] Clean compiler build with GCC on Linux.
+- [x] Clean compiler build with Clang on Linux.
+- [x] Clean compiler build with Clang on macOS.
+- [x] Optional SDL2 GUI runtime and example compile/link checks on the supported CI systems.
+- [x] The full regression suite, including the frontend unit tests.
+- [x] Generated runtime-template consistency check.
+- [x] Bounded lexer/parser fuzz smoke test on Linux with Clang.
+- [x] AddressSanitizer and UndefinedBehaviorSanitizer test suite.
+- [x] VS Code and Neovim diagnostic parser tests.
 
-## Required release gates
+## Feature coverage and limits
 
-### 1. Source and build health
+- [x] Imports: tests cover relative paths, repeated module loading, imported functions/globals, names not imported, missing files/symbols, duplicate imports, import cycles, and unsupported entry-point imports.
+- [x] Structs: tests cover construction, field access, passing/returning values, assignment, compound assignment, increment, and invalid fields/types/arity.
+- [x] Enums: tests cover typed values, function parameters, comparisons, exhaustive matching, invalid variants, duplicate arms, and non-exhaustive matches.
+- [x] NASM: differential tests compare the documented shared subset against the C backend on Linux x86-64; unsupported GUI and struct use must be rejected clearly.
+- [x] GUI/2D: tests cover type checking, generated API calls, runtime/example builds, and non-window collision helpers.
 
-- [ ] Review and merge the stacked pull requests in dependency order; no accidental merge of an unreviewed dependent branch.
-- [x] Current merged snapshot: Linux GCC and Clang regression suites pass.
-- [x] Current merged snapshot: macOS Clang regression suite and sanitizers pass.
-- [x] Current merged snapshot: sanitizer and editor-diagnostic tests pass.
-- [ ] Re-run all of the above against the exact release-candidate commit.
-- [ ] Verify a clean checkout can build using only the documented prerequisites.
-- [ ] Verify the checked-in generated runtime byte array matches its source template (`make check-runtime-template`).
+## Explicit beta exclusions
 
-### 2. Feature verification
+- [x] `Option<T>` and `Result<T, E>` are **not implemented**. The design document is a proposal only.
+- [x] The C backend remains the default. NASM is experimental, limited to a subset, and not a complete alternative backend.
+- [x] Live GUI window interaction is not tested in headless CI; running GUI examples requires a graphical session.
+- [x] Native Windows builds are not supported by the current POSIX-based compiler driver.
+- [x] The release is source-only. No precompiled binaries or installers are included.
+- [x] Structs, enums, module imports, and game/GUI APIs remain experimental and may change before stable 2.0.0.
+- [x] YLang does not claim Rust-level memory safety or production stability.
 
-- [ ] Imports: relative/module path behavior, missing module, missing symbol, duplicate import, and multi-file compilation.
-- [ ] Structs: construction, field reads/writes, compound assignments, increments, invalid field/type diagnostics, and generated-code safety.
-- [ ] Enums: valid cases, invalid cases, and exhaustive-match diagnostics.
-- [ ] Game/GUI APIs: build both with and without optional SDL2 dependencies; run the documented example where a display is available.
-- [ ] NASM: explicitly list unsupported constructs and test every claimed supported construct against the normal backend; keep the C/NASM differential parity samples passing.
-- [ ] Front end: pass lexer/parser unit tests and the bounded libFuzzer smoke run on Linux/Clang CI.
-- [ ] Optional GUI: verify the suite skips SDL2 runtime tests with a clear message when SDL2 development dependencies are absent.
-- [ ] Option/Result: either implement and test them, or clearly state they are not included in beta. Do not present design examples as working syntax.
+## Documentation and support
 
-### 3. Documentation and packaging
+- [x] README distinguishes the 1.1.0 stable line from the 2.0 beta preview.
+- [x] Each beta feature has a reference page or a clearly linked specification.
+- [x] Beta release notes list implemented work, limitations, platform requirements, and bug-report details.
+- [x] Website is English-only and links to the current beta release and documentation.
+- [x] Bug reports should include the exact version/commit, operating system, compiler, command, minimal reproducer, expected output, and actual output.
 
-- [x] README distinguishes stable 1.1.0 from experimental development features.
-- [x] Add a clear link to the beta changelog.
-- [ ] Verify all README claims against the exact release-candidate commit.
-- [x] Draft beta changelog with implemented features and known limitations: [CHANGELOG-2.0-BETA.md](CHANGELOG-2.0-BETA.md).
-- [ ] Verify the draft against the final release-candidate commit and document any breaking changes.
-- [ ] Ensure every advertised feature has a working minimal example.
-- [ ] Verify install/build instructions on the supported platforms.
-- [ ] Create a GitHub prerelease only from the exact commit that passed the release gates.
+## Publication decision
 
-## Go/no-go decision
-
-Publish `2.0.0-beta.1` only when the source/build, feature, and documentation gates above are checked or each unchecked item is explicitly excluded from the beta announcement. If core imports or the compiler's default build path is unstable, delay the release.
-
-## Beta issue reporting
-
-Ask testers to include the YLang commit/version, OS, compiler (GCC/Clang), exact command, smallest reproducer, expected result, and actual result. Beta code should not be used for production-critical projects.
+The workflow is the final automated gate: it will publish `v2.0.0-beta.1` only after the complete CI matrix, fuzz smoke test, sanitizers, and editor checks pass on the exact `main` commit. These checked items record the tested scope and explicit exclusions; they do not imply that the beta is stable.
