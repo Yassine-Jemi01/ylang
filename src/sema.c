@@ -106,8 +106,27 @@ static const char *nearest_variable(Checker *checker, const char *name)
 
 static EnumDecl *enum_for_type(Compiler *compiler, YType type)
 {
+    if (type < TYPE_ENUM_BASE || type >= TYPE_STRUCT_BASE) return NULL;
     for (size_t i = 0; i < compiler->enum_count; i++) {
         if (compiler->enums[i]->type == type) return compiler->enums[i];
+    }
+    return NULL;
+}
+
+static StructDecl *struct_for_type(Compiler *compiler, YType type)
+{
+    if (type < TYPE_STRUCT_BASE) return NULL;
+    for (size_t i = 0; i < compiler->struct_count; i++) {
+        if (compiler->structs[i]->type == type) return compiler->structs[i];
+    }
+    return NULL;
+}
+
+static StructField *sema_struct_field(StructDecl *structure, const char *name)
+{
+    if (!structure) return NULL;
+    for (size_t i = 0; i < structure->field_count; i++) {
+        if (strcmp(structure->fields[i]->name, name) == 0) return structure->fields[i];
     }
     return NULL;
 }
@@ -293,6 +312,58 @@ static YType check_expr(Checker *checker, Expr *expr)
         case EXPR_ENUM_VALUE:
             expr->type = expr->as.enum_value.enumeration->type;
             return expr->type;
+        case EXPR_STRUCT_INIT: {
+            StructDecl *structure = expr->as.struct_init.structure;
+            if (!structure) {
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            if (expr->as.struct_init.count != structure->field_count) {
+                char suggestion[256];
+                (void)snprintf(suggestion, sizeof(suggestion),
+                    "Struct %s expects %zu field value(s), but received %zu.",
+                    structure->name, structure->field_count, expr->as.struct_init.count);
+                diagnostic(c, expr->token, "error", "E2074",
+                           "Incorrect number of struct constructor arguments.", suggestion);
+            }
+            for (size_t i = 0; i < expr->as.struct_init.count; i++) {
+                YType actual = check_expr(checker, expr->as.struct_init.args[i]);
+                if (i < structure->field_count && actual != TYPE_ERROR &&
+                    actual != structure->fields[i]->type) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion, sizeof(suggestion),
+                        "Field '%s' expects %s, but received %s.",
+                        structure->fields[i]->name, type_name(structure->fields[i]->type),
+                        type_name(actual));
+                    diagnostic(c, expr->as.struct_init.args[i]->token, "error", "E2075",
+                               "Struct field initializer type mismatch.", suggestion);
+                }
+            }
+            expr->type = structure->type;
+            return expr->type;
+        }
+        case EXPR_MEMBER: {
+            YType target_type = check_expr(checker, expr->as.member.target);
+            StructDecl *structure = struct_for_type(c, target_type);
+            if (!structure) {
+                diagnostic(c, expr->token, "error", "E2076",
+                           "Field access requires a struct value.",
+                           "Use field access only on a variable or expression whose type is a declared struct.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            StructField *field = sema_struct_field(structure, expr->as.member.name);
+            if (!field) {
+                diagnostic(c, expr->token, "error", "E2077",
+                           "This struct has no field with that name.",
+                           "Check the field spelling against the struct declaration.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            expr->as.member.field = field;
+            expr->type = field->type;
+            return expr->type;
+        }
         case EXPR_INT: {
             char *text = token_copy(c, expr->token);
             errno = 0;
@@ -394,28 +465,46 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             Expr *target = expr->as.assign.target;
             VarDecl *var = NULL;
+            YType target_type = TYPE_ERROR;
             if (target && target->kind == EXPR_NAME) {
                 var = scope_lookup(checker->scope, target->as.name.name);
                 if (var) {
                     target->as.name.variable = var;
                     target->as.name.name = var->name;
                     target->type = var->type;
+                    target_type = var->type;
                 }
             } else if (target && target->kind == EXPR_INDEX) {
                 (void)check_expr(checker, target);
                 var = target->as.index.variable;
+                target_type = target->type;
+            } else if (target && target->kind == EXPR_MEMBER) {
+                target_type = check_expr(checker, target);
+                Expr *base = target->as.member.target;
+                if (base && base->kind == EXPR_NAME) {
+                    var = scope_lookup(checker->scope, base->as.name.name);
+                    if (var) {
+                        base->as.name.variable = var;
+                        base->as.name.name = var->name;
+                    }
+                }
+                if (!var || !struct_for_type(c, var->type)) {
+                    diagnostic(c, expr->token, "error", "E2078",
+                               "Only a field of a named struct variable can be assigned in this milestone.",
+                               "Store the struct in a mutable variable, then assign to its field.");
+                }
             }
             if (!var) {
                 diagnostic(c, expr->token, "error", "E2020",
-                           "Cannot assign to an unknown variable or invalid array element.",
-                           "Declare the variable first and use an integer index for array elements.");
+                           "Cannot assign to an unknown variable, invalid array element, or unsupported field target.",
+                           "Declare the variable first and use a valid variable, array element, or struct field.");
                 (void)check_expr(checker, expr->as.assign.right);
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
             expr->as.assign.variable = var;
             if (expr->as.assign.is_compound &&
-                var->type != TYPE_INT && var->type != TYPE_FLOAT) {
+                target_type != TYPE_INT && target_type != TYPE_FLOAT) {
                 diagnostic(c, expr->token, "error", "E2034",
                            "The '+=' operator requires an int or float target.",
                            "Use '+=' only with matching int or float values.");
@@ -434,16 +523,16 @@ static YType check_expr(Checker *checker, Expr *expr)
                            "Cannot assign to a const variable.",
                            "Keep 'const' and remove this assignment, or remove 'const' if the variable should be mutable.");
             }
-            if (right != TYPE_ERROR && right != var->type) {
+            if (right != TYPE_ERROR && target_type != TYPE_ERROR && right != target_type) {
                 char suggestion[256];
                 (void)snprintf(suggestion, sizeof(suggestion),
-                    "'%s' has type %s, but the assigned expression has type %s.",
-                    var->name, type_name(var->type), type_name(right));
+                    "The assignment target has type %s, but the assigned expression has type %s.",
+                    type_name(target_type), type_name(right));
                 diagnostic(c, expr->token, "error", "E2001",
                            "Assignment type mismatch.", suggestion);
             }
             var->initialized = true;
-            expr->type = var->type;
+            expr->type = target_type;
             return expr->type;
         }
         case EXPR_UNARY: {
@@ -892,10 +981,14 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     diagnostic(c, stmt->as.print.args[i]->token, "error", "E2050",
                                "print() cannot print a void expression.",
                                "Print a value or change the function to return one.");
-                } else if (type >= TYPE_ENUM_BASE) {
+                } else if (type >= TYPE_ENUM_BASE && type < TYPE_STRUCT_BASE) {
                     diagnostic(c, stmt->as.print.args[i]->token, "error", "E2054",
                                "print() does not yet format user-defined enum values.",
                                "Compare the enum against its named variants and print a string label.");
+                } else if (type >= TYPE_STRUCT_BASE) {
+                    diagnostic(c, stmt->as.print.args[i]->token, "error", "E2079",
+                               "print() does not format struct values directly.",
+                               "Print individual fields or add an explicit formatting function.");
                 }
             }
             break;
