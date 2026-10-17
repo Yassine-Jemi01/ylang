@@ -250,6 +250,13 @@ normalize_output build/imports.out
 diff -u tests/expected-imports.txt build/imports.out
 "$YLANG" check examples/imports/main.yl >/dev/null
 
+# A module can depend on another module and expose a function using that dependency.
+"$YLANG" check tests/imports/nested-main.yl >/dev/null
+"$YLANG" build tests/imports/nested-main.yl -o "build/test-nested-imports$EXEEXT" >/dev/null
+"./build/test-nested-imports$EXEEXT" > build/nested-imports.out
+normalize_output build/nested-imports.out
+diff -u tests/expected-nested-imports.txt build/nested-imports.out
+
 # Quoted module paths must preserve spaces and resolve relative to the importer.
 "$YLANG" check tests/imports/quoted-path.yl >/dev/null
 "$YLANG" build tests/imports/quoted-path.yl -o "build/test-quoted-path$EXEEXT" >/dev/null
