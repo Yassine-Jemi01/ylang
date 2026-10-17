@@ -1,9 +1,12 @@
 #ifndef _WIN32
 #define _POSIX_C_SOURCE 200809L
+#define _XOPEN_SOURCE 700
 #endif
 #include "internal.h"
 
+#include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -260,6 +263,574 @@ static char *read_source_file(const char *path, size_t *length)
     *length = got;
     return data;
 }
+
+
+enum {
+    YLANG_MAX_MODULES = 128,
+    YLANG_MAX_IMPORT_DEPTH = 32,
+    YLANG_MAX_PROJECT_SOURCE = 16 * 1024 * 1024
+};
+
+typedef struct {
+    char *path;
+    char *display_path;
+    char *source;
+    size_t length;
+    char *processed;
+    bool visiting;
+    bool done;
+} ImportModule;
+
+typedef struct {
+    ImportModule modules[YLANG_MAX_MODULES];
+    size_t module_count;
+    size_t order[YLANG_MAX_MODULES];
+    size_t order_count;
+    size_t total_source_bytes;
+} ImportContext;
+
+typedef struct {
+    char *module_path;
+    char **symbols;
+    size_t symbol_count;
+} ImportDirective;
+
+typedef struct {
+    char *source;
+    size_t length;
+    SourceUnit *units;
+    size_t unit_count;
+} SourceBundle;
+
+static char *copy_source_bytes(const char *source, size_t length)
+{
+    if (length == SIZE_MAX) return NULL;
+    char *copy = malloc(length + 1U);
+    if (!copy) return NULL;
+    memcpy(copy, source, length);
+    copy[length] = '\0';
+    return copy;
+}
+
+static void import_directive_destroy(ImportDirective *directive)
+{
+    if (!directive) return;
+    free(directive->module_path);
+    for (size_t i = 0; i < directive->symbol_count; i++)
+        free(directive->symbols[i]);
+    free(directive->symbols);
+    memset(directive, 0, sizeof(*directive));
+}
+
+static void source_bundle_destroy(SourceBundle *bundle)
+{
+    if (!bundle) return;
+    free(bundle->source);
+    for (size_t i = 0; i < bundle->unit_count; i++)
+        free((char *)bundle->units[i].filename);
+    free(bundle->units);
+    memset(bundle, 0, sizeof(*bundle));
+}
+
+static void import_context_destroy(ImportContext *context)
+{
+    for (size_t i = 0; i < context->module_count; i++) {
+        free(context->modules[i].path);
+        free(context->modules[i].display_path);
+        free(context->modules[i].source);
+        free(context->modules[i].processed);
+    }
+    memset(context, 0, sizeof(*context));
+}
+
+static bool path_is_absolute(const char *path)
+{
+#ifdef _WIN32
+    return path[0] == '\\' || path[0] == '/' ||
+           (isalpha((unsigned char)path[0]) && path[1] == ':');
+#else
+    return path[0] == '/';
+#endif
+}
+
+static char *canonicalize_module_path(const char *path)
+{
+    char resolved[4096];
+#ifdef _WIN32
+    if (!_fullpath(resolved, path, sizeof(resolved))) return NULL;
+#else
+    if (!realpath(path, resolved)) return NULL;
+#endif
+    return ylang_copy_string(resolved);
+}
+
+static char *resolve_module_path(const char *requested,
+                                 const char *importer_path)
+{
+    char candidate[8192];
+    if (path_is_absolute(requested)) {
+        int written = snprintf(candidate, sizeof(candidate), "%s", requested);
+        if (written < 0 || (size_t)written >= sizeof(candidate)) {
+            errno = ENAMETOOLONG;
+            return NULL;
+        }
+    } else {
+        const char *last_slash = strrchr(importer_path, '/');
+#ifdef _WIN32
+        const char *last_backslash = strrchr(importer_path, '\\');
+        if (!last_slash || (last_backslash && last_backslash > last_slash))
+            last_slash = last_backslash;
+#endif
+        size_t directory_length = last_slash
+            ? (size_t)(last_slash - importer_path + 1) : 0U;
+        if (directory_length + strlen(requested) + 1U > sizeof(candidate)) {
+            errno = ENAMETOOLONG;
+            return NULL;
+        }
+        if (directory_length) memcpy(candidate, importer_path, directory_length);
+        memcpy(candidate + directory_length, requested, strlen(requested) + 1U);
+    }
+    return canonicalize_module_path(candidate);
+}
+
+static bool import_identifier_char(char ch, bool first)
+{
+    unsigned char value = (unsigned char)ch;
+    if ((value >= 'A' && value <= 'Z') ||
+        (value >= 'a' && value <= 'z') || value == '_') return true;
+    return !first && value >= '0' && value <= '9';
+}
+
+static void skip_import_space(const char **cursor)
+{
+    while (**cursor == ' ' || **cursor == '\t' ||
+           **cursor == '\r' || **cursor == '\f') {
+        (*cursor)++;
+    }
+}
+
+static bool import_add_symbol(ImportDirective *directive,
+                              const char *name, size_t length)
+{
+    if (length == 0 || length > 127U ||
+        directive->symbol_count >= 64U ||
+        directive->symbol_count >= SIZE_MAX / sizeof(*directive->symbols)) {
+        return false;
+    }
+    char **grown = realloc(directive->symbols,
+                           (directive->symbol_count + 1U) * sizeof(*grown));
+    if (!grown) return false;
+    directive->symbols = grown;
+    char *copy = copy_source_bytes(name, length);
+    if (!copy) return false;
+    directive->symbols[directive->symbol_count++] = copy;
+    return true;
+}
+
+/* Returns 0 for an ordinary line, 1 for a valid import, and -1 for an invalid import. */
+static int parse_import_directive(const char *line, size_t length,
+                                  ImportDirective *directive,
+                                  char *error, size_t error_capacity)
+{
+    memset(directive, 0, sizeof(*directive));
+    const char *cursor = line;
+    const char *end = line + length;
+    while (cursor < end && (*cursor == ' ' || *cursor == '\t')) cursor++;
+
+    if ((size_t)(end - cursor) < 4U || memcmp(cursor, "from", 4U) != 0 ||
+        (cursor + 4U < end && cursor[4] != ' ' && cursor[4] != '\t')) {
+        return 0;
+    }
+    cursor += 4U;
+    skip_import_space(&cursor);
+    if (cursor >= end) goto malformed;
+
+    const char *path_start;
+    size_t path_length;
+    if (*cursor == '"' || *cursor == '\'') {
+        char quote = *cursor++;
+        path_start = cursor;
+        while (cursor < end && *cursor != quote) cursor++;
+        if (cursor >= end) goto malformed;
+        path_length = (size_t)(cursor - path_start);
+        cursor++;
+    } else {
+        path_start = cursor;
+        while (cursor < end && *cursor != ' ' && *cursor != '\t' &&
+               *cursor != '\r' && *cursor != ';') cursor++;
+        path_length = (size_t)(cursor - path_start);
+    }
+    if (path_length == 0 || path_length > 4095U) goto malformed;
+
+    if (cursor >= end || (*cursor != ' ' && *cursor != '\t')) goto malformed;
+    skip_import_space(&cursor);
+    if ((size_t)(end - cursor) < 6U || memcmp(cursor, "import", 6U) != 0 ||
+        (cursor + 6U < end && cursor[6] != ' ' && cursor[6] != '\t')) {
+        goto malformed;
+    }
+    cursor += 6U;
+    skip_import_space(&cursor);
+
+    directive->module_path = copy_source_bytes(path_start, path_length);
+    if (!directive->module_path) goto out_of_memory;
+
+    for (;;) {
+        skip_import_space(&cursor);
+        if (cursor >= end || *cursor == '\r' ||
+            (cursor + 1 < end && cursor[0] == '/' && cursor[1] == '/')) {
+            if (directive->symbol_count == 0) goto malformed;
+            return 1;
+        }
+        if (*cursor == ';') {
+            cursor++;
+            skip_import_space(&cursor);
+            if (cursor < end && !(cursor + 1 < end &&
+                                  cursor[0] == '/' && cursor[1] == '/')) {
+                goto malformed;
+            }
+            if (directive->symbol_count == 0) goto malformed;
+            return 1;
+        }
+
+        const char *name_start = cursor;
+        if (!import_identifier_char(*cursor, true)) goto malformed;
+        cursor++;
+        while (cursor < end && import_identifier_char(*cursor, false)) cursor++;
+        if (!import_add_symbol(directive, name_start,
+                               (size_t)(cursor - name_start))) goto out_of_memory;
+
+        skip_import_space(&cursor);
+        if (cursor < end && *cursor == '(') {
+            cursor++;
+            skip_import_space(&cursor);
+            if (cursor >= end || *cursor != ')') goto malformed;
+            cursor++;
+        }
+        skip_import_space(&cursor);
+        if (cursor >= end ||
+            (cursor + 1 < end && cursor[0] == '/' && cursor[1] == '/')) {
+            return directive->symbol_count ? 1 : -1;
+        }
+        if (*cursor == ';') {
+            cursor++;
+            skip_import_space(&cursor);
+            if (cursor < end && !(cursor + 1 < end &&
+                                  cursor[0] == '/' && cursor[1] == '/')) {
+                goto malformed;
+            }
+            return 1;
+        }
+        if (*cursor != ',') goto malformed;
+        cursor++;
+        skip_import_space(&cursor);
+        if (cursor >= end) goto malformed;
+    }
+
+malformed:
+    (void)snprintf(error, error_capacity,
+                   "invalid import declaration; expected 'from module.yl import function_name()'");
+    import_directive_destroy(directive);
+    return -1;
+
+out_of_memory:
+    (void)snprintf(error, error_capacity,
+                   "out of memory while parsing an import declaration");
+    import_directive_destroy(directive);
+    return -1;
+}
+
+static bool module_declares_function(const char *source, const char *name)
+{
+    Lexer lexer = lexer_init(source);
+    for (;;) {
+        Token token = lexer_next(&lexer);
+        if (token.type == TOKEN_EOF) return false;
+        if (token.type != TOKEN_FUNCTION) continue;
+
+        Token candidate;
+        do {
+            candidate = lexer_next(&lexer);
+        } while (candidate.type == TOKEN_NEWLINE);
+        if (candidate.type == TOKEN_IDENTIFIER &&
+            candidate.length == strlen(name) &&
+            memcmp(candidate.start, name, candidate.length) == 0) {
+            return true;
+        }
+    }
+}
+
+static size_t find_loaded_module(const ImportContext *context,
+                                 const char *canonical_path)
+{
+    for (size_t i = 0; i < context->module_count; i++) {
+        if (strcmp(context->modules[i].path, canonical_path) == 0) return i;
+    }
+    return SIZE_MAX;
+}
+
+static size_t load_import_module(ImportContext *context,
+                                 const char *requested_path,
+                                 const char *importer_path)
+{
+    char *canonical_path = resolve_module_path(requested_path, importer_path);
+    if (!canonical_path) {
+        fprintf(stderr,
+                "ylang: cannot resolve imported module '%s' from '%s': %s\n",
+                requested_path, importer_path, strerror(errno));
+        return SIZE_MAX;
+    }
+
+    size_t existing = find_loaded_module(context, canonical_path);
+    if (existing != SIZE_MAX) {
+        free(canonical_path);
+        return existing;
+    }
+    if (context->module_count >= YLANG_MAX_MODULES) {
+        fprintf(stderr, "ylang: project exceeds the %d-module import limit\n",
+                YLANG_MAX_MODULES);
+        free(canonical_path);
+        return SIZE_MAX;
+    }
+
+    size_t module_length = 0;
+    char *module_source = read_source_file(canonical_path, &module_length);
+    if (!module_source) {
+        fprintf(stderr, "ylang: cannot read imported module '%s': %s\n",
+                canonical_path, strerror(errno));
+        free(canonical_path);
+        return SIZE_MAX;
+    }
+    if (module_length > (size_t)YLANG_MAX_PROJECT_SOURCE -
+                        context->total_source_bytes) {
+        fprintf(stderr, "ylang: combined project source exceeds the 16 MiB limit\n");
+        free(module_source);
+        free(canonical_path);
+        return SIZE_MAX;
+    }
+
+    size_t index = context->module_count++;
+    ImportModule *module = &context->modules[index];
+    memset(module, 0, sizeof(*module));
+    module->path = canonical_path;
+    module->display_path = ylang_copy_string(canonical_path);
+    module->source = module_source;
+    module->length = module_length;
+    context->total_source_bytes += module_length;
+    if (!module->display_path) {
+        fprintf(stderr, "ylang: out of memory while tracking imported module\n");
+        return SIZE_MAX;
+    }
+    return index;
+}
+
+static void update_brace_depth(const char *line, size_t length, int *depth)
+{
+    size_t i = 0;
+    while (i < length) {
+        char ch = line[i];
+        if (ch == '/' && i + 1U < length && line[i + 1U] == '/') return;
+        if (ch == '"' || ch == '\'') {
+            char quote = ch;
+            i++;
+            while (i < length) {
+                if (line[i] == '\\') {
+                    i += i + 1U < length ? 2U : 1U;
+                } else if (line[i++] == quote) {
+                    break;
+                }
+            }
+            continue;
+        }
+        if (ch == '{') (*depth)++;
+        else if (ch == '}' && *depth > 0) (*depth)--;
+        i++;
+    }
+}
+
+static bool process_import_module(ImportContext *context, size_t module_index,
+                                  unsigned depth)
+{
+    if (depth > YLANG_MAX_IMPORT_DEPTH) {
+        fprintf(stderr, "ylang: module import depth exceeds the %d-level limit\n",
+                YLANG_MAX_IMPORT_DEPTH);
+        return false;
+    }
+    ImportModule *module = &context->modules[module_index];
+    if (module->done) return true;
+    if (module->visiting) {
+        fprintf(stderr, "error[E1102]: cyclic import detected for module '%s'\n",
+                module->display_path ? module->display_path : module->path);
+        return false;
+    }
+
+    module->visiting = true;
+    module->processed = copy_source_bytes(module->source, module->length);
+    if (!module->processed) {
+        fprintf(stderr, "ylang: out of memory while preparing module '%s'\n",
+                module->display_path);
+        return false;
+    }
+
+    int brace_depth = 0;
+    size_t offset = 0;
+    size_t line_number = 1U;
+    while (offset < module->length) {
+        size_t line_end = offset;
+        while (line_end < module->length && module->source[line_end] != '\n')
+            line_end++;
+        size_t content_end = line_end;
+        ImportDirective directive = {0};
+        char parse_error[256] = "";
+        int import_line = brace_depth == 0
+            ? parse_import_directive(module->source + offset,
+                                     content_end - offset, &directive,
+                                     parse_error, sizeof(parse_error))
+            : 0;
+
+        if (import_line < 0) {
+            fprintf(stderr, "error[E1100]: %s\n  --> %s:%zu:1\n\n",
+                    parse_error, module->display_path, line_number);
+            return false;
+        }
+        if (import_line == 1) {
+            size_t imported_index = load_import_module(
+                context, directive.module_path, module->path);
+            if (imported_index == SIZE_MAX) {
+                import_directive_destroy(&directive);
+                return false;
+            }
+            if (!process_import_module(context, imported_index, depth + 1U)) {
+                import_directive_destroy(&directive);
+                return false;
+            }
+            ImportModule *imported = &context->modules[imported_index];
+            for (size_t i = 0; i < directive.symbol_count; i++) {
+                if (!module_declares_function(imported->source,
+                                              directive.symbols[i])) {
+                    fprintf(stderr,
+                            "error[E1101]: module '%s' does not define function '%s'\n"
+                            "  --> %s:%zu:1\n\n",
+                            imported->display_path, directive.symbols[i],
+                            module->display_path, line_number);
+                    import_directive_destroy(&directive);
+                    return false;
+                }
+            }
+            memset(module->processed + offset, ' ', content_end - offset);
+            import_directive_destroy(&directive);
+        } else {
+            update_brace_depth(module->source + offset, content_end - offset,
+                               &brace_depth);
+        }
+
+        offset = line_end < module->length ? line_end + 1U : line_end;
+        line_number++;
+    }
+
+    module->visiting = false;
+    module->done = true;
+    if (context->order_count >= YLANG_MAX_MODULES) {
+        fprintf(stderr, "ylang: project has too many imported modules\n");
+        return false;
+    }
+    context->order[context->order_count++] = module_index;
+    return true;
+}
+
+static bool build_source_bundle(const char *input_path,
+                                const char *source, size_t source_length,
+                                SourceBundle *bundle)
+{
+    memset(bundle, 0, sizeof(*bundle));
+    ImportContext *context = calloc(1U, sizeof(*context));
+    if (!context) {
+        fputs("ylang: out of memory while preparing source modules\n", stderr);
+        return false;
+    }
+
+    char *canonical_root = canonicalize_module_path(input_path);
+    if (!canonical_root) canonical_root = ylang_copy_string(input_path);
+    char *root_source = copy_source_bytes(source, source_length);
+    char *root_display = ylang_copy_string(input_path);
+    if (!canonical_root || !root_source || !root_display ||
+        source_length > (size_t)YLANG_MAX_PROJECT_SOURCE) {
+        fputs("ylang: cannot prepare project source or source exceeds the 16 MiB limit\n",
+              stderr);
+        free(canonical_root);
+        free(root_source);
+        free(root_display);
+        free(context);
+        return false;
+    }
+
+    ImportModule *root = &context->modules[0];
+    root->path = canonical_root;
+    root->display_path = root_display;
+    root->source = root_source;
+    root->length = source_length;
+    context->module_count = 1U;
+    context->total_source_bytes = source_length;
+
+    bool okay = process_import_module(context, 0U, 0U);
+    size_t combined_length = 0;
+    if (okay) {
+        for (size_t i = 0; i < context->order_count; i++) {
+            ImportModule *module = &context->modules[context->order[i]];
+            if (module->length > (size_t)YLANG_MAX_PROJECT_SOURCE -
+                                 combined_length) {
+                okay = false;
+                fprintf(stderr, "ylang: combined project source exceeds the 16 MiB limit\n");
+                break;
+            }
+            combined_length += module->length;
+            if (i + 1U < context->order_count) {
+                if (combined_length >= (size_t)YLANG_MAX_PROJECT_SOURCE) {
+                    okay = false;
+                    fprintf(stderr, "ylang: combined project source exceeds the 16 MiB limit\n");
+                    break;
+                }
+                combined_length++;
+            }
+        }
+    }
+
+    if (okay) {
+        bundle->source = malloc(combined_length + 1U);
+        bundle->units = calloc(context->order_count, sizeof(*bundle->units));
+        if (!bundle->source || !bundle->units) {
+            okay = false;
+            fputs("ylang: out of memory while combining source modules\n", stderr);
+        }
+    }
+    if (okay) {
+        size_t combined_offset = 0U;
+        for (size_t i = 0; i < context->order_count; i++) {
+            ImportModule *module = &context->modules[context->order[i]];
+            bundle->units[i].filename = ylang_copy_string(module->display_path);
+            bundle->units[i].offset = combined_offset;
+            bundle->units[i].length = module->length;
+            if (!bundle->units[i].filename) {
+                okay = false;
+                break;
+            }
+            memcpy(bundle->source + combined_offset, module->processed, module->length);
+            combined_offset += module->length;
+            if (i + 1U < context->order_count)
+                bundle->source[combined_offset++] = '\n';
+        }
+        if (okay) {
+            bundle->source[combined_offset] = '\0';
+            bundle->length = combined_offset;
+            bundle->unit_count = context->order_count;
+        }
+    }
+
+    import_context_destroy(context);
+    free(context);
+    if (!okay) source_bundle_destroy(bundle);
+    return okay;
+}
+
 
 static int run_native_compiler(const char *cc, const char *c_path,
                                const char *output_path, bool uses_http)
