@@ -404,6 +404,26 @@ static EnumDecl *find_enum(Compiler *compiler, const char *name)
     return NULL;
 }
 
+static StructDecl *find_struct(Compiler *compiler, const char *name)
+{
+    for (size_t i = 0; i < compiler->struct_count; i++) {
+        StructDecl *structure = compiler->structs[i];
+        if ((!compiler->current_module || structure->module == compiler->current_module) &&
+            strcmp(structure->name, name) == 0) return structure;
+    }
+    return NULL;
+}
+
+static StructField *find_struct_field(StructDecl *structure, const char *name)
+{
+    if (!structure) return NULL;
+    for (size_t i = 0; i < structure->field_count; i++) {
+        if (strcmp(structure->fields[i]->name, name) == 0)
+            return structure->fields[i];
+    }
+    return NULL;
+}
+
 static EnumVariant *find_enum_variant(EnumDecl *enumeration, const char *name)
 {
     if (!enumeration) return NULL;
@@ -425,15 +445,19 @@ static YType parse_type(Parser *p)
     if (token_is(&token, "char")) return TYPE_CHAR;
     if (token_is(&token, "string")) return TYPE_STRING;
     if (token_is(&token, "void")) return TYPE_VOID;
-    EnumDecl *enumeration = find_enum(p->compiler, token_copy(p->compiler, token));
+    const char *type_text = token_copy(p->compiler, token);
+    EnumDecl *enumeration = find_enum(p->compiler, type_text);
     if (enumeration) return enumeration->type;
+    StructDecl *structure = find_struct(p->compiler, type_text);
+    if (structure) return structure->type;
     diagnostic(p->compiler, token, "error", "E2002", "Unknown type name.",
-               "Available built-in types: int, float, bool, char, string, void; user-defined enums must be declared before use.");
+               "Declare a struct or enum before using it as a type.");
     return TYPE_ERROR;
 }
 
 const char *type_name(YType type)
 {
+    if (type >= TYPE_STRUCT_BASE) return "<struct>";
     if (type >= TYPE_ENUM_BASE) return "<enum>";
     switch (type) {
         case TYPE_INT: return "int";
@@ -633,16 +657,17 @@ static Expr *parse_primary(Parser *p)
                     value->type = enumeration->type;
                     return value;
                 }
-                diagnostic(p->compiler, token, "error", "E1016",
-                           "Unknown standard-library namespace or enum type.",
-                           "Use a supported namespace such as math, string, io, path, image, or gui, or declare an enum before using EnumName.Variant.");
-                name = arena_strndup(&p->compiler->arena, "", 0);
+                Expr *field = new_expr(p->compiler, EXPR_FIELD, token);
+                field->as.field.target = expr;
+                field->as.field.name = token_copy(p->compiler, member);
+                return field;
             }
         }
         expr->as.name.name = name;
         if (match(p, TOKEN_LEFT_PAREN)) {
             Expr *call = new_expr(p->compiler, EXPR_CALL, token);
             call->as.call.name = expr->as.name.name;
+            call->as.call.struct_type = find_struct(p->compiler, call->as.call.name);
             while (p->current.type != TOKEN_RIGHT_PAREN && p->current.type != TOKEN_EOF) {
                 Expr *arg = parse_expression(p);
                 append_ptr(p->compiler, (void ***)&call->as.call.args,
@@ -746,7 +771,9 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
         int next_min = prec + ((op.type == TOKEN_EQUAL || op.type == TOKEN_PLUS_EQUAL) ? 0 : 1);
         Expr *right = parse_precedence(p, next_min);
         if (op.type == TOKEN_EQUAL || op.type == TOKEN_PLUS_EQUAL) {
-            if (left->kind != EXPR_NAME && (op.type == TOKEN_EQUAL && left->kind != EXPR_INDEX)) {
+            if (left->kind != EXPR_NAME &&
+                (op.type == TOKEN_EQUAL && left->kind != EXPR_INDEX &&
+                 left->kind != EXPR_FIELD)) {
                 diagnostic(p->compiler, op, "error", "E1004",
                            "The left side of an assignment must be a variable or array element.",
                            "Write an assignment such as 'count = count + 1;' or 'values[0] = 1;'.");
@@ -1061,6 +1088,96 @@ static Function *parse_function(Parser *p)
     return function;
 }
 
+static StructDecl *parse_struct(Parser *p, Token struct_token)
+{
+    Token name_token = consume(p, TOKEN_IDENTIFIER,
+        "Expected a struct name after 'struct'.",
+        "Use a declaration such as struct Point { int x; int y; }.");
+    if (name_token.length == 0) return NULL;
+    const char *name = token_copy(p->compiler, name_token);
+    for (size_t i = 0; i < p->compiler->struct_count; i++) {
+        StructDecl *existing = p->compiler->structs[i];
+        if (existing->module == p->compiler->current_module &&
+            strcmp(existing->name, name) == 0) {
+            diagnostic(p->compiler, name_token, "error", "E2065",
+                       "This struct type is already declared in the current module.",
+                       "Choose a unique struct type name.");
+            break;
+        }
+    }
+
+    StructDecl *structure = arena_alloc(&p->compiler->arena, sizeof(*structure));
+    structure->token = struct_token;
+    structure->name = (char *)name;
+    structure->type = (YType)(TYPE_STRUCT_BASE + p->compiler->struct_count);
+    structure->module = p->compiler->current_module;
+    size_t prefix = p->compiler->struct_count;
+    int c_name_length = snprintf(NULL, 0, "yl_struct_%zu_%s", prefix, name);
+    if (c_name_length < 0) {
+        diagnostic(p->compiler, name_token, "error", "E2066",
+                   "Could not create an internal struct name.",
+                   "Rename this type and try again.");
+    } else {
+        size_t size = (size_t)c_name_length + 1U;
+        structure->c_name = arena_alloc(&p->compiler->arena, size);
+        (void)snprintf(structure->c_name, size, "yl_struct_%zu_%s", prefix, name);
+    }
+    append_ptr(p->compiler, (void ***)&p->compiler->structs,
+               &p->compiler->struct_count, structure);
+
+    consume(p, TOKEN_LEFT_BRACE, "Expected '{' after the struct name.",
+            "Declare fields inside the struct braces.");
+    while (p->current.type != TOKEN_RIGHT_BRACE &&
+           p->current.type != TOKEN_EOF) {
+        Token field_type_token = p->current;
+        YType field_type = parse_type(p);
+        Token field_name_token = consume(p, TOKEN_IDENTIFIER,
+            "Expected a field name after its type.",
+            "Use field declarations such as 'int x;'.");
+        if (field_name_token.length == 0) break;
+        char *field_name = token_copy(p->compiler, field_name_token);
+        if (field_type == TYPE_VOID) {
+            diagnostic(p->compiler, field_type_token, "error", "E2067",
+                       "A struct field cannot have type void.",
+                       "Use a value type for every field.");
+        }
+        if (field_type == structure->type) {
+            diagnostic(p->compiler, field_type_token, "error", "E2068",
+                       "A struct cannot contain itself by value.",
+                       "Use a different field type; recursive pointer fields are not supported yet.");
+        }
+        if (find_struct_field(structure, field_name)) {
+            diagnostic(p->compiler, field_name_token, "error", "E2069",
+                       "This struct field is declared more than once.",
+                       "Each field name must be unique within the struct.");
+        } else {
+            StructField *field = arena_alloc(&p->compiler->arena, sizeof(*field));
+            field->token = field_name_token;
+            field->name = field_name;
+            field->type = field_type;
+            field->structure = structure;
+            int field_c_len = snprintf(NULL, 0, "yl_f_%zu_%s", prefix, field_name);
+            size_t field_c_size = field_c_len < 0 ? 1U : (size_t)field_c_len + 1U;
+            field->c_name = arena_alloc(&p->compiler->arena, field_c_size);
+            if (field_c_len >= 0)
+                (void)snprintf(field->c_name, field_c_size, "yl_f_%zu_%s", prefix, field_name);
+            append_ptr(p->compiler, (void ***)&structure->fields,
+                       &structure->field_count, field);
+        }
+        consume(p, TOKEN_SEMICOLON, "Expected ';' after struct field.",
+                "End each field declaration with ';'.");
+    }
+    if (structure->field_count == 0) {
+        diagnostic(p->compiler, name_token, "error", "E2070",
+                   "A struct must contain at least one field.",
+                   "Add one or more typed fields inside the braces.");
+    }
+    consume(p, TOKEN_RIGHT_BRACE, "Expected '}' after struct fields.",
+            "Close the struct declaration with '}'.");
+    (void)match(p, TOKEN_SEMICOLON);
+    return structure;
+}
+
 static EnumDecl *parse_enum(Parser *p, Token enum_token)
 {
     Token name_token = consume(p, TOKEN_IDENTIFIER,
@@ -1284,6 +1401,11 @@ Program *parse_program(Compiler *c)
         if (p.current.type == TOKEN_ERROR) {
             advance_parser(&p);
             continue;
+        } else if (p.current.type == TOKEN_IDENTIFIER &&
+                   token_is(&p.current, "struct")) {
+            Token struct_token = p.current;
+            advance_parser(&p);
+            (void)parse_struct(&p, struct_token);
         } else if (p.current.type == TOKEN_IDENTIFIER &&
                    token_is(&p.current, "enum")) {
             Token enum_token = p.current;
