@@ -144,6 +144,11 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "gui.init") == 0) return "ylgui_api_init";
     if (strcmp(name, "gui.create_window") == 0) return "ylgui_api_create_window";
     if (strcmp(name, "gui.poll") == 0) return "ylgui_api_poll";
+    if (strcmp(name, "gui.key_down") == 0) return "ylgui_api_key_down";
+    if (strcmp(name, "gui.mouse_x") == 0) return "ylgui_api_mouse_x";
+    if (strcmp(name, "gui.mouse_y") == 0) return "ylgui_api_mouse_y";
+    if (strcmp(name, "gui.mouse_button_down") == 0) return "ylgui_api_mouse_button_down";
+    if (strcmp(name, "gui.ticks_ms") == 0) return "ylgui_api_ticks_ms";
     if (strcmp(name, "gui.clear") == 0) return "ylgui_api_clear";
     if (strcmp(name, "gui.draw_rect") == 0) return "ylgui_api_draw_rect";
     if (strcmp(name, "gui.present") == 0) return "ylgui_api_present";
@@ -508,6 +513,11 @@ static void emit_runtime(FILE *out)
         "bool ylgui_api_init(void);\n"
         "bool ylgui_api_create_window(const char *, int64_t, int64_t);\n"
         "bool ylgui_api_poll(void);\n"
+        "bool ylgui_api_key_down(const char *);\n"
+        "int64_t ylgui_api_mouse_x(void);\n"
+        "int64_t ylgui_api_mouse_y(void);\n"
+        "bool ylgui_api_mouse_button_down(int64_t);\n"
+        "int64_t ylgui_api_ticks_ms(void);\n"
         "bool ylgui_api_clear(int64_t, int64_t, int64_t);\n"
         "bool ylgui_api_draw_rect(int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, int64_t);\n"
         "bool ylgui_api_present(void);\n"
