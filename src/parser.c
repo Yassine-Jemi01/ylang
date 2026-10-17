@@ -1212,6 +1212,10 @@ static StructDecl *parse_struct(Parser *p, Token struct_token)
             field->name = field_name;
             field->type = field_type;
             field->index = structure->field_count;
+            size_t field_c_name_size = strlen(field_name) + 48;
+            field->c_name = arena_alloc(&p->compiler->arena, field_c_name_size);
+            (void)snprintf(field->c_name, field_c_name_size, "yl_field_%zu_%s",
+                           field->index, field_name);
             append_ptr(p->compiler, (void ***)&structure->fields,
                        &structure->field_count, field);
         }
