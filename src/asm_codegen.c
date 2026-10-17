@@ -63,6 +63,7 @@ static bool asm_reject(AsmContext *ctx, Token token, const char *feature)
 static bool asm_type_supported(AsmContext *ctx, YType type, Token token,
                                bool allow_void)
 {
+    if (type >= TYPE_ENUM_BASE) return true;
     switch (type) {
         case TYPE_INT:
         case TYPE_BOOL:
@@ -96,6 +97,7 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
     if (!asm_type_supported(ctx, expr->type, expr->token, true)) return false;
 
     switch (expr->kind) {
+        case EXPR_ENUM_VALUE:
         case EXPR_INT:
         case EXPR_BOOL:
             return true;
@@ -480,6 +482,10 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
         return true;
     }
     switch (expr->kind) {
+        case EXPR_ENUM_VALUE:
+            fprintf(ctx->out, "    mov rax, 0x%016" PRIx64 "\n",
+                    (uint64_t)expr->as.enum_value.variant->value);
+            return true;
         case EXPR_INT: {
             char *literal = token_copy(ctx->compiler, expr->token);
             char *end = NULL;
