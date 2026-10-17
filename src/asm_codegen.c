@@ -63,6 +63,7 @@ static bool asm_reject(AsmContext *ctx, Token token, const char *feature)
 static bool asm_type_supported(AsmContext *ctx, YType type, Token token,
                                bool allow_void)
 {
+    if (type >= TYPE_STRUCT_BASE) return asm_reject(ctx, token, "struct values");
     if (type >= TYPE_ENUM_BASE) return true;
     switch (type) {
         case TYPE_INT:
