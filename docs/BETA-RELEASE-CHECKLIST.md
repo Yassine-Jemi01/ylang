@@ -10,28 +10,21 @@ This checklist is the release gate for `2.0.0-beta.1`. A feature being present o
 - Keep the NASM backend explicitly experimental unless the supported language subset passes backend-parity tests.
 - Do not merge stacked feature pull requests until the dependency below them is reviewed and CI is green.
 
-## Current development queue
+## Current repository state
 
-These pull requests are drafts and must be reviewed in dependency order:
+The current `main` branch contains the named-import/module system, experimental SDL2-backed GUI and 2D helpers, unit enums with exhaustive `match`, typed structs, and mutable struct-field assignment. The merged development snapshot has a successful CI run on Linux GCC, Linux Clang, macOS Clang, sanitizer checks, and editor-diagnostic tests. Re-check CI against the exact release-candidate commit before publishing.
 
-1. [#36 — Named imports](https://github.com/Yassine-Jemi01/ylang/pull/36) — base of the current feature stack.
-2. [#37 — SDL2 2D game helpers](https://github.com/Yassine-Jemi01/ylang/pull/37) — depends on #36.
-3. [#39 — GUI input and timing APIs](https://github.com/Yassine-Jemi01/ylang/pull/39) — depends on #37.
-4. [#38 — Enums and exhaustive match](https://github.com/Yassine-Jemi01/ylang/pull/38) — depends on #39.
-5. [#40 — Struct values](https://github.com/Yassine-Jemi01/ylang/pull/40) — depends on #38.
-6. [#41 — Mutable struct-field assignment tests/fix](https://github.com/Yassine-Jemi01/ylang/pull/41) — depends on #40.
-7. [#42 — Option/Result design](https://github.com/Yassine-Jemi01/ylang/pull/42) — design documentation only; it does not implement Option/Result.
-
-Do not treat the above list as proof that each feature is release-ready. Review the diffs and the latest CI result for each head SHA.
+PR #47 concerns Option/Result design documentation only. It does **not** implement `Option<T>` or `Result<T, E>`; these are excluded from beta unless a separately implemented and tested feature is merged.
 
 ## Required release gates
 
 ### 1. Source and build health
 
 - [ ] Review and merge the stacked pull requests in dependency order; no accidental merge of an unreviewed dependent branch.
-- [ ] Run the full test suite on Linux with GCC and Clang.
-- [ ] Run the full test suite on macOS with Clang.
-- [ ] Run sanitizers and verify all editor-diagnostic tests.
+- [x] Current merged snapshot: Linux GCC and Clang regression suites pass.
+- [x] Current merged snapshot: macOS Clang regression suite and sanitizers pass.
+- [x] Current merged snapshot: sanitizer and editor-diagnostic tests pass.
+- [ ] Re-run all of the above against the exact release-candidate commit.
 - [ ] Verify a clean checkout can build using only the documented prerequisites.
 
 ### 2. Feature verification
@@ -45,8 +38,10 @@ Do not treat the above list as proof that each feature is release-ready. Review 
 
 ### 3. Documentation and packaging
 
-- [ ] Update README to distinguish stable 1.1.0 from experimental 2.0 beta features.
-- [ ] Add a beta changelog with implemented features, known limitations, and breaking changes.
+- [x] README distinguishes stable 1.1.0 from experimental development features.
+- [ ] Add a clear link to the beta changelog and verify all README claims against the release candidate.
+- [x] Draft beta changelog with implemented features and known limitations: [CHANGELOG-2.0-BETA.md](CHANGELOG-2.0-BETA.md).
+- [ ] Verify the draft against the final release-candidate commit and document any breaking changes.
 - [ ] Ensure every advertised feature has a working minimal example.
 - [ ] Verify install/build instructions on the supported platforms.
 - [ ] Create a GitHub prerelease only from the exact commit that passed the release gates.
