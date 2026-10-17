@@ -175,13 +175,12 @@ The site should consume release metadata or a generated manifest so download lin
 
 The optional SDL2 runtime and a minimal `gui.*` namespace are implemented and callable from `.yl`. The API currently covers initialization, window creation, event polling, clearing, rectangle drawing, presentation, last-error reporting, and shutdown/close. Type-checking and NASM rejection tests exist; the runtime integration is optional so ordinary non-GUI programs do not require SDL2. See [GUI-API-SPEC.md](GUI-API-SPEC.md) for the current contract.
 
-The first experimental `stdlib/game2d.yl` module now wraps window/frame/drawing operations and provides rectangle-overlap and point-in-rectangle helpers. See [game2d.md](game2d.md). It is a foundation, not a Pygame replacement.
+The experimental `stdlib/game2d.yl` module wraps window/frame/drawing operations, keyboard state, mouse position/buttons, millisecond timing, delta time, rectangle overlap, and point-in-rectangle helpers. See [game2d.md](game2d.md). It is a foundation, not a Pygame replacement.
 
 Remaining game-library work:
-1. Extend input handling with explicit keyboard and mouse state APIs, with deterministic event polling.
-2. Add delta-time helpers and a reusable game-loop abstraction.
-3. Add sprites/textures and broader integration tests using SDL's dummy video driver where available.
-4. Add audio, richer widgets, physics, or 3D only after the minimal 2D API is stable.
+1. Add a reusable game-loop abstraction with a documented frame/update contract.
+2. Add sprites/textures and integration tests using SDL's dummy video driver where available.
+3. Add audio, richer widgets, physics, or 3D only after the minimal 2D API is stable.
 
 The NASM backend should continue to reject unsupported GUI/game calls with an explicit diagnostic. GUI and game features are not complete until Linux/macOS CI, missing-dependency diagnostics, and runtime tests pass.
  
