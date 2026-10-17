@@ -809,10 +809,20 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
         exit 1
     fi
     if ! grep -qi 'GUI calls' build/gui-nasm.out; then
-    cat build/gui-nasm.out >&2
-    echo "FAIL: NASM rejection message did not identify GUI calls" >&2
-    exit 1
-fi
+        cat build/gui-nasm.out >&2
+        echo "FAIL: NASM rejection message did not identify GUI calls" >&2
+        exit 1
+    fi
+
+    if ./build/ylang build-asm examples/structs.yl -o build/structs-nasm > build/structs-nasm.out 2>&1; then
+        echo "FAIL: NASM backend accepted unsupported struct values" >&2
+        exit 1
+    fi
+    if ! grep -qi 'struct values' build/structs-nasm.out; then
+        cat build/structs-nasm.out >&2
+        echo "FAIL: NASM rejection message did not identify struct values" >&2
+        exit 1
+    fi
 else
     if ./build/ylang build-asm examples/gui.yl -o build/gui-nasm > build/gui-nasm.out 2>&1; then
         echo "FAIL: NASM backend unexpectedly built on an unsupported platform" >&2
