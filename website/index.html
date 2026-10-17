@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f7f2">
+  <meta name="description" content="YLang is an open-source compiled programming language with readable syntax and an evolving safety-focused toolchain.">
+  <title>YLang — A language built to be understood</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="container nav-wrap">
+      <a class="brand" href="#top" aria-label="YLang home">
+        <span class="brand-mark" aria-hidden="true">Y</span>
+        <span>YLang</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+        <span class="sr-only">Toggle navigation</span>
+        <span></span><span></span>
+      </button>
+      <nav id="site-nav" class="site-nav" aria-label="Main navigation">
+        <a href="#language">The language</a>
+        <a href="#learn">Learn</a>
+        <a href="#downloads">Downloads</a>
+        <a href="https://github.com/Yassine-Jemi01/ylang">Source code <span aria-hidden="true">↗</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero container" id="top">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="status-dot"></span> Open source · In active development</p>
+        <h1>Code clearly.<br><span>Build deliberately.</span></h1>
+        <p class="hero-lede">YLang is a compiled programming language designed around readable syntax, explicit types, and a toolchain you can explore and improve.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#learn">Get started <span aria-hidden="true">→</span></a>
+          <a class="button button-secondary" href="https://github.com/Yassine-Jemi01/ylang">Explore the source</a>
+        </div>
+        <p class="hero-note">Current release line: <strong>1.1.0</strong> · C backend · Experimental NASM backend on Linux x86-64</p>
+      </div>
+      <div class="code-window" aria-label="Example YLang program">
+        <div class="window-bar">
+          <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+          <span>hello.yl</span>
+          <button class="copy-button" type="button" data-copy="code-example">Copy</button>
+        </div>
+        <pre><code id="code-example"><span class="tok-muted"># A small YLang program</span>
+<span class="tok-keyword">function</span> <span class="tok-function">main</span>() <span class="tok-operator">-&gt;</span> <span class="tok-type">int</span> {
+    <span class="tok-keyword">let const</span> <span class="tok-type">string</span> message = <span class="tok-string">"Hello, world!"</span>;
+    <span class="tok-function">print</span>(message);
+    <span class="tok-keyword">return</span> <span class="tok-number">0</span>;
+}</code></pre>
+        <div class="code-footer"><span><span class="footer-dot"></span> hello.yl</span><span>Readable by design</span></div>
+      </div>
+      <div class="hero-stamp" aria-hidden="true"><span>Y</span><small>LANGUAGE<br>PROJECT</small></div>
+    </section>
+
+    <section class="ticker" aria-label="Project principles">
+      <div class="container ticker-inner">
+        <span>Readable syntax</span><b>·</b><span>Compiled toolchain</span><b>·</b><span>Explicit conversions</span><b>·</b><span>Built in the open</span>
+      </div>
+    </section>
+
+    <section class="section container" id="language">
+      <div class="section-heading">
+        <p class="eyebrow">01 / The language</p>
+        <h2>Familiar to read.<br><span>Interesting to build.</span></h2>
+        <p>YLang takes inspiration from expressive, approachable syntax while exploring the design choices behind a compiled language.</p>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <span class="feature-number">01</span>
+          <h3>Readable code</h3>
+          <p>A clean, Python-inspired surface syntax with explicit function signatures and familiar control flow.</p>
+        </article>
+        <article class="feature-card">
+          <span class="feature-number">02</span>
+          <h3>Explicit types</h3>
+          <p>Types and conversions are visible in your code instead of being silently guessed for you.</p>
+        </article>
+        <article class="feature-card">
+          <span class="feature-number">03</span>
+          <h3>A real compiler</h3>
+          <p>The current stable path generates C and uses GCC or Clang. An x86-64 NASM backend is experimental.</p>
+        </article>
+      </div>
+      <p class="honesty-note"><strong>Still evolving:</strong> YLang is an early-stage project. Its safety model and feature coverage are not yet equivalent to Rust, and backend support varies by feature.</p>
+    </section>
+
+    <section class="learn-section" id="learn">
+      <div class="container learn-layout">
+        <div class="section-heading">
+          <p class="eyebrow">02 / Start learning</p>
+          <h2>Start with the<br><span>source.</span></h2>
+          <p>Explore the compiler, read the language guide, or build the current version locally.</p>
+          <a class="text-link" href="https://github.com/Yassine-Jemi01/ylang/tree/main/docs">Browse the documentation <span aria-hidden="true">↗</span></a>
+        </div>
+        <div class="steps">
+          <article class="step">
+            <span class="step-index">1</span>
+            <div><h3>Get the source</h3><p>Clone the public repository.</p><pre><code>git clone https://github.com/Yassine-Jemi01/ylang.git
+cd ylang</code></pre></div>
+          </article>
+          <article class="step">
+            <span class="step-index">2</span>
+            <div><h3>Build the compiler</h3><p>On Linux or macOS, install a C compiler and make.</p><pre><code>make</code></pre></div>
+          </article>
+          <article class="step">
+            <span class="step-index">3</span>
+            <div><h3>Run the tests</h3><p>Check your build before trying examples.</p><pre><code>make test</code></pre></div>
+          </article>
+          <p class="requirements">Requirements and platform-specific details are documented in the repository README. These commands are for building from source, not a prebuilt installer.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section container download-section" id="downloads">
+      <div class="download-panel">
+        <div>
+          <p class="eyebrow">03 / Downloads</p>
+          <h2>Follow the build.<br><span>Get the next release.</span></h2>
+          <p>Prebuilt installers are not published yet. For now, build from source or watch the releases page for official artifacts.</p>
+        </div>
+        <div class="download-actions">
+          <a class="button button-primary" href="https://github.com/Yassine-Jemi01/ylang/releases">View releases <span aria-hidden="true">→</span></a>
+          <a class="button button-light" href="https://github.com/Yassine-Jemi01/ylang#build-from-source">Build from source</a>
+          <span class="download-small">No unofficial binaries. No invented download links.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="community container">
+      <p class="eyebrow">Built in the open</p>
+      <h2>A language is never a solo line of code.</h2>
+      <p>Read the implementation, report a bug, or help make the next version better.</p>
+      <a class="text-link" href="https://github.com/Yassine-Jemi01/ylang/issues">Visit the issue tracker <span aria-hidden="true">↗</span></a>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <a class="brand footer-brand" href="#top"><span class="brand-mark" aria-hidden="true">Y</span><span>YLang</span></a>
+      <p>An open-source language project. Made to be explored.</p>
+      <div class="footer-links"><a href="https://github.com/Yassine-Jemi01/ylang">GitHub</a><a href="https://github.com/Yassine-Jemi01/ylang/blob/main/LICENSE">MIT License</a></div>
+      <span class="copyright">© <span id="year">2026</span> YLang contributors</span>
+    </div>
+  </footer>
+</body>
+</html>
