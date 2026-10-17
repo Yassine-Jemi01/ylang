@@ -457,14 +457,14 @@ static void emit_fstring_print(FILE *out, Expr *expr, unsigned indent)
     }
 }
 
-static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
+static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
 {
     if (!stmt) return;
     switch (stmt->kind) {
         case STMT_BLOCK:
             emit_indent(out, indent); fputs("{\n", out);
             for (size_t i = 0; i < stmt->as.block.count; i++)
-                emit_stmt(out, stmt->as.block.items[i], indent + 1);
+                emit_stmt(c, out, stmt->as.block.items[i], indent + 1);
             emit_indent(out, indent); fputs("}\n", out);
             break;
         case STMT_VAR: {
@@ -492,26 +492,26 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             break;
         case STMT_IF:
             emit_indent(out, indent); fputs("if (", out); emit_expr_to_file(out, stmt->as.if_stmt.condition); fputs(") ", out);
-            fputs("\n", out); emit_stmt(out, stmt->as.if_stmt.then_branch, indent);
+            fputs("\n", out); emit_stmt(c, out, stmt->as.if_stmt.then_branch, indent);
             if (stmt->as.if_stmt.else_branch) {
                 emit_indent(out, indent); fputs("else ", out); fputs("\n", out);
-                emit_stmt(out, stmt->as.if_stmt.else_branch, indent);
+                emit_stmt(c, out, stmt->as.if_stmt.else_branch, indent);
             }
             break;
         case STMT_LOOP:
             emit_indent(out, indent); fputs("for (;;) ", out); fputs("\n", out);
-            emit_stmt(out, stmt->as.loop_body, indent);
+            emit_stmt(c, out, stmt->as.loop_body, indent);
             break;
         case STMT_WHILE:
             emit_indent(out, indent); fputs("while (", out);
             emit_expr_to_file(out, stmt->as.while_stmt.condition);
             fputs(")\n", out);
-            emit_stmt(out, stmt->as.while_stmt.body, indent);
+            emit_stmt(c, out, stmt->as.while_stmt.body, indent);
             break;
         case STMT_FOR:
             emit_indent(out, indent); fputs("{\n", out);
             if (stmt->as.for_stmt.initializer)
-                emit_stmt(out, stmt->as.for_stmt.initializer, indent + 1);
+                emit_stmt(c, out, stmt->as.for_stmt.initializer, indent + 1);
             emit_indent(out, indent + 1); fputs("for (; ", out);
             if (stmt->as.for_stmt.condition)
                 emit_expr_to_file(out, stmt->as.for_stmt.condition);
@@ -519,7 +519,7 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             if (stmt->as.for_stmt.increment)
                 emit_expr_to_file(out, stmt->as.for_stmt.increment);
             fputs(")\n", out);
-            emit_stmt(out, stmt->as.for_stmt.body, indent + 1);
+            emit_stmt(c, out, stmt->as.for_stmt.body, indent + 1);
             emit_indent(out, indent); fputs("}\n", out);
             break;
         case STMT_BREAK:
@@ -545,7 +545,7 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
                 fputs(i == 0 ? "if (" : "else if (", out);
                 fprintf(out, "%s == INT64_C(%lld))\n", match_name,
                         (long long)(arm->variant ? arm->variant->value : 0));
-                emit_stmt(out, arm->body, indent + 1);
+                emit_stmt(c, out, arm->body, indent + 1);
             }
             emit_indent(out, indent); fputs("}\n", out);
             break;
@@ -715,7 +715,7 @@ bool generate_c(Compiler *c, const char *path)
             first_param = false;
         }
         fputs(") ", out); fputc('\n', out);
-        emit_stmt(out, fn->body, 0);
+        emit_stmt(c, out, fn->body, 0);
         fputc('\n', out);
     }
 
