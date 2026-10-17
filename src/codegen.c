@@ -500,6 +500,26 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); fputs("return", out);
             if (stmt->as.return_value) { fputc(' ', out); emit_expr_to_file(out, stmt->as.return_value); }
             fputs(";\n", out); break;
+        case STMT_MATCH: {
+            char match_name[96];
+            (void)snprintf(match_name, sizeof(match_name), "yl_match_%zu_%zu",
+                           stmt->token.line, stmt->token.column);
+            emit_indent(out, indent); fputs("{\n", out);
+            emit_indent(out, indent + 1);
+            fprintf(out, "int64_t %s = ", match_name);
+            emit_expr_to_file(out, stmt->as.match_stmt.value);
+            fputs(";\n", out);
+            for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++) {
+                MatchArm *arm = stmt->as.match_stmt.arms[i];
+                emit_indent(out, indent + 1);
+                fputs(i == 0 ? "if (" : "else if (", out);
+                fprintf(out, "%s == INT64_C(%lld))\n", match_name,
+                        (long long)(arm->variant ? arm->variant->value : 0));
+                emit_stmt(out, arm->body, indent + 1);
+            }
+            emit_indent(out, indent); fputs("}\n", out);
+            break;
+        }
         case STMT_EXPR:
             emit_indent(out, indent); emit_expr_to_file(out, stmt->as.expression); fputs(";\n", out); break;
     }
