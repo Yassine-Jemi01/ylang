@@ -1,20 +1,20 @@
 # YLang 2.0 Module System — Proposal
 
-**Status:** design proposal; none of the future syntax in this document should be assumed to compile yet.
+**Status:** named local-file imports are implemented on the development branch; aliases and qualified module imports remain proposals. Treat this implementation as experimental until its CI matrix passes and the limitations below are resolved.
 
-This proposal defines a future local-file module system with explicit names, predictable visibility, and testable diagnostics. It intentionally does not define a package registry or binary module ABI. The current compiler on `main` does **not** implement source-level imports or multi-file compilation; the syntax below is proposed and must not be treated as working language functionality until implementation and regression tests land.
+The compiler supports selective imports of top-level functions and globals using a local source path. It intentionally does not define a package registry or binary module ABI.
 
-## 1. Current behavior and why it must change
+## 1. Current behavior and remaining limitations
 
-The current driver reads one input file, parses it into one `Program`, checks that program, and passes it to a backend. The lexer treats words such as `from` and `import` as ordinary identifiers, and the parser has no top-level import declaration. Therefore examples such as the following are design sketches only and currently fail to compile:
+A source file may import named declarations from another `.yl` file:
 
 ```yl
-from "string tools.yl" import system_data
+from "./string_tools.yl" import system_data;
 ```
 
-The implementation must add a real resolver and module-local name binding. It must not claim that imported declarations are supported until paths are resolved relative to the importing file, modules are loaded once, visibility is enforced, and diagnostics retain the original source locations. Simply concatenating source files would make unrelated declarations collide in the global namespace and would not enforce the import list.
+The resolver loads transitive dependencies, resolves paths relative to the importing file, rejects cycles, and keeps each module's declarations and imports separate during semantic analysis. Only explicitly imported names are visible to the importer; helper declarations remain private to their source module. Generated C function names are module-qualified to avoid collisions. Imported modules may not define `main()`, and the root program must provide the entry point.
 
-The first stable module milestone must establish module identity and visibility before adding aliases or qualified imports.
+Current limitations: import aliases and `import "module.yl" as module` are not implemented; there is no package manifest or registry; the NASM backend must reject multi-file imports until its module lowering is implemented and tested.
 
 ## 2. Proposed syntax
 
