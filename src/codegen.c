@@ -648,12 +648,12 @@ bool generate_c(Compiler *c, const char *path)
 
     for (size_t i = 0; i < c->struct_count; i++) {
         StructDecl *structure = c->structs[i];
-        fputs("typedef struct {\\n", out);
+        fputs("typedef struct {\n", out);
         for (size_t j = 0; j < structure->field_count; j++) {
             StructField *field = structure->fields[j];
-            fprintf(out, "    %s %s;\\n", c_base_type(c, field->type), field->name);
+            fprintf(out, "    %s %s;\n", c_base_type(c, field->type), field->name);
         }
-        fprintf(out, "} %s;\\n\\n", structure->c_name);
+        fprintf(out, "} %s;\n\n", structure->c_name);
     }
 
     for (size_t i = 0; i < c->program->global_count; i++) {
