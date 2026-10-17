@@ -496,8 +496,20 @@ static int parse_import_directive(const char *line, size_t length,
         if (!import_identifier_char(*cursor, true)) goto malformed;
         cursor++;
         while (cursor < end && import_identifier_char(*cursor, false)) cursor++;
-        if (!import_add_symbol(directive, name_start,
-                               (size_t)(cursor - name_start))) goto out_of_memory;
+        size_t name_length = (size_t)(cursor - name_start);
+        for (size_t i = 0; i < directive->symbol_count; i++) {
+            size_t existing_length = strlen(directive->symbols[i]);
+            if (existing_length == name_length &&
+                memcmp(directive->symbols[i], name_start, name_length) == 0) {
+                (void)snprintf(error, error_capacity,
+                               "duplicate imported function '%.*s'",
+                               (int)name_length, name_start);
+                import_directive_destroy(directive);
+                return -1;
+            }
+        }
+        if (!import_add_symbol(directive, name_start, name_length))
+            goto out_of_memory;
 
         skip_import_space(&cursor);
         if (cursor < end && *cursor == '(') {
