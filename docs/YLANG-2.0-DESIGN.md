@@ -150,7 +150,51 @@ The exact schema must be finalized before implementation. The package manager sh
 - Deterministic resolution, clear offline behavior, and useful conflict diagnostics.
 - Local path dependencies first; pinned Git dependencies next; a central registry only after the trust and publishing model exists.
 
-## Milestone 7 — Releases and website
+## Milestone 7 — Documentation, GUI, and game development
+
+The website must become a useful entry point for learning and building projects, not only a landing page.
+
+### Documentation and book on the official site
+
+- Add an online documentation area with installation instructions, a language tutorial, syntax/type reference, standard-library reference, diagnostics, compiler architecture, and platform/backend support.
+- Make the existing `docs/book/YLang-Book.pdf` available as a direct PDF download from the website, with a readable book landing page and a clear version/date.
+- Keep the Markdown source of truth in the repository. Generate or publish website pages from that source where practical, rather than maintaining conflicting copies by hand.
+- Link each page to its source and show which YLang version the examples target.
+- Add a small, tested examples gallery; examples must compile in CI before being advertised as working.
+
+### GUI library
+
+YLang already has an optional SDL2-backed C GUI runtime for a small set of window/drawing operations, but direct calls from `.yl` code still need a defined FFI/binding layer. Do not describe this as a complete YLang GUI library yet.
+
+Implementation order:
+1. Define a narrow, safe C-interop boundary and specify ownership/lifetime rules for strings and handles.
+2. Expose window creation, event polling, basic drawing, text, and frame presentation through YLang-visible APIs.
+3. Add examples and tests for window close, invalid handles, resource cleanup, and headless CI behavior.
+4. Add higher-level widgets (buttons, labels, layout, text input) only after the low-level API is stable.
+5. Keep platform-specific details behind a portable interface and document native dependencies such as SDL2.
+
+### 2D game library inspired by Pygame
+
+Build a separate, optional 2D game library on top of the GUI/window runtime. The goal is a simple game loop and approachable API inspired by Pygame's workflow, not a line-for-line clone.
+
+Initial scope:
+- Window and game loop with delta time.
+- Keyboard and mouse input events.
+- 2D primitives and image/sprite rendering.
+- Texture/image loading with explicit resource cleanup.
+- Basic rectangles, collision helpers, and timing utilities.
+- A tiny complete example game, such as Pong, built and run in CI where a display is available.
+
+Defer audio, physics engines, scene editors, 3D rendering, and a large asset pipeline until the core loop and resource model are reliable. Keep the game library separate from the compiler core, make SDL2 an explicit optional dependency, and provide clear diagnostics when the library is unavailable.
+
+Acceptance criteria:
+- A documented example can be built from a clean checkout on supported Linux and macOS setups.
+- The compiler and core language remain usable without SDL2.
+- Resource handles cannot be used after destruction through the safe API.
+- CI checks compile-time behavior on all supported runners and runs display-dependent tests only where a display is available.
+- Performance claims are based on reproducible benchmarks, not on a single run.
+
+## Milestone 8 — Releases and website
 
 Release artifacts should be produced by CI, not manually compiled on one developer's machine.
 
