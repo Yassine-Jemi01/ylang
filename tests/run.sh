@@ -294,7 +294,7 @@ EOF
 ./build/ylang check build/struct-field-assignment.yl >/dev/null
 ./build/ylang build build/struct-field-assignment.yl -o build/test-struct-field-assignment >/dev/null
 ./build/test-struct-field-assignment > build/struct-field-assignment.out
-printf '15 , 8\\n' > build/struct-field-assignment.expected
+printf '15 , 8\n' > build/struct-field-assignment.expected
 diff -u build/struct-field-assignment.expected build/struct-field-assignment.out
 
 cat > build/struct-wrong-field-type.yl <<'EOF'
