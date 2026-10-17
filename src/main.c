@@ -4,13 +4,13 @@
 #include <string.h>
 
 #ifndef YLANG_VERSION
-#define YLANG_VERSION "1.0.0"
+#define YLANG_VERSION "2.0.0-beta.1"
 #endif
 
 static void usage(FILE *stream)
 {
     fputs(
-        "YLang v" YLANG_VERSION " — stable compiled language toolchain\n\n"
+        "YLang v" YLANG_VERSION " — beta compiled language toolchain\n\n"
         "Usage:\n"
         "  ylang check <file.yl>\n"
         "  ylang build <file.yl> [-o executable] [--cc gcc|clang]\n"
