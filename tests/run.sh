@@ -229,6 +229,49 @@ if ./build/ylang check build/enum-unknown-variant.yl > build/enum-unknown-varian
 fi
 grep -q 'E2052' build/enum-unknown-variant.out
 
+# Public enum example must type-check and execute as documented.
+./build/ylang check examples/enums.yl >/dev/null
+./build/ylang build examples/enums.yl -o build/test-enums-example >/dev/null
+./build/test-enums-example > build/enums-example.out
+printf 'vertical\nnorth\n' > build/enums-example.expected
+diff -u build/enums-example.expected build/enums-example.out
+
+cat > build/enum-wrong-match-type.yl <<'EOF'
+enum Direction { North, East }
+enum Color { Red, Blue }
+function main() -> int {
+    let Direction facing = Direction.North;
+    match (facing) {
+        Color.Red -> { print("red"); }
+        Direction.East -> { print("east"); }
+    }
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-wrong-match-type.yl > build/enum-wrong-match-type.out 2>&1; then
+    echo "FAIL: match accepted a variant from another enum" >&2
+    exit 1
+fi
+grep -q 'E2058' build/enum-wrong-match-type.out
+
+cat > build/enum-duplicate-arm.yl <<'EOF'
+enum Direction { North, East }
+function main() -> int {
+    let Direction facing = Direction.North;
+    match (facing) {
+        Direction.North -> { print("north"); }
+        Direction.North -> { print("again"); }
+        Direction.East -> { print("east"); }
+    }
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-duplicate-arm.yl > build/enum-duplicate-arm.out 2>&1; then
+    echo "FAIL: duplicate enum match arm was accepted" >&2
+    exit 1
+fi
+grep -q 'E2059' build/enum-duplicate-arm.out
+
 # Standard math library: native calls, namespacing, and argument type checks.
 ./build/ylang check examples/math.yl >/dev/null
 ./build/ylang build examples/math.yl -o build/test-math >/dev/null
