@@ -229,6 +229,62 @@ if ./build/ylang check build/enum-unknown-variant.yl > build/enum-unknown-varian
 fi
 grep -q 'E2052' build/enum-unknown-variant.out
 
+# Struct values support positional construction, field access, mutation, and value returns.
+cat > build/struct-basic.yl <<'EOF'
+struct Point { int x; int y; }
+function move(Point point, int dx, int dy) -> Point {
+    point.x = point.x + dx;
+    point.y = point.y + dy;
+    return point;
+}
+function main() -> int {
+    let Point point = Point(3, 4);
+    print(point.x, point.y);
+    point.x += 5;
+    print(point.x, point.y);
+    let Point moved = move(point, 1, 2);
+    print(moved.x, moved.y);
+    return 0;
+}
+EOF
+./build/ylang check build/struct-basic.yl >/dev/null
+./build/ylang build build/struct-basic.yl -o build/test-struct-basic >/dev/null
+./build/test-struct-basic > build/struct-basic.out
+printf '3 4\n8 4\n9 6\n' > build/struct-basic.expected
+diff -u build/struct-basic.expected build/struct-basic.out
+if ./build/ylang emit-asm build/struct-basic.yl -o build/struct-basic.asm > build/struct-basic-asm.out 2>&1; then
+    echo "FAIL: NASM accepted struct values before its struct lowering exists" >&2
+    exit 1
+fi
+grep -q 'NASM backend does not support struct values' build/struct-basic-asm.out
+test ! -e build/struct-basic.asm
+
+cat > build/struct-type-error.yl <<'EOF'
+struct Point { int x; int y; }
+struct Color { int red; int green; }
+function main() -> int {
+    let Point point = Color(1, 2);
+    return 0;
+}
+EOF
+if ./build/ylang check build/struct-type-error.yl > build/struct-type-error.out 2>&1; then
+    echo "FAIL: mismatched struct constructor was accepted" >&2
+    exit 1
+fi
+cat > build/struct-field-error.yl <<'EOF'
+struct Point { int x; int y; }
+function main() -> int {
+    let Point point = Point(1, 2);
+    print(point.z);
+    return 0;
+}
+EOF
+if ./build/ylang check build/struct-field-error.yl > build/struct-field-error.out 2>&1; then
+    echo "FAIL: unknown struct field was accepted" >&2
+    exit 1
+fi
+grep -q 'E2072' build/struct-field-error.out
+
 # Standard math library: native calls, namespacing, and argument type checks.
 ./build/ylang check examples/math.yl >/dev/null
 ./build/ylang build examples/math.yl -o build/test-math >/dev/null
