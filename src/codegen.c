@@ -185,7 +185,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 for (size_t i = 0; i < count; i++) {
                     if (i) sb_append(sb, ", ");
                     sb_append(sb, ".");
-                    sb_append(sb, structure->fields[i]->name);
+                    sb_append(sb, structure->fields[i]->c_name);
                     sb_append(sb, " = ");
                     emit_expr(sb, expr->as.struct_init.args[i]);
                 }
@@ -196,7 +196,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
         case EXPR_MEMBER:
             emit_expr(sb, expr->as.member.target);
             sb_append(sb, ".");
-            sb_append(sb, expr->as.member.name);
+            sb_append(sb, expr->as.member.field ? expr->as.member.field->c_name : expr->as.member.name);
             break;
         case EXPR_INT: {
             const char *digits = expr->token.start;
@@ -651,7 +651,7 @@ bool generate_c(Compiler *c, const char *path)
         fputs("typedef struct {\n", out);
         for (size_t j = 0; j < structure->field_count; j++) {
             StructField *field = structure->fields[j];
-            fprintf(out, "    %s %s;\n", c_base_type(c, field->type), field->name);
+            fprintf(out, "    %s %s;\n", c_base_type(c, field->type), field->c_name);
         }
         fprintf(out, "} %s;\n\n", structure->c_name);
     }
