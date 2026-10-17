@@ -27,10 +27,11 @@ typedef enum {
     TYPE_BOOL,
     TYPE_CHAR,
     TYPE_STRING,
-    TYPE_VOID,
-    /* User-defined enum types use unique values at and above this base. */
-    TYPE_ENUM_BASE = 1000
+    TYPE_VOID
 } YType;
+
+/* User-defined enum types use unique values at and above this base. */
+#define TYPE_ENUM_BASE 1000
 
 typedef enum {
     EXPR_ERROR,
