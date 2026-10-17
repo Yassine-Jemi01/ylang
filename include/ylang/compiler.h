@@ -20,6 +20,8 @@ typedef struct Program Program;
 typedef struct EnumDecl EnumDecl;
 typedef struct EnumVariant EnumVariant;
 typedef struct MatchArm MatchArm;
+typedef struct StructDecl StructDecl;
+typedef struct StructField StructField;
 
 typedef enum {
     TYPE_ERROR,
@@ -31,12 +33,15 @@ typedef enum {
     TYPE_VOID
 } YType;
 
-/* User-defined enum types use unique values at and above this base. */
+/* User-defined enum and struct types occupy disjoint identity ranges. */
 #define TYPE_ENUM_BASE 1000
+#define TYPE_STRUCT_BASE 2000
 
 typedef enum {
     EXPR_ERROR,
     EXPR_ENUM_VALUE,
+    EXPR_STRUCT_INIT,
+    EXPR_MEMBER,
     EXPR_INT,
     EXPR_FLOAT,
     EXPR_BOOL,
@@ -68,6 +73,8 @@ struct Expr {
         struct { Expr *target; Expr *right; VarDecl *variable; bool is_compound; } assign;
         struct { char *name; VarDecl *variable; } name;
         struct { EnumDecl *enumeration; EnumVariant *variant; } enum_value;
+        struct { StructDecl *structure; Expr **args; size_t count; } struct_init;
+        struct { Expr *target; char *name; StructField *field; } member;
         struct { char *name; Expr **args; size_t count; Function *function; } call;
         struct { Expr **items; size_t count; } array;
         struct { Expr *target; Expr *index; VarDecl *variable; } index;
@@ -152,6 +159,24 @@ struct MatchArm {
     Token token;
     EnumVariant *variant;
     Stmt *body;
+};
+
+struct StructField {
+    Token token;
+    char *name;
+    char *c_name;
+    YType type;
+    size_t index;
+};
+
+struct StructDecl {
+    Token token;
+    char *name;
+    char *c_name;
+    YType type;
+    StructField **fields;
+    size_t field_count;
+    Module *module;
 };
 
 struct ImportName {

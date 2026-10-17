@@ -414,6 +414,25 @@ static EnumVariant *find_enum_variant(EnumDecl *enumeration, const char *name)
     return NULL;
 }
 
+static StructDecl *find_struct(Compiler *compiler, const char *name)
+{
+    for (size_t i = 0; i < compiler->struct_count; i++) {
+        StructDecl *structure = compiler->structs[i];
+        if ((!compiler->current_module || structure->module == compiler->current_module) &&
+            strcmp(structure->name, name) == 0) return structure;
+    }
+    return NULL;
+}
+
+static StructField *find_struct_field(StructDecl *structure, const char *name)
+{
+    if (!structure) return NULL;
+    for (size_t i = 0; i < structure->field_count; i++) {
+        if (strcmp(structure->fields[i]->name, name) == 0) return structure->fields[i];
+    }
+    return NULL;
+}
+
 static YType parse_type(Parser *p)
 {
     Token token = consume(p, TOKEN_IDENTIFIER,
@@ -427,13 +446,16 @@ static YType parse_type(Parser *p)
     if (token_is(&token, "void")) return TYPE_VOID;
     EnumDecl *enumeration = find_enum(p->compiler, token_copy(p->compiler, token));
     if (enumeration) return enumeration->type;
+    StructDecl *structure = find_struct(p->compiler, token_copy(p->compiler, token));
+    if (structure) return structure->type;
     diagnostic(p->compiler, token, "error", "E2002", "Unknown type name.",
-               "Available built-in types: int, float, bool, char, string, void; user-defined enums must be declared before use.");
+               "Available built-in types are int, float, bool, char, string, and void; user-defined enums and structs must be declared before use.");
     return TYPE_ERROR;
 }
 
 const char *type_name(YType type)
 {
+    if (type >= TYPE_STRUCT_BASE) return "<struct>";
     if (type >= TYPE_ENUM_BASE) return "<enum>";
     switch (type) {
         case TYPE_INT: return "int";
@@ -633,23 +655,32 @@ static Expr *parse_primary(Parser *p)
                     value->type = enumeration->type;
                     return value;
                 }
-                diagnostic(p->compiler, token, "error", "E1016",
-                           "Unknown standard-library namespace or enum type.",
-                           "Use a supported namespace such as math, string, io, path, image, or gui, or declare an enum before using EnumName.Variant.");
-                name = arena_strndup(&p->compiler->arena, "", 0);
+                expr->as.name.name = name;
+                Expr *member_expr = new_expr(p->compiler, EXPR_MEMBER, token);
+                member_expr->as.member.target = expr;
+                member_expr->as.member.name = token_copy(p->compiler, member);
+                return member_expr;
             }
         }
         expr->as.name.name = name;
         if (match(p, TOKEN_LEFT_PAREN)) {
-            Expr *call = new_expr(p->compiler, EXPR_CALL, token);
-            call->as.call.name = expr->as.name.name;
+            StructDecl *structure = find_struct(p->compiler, name);
+            Expr *call = new_expr(p->compiler,
+                                  structure ? EXPR_STRUCT_INIT : EXPR_CALL, token);
+            if (structure) call->as.struct_init.structure = structure;
+            else call->as.call.name = expr->as.name.name;
             while (p->current.type != TOKEN_RIGHT_PAREN && p->current.type != TOKEN_EOF) {
                 Expr *arg = parse_expression(p);
-                append_ptr(p->compiler, (void ***)&call->as.call.args,
-                           &call->as.call.count, arg);
+                if (structure) {
+                    append_ptr(p->compiler, (void ***)&call->as.struct_init.args,
+                               &call->as.struct_init.count, arg);
+                } else {
+                    append_ptr(p->compiler, (void ***)&call->as.call.args,
+                               &call->as.call.count, arg);
+                }
                 if (!match(p, TOKEN_COMMA)) break;
             }
-            consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after function arguments.",
+            consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after arguments.",
                     "Add ')' after the last argument.");
             return call;
         }
@@ -712,10 +743,10 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
             op = p->current;
             if (min_precedence > 1) break;
             advance_parser(p);
-            if (left->kind != EXPR_NAME) {
+            if (left->kind != EXPR_NAME && left->kind != EXPR_MEMBER) {
                 diagnostic(p->compiler, op, "error", "E1004",
-                           "The '++' operator requires a variable name.",
-                           "Use 'count++' for a mutable numeric variable.");
+                           "The '++' operator requires a mutable variable or struct field.",
+                           "Use 'count++' or increment a numeric field of a mutable struct variable.");
                 left = new_expr(p->compiler, EXPR_ERROR, op);
                 continue;
             }
@@ -746,10 +777,11 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
         int next_min = prec + ((op.type == TOKEN_EQUAL || op.type == TOKEN_PLUS_EQUAL) ? 0 : 1);
         Expr *right = parse_precedence(p, next_min);
         if (op.type == TOKEN_EQUAL || op.type == TOKEN_PLUS_EQUAL) {
-            if (left->kind != EXPR_NAME && (op.type == TOKEN_EQUAL && left->kind != EXPR_INDEX)) {
+            if (left->kind != EXPR_NAME && left->kind != EXPR_INDEX &&
+                left->kind != EXPR_MEMBER) {
                 diagnostic(p->compiler, op, "error", "E1004",
-                           "The left side of an assignment must be a variable or array element.",
-                           "Write an assignment such as 'count = count + 1;' or 'values[0] = 1;'.");
+                           "The left side of an assignment must be a variable, array element, or struct field.",
+                           "Write an assignment such as 'count = count + 1;', 'values[0] = 1;', or 'point.x = 10;'.");
                 left = new_expr(p->compiler, EXPR_ERROR, op);
             } else {
                 Expr *assign = new_expr(p->compiler, EXPR_ASSIGN, op);
@@ -1127,6 +1159,81 @@ static EnumDecl *parse_enum(Parser *p, Token enum_token)
     return enumeration;
 }
 
+static StructDecl *parse_struct(Parser *p, Token struct_token)
+{
+    Token name_token = consume(p, TOKEN_IDENTIFIER,
+        "Expected a struct name after 'struct'.",
+        "Use a declaration such as struct Point { float x; float y; }.");
+    if (name_token.length == 0) return NULL;
+    char *name = token_copy(p->compiler, name_token);
+
+    if (find_struct(p->compiler, name) || find_enum(p->compiler, name)) {
+        diagnostic(p->compiler, name_token, "error", "E2070",
+                   "This type name is already declared in the current module.",
+                   "Choose a unique name for the struct or enum.");
+    }
+
+    StructDecl *structure = arena_alloc(&p->compiler->arena, sizeof(*structure));
+    structure->token = struct_token;
+    structure->name = name;
+    structure->type = (YType)(TYPE_STRUCT_BASE + p->compiler->struct_count);
+    structure->module = p->compiler->current_module;
+    size_t c_name_size = strlen(name) + 48;
+    structure->c_name = arena_alloc(&p->compiler->arena, c_name_size);
+    (void)snprintf(structure->c_name, c_name_size, "yl_struct_%zu_%s",
+                   p->compiler->struct_count, name);
+    append_ptr(p->compiler, (void ***)&p->compiler->structs,
+               &p->compiler->struct_count, structure);
+
+    consume(p, TOKEN_LEFT_BRACE, "Expected '{' after the struct name.",
+            "List typed fields inside the braces.");
+    while (p->current.type != TOKEN_RIGHT_BRACE &&
+           p->current.type != TOKEN_EOF) {
+        Token field_type_token = p->current;
+        YType field_type = parse_type(p);
+        Token field_name_token = consume(p, TOKEN_IDENTIFIER,
+            "Expected a field name after its type.",
+            "Use fields such as 'int x;' or 'string name;'.");
+        if (field_name_token.length == 0) break;
+        char *field_name = token_copy(p->compiler, field_name_token);
+        bool duplicate = find_struct_field(structure, field_name) != NULL;
+        if (duplicate) {
+            diagnostic(p->compiler, field_name_token, "error", "E2071",
+                       "This struct field is declared more than once.",
+                       "Every field name must be unique within its struct.");
+        }
+        if (field_type == TYPE_VOID || field_type == TYPE_ERROR ||
+            field_type == structure->type) {
+            diagnostic(p->compiler, field_type_token, "error", "E2072",
+                       "This field type is not supported in a struct.",
+                       "Fields must use a valid non-void type; recursive by-value struct fields are not supported.");
+        } else if (!duplicate) {
+            StructField *field = arena_alloc(&p->compiler->arena, sizeof(*field));
+            field->token = field_name_token;
+            field->name = field_name;
+            field->type = field_type;
+            field->index = structure->field_count;
+            size_t field_c_name_size = strlen(field_name) + 48;
+            field->c_name = arena_alloc(&p->compiler->arena, field_c_name_size);
+            (void)snprintf(field->c_name, field_c_name_size, "yl_field_%zu_%s",
+                           field->index, field_name);
+            append_ptr(p->compiler, (void ***)&structure->fields,
+                       &structure->field_count, field);
+        }
+        consume(p, TOKEN_SEMICOLON, "Expected ';' after the struct field.",
+                "Terminate each struct field declaration with ';'.");
+    }
+    if (structure->field_count == 0) {
+        diagnostic(p->compiler, name_token, "error", "E2073",
+                   "A struct must declare at least one supported field.",
+                   "Add a field such as 'int value;'.");
+    }
+    consume(p, TOKEN_RIGHT_BRACE, "Expected '}' after struct fields.",
+            "Close the struct declaration with '}'.");
+    (void)match(p, TOKEN_SEMICOLON);
+    return structure;
+}
+
 static char *decode_import_path(Parser *p, Token token)
 {
     if (token.length < 2 || token.start[0] != '"' ||
@@ -1289,6 +1396,11 @@ Program *parse_program(Compiler *c)
             Token enum_token = p.current;
             advance_parser(&p);
             (void)parse_enum(&p, enum_token);
+        } else if (p.current.type == TOKEN_IDENTIFIER &&
+                   token_is(&p.current, "struct")) {
+            Token struct_token = p.current;
+            advance_parser(&p);
+            (void)parse_struct(&p, struct_token);
         } else if (p.current.type == TOKEN_IDENTIFIER &&
                    token_is(&p.current, "from")) {
             Token from_token = p.current;

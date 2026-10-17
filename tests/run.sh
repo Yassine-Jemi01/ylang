@@ -272,6 +272,73 @@ if ./build/ylang check build/enum-duplicate-arm.yl > build/enum-duplicate-arm.ou
 fi
 grep -q 'E2059' build/enum-duplicate-arm.out
 
+# Struct values: declaration, constructor, field access, parameters, and returns.
+./build/ylang check examples/structs.yl >/dev/null
+./build/ylang build examples/structs.yl -o build/test-structs-example >/dev/null
+./build/test-structs-example > build/structs-example.out
+printf '9 , 4\n' > build/structs-example.expected
+diff -u build/structs-example.expected build/structs-example.out
+
+# Mutable struct field assignment: update one field without changing the others.
+cat > build/struct-field-assignment.yl <<'EOF'
+struct Point { int x; int y; }
+function main() -> int {
+    let Point p = Point(2, 7);
+    p.x = 12;
+    p.x += 3;
+    p.y++;
+    print(p.x, ",", p.y);
+    return 0;
+}
+EOF
+./build/ylang check build/struct-field-assignment.yl >/dev/null
+./build/ylang build build/struct-field-assignment.yl -o build/test-struct-field-assignment >/dev/null
+./build/test-struct-field-assignment > build/struct-field-assignment.out
+printf '15 , 8\n' > build/struct-field-assignment.expected
+diff -u build/struct-field-assignment.expected build/struct-field-assignment.out
+
+cat > build/struct-wrong-field-type.yl <<'EOF'
+struct Point { int x; string label; }
+function main() -> int {
+    let Point p = Point("wrong", "origin");
+    print(p.x);
+    return 0;
+}
+EOF
+if ./build/ylang check build/struct-wrong-field-type.yl > build/struct-wrong-field-type.out 2>&1; then
+    echo "FAIL: struct constructor accepted a field type mismatch" >&2
+    exit 1
+fi
+grep -q 'E2075' build/struct-wrong-field-type.out
+
+cat > build/struct-unknown-field.yl <<'EOF'
+struct Point { int x; int y; }
+function main() -> int {
+    let Point p = Point(1, 2);
+    print(p.z);
+    return 0;
+}
+EOF
+if ./build/ylang check build/struct-unknown-field.yl > build/struct-unknown-field.out 2>&1; then
+    echo "FAIL: unknown struct field was accepted" >&2
+    exit 1
+fi
+grep -q 'E2077' build/struct-unknown-field.out
+
+cat > build/struct-arity-error.yl <<'EOF'
+struct Point { int x; int y; }
+function main() -> int {
+    let Point p = Point(1);
+    print(p.x);
+    return 0;
+}
+EOF
+if ./build/ylang check build/struct-arity-error.yl > build/struct-arity-error.out 2>&1; then
+    echo "FAIL: struct constructor accepted the wrong number of values" >&2
+    exit 1
+fi
+grep -q 'E2074' build/struct-arity-error.out
+
 # Standard math library: native calls, namespacing, and argument type checks.
 ./build/ylang check examples/math.yl >/dev/null
 ./build/ylang build examples/math.yl -o build/test-math >/dev/null
@@ -774,10 +841,20 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
         exit 1
     fi
     if ! grep -qi 'GUI calls' build/gui-nasm.out; then
-    cat build/gui-nasm.out >&2
-    echo "FAIL: NASM rejection message did not identify GUI calls" >&2
-    exit 1
-fi
+        cat build/gui-nasm.out >&2
+        echo "FAIL: NASM rejection message did not identify GUI calls" >&2
+        exit 1
+    fi
+
+    if ./build/ylang build-asm examples/structs.yl -o build/structs-nasm > build/structs-nasm.out 2>&1; then
+        echo "FAIL: NASM backend accepted unsupported struct values" >&2
+        exit 1
+    fi
+    if ! grep -qi 'struct values' build/structs-nasm.out; then
+        cat build/structs-nasm.out >&2
+        echo "FAIL: NASM rejection message did not identify struct values" >&2
+        exit 1
+    fi
 else
     if ./build/ylang build-asm examples/gui.yl -o build/gui-nasm > build/gui-nasm.out 2>&1; then
         echo "FAIL: NASM backend unexpectedly built on an unsupported platform" >&2

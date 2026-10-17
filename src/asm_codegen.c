@@ -63,6 +63,7 @@ static bool asm_reject(AsmContext *ctx, Token token, const char *feature)
 static bool asm_type_supported(AsmContext *ctx, YType type, Token token,
                                bool allow_void)
 {
+    if (type >= TYPE_STRUCT_BASE) return asm_reject(ctx, token, "struct values");
     if (type >= TYPE_ENUM_BASE) return true;
     switch (type) {
         case TYPE_INT:
@@ -174,6 +175,9 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
         case EXPR_ARRAY:
         case EXPR_INDEX:
             return asm_reject(ctx, expr->token, "arrays and array indexing");
+        case EXPR_STRUCT_INIT:
+        case EXPR_MEMBER:
+            return asm_reject(ctx, expr->token, "struct values (not yet supported by the NASM backend)");
         case EXPR_ERROR:
             return asm_reject(ctx, expr->token, "invalid expressions");
     }
@@ -739,6 +743,8 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
         case EXPR_FSTRING:
         case EXPR_ARRAY:
         case EXPR_INDEX:
+        case EXPR_STRUCT_INIT:
+        case EXPR_MEMBER:
         case EXPR_ERROR:
             fputs("ylang: internal error: unsupported expression reached NASM emitter.\n",
                   stderr);

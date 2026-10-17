@@ -128,6 +128,10 @@ loops, returns, and `print`. Global declarations, arrays, floats, f-strings,
 string comparisons, short-circuit `and`/`or`, and standard-library calls
 are not supported yet. The established C backend remains the default.
 
+## Structs (experimental)
+
+The development branch includes typed struct declarations, positional construction, field reads, and struct values passed to or returned from functions. See [struct reference](docs/STRUCTS.md) and [runnable example](examples/structs.yl). Field assignment and NASM parity are not yet promised.
+
 ## Typed enums (experimental)
 
 Unit enums are available in the current development branch, including type-checked variants and exhaustive `match` statements. The feature is not part of the stable 1.1.0 language subset yet.
