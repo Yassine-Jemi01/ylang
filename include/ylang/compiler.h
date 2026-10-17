@@ -17,6 +17,9 @@ typedef struct Module Module;
 typedef struct ImportName ImportName;
 typedef struct ImportDecl ImportDecl;
 typedef struct Program Program;
+typedef struct EnumDecl EnumDecl;
+typedef struct EnumVariant EnumVariant;
+typedef struct MatchArm MatchArm;
 
 typedef enum {
     TYPE_ERROR,
@@ -28,8 +31,12 @@ typedef enum {
     TYPE_VOID
 } YType;
 
+/* User-defined enum types use unique values at and above this base. */
+#define TYPE_ENUM_BASE 1000
+
 typedef enum {
     EXPR_ERROR,
+    EXPR_ENUM_VALUE,
     EXPR_INT,
     EXPR_FLOAT,
     EXPR_BOOL,
@@ -60,6 +67,7 @@ struct Expr {
         struct { Expr *left; Expr *right; Token op; } binary;
         struct { Expr *target; Expr *right; VarDecl *variable; bool is_compound; } assign;
         struct { char *name; VarDecl *variable; } name;
+        struct { EnumDecl *enumeration; EnumVariant *variant; } enum_value;
         struct { char *name; Expr **args; size_t count; Function *function; } call;
         struct { Expr **items; size_t count; } array;
         struct { Expr *target; Expr *index; VarDecl *variable; } index;
@@ -78,6 +86,7 @@ typedef enum {
     STMT_BREAK,
     STMT_CONTINUE,
     STMT_RETURN,
+    STMT_MATCH,
     STMT_EXPR
 } StmtKind;
 
@@ -106,6 +115,7 @@ struct Stmt {
         Stmt *loop_body;
         struct { Expr *condition; Stmt *body; } while_stmt;
         struct { Stmt *initializer; Expr *condition; Expr *increment; Stmt *body; } for_stmt;
+        struct { Expr *value; MatchArm **arms; size_t arm_count; } match_stmt;
         Expr *return_value;
         Expr *expression;
     } as;
@@ -120,6 +130,28 @@ struct Function {
     YType return_type;
     Stmt *body;
     Module *module;
+};
+
+struct EnumVariant {
+    Token token;
+    char *name;
+    int64_t value;
+    EnumDecl *enumeration;
+};
+
+struct EnumDecl {
+    Token token;
+    char *name;
+    YType type;
+    EnumVariant **variants;
+    size_t variant_count;
+    Module *module;
+};
+
+struct MatchArm {
+    Token token;
+    EnumVariant *variant;
+    Stmt *body;
 };
 
 struct ImportName {
