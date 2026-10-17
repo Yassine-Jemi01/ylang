@@ -625,6 +625,24 @@ fi
 grep -q 'NASM backend does not support float values' build/asm-unsupported.out
 test ! -e build/asm-unsupported.asm
 
+# Game2D input/timing wrappers compile through the imported optional GUI API.
+YLANG_PATH=stdlib ./build/ylang check examples/game2d.yl >/dev/null
+YLANG_PATH=stdlib ./build/ylang emit-c examples/game2d.yl -o build/game2d-generated.c >/dev/null
+grep -q 'ylgui_api_key_down' build/game2d-generated.c
+grep -q 'ylgui_api_mouse_button_down' build/game2d-generated.c
+grep -q 'ylgui_api_ticks_ms' build/game2d-generated.c
+cat > build/gui-key-type-error.yl <<'EOF'
+function main() -> int {
+    gui.key_down(123);
+    return 0;
+}
+EOF
+if ./build/ylang check build/gui-key-type-error.yl > build/gui-key-type-error.out 2>&1; then
+    echo "FAIL: gui.key_down accepted a non-string key name" >&2
+    exit 1
+fi
+grep -q 'E2044' build/gui-key-type-error.out
+
 # GUI namespace checking must not require SDL2; type errors are caught before build.
 ./build/ylang check examples/gui.yl >/dev/null
 ./build/ylang emit-c examples/gui.yl -o build/gui-generated.c >/dev/null
