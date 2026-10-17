@@ -205,6 +205,13 @@ grep -q 'invalid YLANG_OPT_LEVEL' build/invalid-opt.out
 ./build/ylang build tests/for-init-definite.yl -o build/test-for-init-definite >/dev/null
 ./build/test-for-init-definite > build/for-init-definite.out
 grep -qx '7' build/for-init-definite.out
+
+# The loop body may run zero times, so its assignments are not definite afterward.
+if ./build/ylang check tests/for-body-init-not-definite.yl > build/for-body-init-not-definite.out 2>&1; then
+    echo "FAIL: initialization only inside a for body was treated as definite" >&2
+    exit 1
+fi
+grep -q 'E2021' build/for-body-init-not-definite.out
 ./build/ylang check examples/loops.yl >/dev/null
 ./build/ylang build examples/loops.yl -o build/test-loops >/dev/null
 ./build/test-loops > build/loops.out
