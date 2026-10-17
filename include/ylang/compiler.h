@@ -164,6 +164,7 @@ struct MatchArm {
 struct StructField {
     Token token;
     char *name;
+    char *c_name;
     YType type;
     size_t index;
 };
