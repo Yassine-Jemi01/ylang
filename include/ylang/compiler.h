@@ -17,6 +17,8 @@ typedef struct Module Module;
 typedef struct ImportName ImportName;
 typedef struct ImportDecl ImportDecl;
 typedef struct Program Program;
+typedef struct EnumDecl EnumDecl;
+typedef struct EnumVariant EnumVariant;
 
 typedef enum {
     TYPE_ERROR,
@@ -25,11 +27,14 @@ typedef enum {
     TYPE_BOOL,
     TYPE_CHAR,
     TYPE_STRING,
-    TYPE_VOID
+    TYPE_VOID,
+    /* User-defined enum types use unique values at and above this base. */
+    TYPE_ENUM_BASE = 1000
 } YType;
 
 typedef enum {
     EXPR_ERROR,
+    EXPR_ENUM_VALUE,
     EXPR_INT,
     EXPR_FLOAT,
     EXPR_BOOL,
@@ -60,6 +65,7 @@ struct Expr {
         struct { Expr *left; Expr *right; Token op; } binary;
         struct { Expr *target; Expr *right; VarDecl *variable; bool is_compound; } assign;
         struct { char *name; VarDecl *variable; } name;
+        struct { EnumDecl *enumeration; EnumVariant *variant; } enum_value;
         struct { char *name; Expr **args; size_t count; Function *function; } call;
         struct { Expr **items; size_t count; } array;
         struct { Expr *target; Expr *index; VarDecl *variable; } index;
@@ -119,6 +125,22 @@ struct Function {
     size_t param_count;
     YType return_type;
     Stmt *body;
+    Module *module;
+};
+
+struct EnumVariant {
+    Token token;
+    char *name;
+    int64_t value;
+    EnumDecl *enumeration;
+};
+
+struct EnumDecl {
+    Token token;
+    char *name;
+    YType type;
+    EnumVariant **variants;
+    size_t variant_count;
     Module *module;
 };
 
