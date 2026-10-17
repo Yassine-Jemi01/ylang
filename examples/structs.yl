@@ -1,0 +1,16 @@
+struct Point {
+    int x;
+    int y;
+}
+
+function move_right(Point point, int amount) -> Point {
+    return Point(point.x + amount, point.y);
+}
+
+function main() -> int {
+    let Point origin = Point(3, 4);
+    origin.x += 1;
+    let Point moved = move_right(origin, 5);
+    print(moved.x, ",", moved.y);
+    return 0;
+}
