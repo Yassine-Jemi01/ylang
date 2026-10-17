@@ -580,7 +580,7 @@ static Expr *parse_primary(Parser *p)
             } else {
                 diagnostic(p->compiler, token, "error", "E1016",
                            "Unknown standard-library namespace.",
-                           "Use a supported namespace such as math, string, io, path, or image.");
+                           "Use a supported namespace such as math, string, io, path, image, or gui.");
                 name = arena_strndup(&p->compiler->arena, "", 0);
             }
         }
