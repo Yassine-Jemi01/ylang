@@ -1,6 +1,6 @@
 # YLang GUI API Contract (Proposal)
 
-Status: design proposal. These calls are **not implemented in `.yl` yet**. The existing SDL2 runtime is a C API.
+Status: initial implementation is in PR #34. The API below is the supported first binding surface for that change; do not treat it as released until the PR passes CI and merges.
 
 This document defines a deliberately small first binding milestone. The contract must be agreed before changing the parser, semantic checker, C generator, and native build driver together.
 
@@ -33,7 +33,7 @@ All calls except `gui.close()` and `gui.shutdown()` require successful initializ
 
 ## Example target syntax
 
-This example describes the intended API; it will compile only after the binding is implemented.
+This example shows the intended use of the API and is included in the implementation work.
 
 ```ylang
 function main() -> int {
@@ -48,7 +48,7 @@ function main() -> int {
         return 1;
     }
 
-    loop {
+    loop() {
         if (not gui.poll()) { break; }
         if (not gui.clear(24, 28, 38)) { break; }
         if (not gui.draw_rect(80, 80, 240, 120, 22, 160, 180)) { break; }
