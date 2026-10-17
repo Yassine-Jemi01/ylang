@@ -1,0 +1,8 @@
+function main() -> int {
+    let int value;
+    for (value = 7; false; value++) {
+        print("unreachable");
+    }
+    print(value);
+    return 0;
+}
