@@ -327,6 +327,15 @@ static YType check_expr(Checker *checker, Expr *expr)
                 return expr->type;
             }
             expr->as.assign.variable = var;
+            if (expr->as.assign.is_compound && !var->initialized) {
+                char suggestion[256];
+                (void)snprintf(suggestion, sizeof(suggestion),
+                               "Assign a value to '%s' before using '+='.",
+                               var->name);
+                diagnostic(c, expr->token, "error", "E2021",
+                           "This variable may be used before it is initialized.",
+                           suggestion);
+            }
             if (expr->as.assign.is_compound &&
                 var->type != TYPE_INT && var->type != TYPE_FLOAT) {
                 diagnostic(c, expr->token, "error", "E2034",
@@ -817,10 +826,12 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             Scope *outer_scope = checker->scope;
             checker->scope = scope_new(c, outer_scope);
             size_t n_before_init = c->all_var_count;
-            bool *before = arena_alloc(&c->arena, n_before_init * sizeof(bool));
-            for (size_t i = 0; i < n_before_init; i++) before[i] = c->all_vars[i]->initialized;
             if (stmt->as.for_stmt.initializer)
                 check_stmt(checker, stmt->as.for_stmt.initializer);
+            /* The initializer always runs, even if the loop body never does. */
+            bool *after_init = arena_alloc(&c->arena, n_before_init * sizeof(bool));
+            for (size_t i = 0; i < n_before_init; i++)
+                after_init[i] = c->all_vars[i]->initialized;
             if (stmt->as.for_stmt.condition) {
                 YType cond = check_expr(checker, stmt->as.for_stmt.condition);
                 if (cond != TYPE_BOOL && cond != TYPE_ERROR) {
@@ -840,7 +851,9 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 checker->allowed_assignment = previous_assignment;
             }
             checker->loop_depth--;
-            for (size_t i = 0; i < n_before_init; i++) c->all_vars[i]->initialized = before[i];
+            /* Discard initialization that can happen only in the loop body. */
+            for (size_t i = 0; i < n_before_init; i++)
+                c->all_vars[i]->initialized = after_init[i];
             checker->scope = outer_scope;
             break;
         }
