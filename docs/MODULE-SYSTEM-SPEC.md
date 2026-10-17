@@ -14,7 +14,7 @@ from "./string_tools.yl" import system_data;
 
 The resolver loads transitive dependencies, resolves paths relative to the importing file, rejects cycles, and keeps each module's declarations and imports separate during semantic analysis. Only explicitly imported names are visible to the importer; helper declarations remain private to their source module. Generated C function names are module-qualified to avoid collisions. Imported modules may not define `main()`, and the root program must provide the entry point.
 
-Current limitations: import aliases and `import "module.yl" as module` are not implemented; there is no package manifest or registry. Quoted paths and dotted filenames are supported, and `YLANG_PATH` searches colon-separated library directories after the importing file's directory. The NASM backend rejects multi-file imports until its module lowering is implemented and tested.
+Current limitations: import aliases and `import "module.yl" as module` are not implemented; there is no package manifest or registry. Quoted paths and dotted filenames are supported, and `YLANG_PATH` searches colon-separated library directories after the importing file's directory. The NASM backend can now lower imported modules for its existing supported subset; unsupported imported features still produce explicit backend diagnostics, and NASM remains experimental.
 
 ## 2. Proposed syntax
 
