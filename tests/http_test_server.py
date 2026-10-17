@@ -20,6 +20,13 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/hello":
             self.send_body(200, "hello")
+        elif self.path == "/redirect":
+            encoded = b"redirect"
+            self.send_response(302)
+            self.send_header("Location", "/hello")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            self.wfile.write(encoded)
         elif self.path == "/secret":
             if self.headers.get("X-API-Key") == "secret":
                 self.send_body(200, "secret-ok")
