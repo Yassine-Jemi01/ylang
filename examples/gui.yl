@@ -1,0 +1,35 @@
+function main() -> int {
+    if (not gui.init()) {
+        print(gui.last_error());
+        return 1;
+    }
+
+    if (not gui.create_window("YLang GUI", 800, 500)) {
+        print(gui.last_error());
+        gui.shutdown();
+        return 1;
+    }
+
+    if (not gui.clear(24, 28, 38)) {
+        print(gui.last_error());
+        gui.close();
+        gui.shutdown();
+        return 1;
+    }
+    if (not gui.draw_rect(80, 80, 240, 120, 22, 160, 180)) {
+        print(gui.last_error());
+        gui.close();
+        gui.shutdown();
+        return 1;
+    }
+    if (not gui.present()) {
+        print(gui.last_error());
+        gui.close();
+        gui.shutdown();
+        return 1;
+    }
+
+    gui.close();
+    gui.shutdown();
+    return 0;
+}
