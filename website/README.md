@@ -1,17 +1,26 @@
 # YLang website
 
-A lightweight, responsive landing page built with HTML, CSS, and vanilla JavaScript.
+A responsive, English-only landing page and documentation index built with plain HTML, CSS, and JavaScript. There is no frontend build step or JavaScript framework.
 
-## Brand assets and book
+## Design
 
-The site uses the official YLang logo files from `assets/branding/`. The online guide is `docs.html`; during deployment, the workflow copies `docs/book/YLang-Book.pdf` to the Pages artifact as `YLang-Book.pdf`, so the book can be opened directly from the website. Changes to `docs/book/**` also trigger a redeployment.
+The website uses an editorial layout with warm paper backgrounds, dark ink, forest green, and a restrained copper accent. It is deliberately text-led, accessible, and responsive. The homepage separates the stable 1.1.0 release from the experimental 2.0.0-beta.1 preview.
+
+## Files
+
+- `index.html` — project landing page, compilation pipeline, feature overview, release links, and quick start.
+- `docs.html` — documentation index separating stable references from beta-only feature guides.
+- `styles.css` and `docs.css` — shared visual system and documentation-page layouts.
+- `script.js` — mobile navigation, copy-to-clipboard controls, and the footer year.
+- `assets/` — project logo and favicon.
+- `YLang-Book.pdf` — copied into the Pages artifact during deployment.
 
 ## Preview locally
 
-Open `index.html` in a browser, or serve this directory with any static file server. No npm install or build step is required.
+Open `index.html` in a browser, or serve the repository root with any static file server. No package installation is required. The website deployment workflow copies `docs/book/YLang-Book.pdf` to the artifact as `YLang-Book.pdf`.
 
 ## Publishing
 
-The site lives in `website/` and is deployed with the `.github/workflows/deploy-website.yml` workflow when website files or the book change on `main`. GitHub Pages should use **GitHub Actions** as its deployment source.
+Changes to `website/**` and `docs/book/**` on `main` trigger the GitHub Pages deployment workflow. GitHub Pages should use **GitHub Actions** as its deployment source.
 
-The downloads section intentionally links to the GitHub Releases page and explains that prebuilt installers are not published yet. Replace that notice only after release artifacts and checksums exist.
+The beta release workflow is separate from website deployment: it runs the full test matrix before creating `v2.0.0-beta.1`. The source-only prerelease does not include compiled binaries or installers.
