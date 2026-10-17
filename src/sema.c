@@ -282,6 +282,9 @@ static YType check_expr(Checker *checker, Expr *expr)
     Compiler *c = checker->compiler;
     switch (expr->kind) {
         case EXPR_ERROR: expr->type = TYPE_ERROR; return expr->type;
+        case EXPR_ENUM_VALUE:
+            expr->type = expr->as.enum_value.enumeration->type;
+            return expr->type;
         case EXPR_INT: {
             char *text = token_copy(c, expr->token);
             errno = 0;
@@ -812,6 +815,7 @@ static bool global_initializer_is_constant(Expr *expr)
     if (!expr) return true;
     switch (expr->kind) {
         case EXPR_INT: case EXPR_FLOAT: case EXPR_BOOL: case EXPR_CHAR: case EXPR_STRING:
+        case EXPR_ENUM_VALUE:
             return true;
         case EXPR_ARRAY:
             for (size_t i = 0; i < expr->as.array.count; i++) {
@@ -873,6 +877,10 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     diagnostic(c, stmt->as.print.args[i]->token, "error", "E2050",
                                "print() cannot print a void expression.",
                                "Print a value or change the function to return one.");
+                } else if (type >= TYPE_ENUM_BASE) {
+                    diagnostic(c, stmt->as.print.args[i]->token, "error", "E2054",
+                               "print() does not yet format user-defined enum values.",
+                               "Compare the enum against its named variants and print a string label.");
                 }
             }
             break;
