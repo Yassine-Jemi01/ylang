@@ -574,9 +574,9 @@ static bool emit_runtime(FILE *out)
     if (!runtime) runtime = fopen(YLANG_RUNTIME_SOURCE_PATH, "rb");
     if (!runtime) {
         fprintf(stderr,
-                "ylang: cannot locate the generated C runtime template.\\n"
-                "Tried '%s/runtime-template.c' and '%s'.\\n"
-                "Run from the source checkout or install the runtime template.\\n",
+                "ylang: cannot locate the generated C runtime template.\n"
+                "Tried '%s/runtime-template.c' and '%s'.\n"
+                "Run from the source checkout or install the runtime template.\n",
                 YLANG_SHARE_DIR, YLANG_RUNTIME_SOURCE_PATH);
         return false;
     }
@@ -593,7 +593,7 @@ static bool emit_runtime(FILE *out)
     if (ferror(runtime)) okay = false;
     if (fclose(runtime) != 0) okay = false;
     if (!okay) {
-        fputs("ylang: failed while copying the generated C runtime template.\\n",
+        fputs("ylang: failed while copying the generated C runtime template.\n",
               stderr);
     }
     return okay;
