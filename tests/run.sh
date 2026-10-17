@@ -241,6 +241,40 @@ normalize_output build/v2-return-cleanup.out
 diff -u tests/expected-v2-return-cleanup.txt build/v2-return-cleanup.out
 
 
+# Local multi-file imports: nested modules, missing dependencies/symbols, cycles,
+# and source-located diagnostics from imported files.
+"$YLANG" check tests/imports/main.yl >/dev/null
+"$YLANG" build tests/imports/main.yl -o "build/test-imports$EXEEXT" >/dev/null
+"./build/test-imports$EXEEXT" > build/imports.out
+normalize_output build/imports.out
+diff -u tests/expected-imports.txt build/imports.out
+
+if "$YLANG" check tests/imports/missing-symbol.yl > build/import-missing-symbol.out 2>&1; then
+    echo "FAIL: missing imported function was accepted" >&2
+    exit 1
+fi
+grep -q "does not define function 'missing_fn'" build/import-missing-symbol.out
+
+if "$YLANG" check tests/imports/missing-module.yl > build/import-missing-module.out 2>&1; then
+    echo "FAIL: missing imported module was accepted" >&2
+    exit 1
+fi
+grep -q "cannot resolve imported module 'no-such-module.yl'" build/import-missing-module.out
+
+if "$YLANG" check tests/imports/cycle-a.yl > build/import-cycle.out 2>&1; then
+    echo "FAIL: cyclic module imports were accepted" >&2
+    exit 1
+fi
+grep -q 'cyclic import detected' build/import-cycle.out
+
+if "$YLANG" check tests/imports/diagnostic-root.yl > build/import-diagnostic.out 2>&1; then
+    echo "FAIL: invalid declaration in imported module was accepted" >&2
+    exit 1
+fi
+grep -q 'bad-module.yl:2:' build/import-diagnostic.out
+grep -q 'let string error_value = 42;' build/import-diagnostic.out
+
+
 # Experimental HTTP/HTTPS client. Exercise real generated code against a local,
 # deterministic server; no external internet service is needed.
 HTTP_PYTHON=
