@@ -1,0 +1,6 @@
+function main() -> int {
+    let int value;
+    value += 1;
+    print(value);
+    return 0;
+}
