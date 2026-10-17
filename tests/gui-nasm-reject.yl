@@ -1,0 +1,6 @@
+function main() -> int {
+    if (gui.init()) {
+        return 0;
+    }
+    return 1;
+}
