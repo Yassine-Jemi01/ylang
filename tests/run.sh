@@ -360,7 +360,7 @@ function bump_counter(int amount) -> int {
 }
 EOF
 cat > build/imports/main.yl <<'EOF'
-from "./data.yl" import system_data, system_prefix, imported_counter, bump_counter;
+from "./data.yl" import system_data(), system_prefix, imported_counter, bump_counter;
 function m1_private_helper() -> string {
     return "root-collision-test";
 }
