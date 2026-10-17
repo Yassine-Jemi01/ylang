@@ -30,6 +30,7 @@ The optional empty parentheses on imported names are accepted to match the origi
 - Nested imports are resolved recursively. A canonical file path is loaded only once in one build.
 - Cyclic imports are rejected.
 - Each listed function must be declared in the directly imported file.
+- Duplicate function names within one import directive are rejected with a source-located diagnostic.
 - Diagnostics for declarations inside imported source use that source file's path and line number.
 - The current resolver limits a project to 128 source files, 32 nested import levels, and 16 MiB of combined source.
 
