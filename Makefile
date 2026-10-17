@@ -12,7 +12,7 @@ SRC := $(wildcard src/*.c)
 OBJ := $(patsubst src/%.c,build/%.o,$(SRC))
 BIN := build/ylang
 
-.PHONY: all clean test sanitize install uninstall print-version gui gui-example install-gui check-sdl2
+.PHONY: all clean test sanitize install uninstall print-version gui gui-example install-gui check-sdl2 check-runtime-template regen-runtime-template
 
 all: $(BIN)
 
@@ -22,6 +22,12 @@ $(BIN): $(OBJ)
 build/%.o: src/%.c
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+check-runtime-template:
+	@python3 tools/embed_text.py runtime/runtime_template.c src/runtime_template.h --check
+
+regen-runtime-template:
+	@python3 tools/embed_text.py runtime/runtime_template.c src/runtime_template.h
 
 print-version:
 	@printf '%s\n' '$(VERSION)'
