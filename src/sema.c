@@ -713,6 +713,28 @@ static bool global_initializer_is_constant(Expr *expr)
     }
 }
 
+static bool stmt_terminates_flow(Stmt *stmt)
+{
+    if (!stmt) return false;
+    switch (stmt->kind) {
+        case STMT_RETURN:
+        case STMT_BREAK:
+        case STMT_CONTINUE:
+            return true;
+        case STMT_BLOCK:
+            for (size_t i = 0; i < stmt->as.block.count; i++) {
+                if (stmt_terminates_flow(stmt->as.block.items[i])) return true;
+            }
+            return false;
+        case STMT_IF:
+            return stmt->as.if_stmt.else_branch != NULL &&
+                   stmt_terminates_flow(stmt->as.if_stmt.then_branch) &&
+                   stmt_terminates_flow(stmt->as.if_stmt.else_branch);
+        default:
+            return false;
+    }
+}
+
 static void check_stmt(Checker *checker, Stmt *stmt)
 {
     if (!stmt) return;
@@ -721,8 +743,19 @@ static void check_stmt(Checker *checker, Stmt *stmt)
         case STMT_BLOCK: {
             Scope *outer = checker->scope;
             checker->scope = scope_new(c, outer);
-            for (size_t i = 0; i < stmt->as.block.count; i++)
-                check_stmt(checker, stmt->as.block.items[i]);
+            bool terminated = false;
+            bool reported_unreachable = false;
+            for (size_t i = 0; i < stmt->as.block.count; i++) {
+                Stmt *item = stmt->as.block.items[i];
+                if (terminated && !reported_unreachable) {
+                    diagnostic(c, item->token, "error", "E2057",
+                               "Unreachable code after a statement that always exits this path.",
+                               "Remove this statement or move it before the return, break, or continue.");
+                    reported_unreachable = true;
+                }
+                check_stmt(checker, item);
+                if (!terminated && stmt_terminates_flow(item)) terminated = true;
+            }
             checker->scope = outer;
             break;
         }
