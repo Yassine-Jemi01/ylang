@@ -146,9 +146,9 @@ ylang fix <file.yl> -o <fixed.yl>
 
 ## Optional GUI runtime (SDL2)
 
-YLang now includes an optional SDL2-backed C GUI runtime for creating a window, processing close events, clearing/presenting frames, and drawing filled rectangles. SDL2 is cross-platform, but the current YLang compiler driver is still POSIX-based and native Windows builds are not supported yet. The GUI runtime is a C API today; direct calls from `.yl` code await a defined foreign-function interface.
+YLang includes an optional SDL2-backed GUI namespace for `.yl` programs: `gui.init()`, `gui.create_window(...)`, `gui.poll()`, `gui.clear(...)`, `gui.draw_rect(...)`, `gui.present()`, `gui.last_error()`, `gui.close()`, and `gui.shutdown()`. The compiler checks argument types without requiring SDL2; native builds that use `gui.*` need SDL2 development files and `pkg-config`. The compiler driver is POSIX-based, so native Windows builds are not supported yet.
 
-Install SDL2 development files and `pkg-config`, then build the runtime and example:
+Install SDL2 development files and `pkg-config`, then build a YLang GUI program:
 
 Linux (Fedora): `sudo dnf install SDL2-devel pkgconf-pkg-config`
 
@@ -158,15 +158,15 @@ macOS: `brew install sdl2 pkg-config`
 
 ```sh
 # Linux
-make gui gui-example
+./build/ylang build examples/gui.yl -o build/gui-example
 
 # macOS
-gmake gui gui-example
+./build/ylang build examples/gui.yl -o build/gui-example
 
 ./build/gui-example
 ```
 
-The example opens a window, paints the background, and draws a rectangle. On headless systems, compilation works but running it requires a display session. To install the optional static library and header, use `sudo gmake install-gui` on macOS (or `sudo make install-gui` on Linux).
+The example opens a window, paints the background, and draws a rectangle, then closes cleanly. It is a minimal smoke example, not a complete game loop. On headless systems, compilation works but running it requires a display session. To install the optional runtime files for builds outside the source tree, use `sudo gmake install-gui` on macOS (or `sudo make install-gui` on Linux).
 
 Errors include a stable diagnostic code, path, line/column, source excerpt, caret, and a hint when available. Exit status is nonzero when a command fails.
 
