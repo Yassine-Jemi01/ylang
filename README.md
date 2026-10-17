@@ -13,7 +13,7 @@ YLang has its own compiler front-end in C: lexer, parser, semantic analysis, dia
 - **The compiler does the checking.** Type, initialization, move-state, borrow-conflict, and array-index rules are checked where the current implementation can prove them.
 - **Fast native programs without a mandatory GC.** GCC or Clang optimize the generated C; array operations and integer arithmetic have runtime checks.
 - **Portable first.** Language behavior is implemented against C standard-library APIs when possible. Windows is tested using MSYS2 UCRT64 / MinGW-w64 in CI.
-- **Useful core, growing libraries.** A small set of built-ins covers printing, line input, strings, and arrays. Modules, broad file APIs, and a package ecosystem are future work, not hidden features.
+- **Useful core, growing libraries.** A small set of built-ins covers printing, line input, strings, arrays, and experimental HTTP/JSON access. Local function imports are in the 2.0 preview; packages and stable module visibility remain future work.
 
 These are project principles, not a claim of Rust-equivalent memory safety. The current move/borrow checker is an early implementation and the ownership cleanup model still needs work.
 
@@ -31,10 +31,11 @@ These are project principles, not a claim of Rust-equivalent memory safety. The 
 | Windows build and regression suite | CI-tested; see current workflow status |
 | Experimental HTTP/HTTPS REST client (`http_get`, `http_post`, `http_request`) | Initial synchronous client; requires libcurl when used |
 | JSON parser/accessors (`json_get_*`, `json_array_*`, `json_quote`) | Initial checked runtime; not yet a full JSON value model |
-| Modules/imports, generics, nested arrays, typed error values, broad file/network APIs | Not implemented yet |
+| Local function imports (`from module.yl import name()`) | Experimental; recursive local imports and cycle detection tested |
+| Generics, nested arrays, typed error values, package manager | Not implemented yet |
 | Direct LLVM/machine-code backend | Not implemented; current backend emits C |
 
-See [the v2 language specification](docs/language-spec.md), [ownership and borrowing notes](docs/ownership-and-borrowing.md), [the HTTP API client](docs/http-api.md), [the JSON helper API](docs/json-api.md), and [the development roadmap](docs/roadmap.md).
+See [the v2 language specification](docs/language-spec.md), [ownership and borrowing notes](docs/ownership-and-borrowing.md), [module imports](docs/modules-and-imports.md), [the HTTP API client](docs/http-api.md), [the JSON helper API](docs/json-api.md), and [the development roadmap](docs/roadmap.md).
 
 ## Quick start
 
