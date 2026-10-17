@@ -37,18 +37,26 @@ Acceptance criteria:
 
 Start with value types, not heap-allocated classes.
 
-Illustrative syntax (not currently guaranteed to compile):
+Current experimental subset (available on the development branch; not yet a stable 2.0 guarantee):
 
 ~~~yl
 struct Point {
-    x: float;
-    y: float;
+    float x;
+    float y;
 }
 
-function distance_squared(point: Point) -> float {
+function distance_squared(Point point) -> float {
     return point.x * point.x + point.y * point.y;
 }
+
+function main() -> int {
+    let Point point = Point(3.0, 4.0);
+    print(distance_squared(point));
+    return 0;
+}
 ~~~
+
+Unit enums and exhaustive `match` statements are also implemented experimentally. See [STRUCTS.md](STRUCTS.md) and [ENUMS.md](ENUMS.md) for the tested subset and explicit limitations.
 
 Required rules:
 - A struct declaration has a stable, compile-time-known field layout.
@@ -63,9 +71,9 @@ Then add enums with exhaustive matching. Do not add pattern matching syntax unti
 
 ## Milestone 2 — Explicit absence and errors
 
-Introduce Option&lt;T&gt; and Result&lt;T, E&gt; after the compiler has a reliable generic/type representation.
+**Not implemented yet.** Introduce `Option<T>` and `Result<T, E>` only after the compiler has a reliable generic/type representation. The current enum implementation has unit variants only and cannot carry payload values.
 
-Illustrative syntax (not currently guaranteed to compile):
+Illustrative future syntax (not currently guaranteed to compile):
 
 ~~~yl
 let result: Result<int, ParseError> = string.parse_int(text);
