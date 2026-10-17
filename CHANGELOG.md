@@ -12,6 +12,8 @@ This development line is experimental and is not a stable release.
 - Added regression fixtures for arrays, loop execution, input, move-after-use, type mismatches, and bounds violations.
 - Added an experimental synchronous HTTP/HTTPS client for REST APIs, with GET/POST helpers, general request methods, custom headers, status/error accessors, TLS verification, timeouts, and response-size limits.
 - Added an initial JSON parser/helper set for scalar property access, raw nested objects/arrays, array length/items, string quoting, and checked errors.
+- Added experimental recursive local-file imports with function-name checks, cycle detection, source-relative resolution, source-unit diagnostics, and regression fixtures for nested modules and import errors.
+- Hardened JSON parsing against truncated Unicode escapes and HTTP response-size overflow; HTTP redirects are returned to the caller instead of being followed automatically.
 - Added local mock-server and JSON regression tests; Linux GCC/Clang builds pass. Windows CI remains a required release gate.
 - Documented known limitations: HTTP response status is process-global, JSON is not yet a general typed value model, and API helpers are not yet importable modules.
 - Added `ylang run`, which compiles into a temporary directory, executes the generated program, removes temporary artifacts, and preserves the program's exit status.
