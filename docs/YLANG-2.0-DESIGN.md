@@ -173,15 +173,15 @@ The site should consume release metadata or a generated manifest so download lin
 
 ## GUI and 2D game development
 
-The optional SDL2 C runtime exists, but it is not yet callable from `.yl`. Before implementing compiler bindings, the initial GUI API contract is documented in [GUI-API-SPEC.md](GUI-API-SPEC.md). The first implementation should be a narrow, single-window API with checked signatures and clear runtime errors, not arbitrary C interop.
+The optional SDL2 runtime and a minimal `gui.*` namespace are implemented and callable from `.yl`. The API currently covers initialization, window creation, event polling, clearing, rectangle drawing, presentation, last-error reporting, and shutdown/close. Type-checking and NASM rejection tests exist; the runtime integration is optional so ordinary non-GUI programs do not require SDL2. See [GUI-API-SPEC.md](GUI-API-SPEC.md) for the current contract.
 
-Implementation order:
-1. Implement and test the optional `gui.*` namespace without adding an SDL2 dependency to ordinary programs.
-2. Add a small set of portable drawing/input primitives and an executable `.yl` example.
-3. Build a separate Pygame-inspired 2D library on top of the GUI runtime: game loop, delta time, keyboard input, drawing, sprites, and basic rectangle collision.
-4. Add audio, richer widgets, physics, or 3D only after the minimal API is stable.
+Remaining game-library work:
+1. Extend input handling with explicit keyboard and mouse state APIs, with deterministic event polling.
+2. Build a separate Pygame-inspired 2D library on top of the GUI runtime: game loop, delta time, drawing helpers, sprites, and basic rectangle collision.
+3. Add integration examples and runtime tests using SDL's dummy video driver where available.
+4. Add audio, richer widgets, physics, or 3D only after the minimal 2D API is stable.
 
-The NASM backend must reject unsupported GUI/game calls with an explicit diagnostic. GUI and game features are not complete until Linux/macOS CI, missing-dependency diagnostics, and runtime tests pass.
+The NASM backend should continue to reject unsupported GUI/game calls with an explicit diagnostic. GUI and game features are not complete until Linux/macOS CI, missing-dependency diagnostics, and runtime tests pass.
  
 ## CI and release gates
 
