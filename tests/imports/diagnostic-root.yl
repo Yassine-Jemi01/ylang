@@ -1,0 +1,5 @@
+from bad-module.yl import broken()
+
+function main() -> int {
+    return broken();
+}
