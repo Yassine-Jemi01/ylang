@@ -140,6 +140,8 @@ The generated C runtime is part of the trusted implementation. Sanitizers and re
 
 ## 10. Current limitations and next milestones
 
-Not yet supported: modules/imports, package management, generics, nested arrays, user-defined structs/classes, exceptions or a typed `Result` error model, async/concurrency, raw pointers, local reference variables/lifetime annotations, comprehensive file/network APIs, and a direct LLVM/native-code backend.
+An experimental local-file function import resolver is available on the `v2/http-api-client` branch. It supports nested relative imports, checks named functions, rejects import cycles, and keeps imported-source diagnostics mapped to the originating file. It currently flattens files into a shared compilation namespace; per-module symbol visibility, aliases, package management, and a stable module ABI are not implemented.
 
-Before a stable 2.x release, the project still needs a stronger ownership/lifetime analysis, deterministic cleanup on every exit path, file I/O APIs, module/import design, additional standard-library tests, and successful Linux plus Windows CI for the complete preview. Tree-sitter, VS Code, and Neovim must remain aligned with the compiler grammar.
+Other unsupported features include generics, nested arrays, user-defined structs/classes, exceptions or a typed `Result` error model, async/concurrency, raw pointers, local reference variables/lifetime annotations, comprehensive file APIs, and a direct LLVM/native-code backend. HTTP and JSON support are experimental built-ins, not stable importable standard-library modules.
+
+Before a stable 2.x release, the project still needs stronger ownership/lifetime analysis, deterministic cleanup on every exit path, file I/O APIs, per-module visibility and module-grammar/editor updates, additional standard-library and sanitizer tests, and successful Linux plus Windows CI for the complete preview. Tree-sitter, VS Code, and Neovim must remain aligned with the compiler grammar.
