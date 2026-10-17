@@ -209,9 +209,17 @@ void sb_destroy(StringBuilder *sb)
 }
 
 void diagnostic(Compiler *c, Token token, const char *level,
-                       const char *code, const char *message,
-                       const char *suggestion)
+                   const char *code, const char *message,
+                   const char *suggestion)
 {
+    if (strcmp(level, "error") == 0) {
+        c->had_error = true;
+        c->error_count++;
+    } else {
+        c->warning_count++;
+    }
+    if (c->quiet_diagnostics) return;
+
     size_t line = token.line ? token.line : 1;
     size_t column = token.column ? token.column : 1;
     const char *shown_filename = c->filename;
@@ -253,12 +261,6 @@ void diagnostic(Compiler *c, Token token, const char *level,
         fprintf(stderr, "   = help: %s\n", suggestion);
     }
     fputc('\n', stderr);
-    if (strcmp(level, "error") == 0) {
-        c->had_error = true;
-        c->error_count++;
-    } else {
-        c->warning_count++;
-    }
 }
 
 static bool token_is(const Token *token, const char *text)
