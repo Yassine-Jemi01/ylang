@@ -15,3 +15,9 @@ false
 JSON object key was not found
 0
 expected a string key in JSON object
+0
+invalid Unicode escape in JSON string
+0
+leading zero in JSON number
+0
+trailing comma in JSON array
