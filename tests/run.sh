@@ -111,6 +111,17 @@ fi
 grep -q 'E1002' build/missing-semicolon.out
 grep -q "missing ';' before this token" build/missing-semicolon.out
 
+# Statements after an unconditional return are diagnosed as unreachable.
+if ./build/ylang check tests/unreachable-after-return.yl > build/unreachable-after-return.out 2>&1; then
+    echo "FAIL: unreachable code after return was accepted" >&2
+    exit 1
+fi
+grep -q 'E2057' build/unreachable-after-return.out
+grep -q 'Unreachable code' build/unreachable-after-return.out
+
+# An if without an else does not make following statements unreachable.
+./build/ylang check tests/reachable-after-if.yl >/dev/null
+
 if ./build/ylang check tests/uninitialized.yl > build/uninitialized.out 2>&1; then
     echo "FAIL: uninitialized read was accepted" >&2
     exit 1
