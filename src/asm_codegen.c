@@ -175,6 +175,9 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
         case EXPR_ARRAY:
         case EXPR_INDEX:
             return asm_reject(ctx, expr->token, "arrays and array indexing");
+        case EXPR_STRUCT_INIT:
+        case EXPR_MEMBER:
+            return asm_reject(ctx, expr->token, "struct values (not yet supported by the NASM backend)");
         case EXPR_ERROR:
             return asm_reject(ctx, expr->token, "invalid expressions");
     }
@@ -740,6 +743,8 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
         case EXPR_FSTRING:
         case EXPR_ARRAY:
         case EXPR_INDEX:
+        case EXPR_STRUCT_INIT:
+        case EXPR_MEMBER:
         case EXPR_ERROR:
             fputs("ylang: internal error: unsupported expression reached NASM emitter.\n",
                   stderr);
