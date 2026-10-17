@@ -1,0 +1,3 @@
+function system_data() -> string {
+    return "YLang 2.0 module import";
+}
