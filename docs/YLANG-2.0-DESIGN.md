@@ -35,31 +35,40 @@ Acceptance criteria:
 
 ## Milestone 1 — Value types: struct and enum
 
-Start with value types, not heap-allocated classes.
+**Status: experimental implementation in progress.** Unit enums with exhaustive statement matching and C-backend structs now have regression coverage. These features are not part of a released 2.0 build until their PRs merge and release-tag tests pass.
 
-Illustrative syntax (not currently guaranteed to compile):
+Current struct syntax:
 
 ~~~yl
-struct Point {
-    x: float;
-    y: float;
-}
+struct Point { int x; int y; }
 
-function distance_squared(point: Point) -> float {
-    return point.x * point.x + point.y * point.y;
+function moved(Point point, int dx, int dy) -> Point {
+    point.x += dx;
+    point.y += dy;
+    return point;
 }
 ~~~
 
-Required rules:
-- A struct declaration has a stable, compile-time-known field layout.
-- Every field must be initialized before an instance can be read.
-- Field reads and writes are type-checked; unknown fields produce a dedicated diagnostic.
-- Duplicate fields and duplicate type declarations are rejected.
-- Copy/value semantics must be documented before structs can be passed, returned, or nested.
-- Recursive by-value fields are rejected unless a later indirection type makes their size finite.
-- Structs must not be accepted by the NASM backend until layout and field operations are implemented there.
+Current enum/match syntax:
 
-Then add enums with exhaustive matching. Do not add pattern matching syntax until exhaustiveness and unreachable-case rules are specified.
+~~~yl
+enum Direction { North, East, South, West }
+
+match (direction) {
+    Direction.North -> { print("north"); }
+    Direction.East -> { print("east"); }
+    Direction.South -> { print("south"); }
+    Direction.West -> { print("west"); }
+}
+~~~
+
+Current limitations:
+- Struct fields use type-first declarations and constructors are positional.
+- Struct values support field reads/writes and pass/return-by-value in the C backend; nested field access and recursive-by-value layouts are rejected or not supported.
+- The NASM backend explicitly rejects struct values until layout and field operations are implemented.
+- Enums are unit variants only; they have distinct semantic types and exhaustive match checks.
+- Enum payloads, explicit discriminants, enum printing, and importing enum/struct type declarations across module boundaries are not implemented.
+- Match values must not contain calls or assignments in this first milestone.
 
 ## Milestone 2 — Explicit absence and errors
 
