@@ -1,0 +1,125 @@
+name: Publish YLang beta release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/PUBLISH_BETA"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-test:
+    name: build-and-test (\${{ matrix.os }}, \${{ matrix.compiler }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        compiler: [gcc, clang]
+        exclude:
+          - os: macos-latest
+            compiler: gcc
+    runs-on: \${{ matrix.os }}
+    steps:
+      - name: Check out release candidate
+        uses: actions/checkout@v4
+        with:
+          ref: \${{ github.sha }}
+      - name: Verify requested beta version
+        env:
+          EXPECTED_VERSION: 2.0.0-beta.1
+        run: |
+          test "$(tr -d '\\r\\n' < VERSION)" = "$EXPECTED_VERSION"
+          test "$(tr -d '\\r\\n' < .github/PUBLISH_BETA)" = "$EXPECTED_VERSION"
+      - name: Install toolchain (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential clang libclang-rt-dev nasm libsdl2-dev pkg-config
+      - name: Install toolchain (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          xcode-select --install 2>/dev/null || true
+          brew list llvm >/dev/null 2>&1 || brew install llvm
+          brew list make >/dev/null 2>&1 || brew install make
+          brew list sdl2 >/dev/null 2>&1 || brew install sdl2
+          brew list pkg-config >/dev/null 2>&1 || brew install pkg-config
+      - name: Select compiler
+        id: compiler
+        shell: bash
+        run: |
+          if [[ "\${{ matrix.compiler }}" == "clang" && "$RUNNER_OS" == "macOS" ]]; then
+            echo "cc=$(brew --prefix llvm)/bin/clang" >> "$GITHUB_OUTPUT"
+            echo "make=gmake" >> "$GITHUB_OUTPUT"
+          else
+            echo "cc=\${{ matrix.compiler }}" >> "$GITHUB_OUTPUT"
+            echo "make=make" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Verify generated C runtime template
+        run: python3 tools/embed_text.py runtime/runtime_template.c src/runtime_template.h --check
+      - name: Build compiler
+        run: \${{ steps.compiler.outputs.make }} clean all CC="\${{ steps.compiler.outputs.cc }}"
+      - name: Build optional GUI runtime
+        run: \${{ steps.compiler.outputs.make }} gui gui-example CC="\${{ steps.compiler.outputs.cc }}"
+      - name: Run regression tests
+        run: \${{ steps.compiler.outputs.make }} test CC="\${{ steps.compiler.outputs.cc }}"
+      - name: Fuzz lexer/parser smoke test
+        if: runner.os == 'Linux' && matrix.compiler == 'clang'
+        run: make fuzz-smoke FUZZ_CC=clang
+      - name: Run AddressSanitizer and UndefinedBehaviorSanitizer tests
+        run: \${{ steps.compiler.outputs.make }} sanitize CC="\${{ steps.compiler.outputs.cc }}"
+
+  editor-diagnostics:
+    name: Editor diagnostics
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release candidate
+        uses: actions/checkout@v4
+        with:
+          ref: \${{ github.sha }}
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Neovim
+        run: sudo apt-get update && sudo apt-get install -y neovim
+      - name: Test VS Code diagnostic parser
+        run: npm test --prefix editors/vscode
+      - name: Test Neovim diagnostic parser
+        run: nvim --headless -u NONE +'luafile editors/nvim/tests/diagnostics.lua'
+
+  publish:
+    name: Publish source-only GitHub prerelease
+    needs: [build-and-test, editor-diagnostics]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: \${{ github.sha }}
+      - name: Verify release metadata
+        env:
+          EXPECTED_VERSION: 2.0.0-beta.1
+        run: |
+          test "$(tr -d '\\r\\n' < VERSION)" = "$EXPECTED_VERSION"
+          test "$(tr -d '\\r\\n' < .github/PUBLISH_BETA)" = "$EXPECTED_VERSION"
+      - name: Create prerelease from the tested commit
+        env:
+          GH_TOKEN: \${{ github.token }}
+          EXPECTED_VERSION: 2.0.0-beta.1
+        run: |
+          TAG="v\${EXPECTED_VERSION}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; no duplicate will be created."
+            exit 0
+          fi
+          if gh api "repos/\${GITHUB_REPOSITORY}/git/ref/tags/\${TAG}" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists without a release. Refusing to publish against an unverified tag." >&2
+            exit 1
+          fi
+          gh release create "$TAG" \\
+            --target "$GITHUB_SHA" \\
+            --title "YLang \${EXPECTED_VERSION}" \\
+            --notes-file docs/CHANGELOG-2.0-BETA.md \\
+            --prerelease
+          echo "Published https://github.com/\${GITHUB_REPOSITORY}/releases/tag/\${TAG}" >> "$GITHUB_STEP_SUMMARY"
