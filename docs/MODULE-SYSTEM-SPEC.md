@@ -2,19 +2,19 @@
 
 **Status:** design proposal; none of the future syntax in this document should be assumed to compile yet.
 
-This proposal turns the current local-file import prototype into a module system with explicit names, predictable visibility, and testable diagnostics. It intentionally does not define a package registry or binary module ABI.
+This proposal defines a future local-file module system with explicit names, predictable visibility, and testable diagnostics. It intentionally does not define a package registry or binary module ABI. The current compiler on `main` does **not** implement source-level imports or multi-file compilation; the syntax below is proposed and must not be treated as working language functionality until implementation and regression tests land.
 
 ## 1. Current behavior and why it must change
 
-The experimental resolver accepts imports such as:
+The current driver reads one input file, parses it into one `Program`, checks that program, and passes it to a backend. The lexer treats words such as `from` and `import` as ordinary identifiers, and the parser has no top-level import declaration. Therefore examples such as the following are design sketches only and currently fail to compile:
 
 ```yl
-from "string tools.yl" import system_data()
+from "string tools.yl" import system_data
 ```
 
-It resolves local paths recursively, rejects cycles, and loads each canonical file once. The compiler then flattens participating files into one compilation unit. That makes imported declarations visible in the same global namespace and causes unrelated functions with the same name to conflict. Listing a function in an import directive is currently not a reliable visibility boundary.
+The implementation must add a real resolver and module-local name binding. It must not claim that imported declarations are supported until paths are resolved relative to the importing file, modules are loaded once, visibility is enforced, and diagnostics retain the original source locations. Simply concatenating source files would make unrelated declarations collide in the global namespace and would not enforce the import list.
 
-The first stable module milestone must fix visibility and symbol identity before adding more syntax.
+The first stable module milestone must establish module identity and visibility before adding aliases or qualified imports.
 
 ## 2. Proposed syntax
 
