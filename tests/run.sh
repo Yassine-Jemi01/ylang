@@ -276,7 +276,7 @@ grep -q 'E2059' build/enum-duplicate-arm.out
 ./build/ylang check examples/structs.yl >/dev/null
 ./build/ylang build examples/structs.yl -o build/test-structs-example >/dev/null
 ./build/test-structs-example > build/structs-example.out
-printf '8,4\n' > build/structs-example.expected
+printf '8 , 4\n' > build/structs-example.expected
 diff -u build/structs-example.expected build/structs-example.out
 
 cat > build/struct-wrong-field-type.yl <<'EOF'
