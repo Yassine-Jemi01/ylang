@@ -2,6 +2,20 @@
 
 All notable changes to YLang are documented here. This project follows semantic versioning for future releases.
 
+## [2.0.0-beta.1] — prerelease candidate (not yet published)
+
+This is the release-candidate changelog for the experimental 2.0 beta. It is not a declaration of a published GitHub release.
+
+- Added named imports and multi-file compilation.
+- Added experimental typed unit enums with exhaustive `match`.
+- Added experimental typed structs, field access, and mutable field assignment.
+- Expanded optional SDL2-backed GUI and 2D drawing, input, timing, and collision helpers.
+- Kept the C backend as the default and the NASM backend explicitly experimental.
+- Updated compiler version reporting and generated-C headers to use the canonical `VERSION` value.
+- `Option<T>` and `Result<T, E>` are not implemented and are excluded from this beta.
+
+See [draft beta notes](docs/CHANGELOG-2.0-BETA.md) for limitations and upgrade guidance. Publish only after the exact release commit passes CI and the prerelease is created intentionally.
+
 ## [1.1.0] - 2026-10-10
 
 - Added explicit conversions: `to_float`, range-checked `to_int`, and `to_string`.
