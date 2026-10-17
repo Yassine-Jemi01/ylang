@@ -10,23 +10,22 @@ function main() -> int {
         return 1;
     }
 
-    if (not gui.clear(24, 28, 38)) {
-        print(gui.last_error());
-        gui.close();
-        gui.shutdown();
-        return 1;
-    }
-    if (not gui.draw_rect(80, 80, 240, 120, 22, 160, 180)) {
-        print(gui.last_error());
-        gui.close();
-        gui.shutdown();
-        return 1;
-    }
-    if (not gui.present()) {
-        print(gui.last_error());
-        gui.close();
-        gui.shutdown();
-        return 1;
+    loop() {
+        if (not gui.poll()) {
+            break;
+        }
+        if (not gui.clear(24, 28, 38)) {
+            print(gui.last_error());
+            break;
+        }
+        if (not gui.draw_rect(80, 80, 240, 120, 22, 160, 180)) {
+            print(gui.last_error());
+            break;
+        }
+        if (not gui.present()) {
+            print(gui.last_error());
+            break;
+        }
     }
 
     gui.close();
