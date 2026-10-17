@@ -1,0 +1,5 @@
+from no-such-module.yl import missing_fn()
+
+function main() -> int {
+    return 0;
+}
