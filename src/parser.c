@@ -743,10 +743,10 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
             op = p->current;
             if (min_precedence > 1) break;
             advance_parser(p);
-            if (left->kind != EXPR_NAME) {
+            if (left->kind != EXPR_NAME && left->kind != EXPR_MEMBER) {
                 diagnostic(p->compiler, op, "error", "E1004",
-                           "The '++' operator requires a variable name.",
-                           "Use 'count++' for a mutable numeric variable.");
+                           "The '++' operator requires a mutable variable or struct field.",
+                           "Use 'count++' or increment a numeric field of a mutable struct variable.");
                 left = new_expr(p->compiler, EXPR_ERROR, op);
                 continue;
             }
@@ -777,10 +777,11 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
         int next_min = prec + ((op.type == TOKEN_EQUAL || op.type == TOKEN_PLUS_EQUAL) ? 0 : 1);
         Expr *right = parse_precedence(p, next_min);
         if (op.type == TOKEN_EQUAL || op.type == TOKEN_PLUS_EQUAL) {
-            if (left->kind != EXPR_NAME && (op.type == TOKEN_EQUAL && left->kind != EXPR_INDEX)) {
+            if (left->kind != EXPR_NAME && left->kind != EXPR_INDEX &&
+                left->kind != EXPR_MEMBER) {
                 diagnostic(p->compiler, op, "error", "E1004",
-                           "The left side of an assignment must be a variable or array element.",
-                           "Write an assignment such as 'count = count + 1;' or 'values[0] = 1;'.");
+                           "The left side of an assignment must be a variable, array element, or struct field.",
+                           "Write an assignment such as 'count = count + 1;', 'values[0] = 1;', or 'point.x = 10;'.");
                 left = new_expr(p->compiler, EXPR_ERROR, op);
             } else {
                 Expr *assign = new_expr(p->compiler, EXPR_ASSIGN, op);
