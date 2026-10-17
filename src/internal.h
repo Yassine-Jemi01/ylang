@@ -37,6 +37,8 @@ struct Compiler {
     Module *root_module;
     EnumDecl **enums;
     size_t enum_count;
+    StructDecl **structs;
+    size_t struct_count;
     Module *current_module;
     bool uses_gui;
 };
