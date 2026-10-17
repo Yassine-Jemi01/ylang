@@ -682,7 +682,7 @@ bool generate_c(Compiler *c, const char *path)
                 fprintf(out, "%s *%s, size_t %s_len",
                         c_base_type(c, param->type), param->c_name, param->c_name);
             } else {
-                fprintf(out, "%s %s", c_base_type(param->type), param->c_name);
+                fprintf(out, "%s %s", c_base_type(c, param->type), param->c_name);
             }
             first_param = false;
         }
@@ -700,9 +700,9 @@ bool generate_c(Compiler *c, const char *path)
             if (!first_param) fputs(", ", out);
             if (param->is_array) {
                 fprintf(out, "%s *%s, size_t %s_len",
-                        c_base_type(param->type), param->c_name, param->c_name);
+                        c_base_type(c, param->type), param->c_name, param->c_name);
             } else {
-                fprintf(out, "%s %s", c_base_type(param->type), param->c_name);
+                fprintf(out, "%s %s", c_base_type(c, param->type), param->c_name);
             }
             first_param = false;
         }
