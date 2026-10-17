@@ -12,6 +12,9 @@ This is the release-candidate changelog for the experimental 2.0 beta. It is not
 - Expanded optional SDL2-backed GUI and 2D drawing, input, timing, and collision helpers.
 - Kept the C backend as the default and the NASM backend explicitly experimental.
 - Updated compiler version reporting and generated-C headers to use the canonical `VERSION` value.
+- Extracted the emitted C runtime into a standalone source template embedded as bytes, avoiding oversized adjacent string literals.
+- Added lexer/parser unit tests, an optional libFuzzer smoke harness, and C/NASM differential parity samples for the shared subset.
+- Made the SDL2 integration smoke test explicitly skip when SDL2 development dependencies are unavailable.
 - `Option<T>` and `Result<T, E>` are not implemented and are excluded from this beta.
 
 See [draft beta notes](docs/CHANGELOG-2.0-BETA.md) for limitations and upgrade guidance. Publish only after the exact release commit passes CI and the prerelease is created intentionally.

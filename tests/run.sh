@@ -762,6 +762,22 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     ./build/test-asm-basic-cli > build/asm-basic-cli.out
     diff -u tests/expected-asm-basic.txt build/asm-basic-cli.out
 
+    # Differential parity tests: programs in the shared subset must behave the same
+    # when compiled by the default C backend and the experimental NASM backend.
+    run_backend_parity() {
+        parity_source=$1
+        parity_label=$2
+        ./build/ylang build "$parity_source" -o "build/parity-$parity_label-c" >/dev/null
+        ./build/ylang build-asm "$parity_source" -o "build/parity-$parity_label-asm" >/dev/null
+        "build/parity-$parity_label-c" > "build/parity-$parity_label-c.out"
+        "build/parity-$parity_label-asm" > "build/parity-$parity_label-asm.out"
+        diff -u "build/parity-$parity_label-c.out" "build/parity-$parity_label-asm.out"
+    }
+    run_backend_parity tests/asm-basic.yl arithmetic
+    run_backend_parity build/enum-basic.yl enums-match
+    run_backend_parity build/imports/repeated-asm.yl imported-functions
+    echo "PASS: C/NASM differential parity samples"
+
     ./build/ylang build-asm benchmarks/nasm-speed.yl -o build/test-nasm-speed >/dev/null
     ./build/test-nasm-speed > build/nasm-speed.out
     diff -u benchmarks/expected-nasm-speed.txt build/nasm-speed.out
@@ -869,7 +885,11 @@ if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists sdl2; then
     ./build/ylang build tests/gui-smoke.yl -o build/test-gui >/dev/null
     if [ "$(uname -s)" = "Linux" ]; then
         SDL_VIDEODRIVER=dummy ./build/test-gui
+    else
+        echo "SKIP: GUI runtime smoke test needs a display; SDL2 compile/type checks already ran."
     fi
+else
+    echo "SKIP: SDL2 integration test (install SDL2 development files and pkg-config to enable)." >&2
 fi
 
 echo "All YLang tests passed."

@@ -126,15 +126,15 @@ This backend is currently limited to Linux x86-64 scalar programs using
 functions with up to six scalar parameters, integer expressions, branches,
 loops, returns, and `print`. Global declarations, arrays, floats, f-strings,
 string comparisons, short-circuit `and`/`or`, and standard-library calls
-are not supported yet. The established C backend remains the default.
+are not supported yet. The established C backend remains the default. A backend-neutral IR and general-purpose native backend are future work; see the [backend roadmap](docs/BACKEND-ROADMAP.md).
 
 ## Structs (experimental)
 
-The development branch includes typed struct declarations, positional construction, field reads, and struct values passed to or returned from functions. See [struct reference](docs/STRUCTS.md) and [runnable example](examples/structs.yl). Field assignment and NASM parity are not yet promised.
+This beta preview includes typed struct declarations, positional construction, field reads, struct values passed to or returned from functions, and type-checked mutable field assignment in the C backend. NASM deliberately rejects struct values for now. See [struct reference](docs/STRUCTS.md) and [runnable example](examples/structs.yl).
 
 ## Typed enums (experimental)
 
-Unit enums are available in the current development branch, including type-checked variants and exhaustive `match` statements. The feature is not part of the stable 1.1.0 language subset yet.
+Typed unit enums and exhaustive `match` statements are included experimentally in the 2.0 beta preview; they are not part of the stable 1.1.0 subset.
 
 ```yl
 enum Direction { North, East, South, West }
@@ -368,3 +368,16 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [VS Code language support, compiler diagnostics, and Code Runner setup](editors/vscode/README.md)
 - [Neovim native diagnostics integration](editors/nvim/README.md)
 - [GUI runtime API](include/ylang/gui.h) and [example](examples/gui.c)
+
+
+## Compiler developer checks
+
+`make test` runs the regression suite plus standalone lexer/parser unit tests. The SDL2 runtime smoke test is optional: when SDL2 development files or `pkg-config` are unavailable, the suite prints an explicit `SKIP` message instead of failing unrelated tests.
+
+On Linux with Clang and libFuzzer available, run a bounded lexer/parser fuzz smoke test with:
+
+```sh
+make fuzz-smoke FUZZ_CC=clang
+```
+
+The C runtime emitted into generated programs is sourced from [runtime/runtime_template.c](runtime/runtime_template.c) and embedded as a byte array to avoid overlength C string literals. After editing the template, regenerate and verify it with `make regen-runtime-template` and `make check-runtime-template`.

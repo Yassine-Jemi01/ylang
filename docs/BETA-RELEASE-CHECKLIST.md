@@ -26,6 +26,7 @@ PR #47 concerns Option/Result design documentation only. It does **not** impleme
 - [x] Current merged snapshot: sanitizer and editor-diagnostic tests pass.
 - [ ] Re-run all of the above against the exact release-candidate commit.
 - [ ] Verify a clean checkout can build using only the documented prerequisites.
+- [ ] Verify the checked-in generated runtime byte array matches its source template (`make check-runtime-template`).
 
 ### 2. Feature verification
 
@@ -33,13 +34,16 @@ PR #47 concerns Option/Result design documentation only. It does **not** impleme
 - [ ] Structs: construction, field reads/writes, compound assignments, increments, invalid field/type diagnostics, and generated-code safety.
 - [ ] Enums: valid cases, invalid cases, and exhaustive-match diagnostics.
 - [ ] Game/GUI APIs: build both with and without optional SDL2 dependencies; run the documented example where a display is available.
-- [ ] NASM: explicitly list unsupported constructs and test every claimed supported construct against the normal backend.
+- [ ] NASM: explicitly list unsupported constructs and test every claimed supported construct against the normal backend; keep the C/NASM differential parity samples passing.
+- [ ] Front end: pass lexer/parser unit tests and the bounded libFuzzer smoke run on Linux/Clang CI.
+- [ ] Optional GUI: verify the suite skips SDL2 runtime tests with a clear message when SDL2 development dependencies are absent.
 - [ ] Option/Result: either implement and test them, or clearly state they are not included in beta. Do not present design examples as working syntax.
 
 ### 3. Documentation and packaging
 
 - [x] README distinguishes stable 1.1.0 from experimental development features.
-- [ ] Add a clear link to the beta changelog and verify all README claims against the release candidate.
+- [x] Add a clear link to the beta changelog.
+- [ ] Verify all README claims against the exact release-candidate commit.
 - [x] Draft beta changelog with implemented features and known limitations: [CHANGELOG-2.0-BETA.md](CHANGELOG-2.0-BETA.md).
 - [ ] Verify the draft against the final release-candidate commit and document any breaking changes.
 - [ ] Ensure every advertised feature has a working minimal example.
