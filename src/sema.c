@@ -970,6 +970,10 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     diagnostic(c, stmt->as.print.args[i]->token, "error", "E2050",
                                "print() cannot print a void expression.",
                                "Print a value or change the function to return one.");
+                } else if (type >= TYPE_STRUCT_BASE) {
+                    diagnostic(c, stmt->as.print.args[i]->token, "error", "E2075",
+                               "print() does not format struct values.",
+                               "Print individual fields or add a custom formatting function.");
                 } else if (type >= TYPE_ENUM_BASE) {
                     diagnostic(c, stmt->as.print.args[i]->token, "error", "E2054",
                                "print() does not yet format user-defined enum values.",
