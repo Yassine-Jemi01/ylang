@@ -3,6 +3,8 @@
  * This module requires the optional SDL2 GUI runtime when linked.
  */
 
+let int game2d_previous_tick = 0;
+
 function game2d_open(string title, int width, int height) -> bool {
     if (not gui.init()) {
         return false;
@@ -12,6 +14,7 @@ function game2d_open(string title, int width, int height) -> bool {
         gui.shutdown();
         return false;
     }
+    game2d_previous_tick = gui.ticks_ms();
     return true;
 }
 
@@ -33,6 +36,33 @@ function game2d_end_frame() -> bool {
 
 function game2d_last_error() -> string {
     return gui.last_error();
+}
+
+function game2d_key_down(string key) -> bool {
+    return gui.key_down(key);
+}
+
+function game2d_mouse_x() -> int {
+    return gui.mouse_x();
+}
+
+function game2d_mouse_y() -> int {
+    return gui.mouse_y();
+}
+
+function game2d_mouse_button_down(int button) -> bool {
+    return gui.mouse_button_down(button);
+}
+
+function game2d_ticks_ms() -> int {
+    return gui.ticks_ms();
+}
+
+function game2d_delta_ms() -> int {
+    let int current_tick = gui.ticks_ms();
+    let int delta = current_tick - game2d_previous_tick;
+    game2d_previous_tick = current_tick;
+    return delta;
 }
 
 function game2d_close() -> void {
