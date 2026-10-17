@@ -1,0 +1,7 @@
+function first_value() -> int {
+    return 1;
+}
+
+function shared_name() -> int {
+    return 10;
+}
