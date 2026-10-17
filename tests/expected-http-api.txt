@@ -1,5 +1,7 @@
 hello
 200
+redirect
+302
 secret-ok
 200
 post-ok
