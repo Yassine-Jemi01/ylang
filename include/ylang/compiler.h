@@ -19,6 +19,7 @@ typedef struct ImportDecl ImportDecl;
 typedef struct Program Program;
 typedef struct EnumDecl EnumDecl;
 typedef struct EnumVariant EnumVariant;
+typedef struct MatchArm MatchArm;
 
 typedef enum {
     TYPE_ERROR,
@@ -85,6 +86,7 @@ typedef enum {
     STMT_BREAK,
     STMT_CONTINUE,
     STMT_RETURN,
+    STMT_MATCH,
     STMT_EXPR
 } StmtKind;
 
@@ -113,6 +115,7 @@ struct Stmt {
         Stmt *loop_body;
         struct { Expr *condition; Stmt *body; } while_stmt;
         struct { Stmt *initializer; Expr *condition; Expr *increment; Stmt *body; } for_stmt;
+        struct { Expr *value; MatchArm **arms; size_t arm_count; } match_stmt;
         Expr *return_value;
         Expr *expression;
     } as;
@@ -143,6 +146,12 @@ struct EnumDecl {
     EnumVariant **variants;
     size_t variant_count;
     Module *module;
+};
+
+struct MatchArm {
+    Token token;
+    EnumVariant *variant;
+    Stmt *body;
 };
 
 struct ImportName {
