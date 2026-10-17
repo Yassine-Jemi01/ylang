@@ -25,5 +25,17 @@ function main() -> int {
     let int malformed = json_get_int("{bad", "x");
     print(malformed);
     print(json_last_error());
+
+    let int short_unicode = json_get_int("{\"x\":\"\\u1\"}", "x");
+    print(short_unicode);
+    print(json_last_error());
+
+    let int leading_zero = json_get_int("{\"x\":01}", "x");
+    print(leading_zero);
+    print(json_last_error());
+
+    let int trailing_comma = json_get_int("{\"x\":[1,]}", "x");
+    print(trailing_comma);
+    print(json_last_error());
     return 0;
 }
