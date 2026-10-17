@@ -214,17 +214,33 @@ void diagnostic(Compiler *c, Token token, const char *level,
 {
     size_t line = token.line ? token.line : 1;
     size_t column = token.column ? token.column : 1;
+    const char *shown_filename = c->filename;
+    const char *shown_source = c->source;
+    size_t shown_source_length = c->source_length;
+    uintptr_t token_address = (uintptr_t)(const void *)token.start;
+    for (size_t i = 0; i < c->module_count; i++) {
+        Module *module = c->modules[i];
+        uintptr_t base = (uintptr_t)(const void *)module->source;
+        if (token_address >= base &&
+            token_address - base <= module->source_length) {
+            shown_filename = module->path;
+            shown_source = module->source;
+            shown_source_length = module->source_length;
+            break;
+        }
+    }
     fprintf(stderr, "%s[%s]: %s\n", level, code, message);
-    fprintf(stderr, "  --> %s:%zu:%zu\n", c->filename, line, column);
+    fprintf(stderr, "  --> %s:%zu:%zu\n", shown_filename, line, column);
 
-    const char *line_start = c->source;
+    const char *line_start = shown_source;
     size_t current_line = 1;
     while (current_line < line && *line_start) {
         if (*line_start++ == '\n') current_line++;
     }
     const char *line_end = line_start;
     while (*line_end && *line_end != '\n' && *line_end != '\r') line_end++;
-    if (*line_start && current_line == line) {
+    if (shown_source && line_start < shown_source + shown_source_length &&
+        *line_start && current_line == line) {
         fprintf(stderr, "   |\n%3zu | %.*s\n   | ", line,
                 (int)(line_end - line_start), line_start);
         for (size_t i = 1; i < column; i++) fputc(' ', stderr);
@@ -962,6 +978,110 @@ static Function *parse_function(Parser *p)
     return function;
 }
 
+static char *decode_import_path(Parser *p, Token token)
+{
+    if (token.length < 2 || token.start[0] != '"' ||
+        token.start[token.length - 1] != '"') {
+        diagnostic(p->compiler, token, "error", "E1020",
+                   "An import path must be a double-quoted string literal.",
+                   "Use syntax such as: from \"./module.yl\" import function_name;");
+        return arena_strndup(&p->compiler->arena, "", 0);
+    }
+
+    StringBuilder decoded;
+    sb_init(&decoded);
+    size_t end = token.length - 1;
+    for (size_t i = 1; i < end; i++) {
+        char ch = token.start[i];
+        if (ch != '\\') {
+            sb_append_n(&decoded, &ch, 1);
+            continue;
+        }
+        if (i + 1 >= end) {
+            diagnostic(p->compiler, token, "error", "E1020",
+                       "The import path ends with an incomplete escape.",
+                       "Use a plain path, or escape a backslash as \\\\.");
+            sb_destroy(&decoded);
+            return arena_strndup(&p->compiler->arena, "", 0);
+        }
+        char escaped = token.start[++i];
+        switch (escaped) {
+            case '\\': sb_append_n(&decoded, "\\", 1); break;
+            case '"': sb_append_n(&decoded, "\"", 1); break;
+            case '/': sb_append_n(&decoded, "/", 1); break;
+            default:
+                diagnostic(p->compiler, token, "error", "E1020",
+                           "Unsupported escape in import path.",
+                           "Use ordinary path characters, \\\\, or \\\".");
+                sb_destroy(&decoded);
+                return arena_strndup(&p->compiler->arena, "", 0);
+        }
+    }
+    char *path = arena_strndup(&p->compiler->arena,
+                               decoded.data ? decoded.data : "",
+                               decoded.length);
+    sb_destroy(&decoded);
+    if (path[0] == '\0') {
+        diagnostic(p->compiler, token, "error", "E1020",
+                   "An import path cannot be empty.",
+                   "Provide a relative or absolute .yl file path.");
+    }
+    return path;
+}
+
+static ImportDecl *parse_import(Parser *p, Token from_token)
+{
+    ImportDecl *import = arena_alloc(&p->compiler->arena, sizeof(*import));
+    Token path_token = consume(p, TOKEN_STRING,
+        "Expected a quoted module path after 'from'.",
+        "Use syntax such as: from \"./module.yl\" import function_name;");
+    import->token = path_token.length ? path_token : from_token;
+    import->path = decode_import_path(p, path_token);
+
+    if (p->current.type != TOKEN_IDENTIFIER ||
+        !token_is(&p->current, "import")) {
+        diagnostic(p->compiler, p->current, "error", "E1020",
+                   "Expected 'import' after the module path.",
+                   "Use: from \"./module.yl\" import function_name;");
+        synchronize(p);
+        return import;
+    }
+    advance_parser(p);
+
+    if (p->current.type != TOKEN_IDENTIFIER) {
+        diagnostic(p->compiler, p->current, "error", "E1020",
+                   "Expected at least one imported name.",
+                   "List one or more function or global names after 'import'.");
+        synchronize(p);
+        return import;
+    }
+
+    do {
+        Token name_token = consume(p, TOKEN_IDENTIFIER,
+            "Expected an imported function or global name.",
+            "Import a declared name, for example 'import system_data;'");
+        if (name_token.length == 0) break;
+        ImportName *name = arena_alloc(&p->compiler->arena, sizeof(*name));
+        name->token = name_token;
+        name->name = token_copy(p->compiler, name_token);
+        append_ptr(p->compiler, (void ***)&import->names,
+                   &import->name_count, name);
+        if (p->current.type != TOKEN_COMMA) break;
+        advance_parser(p);
+        if (p->current.type != TOKEN_IDENTIFIER) {
+            diagnostic(p->compiler, p->current, "error", "E1020",
+                       "Expected a name after ','.",
+                       "Remove the trailing comma or add another imported name.");
+            break;
+        }
+    } while (true);
+
+    (void)consume(p, TOKEN_SEMICOLON,
+                  "Expected ';' after the import declaration.",
+                  "End the import declaration with ';'.");
+    return import;
+}
+
 Program *parse_program(Compiler *c)
 {
     Parser p;
@@ -972,6 +1092,13 @@ Program *parse_program(Compiler *c)
         if (p.current.type == TOKEN_ERROR) {
             advance_parser(&p);
             continue;
+        } else if (p.current.type == TOKEN_IDENTIFIER &&
+                   token_is(&p.current, "from")) {
+            Token from_token = p.current;
+            advance_parser(&p);
+            ImportDecl *import = parse_import(&p, from_token);
+            append_ptr(c, (void ***)&program->imports,
+                       &program->import_count, import);
         } else if (match(&p, TOKEN_LET)) {
             Stmt *global_stmt = parse_variable(&p, true);
             append_ptr(c, (void ***)&program->globals, &program->global_count,
@@ -982,7 +1109,7 @@ Program *parse_program(Compiler *c)
                        &program->function_count, function);
         } else {
             diagnostic(c, p.current, "error", "E1005",
-                       "Only global declarations and function definitions are allowed at file scope.",
+                       "Only imports, global declarations, and function definitions are allowed at file scope.",
                        "Move executable statements into function main().");
             synchronize(&p);
         }
