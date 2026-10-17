@@ -11,6 +11,7 @@
 /* --------------------------- C code generation -------------------------- */
 static const char *c_base_type(YType type)
 {
+    if (type >= TYPE_ENUM_BASE) return "int64_t";
     switch (type) {
         case TYPE_INT: return "int64_t";
         case TYPE_FLOAT: return "double";
@@ -163,6 +164,10 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
     if (!expr) { sb_append(sb, "0"); return; }
     switch (expr->kind) {
         case EXPR_ERROR: sb_append(sb, "0"); break;
+        case EXPR_ENUM_VALUE:
+            sb_appendf(sb, "INT64_C(%lld)",
+                       (long long)expr->as.enum_value.variant->value);
+            break;
         case EXPR_INT: {
             const char *digits = expr->token.start;
             size_t digits_len = expr->token.length;
