@@ -394,6 +394,26 @@ static VarDecl *new_var(Compiler *c, Token token, char *name, YType type,
     return var;
 }
 
+static EnumDecl *find_enum(Compiler *compiler, const char *name)
+{
+    for (size_t i = 0; i < compiler->enum_count; i++) {
+        EnumDecl *enumeration = compiler->enums[i];
+        if ((!compiler->current_module || enumeration->module == compiler->current_module) &&
+            strcmp(enumeration->name, name) == 0) return enumeration;
+    }
+    return NULL;
+}
+
+static EnumVariant *find_enum_variant(EnumDecl *enumeration, const char *name)
+{
+    if (!enumeration) return NULL;
+    for (size_t i = 0; i < enumeration->variant_count; i++) {
+        if (strcmp(enumeration->variants[i]->name, name) == 0)
+            return enumeration->variants[i];
+    }
+    return NULL;
+}
+
 static YType parse_type(Parser *p)
 {
     Token token = consume(p, TOKEN_IDENTIFIER,
@@ -405,13 +425,16 @@ static YType parse_type(Parser *p)
     if (token_is(&token, "char")) return TYPE_CHAR;
     if (token_is(&token, "string")) return TYPE_STRING;
     if (token_is(&token, "void")) return TYPE_VOID;
+    EnumDecl *enumeration = find_enum(p->compiler, token_copy(p->compiler, token));
+    if (enumeration) return enumeration->type;
     diagnostic(p->compiler, token, "error", "E2002", "Unknown type name.",
-               "Available YLang 1.0 types: int, float, bool, char, string, void.");
+               "Available built-in types: int, float, bool, char, string, void; user-defined enums must be declared before use.");
     return TYPE_ERROR;
 }
 
 const char *type_name(YType type)
 {
+    if (type >= TYPE_ENUM_BASE) return "<enum>";
     switch (type) {
         case TYPE_INT: return "int";
         case TYPE_FLOAT: return "float";
@@ -594,9 +617,25 @@ static Expr *parse_primary(Parser *p)
                 name = arena_strndup(&p->compiler->arena, qualified.data, qualified.length);
                 sb_destroy(&qualified);
             } else {
+                EnumDecl *enumeration = find_enum(p->compiler, token_copy(p->compiler, token));
+                if (enumeration) {
+                    EnumVariant *variant = find_enum_variant(
+                        enumeration, token_copy(p->compiler, member));
+                    if (!variant) {
+                        diagnostic(p->compiler, member, "error", "E2052",
+                                   "Unknown variant for this enum type.",
+                                   "Use a variant declared inside the enum definition.");
+                        return new_expr(p->compiler, EXPR_ERROR, member);
+                    }
+                    Expr *value = new_expr(p->compiler, EXPR_ENUM_VALUE, token);
+                    value->as.enum_value.enumeration = enumeration;
+                    value->as.enum_value.variant = variant;
+                    value->type = enumeration->type;
+                    return value;
+                }
                 diagnostic(p->compiler, token, "error", "E1016",
-                           "Unknown standard-library namespace.",
-                           "Use a supported namespace such as math, string, io, path, image, or gui.");
+                           "Unknown standard-library namespace or enum type.",
+                           "Use a supported namespace such as math, string, io, path, image, or gui, or declare an enum before using EnumName.Variant.");
                 name = arena_strndup(&p->compiler->arena, "", 0);
             }
         }
@@ -825,9 +864,53 @@ static Stmt *parse_if_after_keyword(Parser *p, Token token)
     return stmt;
 }
 
+static Stmt *parse_match_after_keyword(Parser *p, Token token)
+{
+    Stmt *stmt = new_stmt(p->compiler, STMT_MATCH, token);
+    consume(p, TOKEN_LEFT_PAREN, "Expected '(' after match.",
+            "Write match (value) { EnumName.Variant -> { ... } }.");
+    stmt->as.match_stmt.value = parse_expression(p);
+    consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after match value.",
+            "Close the matched expression with ')'.");
+    consume(p, TOKEN_LEFT_BRACE, "Expected '{' before match arms.",
+            "Place one EnumName.Variant -> statement arm inside braces for each variant.");
+    while (p->current.type != TOKEN_RIGHT_BRACE &&
+           p->current.type != TOKEN_EOF) {
+        Token arm_token = p->current;
+        Expr *pattern = parse_expression(p);
+        MatchArm *arm = arena_alloc(&p->compiler->arena, sizeof(*arm));
+        arm->token = arm_token;
+        if (pattern->kind != EXPR_ENUM_VALUE) {
+            diagnostic(p->compiler, pattern->token, "error", "E2055",
+                       "A match arm must name an enum variant.",
+                       "Use a pattern such as Direction.North -> { ... }.");
+        } else {
+            arm->variant = pattern->as.enum_value.variant;
+        }
+        consume(p, TOKEN_ARROW, "Expected '->' after the match variant.",
+                "Use EnumName.Variant -> { ... }.");
+        arm->body = parse_statement(p);
+        append_ptr(p->compiler, (void ***)&stmt->as.match_stmt.arms,
+                   &stmt->as.match_stmt.arm_count, arm);
+        if (match(p, TOKEN_COMMA) || match(p, TOKEN_SEMICOLON)) continue;
+        if (p->current.type != TOKEN_RIGHT_BRACE &&
+            p->current.start == arm_token.start &&
+            p->current.type == arm_token.type) {
+            advance_parser(p);
+        }
+    }
+    consume(p, TOKEN_RIGHT_BRACE, "Expected '}' after match arms.",
+            "Close the match statement with '}'.");
+    return stmt;
+}
+
 static Stmt *parse_statement(Parser *p)
 {
     Token token = p->current;
+    if (p->current.type == TOKEN_IDENTIFIER && token_is(&p->current, "match")) {
+        advance_parser(p);
+        return parse_match_after_keyword(p, token);
+    }
     if (match(p, TOKEN_LET)) return parse_variable(p, false);
     if (match(p, TOKEN_LEFT_BRACE)) return parse_block_after_open(p, token);
 
@@ -976,6 +1059,72 @@ static Function *parse_function(Parser *p)
     function->body = parse_block_after_open(p, p->previous);
     (void)start;
     return function;
+}
+
+static EnumDecl *parse_enum(Parser *p, Token enum_token)
+{
+    Token name_token = consume(p, TOKEN_IDENTIFIER,
+        "Expected an enum name after 'enum'.",
+        "Use a declaration such as enum Color { Red, Green, Blue }.");
+    if (name_token.length == 0) return NULL;
+
+    const char *name = token_copy(p->compiler, name_token);
+    for (size_t i = 0; i < p->compiler->enum_count; i++) {
+        EnumDecl *existing = p->compiler->enums[i];
+        if (existing->module == p->compiler->current_module &&
+            strcmp(existing->name, name) == 0) {
+            diagnostic(p->compiler, name_token, "error", "E2050",
+                       "This enum type is already declared in the current module.",
+                       "Choose a unique enum type name.");
+            break;
+        }
+    }
+
+    EnumDecl *enumeration = arena_alloc(&p->compiler->arena, sizeof(*enumeration));
+    enumeration->token = enum_token;
+    enumeration->name = (char *)name;
+    enumeration->type = (YType)(TYPE_ENUM_BASE + p->compiler->enum_count);
+    enumeration->module = p->compiler->current_module;
+    append_ptr(p->compiler, (void ***)&p->compiler->enums,
+               &p->compiler->enum_count, enumeration);
+
+    consume(p, TOKEN_LEFT_BRACE, "Expected '{' after the enum name.",
+            "List enum variants inside braces, for example enum Color { Red, Green }.");
+    while (p->current.type != TOKEN_RIGHT_BRACE &&
+           p->current.type != TOKEN_EOF) {
+        Token variant_token = consume(p, TOKEN_IDENTIFIER,
+            "Expected an enum variant name.",
+            "Use a variant identifier such as Red or Green.");
+        if (variant_token.length == 0) break;
+        char *variant_name = token_copy(p->compiler, variant_token);
+        if (find_enum_variant(enumeration, variant_name)) {
+            diagnostic(p->compiler, variant_token, "error", "E2051",
+                       "This enum variant is declared more than once.",
+                       "Each variant name must be unique within its enum.");
+        } else {
+            EnumVariant *variant = arena_alloc(&p->compiler->arena, sizeof(*variant));
+            variant->token = variant_token;
+            variant->name = variant_name;
+            variant->value = (int64_t)enumeration->variant_count;
+            variant->enumeration = enumeration;
+            append_ptr(p->compiler, (void ***)&enumeration->variants,
+                       &enumeration->variant_count, variant);
+        }
+        if (match(p, TOKEN_COMMA)) {
+            if (p->current.type == TOKEN_RIGHT_BRACE) break;
+        } else {
+            break;
+        }
+    }
+    if (enumeration->variant_count == 0) {
+        diagnostic(p->compiler, name_token, "error", "E2053",
+                   "An enum must declare at least one variant.",
+                   "Add one or more variants inside the braces.");
+    }
+    consume(p, TOKEN_RIGHT_BRACE, "Expected '}' after enum variants.",
+            "Close the enum declaration with '}'.");
+    (void)match(p, TOKEN_SEMICOLON);
+    return enumeration;
 }
 
 static char *decode_import_path(Parser *p, Token token)
@@ -1135,6 +1284,11 @@ Program *parse_program(Compiler *c)
         if (p.current.type == TOKEN_ERROR) {
             advance_parser(&p);
             continue;
+        } else if (p.current.type == TOKEN_IDENTIFIER &&
+                   token_is(&p.current, "enum")) {
+            Token enum_token = p.current;
+            advance_parser(&p);
+            (void)parse_enum(&p, enum_token);
         } else if (p.current.type == TOKEN_IDENTIFIER &&
                    token_is(&p.current, "from")) {
             Token from_token = p.current;

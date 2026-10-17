@@ -11,6 +11,7 @@
 /* --------------------------- C code generation -------------------------- */
 static const char *c_base_type(YType type)
 {
+    if (type >= TYPE_ENUM_BASE) return "int64_t";
     switch (type) {
         case TYPE_INT: return "int64_t";
         case TYPE_FLOAT: return "double";
@@ -163,6 +164,10 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
     if (!expr) { sb_append(sb, "0"); return; }
     switch (expr->kind) {
         case EXPR_ERROR: sb_append(sb, "0"); break;
+        case EXPR_ENUM_VALUE:
+            sb_appendf(sb, "INT64_C(%lld)",
+                       (long long)expr->as.enum_value.variant->value);
+            break;
         case EXPR_INT: {
             const char *digits = expr->token.start;
             size_t digits_len = expr->token.length;
@@ -495,6 +500,26 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); fputs("return", out);
             if (stmt->as.return_value) { fputc(' ', out); emit_expr_to_file(out, stmt->as.return_value); }
             fputs(";\n", out); break;
+        case STMT_MATCH: {
+            char match_name[96];
+            (void)snprintf(match_name, sizeof(match_name), "yl_match_%zu_%zu",
+                           stmt->token.line, stmt->token.column);
+            emit_indent(out, indent); fputs("{\n", out);
+            emit_indent(out, indent + 1);
+            fprintf(out, "int64_t %s = ", match_name);
+            emit_expr_to_file(out, stmt->as.match_stmt.value);
+            fputs(";\n", out);
+            for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++) {
+                MatchArm *arm = stmt->as.match_stmt.arms[i];
+                emit_indent(out, indent + 1);
+                fputs(i == 0 ? "if (" : "else if (", out);
+                fprintf(out, "%s == INT64_C(%lld))\n", match_name,
+                        (long long)(arm->variant ? arm->variant->value : 0));
+                emit_stmt(out, arm->body, indent + 1);
+            }
+            emit_indent(out, indent); fputs("}\n", out);
+            break;
+        }
         case STMT_EXPR:
             emit_indent(out, indent); emit_expr_to_file(out, stmt->as.expression); fputs(";\n", out); break;
     }

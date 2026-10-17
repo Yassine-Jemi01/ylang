@@ -63,6 +63,7 @@ static bool asm_reject(AsmContext *ctx, Token token, const char *feature)
 static bool asm_type_supported(AsmContext *ctx, YType type, Token token,
                                bool allow_void)
 {
+    if (type >= TYPE_ENUM_BASE) return true;
     switch (type) {
         case TYPE_INT:
         case TYPE_BOOL:
@@ -96,6 +97,7 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
     if (!asm_type_supported(ctx, expr->type, expr->token, true)) return false;
 
     switch (expr->kind) {
+        case EXPR_ENUM_VALUE:
         case EXPR_INT:
         case EXPR_BOOL:
             return true;
@@ -201,6 +203,12 @@ static bool validate_stmt(AsmContext *ctx, Stmt *stmt)
             return validate_expr(ctx, stmt->as.if_stmt.condition) &&
                    validate_stmt(ctx, stmt->as.if_stmt.then_branch) &&
                    validate_stmt(ctx, stmt->as.if_stmt.else_branch);
+        case STMT_MATCH:
+            if (!validate_expr(ctx, stmt->as.match_stmt.value)) return false;
+            for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++) {
+                if (!validate_stmt(ctx, stmt->as.match_stmt.arms[i]->body)) return false;
+            }
+            return true;
         case STMT_LOOP:
             return validate_stmt(ctx, stmt->as.loop_body);
         case STMT_WHILE:
@@ -264,6 +272,11 @@ static bool collect_stmt_slots(AsmContext *ctx, Stmt *stmt)
         case STMT_IF:
             return collect_stmt_slots(ctx, stmt->as.if_stmt.then_branch) &&
                    collect_stmt_slots(ctx, stmt->as.if_stmt.else_branch);
+        case STMT_MATCH:
+            for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++) {
+                if (!collect_stmt_slots(ctx, stmt->as.match_stmt.arms[i]->body)) return false;
+            }
+            break;
         case STMT_LOOP:
             return collect_stmt_slots(ctx, stmt->as.loop_body);
         case STMT_WHILE:
@@ -480,6 +493,10 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
         return true;
     }
     switch (expr->kind) {
+        case EXPR_ENUM_VALUE:
+            fprintf(ctx->out, "    mov rax, 0x%016" PRIx64 "\n",
+                    (uint64_t)expr->as.enum_value.variant->value);
+            return true;
         case EXPR_INT: {
             char *literal = token_copy(ctx->compiler, expr->token);
             char *end = NULL;
@@ -879,6 +896,24 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
             }
             fprintf(ctx->out, "    jmp .Lreturn_%s\n", ctx->function->c_name);
             return true;
+        case STMT_MATCH: {
+            unsigned end_label = new_label(ctx);
+            for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++) {
+                MatchArm *arm = stmt->as.match_stmt.arms[i];
+                unsigned next_label = new_label(ctx);
+                if (!emit_expr(ctx, stmt->as.match_stmt.value)) return false;
+                fputs("    mov r10, rax\n", ctx->out);
+                fprintf(ctx->out, "    mov rax, 0x%016" PRIx64 "\n",
+                        (uint64_t)(arm->variant ? arm->variant->value : 0));
+                fputs("    cmp r10, rax\n", ctx->out);
+                fprintf(ctx->out, "    jne .Lmatch_next_%u\n", next_label);
+                if (!emit_stmt(ctx, arm->body)) return false;
+                fprintf(ctx->out, "    jmp .Lmatch_end_%u\n", end_label);
+                fprintf(ctx->out, ".Lmatch_next_%u:\n", next_label);
+            }
+            fprintf(ctx->out, ".Lmatch_end_%u:\n", end_label);
+            return true;
+        }
         case STMT_EXPR:
             return emit_expr(ctx, stmt->as.expression);
     }
