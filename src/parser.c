@@ -1066,6 +1066,13 @@ static ImportDecl *parse_import(Parser *p, Token from_token)
         name->name = token_copy(p->compiler, name_token);
         append_ptr(p->compiler, (void ***)&import->names,
                    &import->name_count, name);
+        /* Accept the function-like spelling for compatibility: import helper()
+           names a symbol; it does not call it. */
+        if (match(p, TOKEN_LEFT_PAREN)) {
+            (void)consume(p, TOKEN_RIGHT_PAREN,
+                          "Imported names cannot have arguments.",
+                          "Use empty parentheses only, for example import system_data().");
+        }
         if (p->current.type != TOKEN_COMMA) break;
         advance_parser(p);
         if (p->current.type != TOKEN_IDENTIFIER) {
