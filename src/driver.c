@@ -861,6 +861,27 @@ static int run_native_compiler(const char *cc, const char *c_path,
         return 1;
     }
     if (pid == 0) {
+        const char *sanitize_native = getenv("YLANG_SANITIZE_NATIVE");
+        if (sanitize_native && strcmp(sanitize_native, "1") == 0) {
+            if (uses_http) {
+                execlp(cc, cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic",
+                       "-Wno-unused-function", "-O2", "-g", "-D_FORTIFY_SOURCE=3",
+                       "-fstack-protector-strong", "-fPIE",
+                       "-fsanitize=address,undefined", "-fno-omit-frame-pointer",
+                       c_path, "-lcurl", "-lm", "-pie", "-Wl,-z,relro,-z,now",
+                       "-o", output_path, (char *)NULL);
+            } else {
+                execlp(cc, cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic",
+                       "-Wno-unused-function", "-O2", "-g", "-D_FORTIFY_SOURCE=3",
+                       "-fstack-protector-strong", "-fPIE",
+                       "-fsanitize=address,undefined", "-fno-omit-frame-pointer",
+                       c_path, "-lm", "-pie", "-Wl,-z,relro,-z,now",
+                       "-o", output_path, (char *)NULL);
+            }
+            fprintf(stderr, "ylang: cannot execute '%s': %s\n", cc, strerror(errno));
+            _exit(127);
+        }
+
         if (uses_http) {
             execlp(cc, cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic",
                    "-Wno-unused-function", "-O2", "-g", "-D_FORTIFY_SOURCE=3",
