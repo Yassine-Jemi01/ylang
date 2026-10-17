@@ -9,8 +9,14 @@
 #include <string.h>
 
 /* --------------------------- C code generation -------------------------- */
-static const char *c_base_type(YType type)
+static const char *c_base_type(Compiler *compiler, YType type)
 {
+    if (type >= TYPE_STRUCT_BASE) {
+        size_t index = (size_t)(type - TYPE_STRUCT_BASE);
+        if (index < compiler->struct_count && compiler->structs[index]->c_name)
+            return compiler->structs[index]->c_name;
+        return "int";
+    }
     if (type >= TYPE_ENUM_BASE) return "int64_t";
     switch (type) {
         case TYPE_INT: return "int64_t";
@@ -168,6 +174,12 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             sb_appendf(sb, "INT64_C(%lld)",
                        (long long)expr->as.enum_value.variant->value);
             break;
+        case EXPR_FIELD:
+            sb_append(sb, "(");
+            emit_expr(sb, expr->as.field.target);
+            sb_appendf(sb, ").%s", expr->as.field.field ?
+                       expr->as.field.field->c_name : "yl_invalid_field");
+            break;
         case EXPR_INT: {
             const char *digits = expr->token.start;
             size_t digits_len = expr->token.length;
@@ -241,6 +253,15 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             }
             break;
         case EXPR_CALL: {
+            if (expr->as.call.struct_type) {
+                sb_appendf(sb, "(%s){", expr->as.call.struct_type->c_name);
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    if (i) sb_append(sb, ", ");
+                    emit_expr(sb, expr->as.call.args[i]);
+                }
+                sb_append(sb, "}");
+                break;
+            }
             if (strcmp(expr->as.call.name, "length") == 0 && expr->as.call.count == 1) {
                 Expr *arg = expr->as.call.args[0];
                 VarDecl *var = arg->kind == EXPR_NAME ? arg->as.name.variable : NULL;
@@ -364,11 +385,11 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
     }
 }
 
-static void emit_var_type(FILE *out, VarDecl *var, bool global)
+static void emit_var_type(Compiler *compiler, FILE *out, VarDecl *var, bool global)
 {
     if (global) fputs("static ", out);
     if (var->is_const && var->type != TYPE_STRING) fputs("const ", out);
-    fputs(c_base_type(var->type), out);
+    fputs(c_base_type(compiler, var->type), out);
     if (var->is_const && var->type == TYPE_STRING) fputs(" const", out);
 }
 
@@ -439,7 +460,7 @@ static void emit_stmt(FILE *out, Stmt *stmt, unsigned indent)
             break;
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
-            emit_indent(out, indent); emit_var_type(out, var, false);
+            emit_indent(out, indent); emit_var_type(c, out, var, false);
             fprintf(out, " %s", var->c_name);
             if (var->is_array) fprintf(out, "[%zu]", var->array_length);
             if (var->initializer) {
@@ -616,9 +637,20 @@ bool generate_c(Compiler *c, const char *path)
     }
     emit_runtime(out);
 
+    for (size_t i = 0; i < c->struct_count; i++) {
+        StructDecl *structure = c->structs[i];
+        fprintf(out, "typedef struct %s {\n", structure->c_name);
+        for (size_t j = 0; j < structure->field_count; j++) {
+            StructField *field = structure->fields[j];
+            fprintf(out, "    %s %s;\n",
+                    c_base_type(c, field->type), field->c_name);
+        }
+        fprintf(out, "} %s;\n\n", structure->c_name);
+    }
+
     for (size_t i = 0; i < c->program->global_count; i++) {
         VarDecl *var = c->program->globals[i];
-        emit_var_type(out, var, true);
+        emit_var_type(c, out, var, true);
         fprintf(out, " %s", var->c_name);
         if (var->is_array) fprintf(out, "[%zu]", var->array_length);
         if (var->initializer) {
@@ -640,7 +672,7 @@ bool generate_c(Compiler *c, const char *path)
 
     for (size_t i = 0; i < c->program->function_count; i++) {
         Function *fn = c->program->functions[i];
-        fprintf(out, "%s %s(", c_base_type(fn->return_type), fn->c_name);
+        fprintf(out, "%s %s(", c_base_type(c, fn->return_type), fn->c_name);
         if (fn->param_count == 0) fputs("void", out);
         bool first_param = true;
         for (size_t j = 0; j < fn->param_count; j++) {
@@ -648,7 +680,7 @@ bool generate_c(Compiler *c, const char *path)
             if (!first_param) fputs(", ", out);
             if (param->is_array) {
                 fprintf(out, "%s *%s, size_t %s_len",
-                        c_base_type(param->type), param->c_name, param->c_name);
+                        c_base_type(c, param->type), param->c_name, param->c_name);
             } else {
                 fprintf(out, "%s %s", c_base_type(param->type), param->c_name);
             }
