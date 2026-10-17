@@ -1,0 +1,4 @@
+function broken() -> int {
+    let string error_value = 42;
+    return 0;
+}
