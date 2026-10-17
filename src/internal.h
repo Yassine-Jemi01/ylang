@@ -41,6 +41,7 @@ struct Compiler {
     size_t struct_count;
     Module *current_module;
     bool uses_gui;
+    bool quiet_diagnostics;
 };
 
 typedef struct {
