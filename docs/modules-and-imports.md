@@ -40,3 +40,8 @@ For now the compiler flattens loaded files into one program before semantic chec
 There are no aliases, module-qualified names, public/private declarations, separate compiled module artifacts, incremental rebuild cache, package manifests, or versioned dependencies. Do not treat this prototype as a stable module ABI.
 
 These limitations are deliberate work items for the v2 development line. The next module milestone is to add per-module symbol visibility and diagnostics, then decide how external libraries and package metadata should work.
+
+
+## Cross-module function names
+
+The current preview flattens imported source files into one compilation unit. Consequently, function names must be unique across all participating files; imported modules do not yet have independent namespaces. YLang reports this early as **E1103**, with locations for both definitions, rather than relying on a later C compiler redefinition error. Independent module namespaces and explicit aliases remain future language-design work.
