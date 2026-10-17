@@ -1,0 +1,11 @@
+function main() -> int {
+    loop() {
+        break;
+        print("this must be diagnosed as unreachable after break");
+    }
+    loop() {
+        continue;
+        print("this must be diagnosed as unreachable after continue");
+    }
+    return 0;
+}
