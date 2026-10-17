@@ -19,11 +19,19 @@ typedef struct {
     ArenaBlock *head;
 } Arena;
 
+typedef struct {
+    const char *filename;
+    size_t offset;
+    size_t length;
+} SourceUnit;
+
 struct Compiler {
     Arena arena;
     char *filename;
     char *source;
     size_t source_length;
+    const SourceUnit *source_units;
+    size_t source_unit_count;
     bool had_error;
     unsigned error_count;
     unsigned warning_count;
