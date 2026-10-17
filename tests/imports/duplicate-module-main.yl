@@ -1,0 +1,8 @@
+from duplicate-module-a.yl import first_value()
+from duplicate-module-b.yl import second_value()
+
+function main() -> int {
+    print(first_value());
+    print(second_value());
+    return 0;
+}
