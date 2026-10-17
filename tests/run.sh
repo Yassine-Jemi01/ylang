@@ -743,8 +743,11 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
     diff -u build/repeated-imports-asm.expected build/repeated-imports-asm.out
 fi
 
-# Experimental NASM backend: test emission everywhere and execute it when NASM is present.
+# NASM is experimental: compare the stable C backend and NASM against the same golden output.
 ./build/ylang check tests/asm-basic.yl >/dev/null
+./build/ylang build tests/asm-basic.yl -o build/test-asm-basic-c >/dev/null
+./build/test-asm-basic-c > build/asm-basic-c.out
+diff -u tests/expected-asm-basic.txt build/asm-basic-c.out
 ./build/ylang emit-asm tests/asm-basic.yl -o build/asm-basic.asm >/dev/null
 grep -q '^global _start$' build/asm-basic.asm
 grep -q '^__yl_runtime_error:' build/asm-basic.asm
@@ -757,6 +760,7 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     ld -o build/test-asm-basic build/asm-basic.o
     ./build/test-asm-basic > build/asm-basic.out
     diff -u tests/expected-asm-basic.txt build/asm-basic.out
+    diff -u build/asm-basic-c.out build/asm-basic.out
     ./build/ylang build-asm tests/asm-basic.yl -o build/test-asm-basic-cli >/dev/null
     ./build/test-asm-basic-cli > build/asm-basic-cli.out
     diff -u tests/expected-asm-basic.txt build/asm-basic-cli.out
@@ -868,7 +872,11 @@ if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists sdl2; then
     ./build/ylang build tests/gui-smoke.yl -o build/test-gui >/dev/null
     if [ "$(uname -s)" = "Linux" ]; then
         SDL_VIDEODRIVER=dummy ./build/test-gui
+    else
+        echo "SKIP: SDL2 runtime smoke test executes only on Linux CI (build succeeded)." >&2
     fi
+else
+    echo "SKIP: SDL2 integration tests (install pkg-config and SDL2 development files to enable)." >&2
 fi
 
 echo "All YLang tests passed."
