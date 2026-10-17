@@ -250,6 +250,13 @@ normalize_output build/imports.out
 diff -u tests/expected-imports.txt build/imports.out
 "$YLANG" check examples/imports/main.yl >/dev/null
 
+# Quoted module paths must preserve spaces and resolve relative to the importer.
+"$YLANG" check tests/imports/quoted-path.yl >/dev/null
+"$YLANG" build tests/imports/quoted-path.yl -o "build/test-quoted-path$EXEEXT" >/dev/null
+"./build/test-quoted-path$EXEEXT" > build/quoted-path.out
+normalize_output build/quoted-path.out
+diff -u tests/expected-quoted-path.txt build/quoted-path.out
+
 # Re-importing one canonical module through separate directives must load it once
 # while making each explicitly imported function available to the root module.
 "$YLANG" check tests/imports/repeated-imports.yl >/dev/null
