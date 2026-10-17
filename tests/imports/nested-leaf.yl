@@ -1,0 +1,3 @@
+function leaf_value() -> int {
+    return 17;
+}
