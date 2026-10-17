@@ -333,6 +333,217 @@ grep -q '^6$' build/compound-operators.out
 grep -q '^2$' build/compound-operators.out
 
 
+# Multi-file imports resolve relative to the importing source file.
+mkdir -p build/imports
+cat > build/imports/suffix.yl <<'EOF'
+let const string suffix_prefix = "-";
+function make_suffix() -> string {
+    return string.concat(suffix_prefix, "YLang");
+}
+function private_helper() -> string {
+    return "suffix-private";
+}
+EOF
+cat > build/imports/data.yl <<'EOF'
+from "./suffix.yl" import make_suffix;
+let const string system_prefix = "module";
+function system_data() -> string {
+    return string.concat(private_helper(), make_suffix());
+}
+function private_helper() -> string {
+    return "data-private";
+}
+let int imported_counter = 4;
+function bump_counter(int amount) -> int {
+    imported_counter += amount;
+    return imported_counter;
+}
+EOF
+cat > build/imports/main.yl <<'EOF'
+from "./data.yl" import system_data(), system_prefix, imported_counter, bump_counter;
+function m1_private_helper() -> string {
+    return "root-collision-test";
+}
+function main() -> int {
+    print(system_data(), system_prefix);
+    print(m1_private_helper());
+    print(bump_counter(3), imported_counter);
+    return 0;
+}
+EOF
+./build/ylang check build/imports/main.yl >/dev/null
+./build/ylang build build/imports/main.yl -o build/test-module-imports >/dev/null
+./build/test-module-imports > build/module-imports.out
+printf 'data-private-YLang module\nroot-collision-test\n7 7\n' > build/module-imports.expected
+diff -u build/module-imports.expected build/module-imports.out
+
+# Names from a module remain private unless imported.
+cat > build/imports/private-name.yl <<'EOF'
+from "./data.yl" import system_data;
+function main() -> int {
+    print(private_helper());
+    return 0;
+}
+EOF
+if ./build/ylang check build/imports/private-name.yl > build/imports/private-name.out 2>&1; then
+    echo "FAIL: an unimported module-private function was visible" >&2
+    exit 1
+fi
+grep -q 'Call to an unknown function' build/imports/private-name.out
+
+# Missing imported names and import cycles must produce diagnostics.
+cat > build/imports/missing-name.yl <<'EOF'
+from "./data.yl" import does_not_exist;
+function main() -> int { return 0; }
+EOF
+if ./build/ylang check build/imports/missing-name.yl > build/imports/missing-name.out 2>&1; then
+    echo "FAIL: an unknown imported symbol was accepted" >&2
+    exit 1
+fi
+grep -q 'E1024' build/imports/missing-name.out
+
+cat > build/imports/duplicate-import.yl <<'EOF'
+from "./data.yl" import system_data;
+from "./suffix.yl" import system_data;
+function main() -> int { return 0; }
+EOF
+if ./build/ylang check build/imports/duplicate-import.yl > build/imports/duplicate-import.out 2>&1; then
+    echo "FAIL: the same imported name was accepted twice" >&2
+    exit 1
+fi
+grep -q 'E1025' build/imports/duplicate-import.out
+
+cat > build/imports/missing-file.yl <<'EOF'
+from "./not-here.yl" import missing;
+function main() -> int { return 0; }
+EOF
+if ./build/ylang check build/imports/missing-file.yl > build/imports/missing-file.out 2>&1; then
+    echo "FAIL: a missing imported file was accepted" >&2
+    exit 1
+fi
+grep -q 'E1022' build/imports/missing-file.out
+
+cat > build/imports/contains-main.yl <<'EOF'
+function main() -> int { return 0; }
+function helper() -> int { return 1; }
+EOF
+cat > build/imports/import-main.yl <<'EOF'
+from "./contains-main.yl" import helper;
+function main() -> int { return helper(); }
+EOF
+if ./build/ylang check build/imports/import-main.yl > build/imports/import-main.out 2>&1; then
+    echo "FAIL: imported module entry point was accepted" >&2
+    exit 1
+fi
+grep -q 'E1026' build/imports/import-main.out
+
+cat > build/imports/cycle-a.yl <<'EOF'
+from "./cycle-b.yl" import cycle_b;
+function cycle_a() -> int { return 1; }
+function main() -> int { return cycle_b(); }
+EOF
+cat > build/imports/cycle-b.yl <<'EOF'
+from "./cycle-a.yl" import cycle_a;
+function cycle_b() -> int { return cycle_a(); }
+EOF
+if ./build/ylang check build/imports/cycle-a.yl > build/imports/cycle.out 2>&1; then
+    echo "FAIL: a circular module import was accepted" >&2
+    exit 1
+fi
+grep -q 'E1023' build/imports/cycle.out
+
+# Repeated imports of one canonical file should reuse the module and bind different names.
+cat > build/imports/reusable.yl <<'EOF'
+let int reusable_counter = 3;
+function reusable_one() -> int { return 11; }
+function reusable_two() -> int { return 22; }
+function increment_reusable(int amount) -> int {
+    reusable_counter += amount;
+    return reusable_counter;
+}
+EOF
+cat > build/imports/repeated.yl <<'EOF'
+from "./reusable.yl" import reusable_one;
+from "./reusable.yl" import reusable_two, reusable_counter, increment_reusable;
+function main() -> int {
+    print(reusable_one(), reusable_two());
+    print(reusable_counter);
+    print(increment_reusable(4));
+    return 0;
+}
+EOF
+./build/ylang build build/imports/repeated.yl -o build/test-repeated-imports >/dev/null
+./build/test-repeated-imports > build/repeated-imports.out
+printf '11 22\n3\n7\n' > build/repeated-imports.expected
+diff -u build/repeated-imports.expected build/repeated-imports.out
+
+# Quoted import paths must preserve spaces in filenames.
+cat > "build/imports/string tools.yl" <<'EOF'
+function spaced_import() -> string { return "path with spaces"; }
+EOF
+cat > build/imports/spaced-path.yl <<'EOF'
+from "./string tools.yl" import spaced_import();
+function main() -> int {
+    print(spaced_import());
+    return 0;
+}
+EOF
+./build/ylang build build/imports/spaced-path.yl -o build/test-spaced-import >/dev/null
+./build/test-spaced-import > build/spaced-import.out
+printf 'path with spaces\n' > build/spaced-import.expected
+diff -u build/spaced-import.expected build/spaced-import.out
+
+# Dotted filenames and YLANG_PATH support reusable local libraries.
+cat > build/imports/dotted-path.yl <<'EOF'
+from reusable.yl import reusable_one;
+function main() -> int {
+    print(reusable_one());
+    return 0;
+}
+EOF
+./build/ylang build build/imports/dotted-path.yl -o build/test-dotted-import >/dev/null
+./build/test-dotted-import > build/dotted-import.out
+printf '11\n' > build/dotted-import.expected
+diff -u build/dotted-import.expected build/dotted-import.out
+
+mkdir -p build/imports/library
+cat > build/imports/library/mathlib.yl <<'EOF'
+function library_value() -> int { return 314; }
+EOF
+cat > build/imports/library-main.yl <<'EOF'
+from mathlib.yl import library_value;
+function main() -> int {
+    print(library_value());
+    return 0;
+}
+EOF
+YLANG_PATH=build/imports/library ./build/ylang build build/imports/library-main.yl -o build/test-library-import >/dev/null
+./build/test-library-import > build/library-import.out
+printf '314\n' > build/library-import.expected
+diff -u build/library-import.expected build/library-import.out
+
+# The NASM backend supports imported functions when their modules use its subset.
+cat > build/imports/reusable-functions.yl <<'EOF'
+function reusable_one() -> int { return 11; }
+function reusable_two() -> int { return 22; }
+EOF
+cat > build/imports/repeated-asm.yl <<'EOF'
+from "./reusable-functions.yl" import reusable_one;
+from "./reusable-functions.yl" import reusable_two;
+function main() -> int {
+    print(reusable_one(), reusable_two());
+    return 0;
+}
+EOF
+./build/ylang emit-asm build/imports/repeated-asm.yl -o build/imports/repeated.asm >/dev/null
+grep -q 'yl_fn_m' build/imports/repeated.asm
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
+    ./build/ylang build-asm build/imports/repeated-asm.yl -o build/test-repeated-imports-asm >/dev/null
+    ./build/test-repeated-imports-asm > build/repeated-imports-asm.out
+    printf '11 22\n' > build/repeated-imports-asm.expected
+    diff -u build/repeated-imports-asm.expected build/repeated-imports-asm.out
+fi
+
 # Experimental NASM backend: test emission everywhere and execute it when NASM is present.
 ./build/ylang check tests/asm-basic.yl >/dev/null
 ./build/ylang emit-asm tests/asm-basic.yl -o build/asm-basic.asm >/dev/null

@@ -21,6 +21,7 @@ typedef struct {
     unsigned loop_depth;
     Expr *allowed_assignment;
     bool allow_array_name;
+    Module *module;
 } Checker;
 
 static Scope *scope_new(Compiler *c, Scope *parent)
@@ -103,14 +104,57 @@ static const char *nearest_variable(Checker *checker, const char *name)
     return best_name;
 }
 
-static const char *nearest_function(Compiler *c, const char *name)
+static Function *module_local_function(Module *module, const char *name)
+{
+    if (!module || !module->program) return NULL;
+    for (size_t i = 0; i < module->program->function_count; i++) {
+        Function *function = module->program->functions[i];
+        if (strcmp(function->name, name) == 0) return function;
+    }
+    return NULL;
+}
+
+static ImportName *module_imported_name(Module *module, const char *name)
+{
+    if (!module || !module->program) return NULL;
+    for (size_t i = 0; i < module->program->import_count; i++) {
+        ImportDecl *import = module->program->imports[i];
+        for (size_t j = 0; j < import->name_count; j++) {
+            ImportName *symbol = import->names[j];
+            if (strcmp(symbol->name, name) == 0) return symbol;
+        }
+    }
+    return NULL;
+}
+
+static Function *resolve_function(Checker *checker, const char *name)
+{
+    if (!checker->module) return find_function(checker->compiler, name);
+    Function *local = module_local_function(checker->module, name);
+    if (local) return local;
+    ImportName *symbol = module_imported_name(checker->module, name);
+    return symbol ? symbol->function : NULL;
+}
+
+static const char *nearest_function(Checker *checker, const char *name)
 {
     const char *best_name = NULL;
     unsigned best = 4;
-    for (size_t i = 0; i < c->program->function_count; i++) {
-        const char *candidate = c->program->functions[i]->name;
+    Module *module = checker->module;
+    if (!module || !module->program) return NULL;
+    for (size_t i = 0; i < module->program->function_count; i++) {
+        const char *candidate = module->program->functions[i]->name;
         unsigned distance = edit_distance(name, candidate);
         if (distance < best) { best = distance; best_name = candidate; }
+    }
+    for (size_t i = 0; i < module->program->import_count; i++) {
+        ImportDecl *import = module->program->imports[i];
+        for (size_t j = 0; j < import->name_count; j++) {
+            ImportName *symbol = import->names[j];
+            if (!symbol->function) continue;
+            unsigned distance = edit_distance(name, symbol->name);
+            if (distance < best) { best = distance; best_name = symbol->name; }
+        }
     }
     return best_name;
 }
@@ -669,9 +713,9 @@ static YType check_expr(Checker *checker, Expr *expr)
                 expr->type = TYPE_FLOAT;
                 return expr->type;
             }
-            Function *function = find_function(c, expr->as.call.name);
+            Function *function = resolve_function(checker, expr->as.call.name);
             if (!function) {
-                const char *near = nearest_function(c, expr->as.call.name);
+                const char *near = nearest_function(checker, expr->as.call.name);
                 if (edit_distance(expr->as.call.name, "print") <= 2) {
                     diagnostic(c, expr->token, "error", "E2040",
                                "Unknown function name; 'print' is a built-in statement, not a function.",
@@ -956,22 +1000,53 @@ static void check_stmt(Checker *checker, Stmt *stmt)
 
 bool check_program(Compiler *c)
 {
-    Checker checker = { .compiler = c, .scope = NULL, .function = NULL, .loop_depth = 0 };
-    Scope *globals = scope_new(c, NULL);
-    checker.scope = globals;
+    Checker checker = {
+        .compiler = c, .scope = NULL, .function = NULL, .loop_depth = 0,
+        .allowed_assignment = NULL, .allow_array_name = false, .module = NULL
+    };
 
-    for (size_t i = 0; i < c->program->global_count; i++) {
-        VarDecl *var = c->program->globals[i];
-        if (var->type == TYPE_VOID) {
-            diagnostic(c, var->token, "error", "E2005",
-                       "A variable cannot have type void.",
-                       "Use a value type such as int, float, bool, char, or string.");
+    /* Each source module gets its own global scope. Imported variables are
+       added explicitly; private globals remain module-local. */
+    for (size_t m = 0; m < c->module_count; m++) {
+        Module *module = c->modules[m];
+        Scope *globals = scope_new(c, NULL);
+        module->global_scope = globals;
+        checker.module = module;
+        checker.scope = globals;
+
+        for (size_t i = 0; i < module->program->global_count; i++) {
+            VarDecl *var = module->program->globals[i];
+            if (var->type == TYPE_VOID) {
+                diagnostic(c, var->token, "error", "E2005",
+                           "A variable cannot have type void.",
+                           "Use a value type such as int, float, bool, char, or string.");
+            }
+            (void)scope_add(&checker, globals, var);
         }
-        (void)scope_add(&checker, globals, var);
+        for (size_t i = 0; i < module->program->import_count; i++) {
+            ImportDecl *import = module->program->imports[i];
+            for (size_t j = 0; j < import->name_count; j++) {
+                ImportName *symbol = import->names[j];
+                if (!symbol->variable) continue;
+                if (scope_lookup(globals, symbol->name)) {
+                    diagnostic(c, symbol->token, "error", "E1025",
+                               "An imported global conflicts with a global already visible in this module.",
+                               "Rename the local declaration or import the name only once.");
+                    continue;
+                }
+                (void)scope_add(&checker, globals, symbol->variable);
+            }
+        }
     }
-    for (size_t i = 0; i < c->program->global_count; i++) {
-        VarDecl *var = c->program->globals[i];
-        if (var->initializer) {
+
+    for (size_t m = 0; m < c->module_count; m++) {
+        Module *module = c->modules[m];
+        checker.module = module;
+        checker.scope = module->global_scope;
+        checker.function = NULL;
+        for (size_t i = 0; i < module->program->global_count; i++) {
+            VarDecl *var = module->program->globals[i];
+            if (!var->initializer) continue;
             YType actual = check_expr(&checker, var->initializer);
             if (actual != TYPE_ERROR && actual != var->type) {
                 char suggestion[256];
@@ -989,18 +1064,28 @@ bool check_program(Compiler *c)
         }
     }
 
-    for (size_t i = 0; i < c->program->function_count; i++) {
-        for (size_t j = i + 1; j < c->program->function_count; j++) {
-            if (strcmp(c->program->functions[i]->name,
-                       c->program->functions[j]->name) == 0) {
-                diagnostic(c, c->program->functions[j]->token, "error", "E2043",
-                           "This function is already defined.",
-                           "YLang 1.0 does not support function overloading; rename one definition.");
+    /* Functions are private to their source module unless imported explicitly. */
+    for (size_t m = 0; m < c->module_count; m++) {
+        Module *module = c->modules[m];
+        for (size_t i = 0; i < module->program->function_count; i++) {
+            for (size_t j = i + 1; j < module->program->function_count; j++) {
+                if (strcmp(module->program->functions[i]->name,
+                           module->program->functions[j]->name) == 0) {
+                    diagnostic(c, module->program->functions[j]->token,
+                               "error", "E2043",
+                               "This function is already defined in this module.",
+                               "YLang does not support function overloading; rename one definition.");
+                }
             }
         }
     }
 
-    Function *main_function = find_function(c, "main");
+    Function *main_function = NULL;
+    if (c->root_module && c->root_module->program) {
+        main_function = module_local_function(c->root_module, "main");
+    } else {
+        main_function = find_function(c, "main");
+    }
     if (!main_function) {
         Token token = { .type = TOKEN_EOF, .start = c->source + c->source_length,
                         .length = 0, .line = 1, .column = 1, .message = NULL };
@@ -1017,9 +1102,12 @@ bool check_program(Compiler *c)
 
     for (size_t i = 0; i < c->program->function_count; i++) {
         Function *function = c->program->functions[i];
+        checker.module = function->module;
         checker.function = function;
         checker.loop_depth = 0;
-        checker.scope = scope_new(c, globals);
+        Scope *global_scope = function->module ?
+            function->module->global_scope : NULL;
+        checker.scope = scope_new(c, global_scope);
         for (size_t j = 0; j < function->param_count; j++) {
             function->params[j]->initialized = true;
             if (function->params[j]->type == TYPE_VOID) {
@@ -1037,7 +1125,6 @@ bool check_program(Compiler *c)
                        "Add a return statement, or return in every if/else branch.");
         }
     }
-
     return !c->had_error;
 }
 
