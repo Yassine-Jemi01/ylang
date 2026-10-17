@@ -1,0 +1,6 @@
+from nested-middle.yl import middle_value()
+
+function main() -> int {
+    print(middle_value());
+    return 0;
+}
