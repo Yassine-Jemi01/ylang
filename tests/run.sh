@@ -396,4 +396,29 @@ fi
 grep -q 'NASM backend does not support float values' build/asm-unsupported.out
 test ! -e build/asm-unsupported.asm
 
+# GUI namespace checking must not require SDL2; type errors are caught before build.
+./build/ylang check examples/gui.yl >/dev/null
+./build/ylang emit-c examples/gui.yl -o build/gui-generated.c >/dev/null
+grep -q 'ylgui_api_draw_rect' build/gui-generated.c
+if ./build/ylang check tests/gui-type-error.yl > build/gui-type-error.out 2>&1; then
+    echo "FAIL: GUI accepted a string for an integer color channel" >&2
+    exit 1
+fi
+grep -q 'E2044' build/gui-type-error.out
+
+# The experimental NASM backend must reject GUI calls explicitly.
+if ./build/ylang build-asm examples/gui.yl -o build/gui-nasm > build/gui-nasm.out 2>&1; then
+    echo "FAIL: NASM backend accepted unsupported GUI calls" >&2
+    exit 1
+fi
+grep -q 'GUI calls' build/gui-nasm.out
+
+# Build the SDL2-backed GUI integration only where its development package exists.
+if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists sdl2; then
+    ./build/ylang build tests/gui-smoke.yl -o build/test-gui >/dev/null
+    if [ "$(uname -s)" = "Linux" ]; then
+        SDL_VIDEODRIVER=dummy ./build/test-gui
+    fi
+fi
+
 echo "All YLang tests passed."
