@@ -486,6 +486,35 @@ EOF
 printf 'path with spaces\n' > build/spaced-import.expected
 diff -u build/spaced-import.expected build/spaced-import.out
 
+# Dotted filenames and YLANG_PATH support reusable local libraries.
+cat > build/imports/dotted-path.yl <<'EOF'
+from reusable.yl import reusable_one;
+function main() -> int {
+    print(reusable_one());
+    return 0;
+}
+EOF
+./build/ylang build build/imports/dotted-path.yl -o build/test-dotted-import >/dev/null
+./build/test-dotted-import > build/dotted-import.out
+printf '11\n' > build/dotted-import.expected
+diff -u build/dotted-import.expected build/dotted-import.out
+
+mkdir -p build/imports/library
+cat > build/imports/library/mathlib.yl <<'EOF'
+function library_value() -> int { return 314; }
+EOF
+cat > build/imports/library-main.yl <<'EOF'
+from mathlib.yl import library_value;
+function main() -> int {
+    print(library_value());
+    return 0;
+}
+EOF
+YLANG_PATH=build/imports/library ./build/ylang build build/imports/library-main.yl -o build/test-library-import >/dev/null
+./build/test-library-import > build/library-import.out
+printf '314\n' > build/library-import.expected
+diff -u build/library-import.expected build/library-import.out
+
 # NASM rejects multi-file imports until its lowering supports module visibility.
 if ./build/ylang emit-asm build/imports/main.yl -o build/imports/main.asm > build/imports/nasm.out 2>&1; then
     echo "FAIL: NASM accepted multi-file imports before lowering support" >&2
