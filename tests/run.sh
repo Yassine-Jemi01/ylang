@@ -406,12 +406,20 @@ if ./build/ylang check tests/gui-type-error.yl > build/gui-type-error.out 2>&1; 
 fi
 grep -q 'E2044' build/gui-type-error.out
 
-# The experimental NASM backend must reject GUI calls explicitly.
-if ./build/ylang build-asm examples/gui.yl -o build/gui-nasm > build/gui-nasm.out 2>&1; then
-    echo "FAIL: NASM backend accepted unsupported GUI calls" >&2
-    exit 1
+# The experimental NASM backend must reject GUI calls explicitly on its supported target.
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
+    if ./build/ylang build-asm examples/gui.yl -o build/gui-nasm > build/gui-nasm.out 2>&1; then
+        echo "FAIL: NASM backend accepted unsupported GUI calls" >&2
+        exit 1
+    fi
+    grep -q 'GUI calls' build/gui-nasm.out
+else
+    if ./build/ylang build-asm examples/gui.yl -o build/gui-nasm > build/gui-nasm.out 2>&1; then
+        echo "FAIL: NASM backend unexpectedly built on an unsupported platform" >&2
+        exit 1
+    fi
+    grep -q 'build-asm currently supports Linux x86-64 only' build/gui-nasm.out
 fi
-grep -q 'GUI calls' build/gui-nasm.out
 
 # Build the SDL2-backed GUI integration only where its development package exists.
 if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists sdl2; then
