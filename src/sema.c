@@ -980,6 +980,11 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             break;
         }
         case STMT_MATCH: {
+            if (expr_contains_call_or_assignment(stmt->as.match_stmt.value)) {
+                diagnostic(c, stmt->as.match_stmt.value->token, "error", "E2064",
+                           "match values must be free of calls and assignments in this milestone.",
+                           "Store the enum value in a variable before matching it.");
+            }
             YType value_type = check_expr(checker, stmt->as.match_stmt.value);
             EnumDecl *enumeration = enum_for_type(c, value_type);
             if (!enumeration) {
