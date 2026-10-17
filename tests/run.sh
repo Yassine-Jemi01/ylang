@@ -248,6 +248,7 @@ diff -u tests/expected-v2-return-cleanup.txt build/v2-return-cleanup.out
 "./build/test-imports$EXEEXT" > build/imports.out
 normalize_output build/imports.out
 diff -u tests/expected-imports.txt build/imports.out
+"$YLANG" check examples/imports/main.yl >/dev/null
 
 if "$YLANG" check tests/imports/missing-symbol.yl > build/import-missing-symbol.out 2>&1; then
     echo "FAIL: missing imported function was accepted" >&2
