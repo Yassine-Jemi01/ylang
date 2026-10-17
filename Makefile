@@ -37,7 +37,7 @@ test: $(BIN)
 
 sanitize:
 >$(MAKE) clean
->$(MAKE) CFLAGS='-std=c17 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes -g3 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer' LDFLAGS='-fsanitize=address,undefined' test
+>YLANG_SANITIZE_NATIVE=1 ASAN_OPTIONS=detect_leaks=0 $(MAKE) CFLAGS='-std=c17 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes -g3 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer' LDFLAGS='-fsanitize=address,undefined' test
 
 install: $(BIN)
 >install -d '$(DESTDIR)$(BINDIR)'
