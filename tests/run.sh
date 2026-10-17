@@ -307,6 +307,20 @@ if ./build/ylang check build/struct-unknown-field.yl > build/struct-unknown-fiel
 fi
 grep -q 'E2077' build/struct-unknown-field.out
 
+cat > build/struct-arity-error.yl <<'EOF'
+struct Point { int x; int y; }
+function main() -> int {
+    let Point p = Point(1);
+    print(p.x);
+    return 0;
+}
+EOF
+if ./build/ylang check build/struct-arity-error.yl > build/struct-arity-error.out 2>&1; then
+    echo "FAIL: struct constructor accepted the wrong number of values" >&2
+    exit 1
+fi
+grep -q 'E2074' build/struct-arity-error.out
+
 # Standard math library: native calls, namespacing, and argument type checks.
 ./build/ylang check examples/math.yl >/dev/null
 ./build/ylang build examples/math.yl -o build/test-math >/dev/null
