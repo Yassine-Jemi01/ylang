@@ -1,0 +1,3 @@
+function system_value() -> string {
+    return "import-ok";
+}
