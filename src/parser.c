@@ -1032,11 +1032,47 @@ static char *decode_import_path(Parser *p, Token token)
 static ImportDecl *parse_import(Parser *p, Token from_token)
 {
     ImportDecl *import = arena_alloc(&p->compiler->arena, sizeof(*import));
-    Token path_token = consume(p, TOKEN_STRING,
-        "Expected a quoted module path after 'from'.",
-        "Use syntax such as: from \"./module.yl\" import function_name;");
+    Token path_token = p->current;
+    if (p->current.type == TOKEN_STRING) {
+        advance_parser(p);
+        path_token = p->previous;
+        import->path = decode_import_path(p, path_token);
+    } else if (p->current.type == TOKEN_IDENTIFIER) {
+        StringBuilder path;
+        sb_init(&path);
+        bool expect_segment = true;
+        while (p->current.type == TOKEN_IDENTIFIER) {
+            Token segment = p->current;
+            advance_parser(p);
+            sb_append_n(&path, segment.start, segment.length);
+            expect_segment = false;
+            if (p->current.type != TOKEN_DOT) break;
+            sb_append_n(&path, ".", 1);
+            advance_parser(p);
+            if (p->current.type != TOKEN_IDENTIFIER) {
+                diagnostic(p->compiler, p->current, "error", "E1020",
+                           "Expected a path segment after '.'.",
+                           "Use a dotted filename such as from main.yl import helper;");
+                expect_segment = true;
+                break;
+            }
+            expect_segment = true;
+        }
+        if (expect_segment || path.length == 0U) {
+            import->path = arena_strndup(&p->compiler->arena, "", 0);
+        } else {
+            import->path = arena_strndup(&p->compiler->arena,
+                                         path.data ? path.data : "",
+                                         path.length);
+        }
+        sb_destroy(&path);
+    } else {
+        path_token = consume(p, TOKEN_STRING,
+            "Expected a module path after 'from'.",
+            "Use a quoted relative path or a dotted filename such as from main.yl import helper;");
+        import->path = decode_import_path(p, path_token);
+    }
     import->token = path_token.length ? path_token : from_token;
-    import->path = decode_import_path(p, path_token);
 
     if (p->current.type != TOKEN_IDENTIFIER ||
         !token_is(&p->current, "import")) {
