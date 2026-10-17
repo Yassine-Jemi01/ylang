@@ -655,23 +655,31 @@ static Expr *parse_primary(Parser *p)
                     value->type = enumeration->type;
                     return value;
                 }
-                diagnostic(p->compiler, token, "error", "E1016",
-                           "Unknown standard-library namespace or enum type.",
-                           "Use a supported namespace such as math, string, io, path, image, or gui, or declare an enum before using EnumName.Variant.");
-                name = arena_strndup(&p->compiler->arena, "", 0);
+                Expr *member_expr = new_expr(p->compiler, EXPR_MEMBER, token);
+                member_expr->as.member.target = expr;
+                member_expr->as.member.name = token_copy(p->compiler, member);
+                return member_expr;
             }
         }
         expr->as.name.name = name;
         if (match(p, TOKEN_LEFT_PAREN)) {
-            Expr *call = new_expr(p->compiler, EXPR_CALL, token);
-            call->as.call.name = expr->as.name.name;
+            StructDecl *structure = find_struct(p->compiler, name);
+            Expr *call = new_expr(p->compiler,
+                                  structure ? EXPR_STRUCT_INIT : EXPR_CALL, token);
+            if (structure) call->as.struct_init.structure = structure;
+            else call->as.call.name = expr->as.name.name;
             while (p->current.type != TOKEN_RIGHT_PAREN && p->current.type != TOKEN_EOF) {
                 Expr *arg = parse_expression(p);
-                append_ptr(p->compiler, (void ***)&call->as.call.args,
-                           &call->as.call.count, arg);
+                if (structure) {
+                    append_ptr(p->compiler, (void ***)&call->as.struct_init.args,
+                               &call->as.struct_init.count, arg);
+                } else {
+                    append_ptr(p->compiler, (void ***)&call->as.call.args,
+                               &call->as.call.count, arg);
+                }
                 if (!match(p, TOKEN_COMMA)) break;
             }
-            consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after function arguments.",
+            consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after arguments.",
                     "Add ')' after the last argument.");
             return call;
         }
