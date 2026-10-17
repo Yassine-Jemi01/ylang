@@ -412,7 +412,11 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
         echo "FAIL: NASM backend accepted unsupported GUI calls" >&2
         exit 1
     fi
-    grep -q 'GUI calls' build/gui-nasm.out
+    if ! grep -qi 'GUI calls' build/gui-nasm.out; then
+    cat build/gui-nasm.out >&2
+    echo "FAIL: NASM rejection message did not identify GUI calls" >&2
+    exit 1
+fi
 else
     if ./build/ylang build-asm examples/gui.yl -o build/gui-nasm > build/gui-nasm.out 2>&1; then
         echo "FAIL: NASM backend unexpectedly built on an unsupported platform" >&2
