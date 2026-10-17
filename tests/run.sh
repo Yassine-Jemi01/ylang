@@ -140,6 +140,24 @@ if command -v clang >/dev/null 2>&1; then
 fi
 
 
+# The first game2d module provides checked rectangle collision helpers.
+cat > build/game2d-collision.yl <<'EOF'
+from game2d.yl import game2d_rects_overlap, game2d_point_in_rect;
+function main() -> int {
+    print(game2d_rects_overlap(0, 0, 10, 10, 5, 5, 10, 10));
+    print(game2d_rects_overlap(0, 0, 10, 10, 10, 0, 4, 4));
+    print(game2d_rects_overlap(0, 0, 0, 10, 5, 5, 10, 10));
+    print(game2d_point_in_rect(5, 5, 0, 0, 10, 10));
+    print(game2d_point_in_rect(10, 5, 0, 0, 10, 10));
+    return 0;
+}
+EOF
+YLANG_PATH=stdlib ./build/ylang check build/game2d-collision.yl >/dev/null
+YLANG_PATH=stdlib ./build/ylang build build/game2d-collision.yl -o build/test-game2d-collision >/dev/null
+./build/test-game2d-collision > build/game2d-collision.out
+printf 'true\nfalse\nfalse\ntrue\nfalse\n' > build/game2d-collision.expected
+diff -u build/game2d-collision.expected build/game2d-collision.out
+
 # Standard math library: native calls, namespacing, and argument type checks.
 ./build/ylang check examples/math.yl >/dev/null
 ./build/ylang build examples/math.yl -o build/test-math >/dev/null
