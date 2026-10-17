@@ -32,6 +32,9 @@ struct Compiler {
     VarDecl **all_vars;
     size_t all_var_count;
     size_t next_var_id;
+    Module **modules;
+    size_t module_count;
+    Module *root_module;
     bool uses_gui;
 };
 
@@ -60,6 +63,7 @@ char *token_copy(Compiler *c, Token token);
 const char *type_name(YType type);
 
 Program *parse_program(Compiler *c);
+bool load_program_modules(Compiler *c, const char *input_path);
 bool check_program(Compiler *c);
 Function *find_function(Compiler *c, const char *name);
 bool generate_c(Compiler *c, const char *path);
