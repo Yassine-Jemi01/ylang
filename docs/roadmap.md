@@ -34,7 +34,13 @@ This is the working roadmap for YLang 2.0 development. It records current scope 
 
 ## Phase 3 — Multi-file programs
 
-Design imports and modules before implementation: file resolution, name visibility, duplicate symbols, cycles, compile order, and diagnostics. Add tests for missing modules and circular imports. Build an incremental module model before proposing package management.
+An experimental local-file import resolver now supports lines such as `from utils.yl import system_data()`. It resolves paths relative to the importing file, loads nested dependencies once, rejects cycles and missing symbols, applies source limits, and maps diagnostics back to the imported file. Regression tests cover nested imports, missing modules/symbols, cycles, and source-located type errors.
+
+Remaining work:
+1. Enforce per-module symbol visibility rather than flattening all imported declarations into one global namespace.
+2. Decide duplicate-name rules, aliases, public/private declarations, and module-qualified references.
+3. Add a proper import AST/module graph and incremental build caching.
+4. Design external-library/package metadata after the language-level module model is stable.
 
 ## Phase 4 — HTTP/JSON API support
 
