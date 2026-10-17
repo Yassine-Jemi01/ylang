@@ -1,0 +1,5 @@
+from value.yl import missing_fn()
+
+function main() -> int {
+    return 0;
+}
