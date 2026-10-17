@@ -272,6 +272,120 @@ if ./build/ylang check build/enum-duplicate-arm.yl > build/enum-duplicate-arm.ou
 fi
 grep -q 'E2059' build/enum-duplicate-arm.out
 
+# User-defined enums have distinct types and can be passed, compared, and lowered.
+cat > build/enum-basic.yl <<'EOF'
+enum Direction { North, East, South, West }
+function is_east(Direction direction) -> bool {
+    return direction == Direction.East;
+}
+function main() -> int {
+    let Direction facing = Direction.North;
+    if (facing == Direction.North) { print("north"); }
+    if (is_east(Direction.East)) { print("east"); }
+    if (facing != Direction.South) { print("not-south"); }
+    match (facing) {
+        Direction.North -> { print("match-north"); }
+        Direction.East -> { print("match-east"); }
+        Direction.South -> { print("match-south"); }
+        Direction.West -> { print("match-west"); }
+    }
+    return 0;
+}
+EOF
+./build/ylang check build/enum-basic.yl >/dev/null
+./build/ylang build build/enum-basic.yl -o build/test-enum-basic >/dev/null
+./build/test-enum-basic > build/enum-basic.out
+printf 'north\neast\nnot-south\nmatch-north\n' > build/enum-basic.expected
+diff -u build/enum-basic.expected build/enum-basic.out
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
+    ./build/ylang build-asm build/enum-basic.yl -o build/test-enum-basic-asm >/dev/null
+    ./build/test-enum-basic-asm > build/enum-basic-asm.out
+    diff -u build/enum-basic.expected build/enum-basic-asm.out
+fi
+cat > build/enum-non-exhaustive.yl <<'EOF'
+enum Direction { North, East, South }
+function main() -> int {
+    let Direction facing = Direction.North;
+    match (facing) {
+        Direction.North -> { print("north"); }
+        Direction.East -> { print("east"); }
+    }
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-non-exhaustive.yl > build/enum-non-exhaustive.out 2>&1; then
+    echo "FAIL: non-exhaustive enum match was accepted" >&2
+    exit 1
+fi
+grep -q 'E2063' build/enum-non-exhaustive.out
+cat > build/enum-mismatch.yl <<'EOF'
+enum Direction { North, East }
+enum Color { Red, Blue }
+function main() -> int {
+    let Direction direction = Color.Red;
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-mismatch.yl > build/enum-mismatch.out 2>&1; then
+    echo "FAIL: assigning one enum type to another was accepted" >&2
+    exit 1
+fi
+cat > build/enum-unknown-variant.yl <<'EOF'
+enum Direction { North, East }
+function main() -> int {
+    let Direction direction = Direction.West;
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-unknown-variant.yl > build/enum-unknown-variant.out 2>&1; then
+    echo "FAIL: unknown enum variant was accepted" >&2
+    exit 1
+fi
+grep -q 'E2052' build/enum-unknown-variant.out
+
+# Public enum example must type-check and execute as documented.
+./build/ylang check examples/enums.yl >/dev/null
+./build/ylang build examples/enums.yl -o build/test-enums-example >/dev/null
+./build/test-enums-example > build/enums-example.out
+printf 'vertical\nnorth\n' > build/enums-example.expected
+diff -u build/enums-example.expected build/enums-example.out
+
+cat > build/enum-wrong-match-type.yl <<'EOF'
+enum Direction { North, East }
+enum Color { Red, Blue }
+function main() -> int {
+    let Direction facing = Direction.North;
+    match (facing) {
+        Color.Red -> { print("red"); }
+        Direction.East -> { print("east"); }
+    }
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-wrong-match-type.yl > build/enum-wrong-match-type.out 2>&1; then
+    echo "FAIL: match accepted a variant from another enum" >&2
+    exit 1
+fi
+grep -q 'E2058' build/enum-wrong-match-type.out
+
+cat > build/enum-duplicate-arm.yl <<'EOF'
+enum Direction { North, East }
+function main() -> int {
+    let Direction facing = Direction.North;
+    match (facing) {
+        Direction.North -> { print("north"); }
+        Direction.North -> { print("again"); }
+        Direction.East -> { print("east"); }
+    }
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-duplicate-arm.yl > build/enum-duplicate-arm.out 2>&1; then
+    echo "FAIL: duplicate enum match arm was accepted" >&2
+    exit 1
+fi
+grep -q 'E2059' build/enum-duplicate-arm.out
+
 # Standard math library: native calls, namespacing, and argument type checks.
 ./build/ylang check examples/math.yl >/dev/null
 ./build/ylang build examples/math.yl -o build/test-math >/dev/null
