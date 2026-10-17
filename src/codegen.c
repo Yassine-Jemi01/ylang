@@ -690,7 +690,7 @@ bool generate_c(Compiler *c, const char *path)
                 fprintf(out, "%s *%s, size_t %s_len",
                         c_base_type(c, param->type), param->c_name, param->c_name);
             } else {
-                fprintf(out, "%s %s", c_base_type(param->type), param->c_name);
+                fprintf(out, "%s %s", c_base_type(c, param->type), param->c_name);
             }
             first_param = false;
         }
@@ -700,7 +700,7 @@ bool generate_c(Compiler *c, const char *path)
 
     for (size_t i = 0; i < c->program->function_count; i++) {
         Function *fn = c->program->functions[i];
-        fprintf(out, "%s %s(", c_base_type(fn->return_type), fn->c_name);
+        fprintf(out, "%s %s(", c_base_type(c, fn->return_type), fn->c_name);
         if (fn->param_count == 0) fputs("void", out);
         bool first_param = true;
         for (size_t j = 0; j < fn->param_count; j++) {
@@ -708,9 +708,9 @@ bool generate_c(Compiler *c, const char *path)
             if (!first_param) fputs(", ", out);
             if (param->is_array) {
                 fprintf(out, "%s *%s, size_t %s_len",
-                        c_base_type(param->type), param->c_name, param->c_name);
+                        c_base_type(c, param->type), param->c_name, param->c_name);
             } else {
-                fprintf(out, "%s %s", c_base_type(param->type), param->c_name);
+                fprintf(out, "%s %s", c_base_type(c, param->type), param->c_name);
             }
             first_param = false;
         }
