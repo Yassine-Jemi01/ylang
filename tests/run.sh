@@ -250,6 +250,14 @@ normalize_output build/imports.out
 diff -u tests/expected-imports.txt build/imports.out
 "$YLANG" check examples/imports/main.yl >/dev/null
 
+# Re-importing one canonical module through separate directives must load it once
+# while making each explicitly imported function available to the root module.
+"$YLANG" check tests/imports/repeated-imports.yl >/dev/null
+"$YLANG" build tests/imports/repeated-imports.yl -o "build/test-repeated-imports$EXEEXT" >/dev/null
+"./build/test-repeated-imports$EXEEXT" > build/repeated-imports.out
+normalize_output build/repeated-imports.out
+diff -u tests/expected-repeated-imports.txt build/repeated-imports.out
+
 if "$YLANG" check tests/imports/missing-symbol.yl > build/import-missing-symbol.out 2>&1; then
     echo "FAIL: missing imported function was accepted" >&2
     exit 1
