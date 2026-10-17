@@ -16,7 +16,7 @@ function main() -> int {
 }
 ```
 
-The filename is resolved relative to the file containing the import. Quoted paths are also accepted. Multiple function names can be listed on one import line:
+The filename is resolved relative to the file containing the import. Quoted paths are also accepted, including paths with spaces. Multiple function names can be listed on one import line:
 
 ```ylang
 from string_tools.yl import system_data, system_version()
