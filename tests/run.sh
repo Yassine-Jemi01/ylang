@@ -515,13 +515,14 @@ YLANG_PATH=build/imports/library ./build/ylang build build/imports/library-main.
 printf '314\n' > build/library-import.expected
 diff -u build/library-import.expected build/library-import.out
 
-# NASM rejects multi-file imports until its lowering supports module visibility.
-if ./build/ylang emit-asm build/imports/main.yl -o build/imports/main.asm > build/imports/nasm.out 2>&1; then
-    echo "FAIL: NASM accepted multi-file imports before lowering support" >&2
-    exit 1
+# The NASM backend must preserve module-qualified function symbols.
+./build/ylang emit-asm build/imports/repeated.yl -o build/imports/repeated.asm >/dev/null
+grep -q 'yl_fn_m' build/imports/repeated.asm
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
+    ./build/ylang build-asm build/imports/repeated.yl -o build/test-repeated-imports-asm >/dev/null
+    ./build/test-repeated-imports-asm > build/repeated-imports-asm.out
+    diff -u build/repeated-imports.expected build/repeated-imports-asm.out
 fi
-grep -q 'multi-file imports in the NASM backend' build/imports/nasm.out
-test ! -e build/imports/main.asm
 
 # Experimental NASM backend: test emission everywhere and execute it when NASM is present.
 ./build/ylang check tests/asm-basic.yl >/dev/null
