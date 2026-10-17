@@ -99,55 +99,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
-      - name: Validate page language, navigation, and links
-        run: |
-          python3 - <<'PY'
-          from html.parser import HTMLParser
-          from pathlib import Path
-          import re
-
-          files = [
-              Path("website/index.html"),
-              Path("website/docs.html"),
-              Path("website/styles.css"),
-              Path("website/docs.css"),
-              Path("website/script.js"),
-              Path("website/README.md"),
-          ]
-          arabic = re.compile("[\\u0600-\\u06FF]")
-          for path in files:
-              text = path.read_text(encoding="utf-8")
-              if arabic.search(text):
-                  raise SystemExit(f"Arabic text or Arabic font/translation remains in {path}")
-              if path.suffix == ".html" and 'lang="en" dir="ltr"' not in text:
-                  raise SystemExit(f"{path} must declare English left-to-right markup")
-              if path.suffix in {".html", ".js", ".css"} and any(
-                  marker in text for marker in ("lang-toggle", "IBM Plex Sans Arabic", "العربية")
-              ):
-                  raise SystemExit(f"Old language switch or Arabic localization remains in {path}")
-
-          class Links(HTMLParser):
-              def __init__(self):
-                  super().__init__()
-                  self.ids = set()
-                  self.fragments = []
-              def handle_starttag(self, tag, attrs):
-                  attrs = dict(attrs)
-                  if attrs.get("id"):
-                      self.ids.add(attrs["id"])
-                  href = attrs.get("href", "")
-                  if href.startswith("#") and len(href) > 1:
-                      self.fragments.append(href[1:])
-
-          for path in (Path("website/index.html"), Path("website/docs.html")):
-              parser = Links()
-              parser.feed(path.read_text(encoding="utf-8"))
-              missing = sorted(set(parser.fragments) - parser.ids)
-              if missing:
-                  raise SystemExit(f"{path} has missing in-page anchors: {', '.join(missing)}")
-
-          print("PASS: English-only markup, no Arabic localization, and all in-page links resolve.")
-          PY
+      - name: Validate website
+        run: python3 tools/check_website.py
 
   publish:
     if: github.ref == 'refs/heads/main'
