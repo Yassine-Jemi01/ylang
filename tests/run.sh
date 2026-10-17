@@ -268,6 +268,14 @@ if "$YLANG" check tests/imports/cycle-a.yl > build/import-cycle.out 2>&1; then
 fi
 grep -q 'cyclic import detected' build/import-cycle.out
 
+if "$YLANG" check tests/imports/duplicate-module-main.yl > build/import-duplicate-module.out 2>&1; then
+    echo "FAIL: duplicate function definitions across imported modules were accepted" >&2
+    exit 1
+fi
+grep -q "E1103.*function 'shared_name' is defined in multiple source modules" build/import-duplicate-module.out
+grep -q 'duplicate-module-b.yl:' build/import-duplicate-module.out
+grep -q 'duplicate-module-a.yl:' build/import-duplicate-module.out
+
 if "$YLANG" check tests/imports/diagnostic-root.yl > build/import-diagnostic.out 2>&1; then
     echo "FAIL: invalid declaration in imported module was accepted" >&2
     exit 1
