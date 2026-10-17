@@ -128,6 +128,27 @@ loops, returns, and `print`. Global declarations, arrays, floats, f-strings,
 string comparisons, short-circuit `and`/`or`, and standard-library calls
 are not supported yet. The established C backend remains the default.
 
+## Multi-file imports (experimental)
+
+YLang can import named functions and global variables from another source file. Paths are resolved relative to the importing file first.
+
+```yl
+from "./math_tools.yl" import double_value;
+
+function main() -> int {
+    print(double_value(21));
+    return 0;
+}
+```
+
+For reusable local libraries, set `YLANG_PATH` to a colon-separated list of directories (Linux/macOS):
+
+```sh
+YLANG_PATH="$HOME/ylang-libs" ylang build main.yl -o main
+```
+
+Imports can be nested, and repeated references to the same canonical file reuse the loaded module. Circular imports, missing files/names, duplicate imports, and imports of `main()` are rejected with diagnostics. The C backend supports the module graph; the experimental NASM backend supports imports only when all imported features are in its supported subset. Import aliases, qualified module namespaces, package manifests, and a package registry are not implemented yet.
+
 ## Command-line reference
 
 ```text
