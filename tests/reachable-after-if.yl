@@ -1,0 +1,8 @@
+function main() -> int {
+    let bool done = true;
+    if (done) {
+        return 0;
+    }
+    print("this path remains reachable when done is false");
+    return 0;
+}
