@@ -813,6 +813,7 @@ static bool build_source_bundle(const char *input_path,
                 okay = false;
                 break;
             }
+            bundle->unit_count = i + 1U;
             memcpy(bundle->source + combined_offset, module->processed, module->length);
             combined_offset += module->length;
             if (i + 1U < context->order_count)
