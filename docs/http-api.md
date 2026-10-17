@@ -19,7 +19,7 @@ YLang programs can now make synchronous HTTP/HTTPS requests with these experimen
 
 Headers are provided as newline-separated `Name: value` lines. A request returns the response body as a string; status/error accessors refer to the most recent request. The prototype supports GET, POST, PUT, PATCH, DELETE, and HEAD. It uses libcurl in the generated application and only links `-lcurl` when the source uses HTTP built-ins.
 
-The client enables certificate and hostname verification, only permits HTTP/HTTPS request and redirect protocols, times out connection attempts after 5 seconds and the full request after 15 seconds, and limits the buffered response to 10 MiB. HTTP status codes such as 404 are not transport errors: inspect `http_status_code()`. A transport error returns an empty response body and text in `http_last_error()`.
+The client enables certificate and hostname verification, permits only HTTP/HTTPS request protocols, does not automatically follow redirects, times out connection attempts after 5 seconds and the full request after 15 seconds, and limits the buffered response to 10 MiB. Redirect responses such as 302 are returned to the program; inspect `http_status_code()` and explicitly issue the next request if needed. Automatic redirect following is disabled by default so caller-supplied authorization/custom headers are not silently replayed to a different URL. HTTP status codes such as 404 are not transport errors: inspect `http_status_code()`. A transport error returns an empty response body and text in `http_last_error()`.
 
 This prototype has known API-design limitations: response status is global rather than carried by a response object; HTTP bodies are strings; and API functions are global built-ins rather than imported namespaced functions. A limited JSON parser/accessor set is now available (`json_get_raw`, `json_get_string`, `json_get_int`, `json_get_float`, `json_get_bool`, `json_has`, `json_array_length`, `json_array_item`, `json_quote`, and `json_last_error`), but a general JSON value model is still future work. Check status immediately after the request and do not put the request and status accessor in the same expression.
 
@@ -54,7 +54,7 @@ The first usable release should include:
 - A response value containing the HTTP status code, response body, and transport error information.
 - Explicit timeouts, response-size limits, and deterministic failure behavior.
 - TLS certificate and hostname verification enabled by default.
-- Redirects restricted to HTTP and HTTPS; no shelling out to `curl`.
+- Redirects are not automatically followed by default; no shelling out to `curl`.
 - A clear way to distinguish an HTTP error status (for example 404) from a transport failure (for example DNS or TLS failure).
 
 A libcurl-backed runtime is currently used by the prototype. It must remain an optional build dependency: ordinary YLang programs that do not use the HTTP module must not suddenly require libcurl headers or libraries. The compiler should report a direct, actionable error when an HTTP-using program is built without the required development package.
