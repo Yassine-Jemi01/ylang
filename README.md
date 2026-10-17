@@ -176,7 +176,7 @@ Available prototype calls:
 
 The headers argument is a string containing `Name: value` lines separated by line feeds. HTTP response bodies arrive as strings. The initial JSON helper API can read scalar properties, retrieve raw nested objects/arrays, iterate array items, and quote a string; it does not yet expose a general-purpose typed JSON value. Check status immediately after each request: the status and error accessors are process-global in this prototype, not a response object. See [JSON helper API](docs/json-api.md).
 
-The client verifies TLS certificates and hostnames, restricts requests and redirects to HTTP/HTTPS, has 5-second connect and 15-second total timeouts, and limits response bodies to 10 MiB. HTTP status codes such as 404 are responses, not transport failures; inspect the status separately. This is not an HTTP server framework and does not yet provide async requests, retries, WebSockets, or automatic JSON decoding.
+The client verifies TLS certificates and hostnames, restricts requests to HTTP/HTTPS, does not automatically follow redirects (to avoid replaying custom credentials), has 5-second connect and 15-second total timeouts, and limits response bodies to 10 MiB. HTTP status codes such as 404 or 302 are responses, not transport failures; inspect the status separately. This is not an HTTP server framework and does not yet provide async requests, retries, WebSockets, or automatic JSON decoding.
 
 See [HTTP API design and limitations](docs/http-api.md).
 
