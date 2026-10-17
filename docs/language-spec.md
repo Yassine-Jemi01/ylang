@@ -50,6 +50,27 @@ let const int LIMIT = 100;
 
 No implicit numeric conversions are performed. Arithmetic operands must have compatible matching types. `%` is available only for `int`. Conditions must have type `bool`. Strings support equality and lexicographic ordering comparisons. String values are immutable.
 
+### User-defined enums (experimental)
+
+Unit enums are supported as named, distinct types:
+
+```yl
+enum Direction { North, East, South, West }
+
+function is_east(Direction direction) -> bool {
+    return direction == Direction.East;
+}
+
+function main() -> int {
+    let Direction facing = Direction.North;
+    if (is_east(Direction.East)) { print("east"); }
+    if (facing == Direction.North) { print("north"); }
+    return 0;
+}
+```
+
+Declare an enum before using its type. Refer to variants with `EnumName.Variant`. Values of different enum types cannot be mixed, and a variant can be passed to or returned from a function with the same enum type. Variants currently have no payloads. A statement `match (value) { EnumName.Variant -> { ... } }` must contain exactly one arm for every variant; missing and duplicate arms are errors. For this milestone, the matched expression must not contain calls or assignments. Enum formatting with `print`, importing enum types across module boundaries, payload variants, and explicit numeric discriminants are not implemented yet. The C backend and the experimental NASM backend represent these unit variants as integer values while semantic analysis preserves their distinct YLang types.
+
 ## 5. Literals and strings
 
 ```ylang
@@ -249,6 +270,6 @@ lowering is implemented.
 
 ## 12. Unsupported features and implementation limits
 
-The following are not supported by the current language subset: classes/OOP, exception syntax (`try`/`catch`), generics, raw pointers/references, returning arrays, nested/const arrays, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
+The following are not supported by the current language subset: structs/classes/OOP, payload enums, generic `Option<T>`/`Result<T, E>`, exception syntax (`try`/`catch`), generics, raw pointers/references, returning arrays, nested/const arrays, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
 
 The compiler generates C, so native code inherits ordinary process privileges and is not sandboxed. Some formatted string values are stored until process exit; creating many such values in a long-running loop can increase memory consumption. The language does not define ownership/borrowing or a garbage collector in this release. Do not assume Rust-like memory-safety guarantees.
