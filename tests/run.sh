@@ -117,6 +117,18 @@ if ./build/ylang check tests/uninitialized.yl > build/uninitialized.out 2>&1; th
 fi
 grep -q 'E2021' build/uninitialized.out
 
+# Compound assignment and increment must not read uninitialized variables.
+if ./build/ylang check tests/uninitialized-compound.yl > build/uninitialized-compound.out 2>&1; then
+    echo "FAIL: += accepted an uninitialized variable" >&2
+    exit 1
+fi
+grep -q 'E2021' build/uninitialized-compound.out
+if ./build/ylang check tests/uninitialized-increment.yl > build/uninitialized-increment.out 2>&1; then
+    echo "FAIL: ++ accepted an uninitialized variable" >&2
+    exit 1
+fi
+grep -q 'E2021' build/uninitialized-increment.out
+
 ./build/ylang build tests/div-zero.yl -o build/test-div-zero >/dev/null
 set +e
 ./build/test-div-zero > build/div-zero.out 2>&1
@@ -188,6 +200,11 @@ fi
 grep -q 'invalid YLANG_OPT_LEVEL' build/invalid-opt.out
 
 # C-style for loops and condition-driven while loops.
+# The initializer runs even when the loop body is skipped.
+./build/ylang check tests/for-init-definite.yl >/dev/null
+./build/ylang build tests/for-init-definite.yl -o build/test-for-init-definite >/dev/null
+./build/test-for-init-definite > build/for-init-definite.out
+grep -qx '7' build/for-init-definite.out
 ./build/ylang check examples/loops.yl >/dev/null
 ./build/ylang build examples/loops.yl -o build/test-loops >/dev/null
 ./build/test-loops > build/loops.out
