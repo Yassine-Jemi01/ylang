@@ -655,6 +655,7 @@ static Expr *parse_primary(Parser *p)
                     value->type = enumeration->type;
                     return value;
                 }
+                expr->as.name.name = name;
                 Expr *member_expr = new_expr(p->compiler, EXPR_MEMBER, token);
                 member_expr->as.member.target = expr;
                 member_expr->as.member.name = token_copy(p->compiler, member);
