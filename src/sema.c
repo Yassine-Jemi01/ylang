@@ -465,28 +465,46 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             Expr *target = expr->as.assign.target;
             VarDecl *var = NULL;
+            YType target_type = TYPE_ERROR;
             if (target && target->kind == EXPR_NAME) {
                 var = scope_lookup(checker->scope, target->as.name.name);
                 if (var) {
                     target->as.name.variable = var;
                     target->as.name.name = var->name;
                     target->type = var->type;
+                    target_type = var->type;
                 }
             } else if (target && target->kind == EXPR_INDEX) {
                 (void)check_expr(checker, target);
                 var = target->as.index.variable;
+                target_type = target->type;
+            } else if (target && target->kind == EXPR_MEMBER) {
+                target_type = check_expr(checker, target);
+                Expr *base = target->as.member.target;
+                if (base && base->kind == EXPR_NAME) {
+                    var = scope_lookup(checker->scope, base->as.name.name);
+                    if (var) {
+                        base->as.name.variable = var;
+                        base->as.name.name = var->name;
+                    }
+                }
+                if (!var || !struct_for_type(c, var->type)) {
+                    diagnostic(c, expr->token, "error", "E2078",
+                               "Only a field of a named struct variable can be assigned in this milestone.",
+                               "Store the struct in a mutable variable, then assign to its field.");
+                }
             }
             if (!var) {
                 diagnostic(c, expr->token, "error", "E2020",
-                           "Cannot assign to an unknown variable or invalid array element.",
-                           "Declare the variable first and use an integer index for array elements.");
+                           "Cannot assign to an unknown variable, invalid array element, or unsupported field target.",
+                           "Declare the variable first and use a valid variable, array element, or struct field.");
                 (void)check_expr(checker, expr->as.assign.right);
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
             expr->as.assign.variable = var;
             if (expr->as.assign.is_compound &&
-                var->type != TYPE_INT && var->type != TYPE_FLOAT) {
+                target_type != TYPE_INT && target_type != TYPE_FLOAT) {
                 diagnostic(c, expr->token, "error", "E2034",
                            "The '+=' operator requires an int or float target.",
                            "Use '+=' only with matching int or float values.");
@@ -505,16 +523,16 @@ static YType check_expr(Checker *checker, Expr *expr)
                            "Cannot assign to a const variable.",
                            "Keep 'const' and remove this assignment, or remove 'const' if the variable should be mutable.");
             }
-            if (right != TYPE_ERROR && right != var->type) {
+            if (right != TYPE_ERROR && target_type != TYPE_ERROR && right != target_type) {
                 char suggestion[256];
                 (void)snprintf(suggestion, sizeof(suggestion),
-                    "'%s' has type %s, but the assigned expression has type %s.",
-                    var->name, type_name(var->type), type_name(right));
+                    "The assignment target has type %s, but the assigned expression has type %s.",
+                    type_name(target_type), type_name(right));
                 diagnostic(c, expr->token, "error", "E2001",
                            "Assignment type mismatch.", suggestion);
             }
             var->initialized = true;
-            expr->type = var->type;
+            expr->type = target_type;
             return expr->type;
         }
         case EXPR_UNARY: {
