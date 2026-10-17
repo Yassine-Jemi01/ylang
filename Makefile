@@ -60,8 +60,9 @@ install-gui: gui
 	install -m 644 build/libylang_gui.a '$(DESTDIR)$(PREFIX)/lib/libylang_gui.a'
 
 install: $(BIN)
-	install -d '$(DESTDIR)$(BINDIR)'
+	install -d '$(DESTDIR)$(BINDIR)' '$(DESTDIR)$(PREFIX)/share/ylang'
 	install -m 755 $(BIN) '$(DESTDIR)$(BINDIR)/ylang'
+	install -m 644 runtime/runtime-template.c '$(DESTDIR)$(PREFIX)/share/ylang/runtime-template.c'
 
 uninstall:
 	rm -f '$(DESTDIR)$(BINDIR)/ylang'
