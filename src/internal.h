@@ -32,6 +32,7 @@ struct Compiler {
     VarDecl **all_vars;
     size_t all_var_count;
     size_t next_var_id;
+    bool uses_gui;
 };
 
 typedef struct {

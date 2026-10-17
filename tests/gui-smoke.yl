@@ -1,0 +1,25 @@
+function main() -> int {
+    if (not gui.init()) { return 1; }
+    if (not gui.create_window("GUI smoke test", 64, 64)) {
+        gui.shutdown();
+        return 2;
+    }
+    if (not gui.clear(10, 20, 30)) {
+        gui.close();
+        gui.shutdown();
+        return 3;
+    }
+    if (not gui.draw_rect(1, 1, 20, 20, 200, 100, 50)) {
+        gui.close();
+        gui.shutdown();
+        return 4;
+    }
+    if (not gui.present()) {
+        gui.close();
+        gui.shutdown();
+        return 5;
+    }
+    gui.close();
+    gui.shutdown();
+    return 0;
+}

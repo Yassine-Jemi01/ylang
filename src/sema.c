@@ -200,6 +200,33 @@ static const StringBuiltin *find_string_builtin(const char *name)
     return NULL;
 }
 
+typedef struct {
+    const char *name;
+    size_t arity;
+    YType result;
+    YType args[7];
+} GuiBuiltin;
+
+static const GuiBuiltin gui_builtins[] = {
+    {"gui.init", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"gui.create_window", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"gui.poll", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"gui.clear", 3, TYPE_BOOL, {TYPE_INT, TYPE_INT, TYPE_INT}},
+    {"gui.draw_rect", 7, TYPE_BOOL, {TYPE_INT, TYPE_INT, TYPE_INT, TYPE_INT, TYPE_INT, TYPE_INT, TYPE_INT}},
+    {"gui.present", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"gui.last_error", 0, TYPE_STRING, {TYPE_VOID}},
+    {"gui.close", 0, TYPE_VOID, {TYPE_VOID}},
+    {"gui.shutdown", 0, TYPE_VOID, {TYPE_VOID}}
+};
+
+static const GuiBuiltin *find_gui_builtin(const char *name)
+{
+    for (size_t i = 0; i < sizeof(gui_builtins) / sizeof(gui_builtins[0]); i++) {
+        if (strcmp(name, gui_builtins[i].name) == 0) return &gui_builtins[i];
+    }
+    return NULL;
+}
+
 static YType check_expr(Checker *checker, Expr *expr)
 {
     if (!expr) return TYPE_VOID;
@@ -508,6 +535,42 @@ static YType check_expr(Checker *checker, Expr *expr)
             return expr->type;
         }
         case EXPR_CALL: {
+            if (strncmp(expr->as.call.name, "gui.", 4) == 0) {
+                c->uses_gui = true;
+                const GuiBuiltin *builtin = find_gui_builtin(expr->as.call.name);
+                if (!builtin) {
+                    diagnostic(c, expr->token, "error", "E2040",
+                               "Unknown GUI function.",
+                               "Use a documented gui.* function such as gui.init() or gui.create_window(...).");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (expr->as.call.count != builtin->arity) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion, sizeof(suggestion),
+                        "%s expects %zu argument(s), but received %zu.",
+                        builtin->name, builtin->arity, expr->as.call.count);
+                    diagnostic(c, expr->token, "error", "E2043",
+                               "Incorrect number of GUI function arguments.", suggestion);
+                }
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    YType actual = check_expr(checker, expr->as.call.args[i]);
+                    if (i < builtin->arity && actual != TYPE_ERROR &&
+                        actual != builtin->args[i]) {
+                        char suggestion[256];
+                        (void)snprintf(suggestion, sizeof(suggestion),
+                            "Argument %zu of %s expects %s, but received %s.",
+                            i + 1, builtin->name, type_name(builtin->args[i]),
+                            type_name(actual));
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2044",
+                                   "GUI argument type mismatch.", suggestion);
+                    }
+                }
+                expr->type = builtin->result;
+                return expr->type;
+            }
             if (strcmp(expr->as.call.name, "to_float") == 0 ||
                 strcmp(expr->as.call.name, "to_int") == 0 ||
                 strcmp(expr->as.call.name, "to_string") == 0) {

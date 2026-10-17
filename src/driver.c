@@ -167,8 +167,68 @@ static bool paths_refer_same_file(const char *input_path, const char *output_pat
            input_stat.st_ino == output_stat.st_ino;
 }
 
+#ifndef YLANG_SHARE_DIR
+#define YLANG_SHARE_DIR "/usr/local/share/ylang"
+#endif
+#ifndef YLANG_INCLUDE_DIR
+#define YLANG_INCLUDE_DIR "/usr/local/include"
+#endif
+
+static bool resolve_gui_paths(char *runtime_path, size_t runtime_capacity,
+                              char *include_path, size_t include_capacity)
+{
+    if (access("stdlib/gui/gui.c", R_OK) == 0 &&
+        access("include/ylang/gui.h", R_OK) == 0) {
+        if (snprintf(runtime_path, runtime_capacity, "%s", "stdlib/gui/gui.c") >=
+                (int)runtime_capacity ||
+            snprintf(include_path, include_capacity, "%s", "include") >=
+                (int)include_capacity) return false;
+        return true;
+    }
+    if (snprintf(runtime_path, runtime_capacity, "%s/stdlib/gui/gui.c",
+                 YLANG_SHARE_DIR) >= (int)runtime_capacity ||
+        snprintf(include_path, include_capacity, "%s", YLANG_INCLUDE_DIR) >=
+                 (int)include_capacity) return false;
+    return access(runtime_path, R_OK) == 0 && access(include_path, R_OK) == 0;
+}
+
+static bool read_sdl2_flags(char *storage, size_t capacity,
+                            char **flags, size_t flag_capacity,
+                            size_t *flag_count)
+{
+    FILE *pipe = popen("pkg-config --cflags --libs sdl2", "r");
+    if (!pipe) {
+        fputs("ylang: could not start pkg-config while preparing the GUI build.\n", stderr);
+        return false;
+    }
+    size_t used = 0;
+    while (used + 1 < capacity) {
+        size_t got = fread(storage + used, 1, capacity - used - 1, pipe);
+        used += got;
+        if (got == 0) break;
+    }
+    storage[used] = '\0';
+    int status = pclose(pipe);
+    if (status == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0 ||
+        used == 0 || used + 1 >= capacity) {
+        fputs("ylang: GUI build requires SDL2 development files and pkg-config (Fedora: SDL2-devel pkgconf-pkg-config; Debian/Ubuntu: libsdl2-dev pkg-config; macOS: brew install sdl2 pkg-config).\n", stderr);
+        return false;
+    }
+    *flag_count = 0;
+    char *save = NULL;
+    for (char *part = strtok_r(storage, " \t\r\n", &save);
+         part != NULL; part = strtok_r(NULL, " \t\r\n", &save)) {
+        if (*flag_count >= flag_capacity) {
+            fputs("ylang: too many SDL2 compiler flags returned by pkg-config.\n", stderr);
+            return false;
+        }
+        flags[(*flag_count)++] = part;
+    }
+    return *flag_count > 0;
+}
+
 static int run_native_compiler(const char *cc, const char *c_path,
-                               const char *output_path)
+                               const char *output_path, bool uses_gui)
 {
     const char *requested_opt = getenv("YLANG_OPT_LEVEL");
     const char *optimization = "-O2";
@@ -186,23 +246,73 @@ static int run_native_compiler(const char *cc, const char *c_path,
         }
     }
 
+    char runtime_path[4096], include_path[4096];
+    char flag_storage[4096];
+    char *sdl_flags[64];
+    size_t sdl_flag_count = 0;
+    if (uses_gui) {
+        if (!resolve_gui_paths(runtime_path, sizeof(runtime_path),
+                               include_path, sizeof(include_path))) {
+            fprintf(stderr,
+                    "ylang: GUI runtime source or header not found. Run from the YLang source tree or install the optional GUI files with 'make install-gui'.\n");
+            return 1;
+        }
+        if (!read_sdl2_flags(flag_storage, sizeof(flag_storage), sdl_flags,
+                             sizeof(sdl_flags) / sizeof(sdl_flags[0]),
+                             &sdl_flag_count)) return 1;
+    }
+
+    char *args[96];
+    size_t n = 0;
+    args[n++] = (char *)cc;
+    args[n++] = "-std=c17";
+    args[n++] = "-Wall";
+    args[n++] = "-Wextra";
+    args[n++] = "-Wpedantic";
+    args[n++] = "-Wno-unused-function";
+    args[n++] = "-Wno-unused-variable";
+    args[n++] = "-Wno-unused-but-set-variable";
+    args[n++] = (char *)optimization;
+    args[n++] = "-g";
+#if !defined(__APPLE__)
+    args[n++] = "-D_FORTIFY_SOURCE=3";
+#endif
+    args[n++] = "-fstack-protector-strong";
+    args[n++] = "-fPIE";
+    if (uses_gui) {
+        args[n++] = "-I";
+        args[n++] = include_path;
+        args[n++] = (char *)c_path;
+        args[n++] = runtime_path;
+        args[n++] = "-lm";
+        for (size_t i = 0; i < sdl_flag_count; i++) args[n++] = sdl_flags[i];
+#if defined(__APPLE__)
+        args[n++] = "-pie";
+#else
+        args[n++] = "-pie";
+        args[n++] = "-Wl,-z,relro,-z,now";
+#endif
+    } else {
+        args[n++] = (char *)c_path;
+        args[n++] = "-lm";
+#if defined(__APPLE__)
+        args[n++] = "-pie";
+#else
+        args[n++] = "-pie";
+        args[n++] = "-Wl,-z,relro,-z,now";
+#endif
+    }
+    args[n++] = "-o";
+    args[n++] = (char *)output_path;
+    args[n] = NULL;
+
     pid_t pid = fork();
     if (pid < 0) {
         fprintf(stderr, "ylang: could not start native compiler: %s\n", strerror(errno));
         return 1;
     }
     if (pid == 0) {
-#if defined(__APPLE__)
-        /* macOS uses Apple's linker; GNU ld's -z hardening flags are Linux-only. */
-        execlp(cc, cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic", "-Wno-unused-function", "-Wno-unused-variable", "-Wno-unused-but-set-variable",
-               optimization, "-g", "-fstack-protector-strong", "-fPIE",
-               c_path, "-lm", "-pie", "-o", output_path, (char *)NULL);
-#else
-        /* Linux: enable fortification and GNU ld RELRO/NOW hardening. */
-        execlp(cc, cc, "-std=c17", "-Wall", "-Wextra", "-Wpedantic", "-Wno-unused-function", "-Wno-unused-variable", "-Wno-unused-but-set-variable",
-               optimization, "-g", "-D_FORTIFY_SOURCE=3", "-fstack-protector-strong", "-fPIE",
-               c_path, "-lm", "-pie", "-Wl,-z,relro,-z,now", "-o", output_path, (char *)NULL);
-#endif
+        execvp(cc, args);
         fprintf(stderr, "ylang: cannot execute '%s': %s\n", cc, strerror(errno));
         _exit(127);
     }
@@ -494,7 +604,7 @@ int ylang_run(const char *command, const char *input_path,
         printf("Generated C source: %s\n", c_path);
     } else {
         const char *target = native_target;
-        result = run_native_compiler(cc ? cc : "gcc", c_path, target);
+        result = run_native_compiler(cc ? cc : "gcc", c_path, target, compiler.uses_gui);
         if (result == 0) printf("Build succeeded: %s\n", target);
         else fprintf(stderr, "ylang: native compilation failed (exit %d).\n", result);
         (void)unlink(c_path);
