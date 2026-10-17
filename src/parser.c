@@ -125,31 +125,76 @@ void diagnostic(Compiler *c, Token token, const char *level,
                        const char *code, const char *message,
                        const char *suggestion)
 {
-    size_t line = token.line ? token.line : 1;
-    size_t column = token.column ? token.column : 1;
-    fprintf(stderr, "%s[%s]: %s\n", level, code, message);
-    fprintf(stderr, "  --> %s:%zu:%zu\n", c->filename, line, column);
+    size_t line = token.line ? token.line : 1U;
+    size_t column = token.column ? token.column : 1U;
+    const char *filename = c->filename;
+    const char *excerpt_source = c->source;
+    size_t excerpt_length = c->source_length;
+    size_t local_offset = SIZE_MAX;
 
-    const char *line_start = c->source;
-    size_t current_line = 1;
-    while (current_line < line && *line_start) {
-        if (*line_start++ == '\n') current_line++;
+    if (token.start && c->source) {
+        uintptr_t token_address = (uintptr_t)(const void *)token.start;
+        uintptr_t source_address = (uintptr_t)(const void *)c->source;
+        if (token_address >= source_address &&
+            token_address - source_address <= c->source_length) {
+            size_t absolute_offset = (size_t)(token_address - source_address);
+            for (size_t i = 0; i < c->source_unit_count; i++) {
+                const SourceUnit *unit = &c->source_units[i];
+                if (absolute_offset >= unit->offset &&
+                    absolute_offset - unit->offset <= unit->length) {
+                    filename = unit->filename;
+                    excerpt_source = c->source + unit->offset;
+                    excerpt_length = unit->length;
+                    local_offset = absolute_offset - unit->offset;
+                    line = 1U;
+                    column = 1U;
+                    for (size_t j = 0; j < local_offset; j++) {
+                        if (excerpt_source[j] == '\n') {
+                            line++;
+                            column = 1U;
+                        } else {
+                            column++;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
     }
+
+    fprintf(stderr, "%s[%s]: %s\n", level, code, message);
+    fprintf(stderr, "  --> %s:%zu:%zu\n", filename, line, column);
+
+    const char *line_start = excerpt_source;
+    size_t current_line = 1U;
+    if (local_offset == SIZE_MAX) {
+        while (current_line < line && *line_start) {
+            if (*line_start++ == '\n') current_line++;
+        }
+    } else {
+        for (size_t i = 0; i < local_offset; i++) {
+            if (excerpt_source[i] == '\n') line_start = excerpt_source + i + 1U;
+        }
+        current_line = line;
+    }
+
+    const char *unit_end = excerpt_source + excerpt_length;
     const char *line_end = line_start;
-    while (*line_end && *line_end != '\n' && *line_end != '\r') line_end++;
-    if (*line_start && current_line == line) {
+    while (line_end < unit_end && *line_end != '\n' && *line_end != '\r')
+        line_end++;
+    if (line_start < unit_end && current_line == line) {
         fprintf(stderr, "   |\n%3zu | %.*s\n   | ", line,
                 (int)(line_end - line_start), line_start);
-        for (size_t i = 1; i < column; i++) fputc(' ', stderr);
-        size_t width = token.length > 0 ? token.length : 1;
-        if (width > 60) width = 1;
+        for (size_t i = 1U; i < column; i++) fputc(' ', stderr);
+        size_t width = token.length > 0 ? token.length : 1U;
+        if (width > 60U) width = 1U;
         for (size_t i = 0; i < width; i++) fputc('^', stderr);
         fputc('\n', stderr);
     }
-    if (suggestion && *suggestion) {
+    if (suggestion && *suggestion)
         fprintf(stderr, "   = help: %s\n", suggestion);
-    }
     fputc('\n', stderr);
+
     if (strcmp(level, "error") == 0) {
         c->had_error = true;
         c->error_count++;
