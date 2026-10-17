@@ -1,0 +1,10 @@
+enum Direction { North, South }
+struct Point { int x; int y; }
+function main() -> int {
+    let Point p = Point(1, 2);
+    match (Direction.North) {
+        Direction.North -> { return p.x; }
+        Direction.South -> { return p.y; }
+    }
+    return 0;
+}
