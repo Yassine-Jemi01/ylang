@@ -12,7 +12,7 @@ SRC := $(wildcard src/*.c)
 OBJ := $(patsubst src/%.c,build/%.o,$(SRC))
 BIN := build/ylang
 
-.PHONY: all clean test sanitize install uninstall print-version gui gui-example install-gui check-sdl2
+.PHONY: all clean test sanitize install uninstall print-version gui gui-example install-gui check-sdl2 fuzz-lexer fuzz-parser
 
 all: $(BIN)
 
@@ -26,8 +26,30 @@ build/%.o: src/%.c
 print-version:
 	@printf '%s\n' '$(VERSION)'
 
-test: $(BIN)
+UNIT_OBJ := $(filter-out build/main.o build/driver.o,$(OBJ))
+FUZZ_CC ?= clang
+FUZZ_FLAGS := -std=c17 -g -O1 -Wall -Wextra -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer -Iinclude -Isrc
+
+build/test-lexer: tests/unit/lexer_test.c src/lexer.c include/ylang/lexer.h
+	@mkdir -p build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< src/lexer.c -o $@
+
+build/test-parser: tests/unit/parser_test.c $(UNIT_OBJ)
+	@mkdir -p build
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Isrc $< $(UNIT_OBJ) $(LDFLAGS) -lm -o $@
+
+test: $(BIN) build/test-lexer build/test-parser
+	./build/test-lexer
+	./build/test-parser
 	sh tests/run.sh
+
+fuzz-lexer: tests/fuzz/fuzz_lexer.c src/lexer.c
+	@mkdir -p build
+	$(FUZZ_CC) $(CPPFLAGS) $(FUZZ_FLAGS) $^ -o build/fuzz-lexer
+
+fuzz-parser: tests/fuzz/fuzz_parser.c $(filter-out src/main.c src/driver.c,$(SRC))
+	@mkdir -p build
+	$(FUZZ_CC) $(CPPFLAGS) $(FUZZ_FLAGS) $^ -lm -o build/fuzz-parser
 
 sanitize:
 	$(MAKE) clean
