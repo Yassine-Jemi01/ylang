@@ -27,7 +27,7 @@ The optional empty parentheses on imported names are accepted to match the origi
 ## Resolution behavior
 
 - Imported modules are read from local files; there is no registry, package manager, global search path, or network download.
-- Nested imports are resolved recursively. A canonical file path is loaded only once in one build.
+- Nested imports are resolved recursively. A canonical file path is loaded only once in one build. Its imported dependencies are processed before the module itself, so a directly imported wrapper can call a function from its own dependency.
 - Repeated imports of the same canonical file reuse the loaded module, so separate directives can import different functions without duplicating its definitions.
 - Cyclic imports are rejected.
 - Each listed function must be declared in the directly imported file.
