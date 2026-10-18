@@ -231,32 +231,8 @@ jobs:
           tar -tzf "$package_path" | grep -Fxq "metadata.json"
           tar -tzf "$package_path" | grep -Fxq "root/usr/bin/ylang"
           tar -tzf "$package_path" | grep -Fxq "root/usr/share/ylang/stdlib/game2d.yl"
-          EXPECTED_VERSION="$(tr -d '\r\n' < .github/PUBLISH_STABLE)"
-          temp_root="$(mktemp -d)"
-          tar -xzf "$package_path" -C "$temp_root"
-          output="$("$temp_root/root/usr/bin/ylang" --version)"
-          printf '%s\n' "$output"
-          [[ "$output" == "YLang compiler ${EXPECTED_VERSION} ("* ]]
-
-          # Exercise the package manager's system-install path without touching
-          # the runner's real /usr or /var directories.
-          install_root="$(mktemp -d)"
-          yspm_bin="$GITHUB_WORKSPACE/tools/yspm-source/build/yspm"
-          trap 'rm -rf "$temp_root" "$install_root"' EXIT
-          YSPM_ROOT="$install_root" "$yspm_bin" install --yes "$package_path"
-          installed="$install_root/usr/bin/ylang"
-          test -x "$installed"
-          export YLANG_PATH="$install_root/usr/share/ylang/stdlib"
-          "$installed" --version
-          "$installed" check "$GITHUB_WORKSPACE/examples/demo.yl"
-          mkdir -p "$install_root/tmp"
-          "$installed" build "$GITHUB_WORKSPACE/examples/demo.yl" -o "$install_root/tmp/ylang-smoke"
-          smoke_output="$("$install_root/tmp/ylang-smoke")"
-          printf '%s\n' "$smoke_output"
-          grep -Fq "Compiler works!" <<< "$smoke_output"
-          YSPM_ROOT="$install_root" "$yspm_bin" remove --yes ylang
-          test ! -e "$install_root/usr/bin/ylang"
-          test ! -e "$install_root/usr/share/ylang/stdlib/game2d.yl"
+          YSPM_BIN="$GITHUB_WORKSPACE/tools/yspm-source/build/yspm" \
+            bash packaging/yspm/smoke-install.sh "$package_path"
       - name: Upload YSPM package
         uses: actions/upload-artifact@v4
         with:
