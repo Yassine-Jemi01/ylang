@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#f7f8f3">
-  <meta name="description" content="YLang is an open-source compiled programming language. Readable syntax, explicit types, and real projects.">
+  <meta name="description" content="YLang is an open-source compiled programming language with explicit types, readable syntax, and examples you can build.">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="YLang — Make something real.">
-  <meta property="og:description" content="A small language project with a compiler you can explore and programs you can build.">
-  <title>YLang — Make something real.</title>
-  <link rel="icon" href="assets/favicon-home.svg" type="image/svg+xml">
+  <meta property="og:title" content="YLang — Build something real">
+  <meta property="og:description" content="Explore YLang, read the book, and see what you can build with a small compiled language.">
+  <title>YLang — Build something real</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="home.css">
 </head>
@@ -20,7 +20,7 @@
   <header class="site-header">
     <div class="container nav-wrap">
       <a class="brand" href="index.html" aria-label="YLang home">
-        <img src="assets/ylang-logo-home.svg" alt="" width="34" height="34">
+        <img src="assets/ylang-logo-icon.svg" alt="" width="34" height="34">
         <span>YLang</span>
       </a>
       <nav class="site-nav" id="site-nav" aria-label="Main navigation">
@@ -41,36 +41,41 @@
     <section class="hero">
       <div class="container hero-grid">
         <div class="hero-copy">
-          <p class="eyebrow"><span class="eyebrow-mark" aria-hidden="true"></span> AN OPEN-SOURCE LANGUAGE</p>
-          <h1>Make something<br><span>real with YLang.</span></h1>
-          <p class="hero-lede">A compiled programming language with readable syntax and explicit types. Made to learn from, build with, and improve in the open.</p>
+          <p class="eyebrow"><span class="eyebrow-mark" aria-hidden="true"></span> AN OPEN-SOURCE PROGRAMMING LANGUAGE</p>
+          <h1>Small language.<br><span>Real programs.</span></h1>
+          <p class="hero-lede">YLang is a compiled language with readable syntax and explicit types. Start with a small program, explore the compiler, and build something of your own.</p>
           <div class="hero-actions">
-            <a class="button button-primary" href="https://github.com/Yassine-Jemi01/ylang#quick-start">Get started <span aria-hidden="true">→</span></a>
+            <a class="button button-primary" href="docs.html#compiler">Get started <span aria-hidden="true">→</span></a>
             <a class="button button-secondary" href="learn/index.html">Read the book</a>
           </div>
-          <p class="hero-note">YLang 2.0 <span aria-hidden="true">·</span> Open source <span aria-hidden="true">·</span> Built in the open</p>
+          <p class="hero-note">YLang 2.0.0 <span aria-hidden="true">·</span> Open source <span aria-hidden="true">·</span> Experimental GUI and game APIs</p>
         </div>
       </div>
     </section>
 
-    <section class="principles" aria-label="YLang principles">
+    <section class="principles" aria-label="Language highlights">
       <div class="container principles-grid">
-        <p><strong>Readable syntax</strong><span>Code that stays clear.</span></p>
-        <p><strong>Explicit types</strong><span>Fewer hidden surprises.</span></p>
-        <p><strong>Open compiler</strong><span>Explore how it works.</span></p>
+        <p><strong>Readable syntax</strong><span>Keep the code easy to follow.</span></p>
+        <p><strong>Explicit types</strong><span>Make data and intent clear.</span></p>
+        <p><strong>Build from source</strong><span>Explore the compiler in the open.</span></p>
       </div>
     </section>
 
-    <section class="section example-section" id="examples">
+    <section class="section example-section" id="examples" aria-labelledby="example-title">
       <div class="container example-grid">
-        <div class="example-art">
-          <img src="assets/snake-preview.svg" alt="Snake game preview: a teal snake moves across a dark grid toward an orange apple" width="720" height="500" loading="lazy">
-        </div>
+        <figure class="example-art">
+          <img src="assets/snake-preview.svg" alt="Illustrated Snake game preview with a teal snake, an orange apple, and a dark grid" width="720" height="500" loading="lazy">
+          <figcaption>Snake — a small project made with YLang</figcaption>
+        </figure>
         <div class="example-copy">
-          <p class="eyebrow"><span class="eyebrow-mark" aria-hidden="true"></span> BUILT WITH YLANG</p>
-          <h2>A little game.<br>A real program.</h2>
-          <p>Snake is a simple example of turning YLang code into something you can play. It brings together game logic, input, drawing, and a replay button in one small project.</p>
-          <a class="text-link" href="https://github.com/Yassine-Jemi01/ylang/search?q=snake.yl&type=code">Explore the Snake example <span aria-hidden="true">↗</span></a>
+          <p class="eyebrow"><span class="eyebrow-mark" aria-hidden="true"></span> FROM CODE TO A GAME</p>
+          <h2 id="example-title">A simple game is a real milestone.</h2>
+          <p>Snake brings together game state, keyboard input, drawing, and replay logic. It is the kind of hands-on project that makes a language’s capabilities easier to understand than a list of promises.</p>
+          <div class="example-links">
+            <a class="text-link" href="https://github.com/Yassine-Jemi01/ylang/tree/main/examples/games">Browse game examples <span aria-hidden="true">↗</span></a>
+            <a class="text-link" href="https://github.com/Yassine-Jemi01/ylang/blob/main/docs/GAME2D.md">Read the Game2D guide <span aria-hidden="true">↗</span></a>
+          </div>
+          <p class="example-note">The preview is an illustration; it is not a screenshot from a running build.</p>
         </div>
       </div>
     </section>
@@ -78,12 +83,12 @@
     <section class="closing">
       <div class="container closing-inner">
         <div>
-          <p class="eyebrow">YOUR NEXT PROJECT STARTS HERE</p>
-          <h2>Try it. Build something.</h2>
+          <p class="eyebrow">START WITH THE BASICS</p>
+          <h2>Read it. Run it. Make it yours.</h2>
         </div>
         <div class="closing-links">
-          <a class="button button-primary" href="https://github.com/Yassine-Jemi01/ylang#quick-start">Get YLang <span aria-hidden="true">→</span></a>
-          <a class="button button-light" href="docs.html">Documentation</a>
+          <a class="button button-primary" href="docs.html#compiler">Start with the compiler <span aria-hidden="true">→</span></a>
+          <a class="button button-light" href="https://github.com/Yassine-Jemi01/ylang">View source on GitHub</a>
         </div>
       </div>
     </section>
@@ -91,17 +96,18 @@
 
   <footer class="site-footer">
     <div class="container footer-top">
-      <a class="brand footer-brand" href="index.html"><img src="assets/ylang-logo-home.svg" alt="" width="30" height="30"><span>YLang</span></a>
-      <p>A language project built in the open.</p>
+      <a class="brand footer-brand" href="index.html"><img src="assets/ylang-logo-icon.svg" alt="" width="30" height="30"><span>YLang</span></a>
+      <p>An independent language project, built in the open.</p>
       <div class="footer-links">
         <a href="docs.html">Docs</a>
+        <a href="learn/index.html">Book</a>
         <a href="https://github.com/Yassine-Jemi01/ylang">GitHub</a>
         <a href="https://github.com/Yassine-Jemi01/ylang/blob/main/LICENSE">MIT License</a>
       </div>
     </div>
     <div class="container footer-bottom">
       <span>© <span id="year">2026</span> YLang contributors</span>
-      <span>Make something real.</span>
+      <a href="index.html">Back to top ↑</a>
     </div>
   </footer>
   <script src="script.js"></script>
