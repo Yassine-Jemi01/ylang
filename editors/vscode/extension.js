@@ -199,17 +199,52 @@ function parseDiagnostics(text, document) {
   return found;
 }
 
+let temporarySourceCounter = 0;
+
 function temporarySource(document) {
+  const originalPath = document.uri.scheme === "file" ? document.uri.fsPath : "";
+  const originalName = originalPath ? path.basename(originalPath) : "untitled.yl";
+  const filename = originalName.toLowerCase().endsWith(".yl") ? originalName : "untitled.yl";
+
+  // Keep the scratch source beside the real file so imports such as
+  // from "./math.yl" import add; resolve exactly as they do for the saved file.
+  if (originalPath) {
+    const sourceDirectory = path.dirname(originalPath);
+    const stem = filename.replace(/\.yl$/i, "");
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const tempFile = path.join(
+        sourceDirectory,
+        `.${stem}.ylang-check-${process.pid}-${Date.now()}-${temporarySourceCounter++}.yl`
+      );
+      try {
+        fs.writeFileSync(tempFile, document.getText(), { encoding: "utf8", flag: "wx" });
+        return { tempFile, tempDirectory: undefined };
+      } catch (error) {
+        if (error.code === "EEXIST") continue;
+        break;
+      }
+    }
+  }
+
+  // Untitled files (or read-only source directories) still get ordinary
+  // diagnostics through a system temporary directory. Relative imports may
+  // not resolve in this fallback because there is no writable sibling path.
   const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "ylang-vscode-"));
-  const originalName = document.uri.scheme === "file"
-    ? path.basename(document.uri.fsPath)
-    : "untitled.yl";
-  const filename = originalName.toLowerCase().endsWith(".yl")
-    ? originalName
-    : "untitled.yl";
   const tempFile = path.join(tempDirectory, filename);
   fs.writeFileSync(tempFile, document.getText(), "utf8");
   return { tempDirectory, tempFile };
+}
+
+function cleanupTemporarySource(temporary) {
+  try {
+    if (temporary.tempDirectory) {
+      fs.rmSync(temporary.tempDirectory, { recursive: true, force: true });
+    } else {
+      fs.rmSync(temporary.tempFile, { force: true });
+    }
+  } catch (cleanupError) {
+    output.appendLine("Could not remove temporary files: " + String(cleanupError));
+  }
 }
 
 function showCompilerMissing(compiler) {
@@ -256,11 +291,7 @@ function checkDocument(document, revision) {
     ["check", temporary.tempFile],
     { cwd, timeout, maxBuffer: 1024 * 1024, encoding: "utf8" },
     (error, stdout, stderr) => {
-      try {
-        fs.rmSync(temporary.tempDirectory, { recursive: true, force: true });
-      } catch (cleanupError) {
-        output.appendLine("Could not remove temporary files: " + String(cleanupError));
-      }
+      cleanupTemporarySource(temporary);
 
       if (state.child === child) state.child = undefined;
       if (state.revision !== revision) return;
