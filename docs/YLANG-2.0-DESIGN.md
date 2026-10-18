@@ -140,76 +140,65 @@ Standard-library priorities:
 - Tests and documentation for every public API.
 - Platform-specific APIs isolated behind portable interfaces.
 
-## Milestone 6 — Ecosystem and package manager
+## Milestone 6 — Package manager (required for 2.0)
 
-Initial project manifest proposal:
+The initial cross-platform ylpm implementation lives in tools/ylpm and is being reviewed separately. Its project manifest is JSON (ylang.json), and ylpm.lock records the explicitly tagged source archive and SHA-256 integrity digest.
 
-~~~toml
-[package]
-name = "example"
-version = "0.1.0"
-ylang = ">=2.0.0"
+Current commands include init, add, install, remove, list, build, run, and version. The first source type is github:owner/repository@tag over HTTPS. Archive extraction uses size limits, rejects path traversal and unexpected file types, and stages a package before activation.
 
-[dependencies]
-# package = "1.2.3"
-~~~
+The 2.0 release requires:
+- A successful Linux, macOS, and Windows CI matrix for the package manager.
+- Stable documented manifest and lockfile examples.
+- Integrity verification on reinstall and failure for changed package archives.
+- Documented limits, including no central registry, version ranges, transitive dependency solver, or publisher signing yet.
+- Clear instructions for package source imports and YLANG_PATH integration.
 
-The exact schema must be finalized before implementation. The package manager should eventually provide:
-- ypm init, add, remove, update, build, and test commands.
-- A manifest and committed lockfile with exact resolved versions.
-- Integrity hashes for downloaded archives.
-- Dependency source allowlisting and safe archive extraction (reject path traversal and unexpected symlinks).
-- Deterministic resolution, clear offline behavior, and useful conflict diagnostics.
-- Local path dependencies first; pinned Git dependencies next; a central registry only after the trust and publishing model exists.
+A public central registry, version solving, signatures, and more advanced dependency workflows are intentionally future work; the manager must not imply those features exist.
 
-## Milestone 7 — Releases and website
+## Milestone 7 — Native Windows support (required for 2.0)
 
-Release artifacts should be produced by CI, not manually compiled on one developer's machine.
+The target is native 64-bit Windows using MinGW-w64. MSVC is not part of the first portability milestone. The C backend stays the default; NASM remains Linux x86-64-only.
 
-Initial target matrix:
-- Linux x86_64.
-- Linux aarch64 only after runner/toolchain coverage is confirmed.
-- Windows x86_64.
-- macOS arm64 and x86_64 where supported by the compiler and CI runners.
+The Windows release gate must build the compiler and SDL2 GUI runtime, build and run a native executable, cover relative imports, and verify standard input. These smoke tests establish an initial supported path, not complete Windows feature parity. Continue expanding platform-specific tests after the first milestone.
 
-Each target must build, run its test suite, and publish checksums. Do not advertise a target until CI has passed on that target.
+See [WINDOWS.md](WINDOWS.md) for setup instructions, dependencies, supported paths, and limitations.
 
-Minimal website pages:
-- Home: what YLang is and a small code sample.
-- Documentation: installation, language guide, standard library, diagnostics.
-- Downloads: links to actual release artifacts and checksums.
-- Packages: package-manager instructions once it exists.
-- Playground: only if an isolated, resource-limited execution service exists; never execute arbitrary submitted code directly on a privileged host.
+## Milestone 8 — Website, documentation, and 2D game readiness (required for 2.0)
 
-The site should consume release metadata or a generated manifest so download links do not need to be edited by hand for every release.
+The website and docs must describe tested behavior rather than the roadmap alone. They must cover:
+- Installation on Linux, macOS, and experimental native Windows.
+- The ylpm manifest, lockfile, package source format, and security boundaries.
+- The Game2D API, SDL2 prerequisites, install instructions, and a runnable game example.
+- Current C/NASM backend limitations and the future compiler roadmap.
 
-## GUI and 2D game development
+The minimal Game2D acceptance target is the ability to build and run at least one simple playable 2D game from YLang source. The current Dodge sample demonstrates frame timing, keyboard movement, rectangle drawing, collision detection, and a score. This is a small learning/prototyping library, not a full Pygame replacement.
 
-The optional SDL2 runtime and a minimal `gui.*` namespace are implemented and callable from `.yl`. The API currently covers initialization, window creation, event polling, clearing, rectangle drawing, presentation, last-error reporting, and shutdown/close. Type-checking and NASM rejection tests exist; the runtime integration is optional so ordinary non-GUI programs do not require SDL2. See [GUI-API-SPEC.md](GUI-API-SPEC.md) for the current contract.
+The following remain future work and are not release blockers for the first 2.0 milestone:
+- Object-oriented programming, methods on structs, and inheritance.
+- A central package registry, dependency solver, and package signing.
+- Sprite and texture management, audio, text rendering, animation systems, scene management, advanced physics, or 3D.
+- A general-purpose native compiler backend independent of GCC/Clang.
 
-The experimental `stdlib/game2d.yl` module wraps window/frame/drawing operations, keyboard state, mouse position/buttons, millisecond timing, delta time, rectangle overlap, and point-in-rectangle helpers. See [game2d.md](game2d.md). It is a foundation, not a Pygame replacement.
+## Milestone 9 — LLVM and independent native compiler (future releases)
 
-Remaining game-library work:
-1. Add a reusable game-loop abstraction with a documented frame/update contract.
-2. Add sprites/textures and integration tests using SDL's dummy video driver where available.
-3. Add audio, richer widgets, physics, or 3D only after the minimal 2D API is stable.
+Do not attempt to finish LLVM as part of the current 2.0 release gate. Keep the existing C backend as the broad-coverage reference path and NASM as an experimental Linux x86-64 backend. In later releases, introduce a documented typed, backend-neutral IR and evaluate LLVM IR/object output against direct code generation. Expand a backend only when its output and exit status pass differential tests against the reference behavior.
 
-The NASM backend should continue to reject unsupported GUI/game calls with an explicit diagnostic. GUI and game features are not complete until Linux/macOS CI, missing-dependency diagnostics, and runtime tests pass.
- 
 ## CI and release gates
 
 Every pull request:
-- Builds with GCC and Clang on supported Linux runners.
+- Builds with GCC and Clang on supported Linux runners and the native Windows MinGW-w64 smoke target.
 - Runs unit/integration tests and verifies expected output and exit codes.
 - Runs sanitizers where available.
 - Runs compile-fail tests and checks stable diagnostic codes.
 - Tests NASM only on supported Linux x86_64 runners with NASM and binutils installed.
-- Checks formatting and generated artifacts.
+- Runs the ylpm test/build matrix on Linux, macOS, and Windows.
+- Checks Game2D source compilation and links the playable example when SDL2 is available.
+- Checks formatting, website links, and generated runtime artifacts.
 
 Every release:
-- Repeats the test matrix on the exact tagged commit.
-- Publishes checksums and release notes.
-- Documents backend and platform limitations.
+- Repeats the required test matrix on the exact candidate commit.
+- Blocks publication until native Windows, ylpm, and the playable Game2D example pass their acceptance checks.
+- Publishes notes that distinguish implemented features from future work.
 - Does not call a feature stable if its acceptance tests are missing.
 
 ## Reference designs
@@ -226,5 +215,7 @@ These documents are references for principles, not specifications to copy wholes
 - Keep the current C backend as the stable baseline while experimental NASM support is incomplete.
 - Implement struct as the first aggregate type; do not conflate structs with classes.
 - Specify ownership and lifetime rules before safe pointers.
-- Prefer explicit errors (Result) over hidden failure states.
-- Treat the website, package registry, and compiler binaries as release outputs that must reflect verified builds.
+- Prefer explicit errors (Result) over hidden failure states, but keep Result syntax out of scope until implemented.
+- Require native Windows, ylpm, and a playable minimal Game2D example before publishing 2.0.
+- Defer OOP and the full LLVM/native backend to future releases.
+- Treat the website, package manager, documentation, and compiler artifacts as release outputs that must reflect verified builds.
