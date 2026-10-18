@@ -32,7 +32,7 @@ YLang diagnostics include stable codes to help users search documentation and re
 | E2022 | Assignment to a `const` variable. | Keep constants immutable. |
 | E2023 | Assignment used as a nested value expression. | Keep assignment as a statement. |
 | E2027 | Invalid array operation or indexing target. | Index a supported array with an integer index. |
-| E2029 | Unsupported array use in a function call or other context. | See array limitations in the language specification. |
+| E2029 | An array is used as a value without an index. | Index the array or pass it to a function parameter that explicitly accepts an array. |
 | E2030 | Unary minus used with a non-numeric value. | Negate an `int` or `float`. |
 | E2031 | Logical negation used with a non-boolean value. | Use a `bool` expression. |
 | E2032 | Logical operators require boolean operands. | Use boolean expressions on both sides. |
@@ -40,7 +40,7 @@ YLang diagnostics include stable codes to help users search documentation and re
 | E2035 | Ordered comparison uses incompatible types. | Compare matching numbers, chars, or strings. |
 | E2036 | Equality operands are incompatible or are unsupported struct values. | Compare matching comparable values; struct equality is not implemented. |
 | E2040 | Unknown function name. | Check spelling or define the function. |
-| E2041 | Wrong number of function or math arguments. | Match the function's documented arity. |
+| E2041 | Wrong number of user-defined function arguments. | Match the function's declared parameter count. |
 | E2042 | Function argument type mismatch. | Match each argument to the expected type. |
 | E2043 | Duplicate function definition in one module. | Keep one definition per function name in a module. |
 | E2044 | A string standard-library function received a non-string argument. | Pass strings. |
