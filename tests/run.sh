@@ -207,6 +207,28 @@ if grep -Eqi 'invalid operands|initializer element is not constant' build/struct
     exit 1
 fi
 
+# Enum type mismatch diagnostics should name the actual declared enum types.
+cat > build/enum-type-mismatch.yl <<'EOF'
+enum Direction { North, East }
+enum Color { Red, Blue }
+function main() -> int {
+    let Direction facing = Color.Red;
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-type-mismatch.yl > build/enum-type-mismatch.out 2>&1; then
+    echo "FAIL: assigning one enum type to another should be rejected" >&2
+    exit 1
+fi
+grep -q 'E2001' build/enum-type-mismatch.out
+grep -q 'Direction' build/enum-type-mismatch.out
+grep -q 'Color' build/enum-type-mismatch.out
+if grep -q '<enum>' build/enum-type-mismatch.out; then
+    echo "FAIL: enum mismatch diagnostic printed a generic <enum> placeholder" >&2
+    cat build/enum-type-mismatch.out >&2
+    exit 1
+fi
+
 # Chained postfix syntax is parsed as a single expression; semantic errors stay focused.
 cat > build/postfix-index-member.yl <<'EOF'
 function main() -> int {
