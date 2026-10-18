@@ -646,7 +646,7 @@ static Expr *parse_primary(Parser *p)
                     EnumVariant *variant = find_enum_variant(
                         enumeration, token_copy(p->compiler, member));
                     if (!variant) {
-                        diagnostic(p->compiler, member, "error", "E2052",
+                        diagnostic(p->compiler, member, "error", "E2080",
                                    "Unknown variant for this enum type.",
                                    "Use a variant declared inside the enum definition.");
                         return new_expr(p->compiler, EXPR_ERROR, member);
@@ -741,12 +741,24 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
             left = indexed;
             continue;
         }
+        if (p->current.type == TOKEN_DOT && min_precedence <= 8) {
+            Token dot = p->current;
+            advance_parser(p);
+            Token member = consume(p, TOKEN_IDENTIFIER,
+                "Expected a member name after '.'.",
+                "Write a field access such as 'point.x' or 'points[index].x'.");
+            Expr *member_expr = new_expr(p->compiler, EXPR_MEMBER, dot);
+            member_expr->as.member.target = left;
+            member_expr->as.member.name = token_copy(p->compiler, member);
+            left = member_expr;
+            continue;
+        }
         if (p->current.type == TOKEN_PLUS_PLUS) {
             op = p->current;
             if (min_precedence > 1) break;
             advance_parser(p);
             if (left->kind != EXPR_NAME && left->kind != EXPR_MEMBER) {
-                diagnostic(p->compiler, op, "error", "E1004",
+                diagnostic(p->compiler, op, "error", "E2093",
                            "The '++' operator requires a mutable variable or struct field.",
                            "Use 'count++' or increment a numeric field of a mutable struct variable.");
                 left = new_expr(p->compiler, EXPR_ERROR, op);
@@ -915,7 +927,7 @@ static Stmt *parse_match_after_keyword(Parser *p, Token token)
         MatchArm *arm = arena_alloc(&p->compiler->arena, sizeof(*arm));
         arm->token = arm_token;
         if (pattern->kind != EXPR_ENUM_VALUE) {
-            diagnostic(p->compiler, pattern->token, "error", "E2055",
+            diagnostic(p->compiler, pattern->token, "error", "E2084",
                        "A match arm must name an enum variant.",
                        "Use a pattern such as Direction.North -> { ... }.");
         } else {
@@ -1107,7 +1119,7 @@ static EnumDecl *parse_enum(Parser *p, Token enum_token)
         EnumDecl *existing = p->compiler->enums[i];
         if (existing->module == p->compiler->current_module &&
             strcmp(existing->name, name) == 0) {
-            diagnostic(p->compiler, name_token, "error", "E2050",
+            diagnostic(p->compiler, name_token, "error", "E2081",
                        "This enum type is already declared in the current module.",
                        "Choose a unique enum type name.");
             break;
@@ -1132,7 +1144,7 @@ static EnumDecl *parse_enum(Parser *p, Token enum_token)
         if (variant_token.length == 0) break;
         char *variant_name = token_copy(p->compiler, variant_token);
         if (find_enum_variant(enumeration, variant_name)) {
-            diagnostic(p->compiler, variant_token, "error", "E2051",
+            diagnostic(p->compiler, variant_token, "error", "E2082",
                        "This enum variant is declared more than once.",
                        "Each variant name must be unique within its enum.");
         } else {
@@ -1151,7 +1163,7 @@ static EnumDecl *parse_enum(Parser *p, Token enum_token)
         }
     }
     if (enumeration->variant_count == 0) {
-        diagnostic(p->compiler, name_token, "error", "E2053",
+        diagnostic(p->compiler, name_token, "error", "E2083",
                    "An enum must declare at least one variant.",
                    "Add one or more variants inside the braces.");
     }

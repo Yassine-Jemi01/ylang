@@ -178,9 +178,25 @@ print(string.ends_with(name, "n"));
 - `io.read_line()` reads one line from standard input and removes its trailing newline. At end-of-file it returns an empty string.
 - `io.read_file(path)` reads an entire UTF-8/ASCII-compatible text file into a string. A file-open/read failure or embedded NUL byte terminates the program with a runtime error; binary files are not supported by the string API.
 - `io.write_file(path, content)` overwrites or creates a text file and returns `true` on success or `false` if it cannot open/write the file. It does not create missing parent directories.
-- File paths are interpreted relative to the process working directory. File I/O is synchronous and currently has no structured error/exception type.\n- `path.exists(path)` returns whether a path can be inspected with `stat`; it may return true for files, directories, or other filesystem objects.\n- `path.basename(path)` returns the final path component, and `path.extension(path)` returns the suffix after the final dot (without the dot); a leading dot alone is not treated as an extension. These helpers use POSIX path separators.\n- `image.open(path)` launches the platform default opener (`xdg-open` on Linux, `open` on macOS) without invoking a shell and returns whether the launcher exits successfully. It requires a desktop session and a registered handler; it opens the file in an external application and does not decode or draw the image in a YLang window.
+- File paths are interpreted relative to the process working directory. File I/O is synchronous and currently has no structured error/exception type.
+- `path.exists(path)` returns whether a path can be inspected with `stat`; it may return true for files, directories, or other filesystem objects.
+- `path.basename(path)` returns the final path component, and `path.extension(path)` returns the suffix after the final dot (without the dot); a leading dot alone is not treated as an extension. These helpers use POSIX path separators.
+- `image.open(path)` launches the platform default opener (`xdg-open` on Linux, `open` on macOS) without invoking a shell and returns whether the launcher exits successfully. It requires a desktop session and a registered handler; it opens the file in an external application and does not decode or draw the image in a YLang window.
 
-## Path and desktop integration\n\n```ylang\nlet string file = io.read_line();\nif (path.exists(file)) {\n    print(path.basename(file), path.extension(file));\n    let bool opened = image.open(file);\n    if (not opened) { print("Could not launch the default image/file viewer."); }\n}\n```\n\nThe `path` namespace exposes `exists`, `basename`, and `extension`. The `image.open(path)` convenience API starts the operating system's default file handler without passing the path through a shell, avoiding shell-metacharacter interpretation. This is OS integration rather than a built-in image decoder or a custom GUI image widget; native GUI bindings and in-process image decoding remain future work. These APIs currently target the POSIX systems supported by YLang.\n\n## Standard math library
+## Path and desktop integration
+
+```ylang
+let string file = io.read_line();
+if (path.exists(file)) {
+    print(path.basename(file), path.extension(file));
+    let bool opened = image.open(file);
+    if (not opened) { print("Could not launch the default image/file viewer."); }
+}
+```
+
+The `path` namespace exposes `exists`, `basename`, and `extension`. The `image.open(path)` convenience API starts the operating system's default file handler without passing the path through a shell, avoiding shell-metacharacter interpretation. This is OS integration rather than a built-in image decoder or a custom GUI image widget; native GUI bindings and in-process image decoding remain future work. These APIs currently target the POSIX systems supported by YLang.
+
+## Standard math library
 
 YLang provides a built-in `math` namespace for common floating-point operations. These calls are checked by the compiler and emitted as native C math-library calls.
 
@@ -270,6 +286,6 @@ lowering is implemented.
 
 ## 12. Unsupported features and implementation limits
 
-The following are not supported by the current language subset: structs/classes/OOP, payload enums, generic `Option<T>`/`Result<T, E>`, exception syntax (`try`/`catch`), generics, raw pointers/references, returning arrays, nested/const arrays, and a dedicated LLVM/native backend. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
+The following are not supported by the current language subset: classes, methods on structs, inheritance, payload enums, generic `Option<T>`/`Result<T, E>`, exception syntax (`try`/`catch`), generics, raw pointers/references, returning arrays, nested/const arrays, and a dedicated LLVM/native backend. Typed structs and enums are implemented as experimental extensions described in [the struct reference](STRUCTS.md) and [the enum reference](ENUMS.md); they are not part of the stable-core compatibility guarantee. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
 
 The compiler generates C, so native code inherits ordinary process privileges and is not sandboxed. Some formatted string values are stored until process exit; creating many such values in a long-running loop can increase memory consumption. The language does not define ownership/borrowing or a garbage collector in this release. Do not assume Rust-like memory-safety guarantees.

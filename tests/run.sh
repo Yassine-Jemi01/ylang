@@ -8,6 +8,7 @@ EXPECTED_VERSION=$(cat VERSION)
 ./build/ylang --version | grep -Fq "$EXPECTED_VERSION"
 ./build/ylang --help > build/help.out
 grep -q 'ylang check' build/help.out
+grep -Fq "YLang v${EXPECTED_VERSION} — stable compiled language toolchain" build/help.out
 ./build/ylang check examples/type-conversions.yl >/dev/null
 ./build/ylang build examples/type-conversions.yl -o build/test-type-conversions >/dev/null
 ./build/test-type-conversions > build/type-conversions.out
@@ -141,8 +142,10 @@ if command -v clang >/dev/null 2>&1; then
 fi
 
 
-# The first game2d module provides checked rectangle collision helpers.
-cat > build/game2d-collision.yl <<'EOF'
+# Pure Game2D helpers currently share the SDL2-linked game2d module.
+# Skip this integration test when the SDL2 development package is unavailable.
+if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists sdl2; then
+    cat > build/game2d-collision.yl <<'EOF'
 from game2d.yl import game2d_rects_overlap, game2d_point_in_rect;
 function main() -> int {
     print(game2d_rects_overlap(0, 0, 10, 10, 5, 5, 10, 10));
@@ -153,11 +156,212 @@ function main() -> int {
     return 0;
 }
 EOF
-YLANG_PATH=stdlib ./build/ylang check build/game2d-collision.yl >/dev/null
-YLANG_PATH=stdlib ./build/ylang build build/game2d-collision.yl -o build/test-game2d-collision >/dev/null
-./build/test-game2d-collision > build/game2d-collision.out
-printf 'true\nfalse\nfalse\ntrue\nfalse\n' > build/game2d-collision.expected
-diff -u build/game2d-collision.expected build/game2d-collision.out
+    YLANG_PATH=stdlib ./build/ylang check build/game2d-collision.yl >/dev/null
+    YLANG_PATH=stdlib ./build/ylang build build/game2d-collision.yl -o build/test-game2d-collision >/dev/null
+    ./build/test-game2d-collision > build/game2d-collision.out
+    printf 'true\nfalse\nfalse\ntrue\nfalse\n' > build/game2d-collision.expected
+    diff -u build/game2d-collision.expected build/game2d-collision.out
+else
+    echo "SKIP: Game2D collision integration test requires SDL2 development files and pkg-config." >&2
+fi
+
+# Global negative literals and negative array elements must remain C constant expressions.
+cat > build/global-negative-initializers.yl <<'EOF'
+let int global_negative = -5;
+let int global_minimum = -9223372036854775808;
+let int values[] = [-1, -2];
+function main() -> int {
+    print(global_negative, global_minimum, values[0]);
+    return 0;
+}
+EOF
+./build/ylang check build/global-negative-initializers.yl >/dev/null
+./build/ylang build build/global-negative-initializers.yl -o build/test-global-negative-initializers >/dev/null
+./build/test-global-negative-initializers > build/global-negative-initializers.out
+printf '%s\n' '-5 -9223372036854775808 -1' > build/global-negative-initializers.expected
+diff -u build/global-negative-initializers.expected build/global-negative-initializers.out
+
+# Struct equality is rejected by sema rather than passed to the generated-C compiler.
+cat > build/struct-equality-error.yl <<'EOF'
+struct Point { int x; int y; }
+function main() -> int {
+    let Point left = Point(1, 2);
+    let Point right = Point(1, 2);
+    if (left == right) { print("same"); }
+    return 0;
+}
+EOF
+if ./build/ylang check build/struct-equality-error.yl > build/struct-equality-error.out 2>&1; then
+    echo "FAIL: struct equality should be rejected until structural equality is implemented" >&2
+    exit 1
+fi
+grep -q 'E2036' build/struct-equality-error.out
+grep -q 'Struct values do not support equality comparisons yet' build/struct-equality-error.out
+if ./build/ylang build build/struct-equality-error.yl -o build/struct-equality-error > build/struct-equality-build.out 2>&1; then
+    echo "FAIL: build accepted unsupported struct equality" >&2
+    exit 1
+fi
+if grep -Eqi 'invalid operands|initializer element is not constant' build/struct-equality-build.out; then
+    echo "FAIL: struct equality escaped semantic checking and failed in the C compiler" >&2
+    cat build/struct-equality-build.out >&2
+    exit 1
+fi
+
+# Enum type mismatch diagnostics should name the actual declared enum types.
+cat > build/enum-type-mismatch.yl <<'EOF'
+enum Direction { North, East }
+enum Color { Red, Blue }
+function main() -> int {
+    let Direction facing = Color.Red;
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-type-mismatch.yl > build/enum-type-mismatch.out 2>&1; then
+    echo "FAIL: assigning one enum type to another should be rejected" >&2
+    exit 1
+fi
+grep -q 'E2001' build/enum-type-mismatch.out
+grep -q 'Direction' build/enum-type-mismatch.out
+grep -q 'Color' build/enum-type-mismatch.out
+if grep -q '<enum>' build/enum-type-mismatch.out; then
+    echo "FAIL: enum mismatch diagnostic printed a generic <enum> placeholder" >&2
+    cat build/enum-type-mismatch.out >&2
+    exit 1
+fi
+
+# Chained postfix syntax is parsed as a single expression; semantic errors stay focused.
+cat > build/postfix-index-member.yl <<'EOF'
+function main() -> int {
+    let int arr[] = [1, 2];
+    print(arr[1].x);
+    return 0;
+}
+EOF
+if ./build/ylang check build/postfix-index-member.yl > build/postfix-index-member.out 2>&1; then
+    echo "FAIL: member access on an int should be rejected semantically" >&2
+    exit 1
+fi
+grep -q 'E2076' build/postfix-index-member.out
+if grep -q 'E1002' build/postfix-index-member.out; then
+    echo "FAIL: arr[index].field caused cascading parser errors" >&2
+    cat build/postfix-index-member.out >&2
+    exit 1
+fi
+
+cat > build/postfix-chain.yl <<'EOF'
+function main() -> int {
+    let int a = 1;
+    print(a.b.c);
+    return 0;
+}
+EOF
+if ./build/ylang check build/postfix-chain.yl > build/postfix-chain.out 2>&1; then
+    echo "FAIL: member access on an int should be rejected semantically" >&2
+    exit 1
+fi
+grep -q 'E2076' build/postfix-chain.out
+if grep -q 'E1002' build/postfix-chain.out; then
+    echo "FAIL: a.b.c caused cascading parser errors" >&2
+    cat build/postfix-chain.out >&2
+    exit 1
+fi
+
+# Distinct semantic failures should have distinct stable diagnostic codes.
+cat > build/invalid-increment-target.yl <<'EOF'
+function main() -> int {
+    print(1++);
+    return 0;
+}
+EOF
+if ./build/ylang check build/invalid-increment-target.yl > build/invalid-increment-target.out 2>&1; then
+    echo "FAIL: invalid increment target was accepted" >&2
+    exit 1
+fi
+grep -q 'E2093' build/invalid-increment-target.out
+
+cat > build/array-argument-type.yl <<'EOF'
+function total(int values[]) -> int {
+    return length(values);
+}
+function main() -> int {
+    let int scalar = 1;
+    total(scalar);
+    return 0;
+}
+EOF
+if ./build/ylang check build/array-argument-type.yl > build/array-argument-type.out 2>&1; then
+    echo "FAIL: scalar was accepted as an array argument" >&2
+    exit 1
+fi
+grep -q 'E2094' build/array-argument-type.out
+
+cat > build/plus-equal-bool.yl <<'EOF'
+function main() -> int {
+    let bool enabled = true;
+    enabled += false;
+    return 0;
+}
+EOF
+if ./build/ylang check build/plus-equal-bool.yl > build/plus-equal-bool.out 2>&1; then
+    echo "FAIL: += accepted a boolean target" >&2
+    exit 1
+fi
+grep -q 'E2095' build/plus-equal-bool.out
+
+cat > build/length-non-array.yl <<'EOF'
+function main() -> int {
+    let int value = 5;
+    print(length(value));
+    return 0;
+}
+EOF
+if ./build/ylang check build/length-non-array.yl > build/length-non-array.out 2>&1; then
+    echo "FAIL: length accepted a non-array value" >&2
+    exit 1
+fi
+grep -q 'E2096' build/length-non-array.out
+
+cat > build/math-wrong-arity.yl <<'EOF'
+function main() -> int {
+    let float value = math.sqrt();
+    print(value);
+    return 0;
+}
+EOF
+if ./build/ylang check build/math-wrong-arity.yl > build/math-wrong-arity.out 2>&1; then
+    echo "FAIL: math.sqrt accepted a missing argument" >&2
+    exit 1
+fi
+grep -q 'E2097' build/math-wrong-arity.out
+
+cat > build/math-non-float.yl <<'EOF'
+function main() -> int {
+    let float value = math.sqrt(9);
+    print(value);
+    return 0;
+}
+EOF
+if ./build/ylang check build/math-non-float.yl > build/math-non-float.out 2>&1; then
+    echo "FAIL: math.sqrt accepted an int without explicit conversion" >&2
+    exit 1
+fi
+grep -q 'E2098' build/math-non-float.out
+
+cat > build/array-element-type.yl <<'EOF'
+function total(int values[]) -> int {
+    return length(values);
+}
+function main() -> int {
+    let string names[] = ["Ada"];
+    total(names);
+    return 0;
+}
+EOF
+if ./build/ylang check build/array-element-type.yl > build/array-element-type.out 2>&1; then
+    echo "FAIL: function accepted an array with the wrong element type" >&2
+    exit 1
+fi
+grep -q 'E2099' build/array-element-type.out
 
 # User-defined enums have distinct types and can be passed, compared, and lowered.
 cat > build/enum-basic.yl <<'EOF'
@@ -184,7 +388,7 @@ EOF
 ./build/test-enum-basic > build/enum-basic.out
 printf 'north\neast\nnot-south\nmatch-north\n' > build/enum-basic.expected
 diff -u build/enum-basic.expected build/enum-basic.out
-if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
     ./build/ylang build-asm build/enum-basic.yl -o build/test-enum-basic-asm >/dev/null
     ./build/test-enum-basic-asm > build/enum-basic-asm.out
     diff -u build/enum-basic.expected build/enum-basic-asm.out
@@ -228,7 +432,7 @@ if ./build/ylang check build/enum-unknown-variant.yl > build/enum-unknown-varian
     echo "FAIL: unknown enum variant was accepted" >&2
     exit 1
 fi
-grep -q 'E2052' build/enum-unknown-variant.out
+grep -q 'E2080' build/enum-unknown-variant.out
 
 # Public enum example must type-check and execute as documented.
 ./build/ylang check examples/enums.yl >/dev/null
@@ -737,7 +941,7 @@ function main() -> int {
 EOF
 ./build/ylang emit-asm build/imports/repeated-asm.yl -o build/imports/repeated.asm >/dev/null
 grep -q 'yl_fn_m' build/imports/repeated.asm
-if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
     ./build/ylang build-asm build/imports/repeated-asm.yl -o build/test-repeated-imports-asm >/dev/null
     ./build/test-repeated-imports-asm > build/repeated-imports-asm.out
     printf '11 22\n' > build/repeated-imports-asm.expected
@@ -846,7 +1050,7 @@ if ./build/ylang check build/gui-key-type-error.yl > build/gui-key-type-error.ou
     echo "FAIL: gui.key_down accepted a non-string key name" >&2
     exit 1
 fi
-grep -q 'E2044' build/gui-key-type-error.out
+grep -q 'E2090' build/gui-key-type-error.out
 
 # GUI namespace checking must not require SDL2; type errors are caught before build.
 ./build/ylang check examples/gui.yl >/dev/null
@@ -856,7 +1060,7 @@ if ./build/ylang check tests/gui-type-error.yl > build/gui-type-error.out 2>&1; 
     echo "FAIL: GUI accepted a string for an integer color channel" >&2
     exit 1
 fi
-grep -q 'E2044' build/gui-type-error.out
+grep -q 'E2090' build/gui-type-error.out
 
 # The experimental NASM backend must reject GUI calls explicitly on its supported target.
 if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
