@@ -108,4 +108,27 @@ const unknown = extension._parseDiagnostics([
 assert.equal(unknown.length, 1);
 assert.equal(unknown[0].message, "A new compiler diagnostic");
 
+
+const v2Diagnostics = extension._parseDiagnostics([
+  "error[E1022]: Imported source file could not be resolved or read.",
+  "  --> /workspace/main.yl:2:1",
+  "   |",
+  '  2 | from "./math.yl" import add;',
+  "   | ^",
+  "error[E2063]: This match is not exhaustive.",
+  "  --> /workspace/main.yl:8:5",
+  "   |",
+  "  8 | match (direction) {",
+  "   |     ^",
+  "error[E2077]: This struct has no field with that name.",
+  "  --> /workspace/main.yl:10:15",
+  "   |",
+  " 10 | print(point.z);",
+  "   |               ^"
+].join("\\n"), document);
+assert.equal(v2Diagnostics.length, 3, "YLang 2.0 import, enum, and struct diagnostics should parse");
+assert.equal(v2Diagnostics[0].message, "Imported file not found");
+assert.equal(v2Diagnostics[1].message, "match is not exhaustive");
+assert.equal(v2Diagnostics[2].message, "Unknown struct field");
+
 console.log("VS Code diagnostic parser tests passed");
