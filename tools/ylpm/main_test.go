@@ -140,16 +140,26 @@ func TestExtractSourceZipRejectsNonSourcePackage(t *testing.T) {
 
 func TestReadManifestRejectsPathTraversal(t *testing.T) {
 	root := t.TempDir()
-	manifest := Manifest{
-		Name:         "example",
-		Entry:        "../outside.yl",
-		Dependencies: map[string]string{},
-	}
-	if err := writeJSON(filepath.Join(root, manifestFilename), manifest); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := readManifest(root); err == nil {
-		t.Fatal("expected traversal entry to be rejected")
+	for _, entry := range []string{
+		"../outside.yl",
+		"src/../../outside.yl",
+		"C:\\outside.yl",
+		"..\\outside.yl",
+		"/outside.yl",
+	} {
+		t.Run(entry, func(t *testing.T) {
+			manifest := Manifest{
+				Name:         "example",
+				Entry:        entry,
+				Dependencies: map[string]string{},
+			}
+			if err := writeJSON(filepath.Join(root, manifestFilename), manifest); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := readManifest(root); err == nil {
+				t.Fatalf("expected non-portable or traversing entry %q to be rejected", entry)
+			}
+		})
 	}
 }
 
