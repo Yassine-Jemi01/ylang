@@ -1,4 +1,4 @@
-/* Small progressive enhancements: mobile navigation, copy buttons, and footer year. */
+/* Small enhancements: mobile navigation, copy buttons, and footer year. */
 (() => {
   "use strict";
 
@@ -15,18 +15,44 @@
 
   if (menuButton && nav) {
     menuButton.addEventListener("click", () => {
-      const isOpen = menuButton.getAttribute("aria-expanded") === "true";
-      setMenu(!isOpen);
+      setMenu(menuButton.getAttribute("aria-expanded") !== "true");
     });
     nav.addEventListener("click", (event) => {
-      if (event.target.closest("a")) setMenu(false);
+      if (event.target instanceof Element && event.target.closest("a")) setMenu(false);
     });
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") setMenu(false);
     });
-    window.matchMedia("(min-width: 781px)").addEventListener("change", (event) => {
-      if (event.matches) setMenu(false);
+    document.addEventListener("click", (event) => {
+      if (menuButton.getAttribute("aria-expanded") !== "true") return;
+      if (event.target instanceof Node && !menuButton.contains(event.target) && !nav.contains(event.target)) {
+        setMenu(false);
+      }
     });
+
+    const media = window.matchMedia("(min-width: 701px)");
+    const onMediaChange = (event) => { if (event.matches) setMenu(false); };
+    if (typeof media.addEventListener === "function") media.addEventListener("change", onMediaChange);
+    else if (typeof media.addListener === "function") media.addListener(onMediaChange);
+  }
+
+  async function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    const field = document.createElement("textarea");
+    field.value = text;
+    field.setAttribute("readonly", "");
+    field.style.position = "fixed";
+    field.style.opacity = "0";
+    field.style.pointerEvents = "none";
+    document.body.appendChild(field);
+    field.select();
+    let copied = false;
+    try { copied = document.execCommand("copy"); }
+    finally { field.remove(); }
+    if (!copied) throw new Error("Clipboard unavailable");
   }
 
   document.querySelectorAll(".copy-button").forEach((button) => {
@@ -40,11 +66,8 @@
       const originalLabel = button.dataset.originalLabel || button.textContent.trim();
       button.dataset.originalLabel = originalLabel;
       let message = "Copied";
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch {
-        message = "Select text to copy";
-      }
+      try { await copyText(text); }
+      catch { message = "Copy failed"; }
       button.textContent = message;
       button.classList.add("copy-feedback");
       window.clearTimeout(resetTimer);
