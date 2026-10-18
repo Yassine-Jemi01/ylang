@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.0.1] — patch release
+
+- Fixed mutable assignment to chained nested struct fields, for example `hero.pos.x = 9;`.
+- Added regression coverage for direct nested writes, compound assignment, increment, and type mismatch rejection.
+
 All notable changes to YLang are documented here. This project follows semantic versioning for future releases.
 
 ## [2.0.0-beta.2] — experimental prerelease
