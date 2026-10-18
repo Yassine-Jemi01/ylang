@@ -2,22 +2,21 @@
 
 All notable changes to YLang are documented here. This project follows semantic versioning for future releases.
 
-## [2.0.0-beta.1] — prerelease candidate (not yet published)
+## [2.0.0-beta.2] — experimental prerelease
 
-This is the release-candidate changelog for the experimental 2.0 beta. It is not a declaration of a published GitHub release.
+- Consolidated the experimental native Windows x86-64 path using MinGW-w64, including native executable, multi-file import, standard-input, and SDL2 build smoke tests.
+- Added the existing YSPM system package manager integration for Linux x86-64, with CI building and inspecting a `.yspkg` containing the compiler and source-level standard library.
+- Added the playable Game2D Dodge example, helper module installation, and usage documentation.
+- Expanded CI/release gates for the exact tested commit, the YSPM package artifact, website integrity, and editor diagnostics.
+- Corrected release documentation to distinguish the Linux system package manager from project-local `.yl` imports.
+- Kept the C backend as the default and NASM experimental with a restricted supported subset.
+- Kept object-oriented programming, `Option<T>`, `Result<T, E>`, and a complete LLVM/native backend out of scope for this beta.
 
-- Added named imports and multi-file compilation.
-- Added experimental typed unit enums with exhaustive `match`.
-- Added experimental typed structs, field access, and mutable field assignment.
-- Expanded optional SDL2-backed GUI and 2D drawing, input, timing, and collision helpers.
-- Kept the C backend as the default and the NASM backend explicitly experimental.
-- Updated compiler version reporting and generated-C headers to use the canonical `VERSION` value.
-- Extracted the emitted C runtime into a standalone source template embedded as bytes, avoiding oversized adjacent string literals.
-- Added lexer/parser unit tests, an optional libFuzzer smoke harness, and C/NASM differential parity samples for the shared subset.
-- Made the SDL2 integration smoke test explicitly skip when SDL2 development dependencies are unavailable.
-- `Option<T>` and `Result<T, E>` are not implemented and are excluded from this beta.
+## [2.0.0-beta.1] — previous source-only prerelease
 
-See [draft beta notes](docs/CHANGELOG-2.0-BETA.md) for limitations and upgrade guidance. Publish only after the exact release commit passes CI and the prerelease is created intentionally.
+The earlier beta.1 prerelease was published without binary/package assets and remains unchanged. It introduced the initial multi-file imports, experimental typed structs and enums, GUI/Game2D helpers, compiler validation improvements, and the experimental NASM backend.
+
+See [current beta release notes](docs/CHANGELOG-2.0-BETA.md) for limitations and upgrade guidance. Beta versions are for evaluation; do not treat them as a declaration of stable 2.0.0 compatibility.
 
 ## [1.1.0] - 2026-10-10
 
@@ -33,10 +32,3 @@ First stable release of the documented YLang language subset.
 - Published the v1.0 language specification and explicitly documented unsupported features.
 - Stabilized the CLI commands: `check`, `build`, `emit-c`, and `fix`.
 - Added a canonical `VERSION` file and versioned CLI output.
-- Added standard `make install`, `make uninstall`, and `make sanitize` targets.
-- Added contributor guidance, security notes, CI configuration, and release notes.
-- Retained type/name/initialization diagnostics, safe typo correction, C code generation, GCC/Clang integration, and regression tests.
-
-## Earlier development
-
-The pre-1.0 development series introduced the lexer/parser, semantic analysis, C code generation, native compilation, source diagnostics, and a narrow `pritn` to `print` fixer. Those prototype versions are summarized here rather than treated as stable releases.
