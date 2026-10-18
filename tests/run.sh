@@ -141,8 +141,10 @@ if command -v clang >/dev/null 2>&1; then
 fi
 
 
-# The first game2d module provides checked rectangle collision helpers.
-cat > build/game2d-collision.yl <<'EOF'
+# Pure Game2D helpers currently share the SDL2-linked game2d module.
+# Skip this integration test when the SDL2 development package is unavailable.
+if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists sdl2; then
+    cat > build/game2d-collision.yl <<'EOF'
 from game2d.yl import game2d_rects_overlap, game2d_point_in_rect;
 function main() -> int {
     print(game2d_rects_overlap(0, 0, 10, 10, 5, 5, 10, 10));
@@ -153,11 +155,93 @@ function main() -> int {
     return 0;
 }
 EOF
-YLANG_PATH=stdlib ./build/ylang check build/game2d-collision.yl >/dev/null
-YLANG_PATH=stdlib ./build/ylang build build/game2d-collision.yl -o build/test-game2d-collision >/dev/null
-./build/test-game2d-collision > build/game2d-collision.out
-printf 'true\nfalse\nfalse\ntrue\nfalse\n' > build/game2d-collision.expected
-diff -u build/game2d-collision.expected build/game2d-collision.out
+    YLANG_PATH=stdlib ./build/ylang check build/game2d-collision.yl >/dev/null
+    YLANG_PATH=stdlib ./build/ylang build build/game2d-collision.yl -o build/test-game2d-collision >/dev/null
+    ./build/test-game2d-collision > build/game2d-collision.out
+    printf 'true\nfalse\nfalse\ntrue\nfalse\n' > build/game2d-collision.expected
+    diff -u build/game2d-collision.expected build/game2d-collision.out
+else
+    echo "SKIP: Game2D collision integration test requires SDL2 development files and pkg-config." >&2
+fi
+
+# Global negative literals and negative array elements must remain C constant expressions.
+cat > build/global-negative-initializers.yl <<'EOF'
+let int global_negative = -5;
+let int global_minimum = -9223372036854775808;
+let int values[] = [-1, -2];
+function main() -> int {
+    print(global_negative, " ", global_minimum, " ", values[0]);
+    return 0;
+}
+EOF
+./build/ylang check build/global-negative-initializers.yl >/dev/null
+./build/ylang build build/global-negative-initializers.yl -o build/test-global-negative-initializers >/dev/null
+./build/test-global-negative-initializers > build/global-negative-initializers.out
+printf '%s\n' '-5 -9223372036854775808 -1' > build/global-negative-initializers.expected
+diff -u build/global-negative-initializers.expected build/global-negative-initializers.out
+
+# Struct equality is rejected by sema rather than passed to the generated-C compiler.
+cat > build/struct-equality-error.yl <<'EOF'
+struct Point { int x; int y; }
+function main() -> int {
+    let Point left = Point(1, 2);
+    let Point right = Point(1, 2);
+    if (left == right) { print("same"); }
+    return 0;
+}
+EOF
+if ./build/ylang check build/struct-equality-error.yl > build/struct-equality-error.out 2>&1; then
+    echo "FAIL: struct equality should be rejected until structural equality is implemented" >&2
+    exit 1
+fi
+grep -q 'E2036' build/struct-equality-error.out
+grep -q 'Struct values do not support equality comparisons yet' build/struct-equality-error.out
+if ./build/ylang build build/struct-equality-error.yl -o build/struct-equality-error > build/struct-equality-build.out 2>&1; then
+    echo "FAIL: build accepted unsupported struct equality" >&2
+    exit 1
+fi
+if grep -Eqi 'invalid operands|initializer element is not constant' build/struct-equality-build.out; then
+    echo "FAIL: struct equality escaped semantic checking and failed in the C compiler" >&2
+    cat build/struct-equality-build.out >&2
+    exit 1
+fi
+
+# Chained postfix syntax is parsed as a single expression; semantic errors stay focused.
+cat > build/postfix-index-member.yl <<'EOF'
+function main() -> int {
+    let int arr[] = [1, 2];
+    print(arr[1].x);
+    return 0;
+}
+EOF
+if ./build/ylang check build/postfix-index-member.yl > build/postfix-index-member.out 2>&1; then
+    echo "FAIL: member access on an int should be rejected semantically" >&2
+    exit 1
+fi
+grep -q 'E2076' build/postfix-index-member.out
+if grep -q 'E1002' build/postfix-index-member.out; then
+    echo "FAIL: arr[index].field caused cascading parser errors" >&2
+    cat build/postfix-index-member.out >&2
+    exit 1
+fi
+
+cat > build/postfix-chain.yl <<'EOF'
+function main() -> int {
+    let int a = 1;
+    print(a.b.c);
+    return 0;
+}
+EOF
+if ./build/ylang check build/postfix-chain.yl > build/postfix-chain.out 2>&1; then
+    echo "FAIL: member access on an int should be rejected semantically" >&2
+    exit 1
+fi
+grep -q 'E2076' build/postfix-chain.out
+if grep -q 'E1002' build/postfix-chain.out; then
+    echo "FAIL: a.b.c caused cascading parser errors" >&2
+    cat build/postfix-chain.out >&2
+    exit 1
+fi
 
 # User-defined enums have distinct types and can be passed, compared, and lowered.
 cat > build/enum-basic.yl <<'EOF'
@@ -184,7 +268,7 @@ EOF
 ./build/test-enum-basic > build/enum-basic.out
 printf 'north\neast\nnot-south\nmatch-north\n' > build/enum-basic.expected
 diff -u build/enum-basic.expected build/enum-basic.out
-if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
     ./build/ylang build-asm build/enum-basic.yl -o build/test-enum-basic-asm >/dev/null
     ./build/test-enum-basic-asm > build/enum-basic-asm.out
     diff -u build/enum-basic.expected build/enum-basic-asm.out
@@ -737,7 +821,7 @@ function main() -> int {
 EOF
 ./build/ylang emit-asm build/imports/repeated-asm.yl -o build/imports/repeated.asm >/dev/null
 grep -q 'yl_fn_m' build/imports/repeated.asm
-if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
     ./build/ylang build-asm build/imports/repeated-asm.yl -o build/test-repeated-imports-asm >/dev/null
     ./build/test-repeated-imports-asm > build/repeated-imports-asm.out
     printf '11 22\n' > build/repeated-imports-asm.expected
