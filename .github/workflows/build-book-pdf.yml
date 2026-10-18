@@ -2,7 +2,7 @@ name: Build standalone YLang book PDF
 
 on:
   push:
-    branches: [main, docs/refresh-book-2.0.0]
+    branches: [main, 'docs/**']
     paths:
       - 'docs/book/**'
       - 'docs/online-book/src/**'
