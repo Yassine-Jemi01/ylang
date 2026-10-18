@@ -266,6 +266,103 @@ if grep -q 'E1002' build/postfix-chain.out; then
     exit 1
 fi
 
+# Distinct semantic failures should have distinct stable diagnostic codes.
+cat > build/invalid-increment-target.yl <<'EOF'
+function main() -> int {
+    print(1++);
+    return 0;
+}
+EOF
+if ./build/ylang check build/invalid-increment-target.yl > build/invalid-increment-target.out 2>&1; then
+    echo "FAIL: invalid increment target was accepted" >&2
+    exit 1
+fi
+grep -q 'E2093' build/invalid-increment-target.out
+
+cat > build/array-argument-type.yl <<'EOF'
+function total(int values[]) -> int {
+    return length(values);
+}
+function main() -> int {
+    let int scalar = 1;
+    total(scalar);
+    return 0;
+}
+EOF
+if ./build/ylang check build/array-argument-type.yl > build/array-argument-type.out 2>&1; then
+    echo "FAIL: scalar was accepted as an array argument" >&2
+    exit 1
+fi
+grep -q 'E2094' build/array-argument-type.out
+
+cat > build/plus-equal-bool.yl <<'EOF'
+function main() -> int {
+    let bool enabled = true;
+    enabled += false;
+    return 0;
+}
+EOF
+if ./build/ylang check build/plus-equal-bool.yl > build/plus-equal-bool.out 2>&1; then
+    echo "FAIL: += accepted a boolean target" >&2
+    exit 1
+fi
+grep -q 'E2095' build/plus-equal-bool.out
+
+cat > build/length-non-array.yl <<'EOF'
+function main() -> int {
+    let int value = 5;
+    print(length(value));
+    return 0;
+}
+EOF
+if ./build/ylang check build/length-non-array.yl > build/length-non-array.out 2>&1; then
+    echo "FAIL: length accepted a non-array value" >&2
+    exit 1
+fi
+grep -q 'E2096' build/length-non-array.out
+
+cat > build/math-wrong-arity.yl <<'EOF'
+function main() -> int {
+    let float value = math.sqrt();
+    print(value);
+    return 0;
+}
+EOF
+if ./build/ylang check build/math-wrong-arity.yl > build/math-wrong-arity.out 2>&1; then
+    echo "FAIL: math.sqrt accepted a missing argument" >&2
+    exit 1
+fi
+grep -q 'E2097' build/math-wrong-arity.out
+
+cat > build/math-non-float.yl <<'EOF'
+function main() -> int {
+    let float value = math.sqrt(9);
+    print(value);
+    return 0;
+}
+EOF
+if ./build/ylang check build/math-non-float.yl > build/math-non-float.out 2>&1; then
+    echo "FAIL: math.sqrt accepted an int without explicit conversion" >&2
+    exit 1
+fi
+grep -q 'E2098' build/math-non-float.out
+
+cat > build/array-element-type.yl <<'EOF'
+function total(int values[]) -> int {
+    return length(values);
+}
+function main() -> int {
+    let string names[] = ["Ada"];
+    total(names);
+    return 0;
+}
+EOF
+if ./build/ylang check build/array-element-type.yl > build/array-element-type.out 2>&1; then
+    echo "FAIL: function accepted an array with the wrong element type" >&2
+    exit 1
+fi
+grep -q 'E2099' build/array-element-type.out
+
 # User-defined enums have distinct types and can be passed, compared, and lowered.
 cat > build/enum-basic.yl <<'EOF'
 enum Direction { North, East, South, West }
