@@ -142,20 +142,20 @@ Standard-library priorities:
 - Tests and documentation for every public API.
 - Platform-specific APIs isolated behind portable interfaces.
 
-## Milestone 6 — Package manager (required for 2.0)
+## Milestone 6 — YSPM Linux system-package integration (required for 2.0)
 
-The initial cross-platform ylpm implementation lives in tools/ylpm and is being reviewed separately. Its project manifest is JSON (ylang.json), and ylpm.lock records the explicitly tagged source archive and SHA-256 integrity digest.
+YSPM (https://github.com/Yassine-Jemi01/yspm) is a Linux system package manager that installs native system packages in the .yspkg format. It is not a package manager for project-local .yl module dependencies, so YLang must not pretend that YSPM resolves source imports or replaces YLANG_PATH.
 
-Current commands include init, add, install, remove, list, build, run, and version. The first source type is github:owner/repository@tag over HTTPS. Archive extraction uses size limits, rejects path traversal and unexpected file types, and stages a package before activation.
+YLang will provide a release packaging script at packaging/yspm/build-package.sh. It stages the compiler, source-level standard library, optional GUI runtime sources and public header, license, and available documentation, then asks the YSPM CLI to produce a native Linux x86-64 package. CI builds and inspects the package from the exact candidate commit. Future beta prereleases can attach the generated .yspkg to their GitHub release; already-published tags are never silently overwritten.
 
-The 2.0 release requires:
-- A successful Linux, macOS, and Windows CI matrix for the package manager.
-- Stable documented manifest and lockfile examples.
-- Integrity verification on reinstall and failure for changed package archives.
-- Documented limits, including no central registry, version ranges, transitive dependency solver, or publisher signing yet.
-- Clear instructions for package source imports and YLANG_PATH integration.
+The 2.0 release gate requires:
+- The package builds from the exact tested commit using a pinned YSPM source revision.
+- CI verifies metadata, ABI/architecture, packaged compiler path, standard-library files, and that the packaged compiler starts.
+- The release pipeline attaches the package artifact to the new prerelease only after all required gates pass.
+- Documentation clearly says that YSPM manages Linux system packages; it is not a language-level module manager.
+- The package documents external build prerequisites (GCC or Clang, plus SDL2 development dependencies and pkg-config for GUI/game builds).
 
-A public central registry, version solving, signatures, and more advanced dependency workflows are intentionally future work; the manager must not imply those features exist.
+YSPM remains a Linux-only optional distribution path. The ordinary source build remains the cross-platform development path.
 
 ## Milestone 7 — Native Windows support (required for 2.0)
 
@@ -169,7 +169,7 @@ See [WINDOWS.md](WINDOWS.md) for setup instructions, dependencies, supported pat
 
 The website and docs must describe tested behavior rather than the roadmap alone. They must cover:
 - Installation on Linux, macOS, and experimental native Windows.
-- The ylpm manifest, lockfile, package source format, and security boundaries.
+- YSPM .yspkg installation, Linux-only scope, package metadata, and external build prerequisites.
 - The Game2D API, SDL2 prerequisites, install instructions, and a runnable game example.
 - Current C/NASM backend limitations and the future compiler roadmap.
 
@@ -193,13 +193,13 @@ Every pull request:
 - Runs sanitizers where available.
 - Runs compile-fail tests and checks stable diagnostic codes.
 - Tests NASM only on supported Linux x86_64 runners with NASM and binutils installed.
-- Runs the ylpm test/build matrix on Linux, macOS, and Windows.
+- Builds and inspects the YSPM Linux package using a pinned YSPM source revision.
 - Checks Game2D source compilation and links the playable example when SDL2 is available.
 - Checks formatting, website links, and generated runtime artifacts.
 
 Every release:
 - Repeats the required test matrix on the exact candidate commit.
-- Blocks publication until native Windows, ylpm, and the playable Game2D example pass their acceptance checks.
+- Blocks publication until native Windows, the YSPM package artifact, and the playable Game2D example pass their acceptance checks.
 - Publishes notes that distinguish implemented features from future work.
 - Does not call a feature stable if its acceptance tests are missing.
 
