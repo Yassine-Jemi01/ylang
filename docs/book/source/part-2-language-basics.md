@@ -235,7 +235,7 @@ if (not has_ticket) {
 Parentheses help explain complex logic:
 
 ```ylang
-if ((age >= 18 and has_ticket) or is_admin) {
+let bool is_admin = false;\n\nif ((age >= 18 and has_ticket) or is_admin) {
     print("Continue.");
 }
 ```
