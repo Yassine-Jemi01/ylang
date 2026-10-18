@@ -14,13 +14,13 @@ The stable publication workflow runs from `main`, tests that exact commit, and r
 
 ## Required automated checks for the stable candidate
 
-- [ ] Clean GCC build and full `make test` on Linux.
-- [ ] Clean Clang build, full regression tests, sanitizer suite, and bounded lexer/parser fuzz smoke test on Linux.
-- [ ] Clean Clang build, GUI/runtime build checks, and regression tests on macOS.
-- [ ] Native Windows MinGW-w64 smoke tests pass; this remains experimental support, not full platform parity.
-- [ ] YSPM package is built from this exact commit; metadata and required paths are verified; the exact package is installed, used to build/run a program, and removed under an isolated `YSPM_ROOT`.
-- [ ] VS Code and Neovim diagnostic tests pass.
-- [ ] mdBook builds, all required reference chapters exist, and website integrity checks pass.
+- [x] Clean GCC build and full `make test` on Linux.
+- [x] Clean Clang build, full regression tests, sanitizer suite, and bounded lexer/parser fuzz smoke test on Linux.
+- [x] Clean Clang build, GUI/runtime build checks, and regression tests on macOS.
+- [x] Native Windows MinGW-w64 smoke tests pass; this remains experimental support, not full platform parity.
+- [x] YSPM package is built from this exact commit; metadata and required paths are verified; the exact package is installed, used to build/run a program, and removed under an isolated `YSPM_ROOT`.
+- [x] VS Code and Neovim diagnostic tests pass.
+- [x] mdBook builds, all required reference chapters exist, and website integrity checks pass.
 - [x] The stable workflow checks out the event SHA, runs the required jobs against it, and creates the release tag at that same tested SHA only when every job succeeds.
 
 ## Required manual acceptance checks for the stable candidate
