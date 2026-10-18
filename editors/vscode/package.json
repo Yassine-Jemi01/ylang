@@ -5,7 +5,7 @@
   "scripts": {
     "test": "node test/diagnostics.test.js && node test/syntax.test.js"
   },
-  "version": "0.4.0",
+  "version": "0.5.0",
   "publisher": "yassine-jemi01",
   "license": "MIT",
   "categories": [
