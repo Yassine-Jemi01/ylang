@@ -396,6 +396,7 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [GUI runtime API](include/ylang/gui.h) and [example](examples/gui.c)
 - [Native Windows setup and limitations](docs/WINDOWS.md)
 - [YSPM Linux system-package integration](docs/YSPM.md)
+- [Game2D guide](docs/GAME2D.md), [playable Dodge example](examples/games/dodge.yl), and [helper module](stdlib/game2d.yl) (build with `make game2d-example`)
 
 
 ## Compiler developer checks
