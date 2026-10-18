@@ -1,0 +1,95 @@
+from "../../stdlib/game2d.yl" import game2d_open, game2d_begin_frame, game2d_draw_rect, game2d_end_frame, game2d_close, game2d_last_error, game2d_key_down, game2d_delta_ms, game2d_rects_overlap;
+
+function main() -> int {
+    print("DODGE");
+    print("Move with Left and Right. Avoid the falling block. Press Escape to quit.");
+
+    if (not game2d_open("YLang - Dodge", 800, 500)) {
+        print(game2d_last_error());
+        return 1;
+    }
+
+    let int player_x = 370;
+    let const int player_y = 440;
+    let const int player_width = 60;
+    let const int player_height = 18;
+    let int enemy_x = 90;
+    let int enemy_y = -32;
+    let const int enemy_size = 32;
+    let int score = 0;
+    let bool game_over = false;
+
+    loop() {
+        if (not game2d_begin_frame(18, 24, 38)) {
+            break;
+        }
+
+        let int delta = game2d_delta_ms();
+        if (delta > 100) {
+            delta = 100;
+        }
+        let int player_step = delta * 320 / 1000;
+        if (player_step < 1) {
+            player_step = 1;
+        }
+
+        if (game2d_key_down("Escape")) {
+            break;
+        }
+        if (game2d_key_down("Left")) {
+            player_x = player_x - player_step;
+        }
+        if (game2d_key_down("Right")) {
+            player_x = player_x + player_step;
+        }
+        if (player_x < 10) {
+            player_x = 10;
+        }
+        if (player_x > 800 - player_width - 10) {
+            player_x = 800 - player_width - 10;
+        }
+
+        enemy_y = enemy_y + delta * 280 / 1000;
+        if (enemy_y > 500) {
+            enemy_y = 0 - enemy_size;
+            enemy_x = (enemy_x + 173) % (800 - enemy_size);
+            if (enemy_x < 10) {
+                enemy_x = 10;
+            }
+            score = score + 1;
+        }
+
+        if (game2d_rects_overlap(player_x, player_y, player_width, player_height,
+                                 enemy_x, enemy_y, enemy_size, enemy_size)) {
+            game_over = true;
+            break;
+        }
+
+        if (not game2d_draw_rect(0, 475, 800, 25, 38, 48, 64)) {
+            print(game2d_last_error());
+            break;
+        }
+        if (not game2d_draw_rect(player_x, player_y, player_width, player_height,
+                                 80, 190, 220)) {
+            print(game2d_last_error());
+            break;
+        }
+        if (not game2d_draw_rect(enemy_x, enemy_y, enemy_size, enemy_size,
+                                 235, 92, 92)) {
+            print(game2d_last_error());
+            break;
+        }
+        if (not game2d_end_frame()) {
+            print(game2d_last_error());
+            break;
+        }
+    }
+
+    game2d_close();
+    if (game_over) {
+        print("Game over. Score:", score);
+    } else {
+        print("Final score:", score);
+    }
+    return 0;
+}
