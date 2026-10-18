@@ -829,6 +829,13 @@ YLANG_PATH=stdlib ./build/ylang emit-c examples/game2d.yl -o build/game2d-genera
 grep -q 'ylgui_api_key_down' build/game2d-generated.c
 grep -q 'ylgui_api_mouse_button_down' build/game2d-generated.c
 grep -q 'ylgui_api_ticks_ms' build/game2d-generated.c
+
+# The playable Dodge sample must parse and generate the required GUI and collision calls.
+YLANG_PATH=stdlib ./build/ylang check examples/games/dodge.yl >/dev/null
+YLANG_PATH=stdlib ./build/ylang emit-c examples/games/dodge.yl -o build/dodge-generated.c >/dev/null
+grep -q 'ylgui_api_draw_rect' build/dodge-generated.c
+grep -q 'game2d_rects_overlap' build/dodge-generated.c
+
 cat > build/gui-key-type-error.yl <<'EOF'
 function main() -> int {
     gui.key_down(123);
