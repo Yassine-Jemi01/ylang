@@ -383,7 +383,10 @@ func installDependencies(ctx context.Context, root string, manifest Manifest, st
 		}
 		expectedSHA := ""
 		if old, ok := lock.Packages[name]; ok && old.Source == source && old.SHA256 != "" {
-			archiveURL, expectedSHA = old.URL, old.SHA256
+			if old.URL != archiveURL {
+				return fmt.Errorf("dependency %q has a lockfile URL that does not match its pinned GitHub source", name)
+			}
+			expectedSHA = old.SHA256
 		}
 		locked, err := fetchAndInstall(ctx, source, archiveURL, expectedSHA, packageDirectory(root, name))
 		if err != nil {
