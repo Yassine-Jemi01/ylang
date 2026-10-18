@@ -201,7 +201,7 @@ func readManifest(root string) (Manifest, error) {
 	}
 	// The manifest is shared across operating systems, so reject Windows
 	// separators and drive syntax even when this process runs on POSIX.
-	if filepath.IsAbs(manifest.Entry) || strings.ContainsAny(manifest.Entry, "\\:") {
+	if filepath.IsAbs(manifest.Entry) || strings.HasPrefix(manifest.Entry, "/") || strings.ContainsAny(manifest.Entry, "\\:") {
 		return Manifest{}, errors.New("manifest entry must be a portable relative path using '/' separators")
 	}
 	for _, segment := range strings.Split(manifest.Entry, "/") {
