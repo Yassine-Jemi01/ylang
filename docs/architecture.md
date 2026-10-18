@@ -1,6 +1,6 @@
 # YLang Compiler Architecture
 
-YLang 1.0.0 uses a conventional multi-stage compiler pipeline:
+YLang 2.0.0 uses a conventional multi-stage compiler pipeline. The stable core compiles through generated C and GCC/Clang; named imports, structs, enums, GUI/Game2D, and the NASM backend are explicitly experimental extensions.
 
 1. **Lexer (`src/lexer.c`)** — turns source text into positioned tokens.
 2. **Parser (`src/parser.c`)** — builds the program representation and emits syntax diagnostics.
