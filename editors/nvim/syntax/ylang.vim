@@ -13,15 +13,15 @@ syn keyword ylangBuiltin print
 
 " Qualified built-in namespaces and user-defined enum/struct names.
 syn match ylangNamespace "\<\(math\|string\|path\|io\|image\|gui\)\>\ze\."
-syn match ylangDeclaredType "\<\(struct\|enum\)\>\s\+\zs[A-Za-z_][A-Za-z0-9_]*"
+syn match ylangDeclaredType "\<[A-Z][A-Za-z0-9_]*\>"
 syn match ylangQualifiedType "\<[A-Z][A-Za-z0-9_]*\>\ze\s*\."
 syn match ylangMember "\.\zs[A-Za-z_][A-Za-z0-9_]*"
 syn match ylangEnumVariant "\<[A-Za-z_][A-Za-z0-9_]*\>\ze\s*[,}]"
 syn match ylangField "\<[A-Za-z_][A-Za-z0-9_]*\>\ze\s*;"
-syn match ylangVariable "\<let\s\+\%(const\s\+\)\?[A-Za-z_][A-Za-z0-9_]*\s\+\zs[A-Za-z_][A-Za-z0-9_]*"
+syn match ylangVariable "\<[A-Za-z_][A-Za-z0-9_]*\>\ze\s*\%(=\|+=\|++\)"
 
 " Numbers include decimal/hex integers, decimal floats, and exponents.
-syn match ylangNumber "\<\%(0[xX][0-9A-Fa-f]\+\|[0-9]\+\%([.][0-9]\+\)\?\%([eE][+-]\?[0-9]\+\)\?\>"
+syn match ylangNumber "\<\%(0[xX][0-9A-Fa-f]\+\|[0-9]\+\%([.][0-9]\+\)\?\%([eE][+-]\?[0-9]\+\)\?\)\>"
 
 syn match ylangOperator "->\|++\|+=\|==\|!=\|<=\|>=\|[=+*/%<>!-]"
 syn match ylangFunction "\<[A-Za-z_][A-Za-z0-9_]*\>\ze\s*("
@@ -31,7 +31,7 @@ syn region ylangFString start=+f"+ skip=+\\\|\"+ end=+"+ contains=ylangInterpola
 syn region ylangString start=+"+ skip=+\\\|\"+ end=+"+ contains=ylangEscape
 syn match ylangCharacter "'\([^'\\]\|\\.\)'"
 syn region ylangInterpolation start=+{+ end=+}+ contained contains=ylangKeyword,ylangDeclaration,ylangBoolean,ylangType,ylangNumber,ylangOperator,ylangBuiltin,ylangFunction,ylangNamespace,ylangMember,ylangEscape
-syn match ylangEscape "\\\\[\\\"'nrt0]" contained
+syn match ylangEscape /\\[nrt0x"']/ contained
 
 syn region ylangBlockComment start="/\*" end="\*/" contains=ylangTodo
 syn match ylangLineComment "//.*$" contains=ylangTodo
