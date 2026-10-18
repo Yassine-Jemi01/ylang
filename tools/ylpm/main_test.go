@@ -188,7 +188,7 @@ func TestParseOutputFlag(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != filepath.Join("build", "app.exe") {
+	if got != "build/app.exe" {
 		t.Fatalf("got output %q", got)
 	}
 	for _, args := range [][]string{{"--output"}, {"--bogus"}} {
