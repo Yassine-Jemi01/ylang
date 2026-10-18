@@ -27,8 +27,8 @@ syn match ylangOperator "->\|++\|+=\|==\|!=\|<=\|>=\|[=+*/%<>!-]"
 syn match ylangFunction "\<[A-Za-z_][A-Za-z0-9_]*\>\ze\s*("
 syn match ylangFunctionDeclaration "\<function\s\+\zs[A-Za-z_][A-Za-z0-9_]*"
 
-syn region ylangFString start=+f"+ skip=+\\\|\"+ end=+"+ contains=ylangInterpolation,ylangEscape
-syn region ylangString start=+"+ skip=+\\\|\"+ end=+"+ contains=ylangEscape
+syn region ylangFString start=+f"+ end=+"+ contains=ylangInterpolation,ylangEscape
+syn region ylangString start=+"+ end=+"+ contains=ylangEscape
 syn match ylangCharacter "'\([^'\\]\|\\.\)'"
 syn region ylangInterpolation start=+{+ end=+}+ contained contains=ylangKeyword,ylangDeclaration,ylangBoolean,ylangType,ylangNumber,ylangOperator,ylangBuiltin,ylangFunction,ylangNamespace,ylangMember,ylangEscape
 syn match ylangEscape /\\[nrt0x"']/ contained
