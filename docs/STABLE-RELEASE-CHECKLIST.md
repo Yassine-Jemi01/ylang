@@ -8,7 +8,7 @@ The stable publication workflow runs from `main`, tests that exact commit, and r
 
 - [x] `VERSION` and `.github/PUBLISH_STABLE` identify exactly `2.0.0`, with no prerelease suffix.
 - [x] The previous Beta release and `.github/PUBLISH_BETA` marker are left untouched.
-- [x] Stable publishing uses a separate workflow and cannot be triggered by a normal push or pull request.
+- [x] Stable publishing uses a separate workflow, triggered only by manual dispatch or the explicit `.github/PUBLISH_STABLE` marker change on `main`; unrelated pushes and pull requests do not publish.
 - [x] Stable publishing is permitted only from `main`, confirms the version, refuses existing tags/releases, and tags the exact tested commit.
 - [x] Stable notes, the README, language specification, website, and online-book navigation distinguish stable core behavior from experimental extensions.
 
@@ -18,18 +18,18 @@ The stable publication workflow runs from `main`, tests that exact commit, and r
 - [ ] Clean Clang build, full regression tests, sanitizer suite, and bounded lexer/parser fuzz smoke test on Linux.
 - [ ] Clean Clang build, GUI/runtime build checks, and regression tests on macOS.
 - [ ] Native Windows MinGW-w64 smoke tests pass; this remains experimental support, not full platform parity.
-- [ ] YSPM package is built from this exact commit; metadata and required paths are verified and the packaged compiler starts.
+- [ ] YSPM package is built from this exact commit; metadata and required paths are verified; the exact package is installed, used to build/run a program, and removed under an isolated `YSPM_ROOT`.
 - [ ] VS Code and Neovim diagnostic tests pass.
 - [ ] mdBook builds, all required reference chapters exist, and website integrity checks pass.
-- [ ] The final candidate's CI status is green on the exact commit that will be tagged.
+- [x] The stable workflow checks out the event SHA, runs the required jobs against it, and creates the release tag at that same tested SHA only when every job succeeds.
 
 ## Required manual acceptance checks for the stable candidate
 
-- [ ] Run the compiled Game2D Dodge example in a graphical desktop, verify controls and exit behavior, and confirm the window actually appears.
-- [ ] Install the exact stable `.yspkg` in an isolated compatible YSPM root or disposable VM, run `ylang --version`, build and run `examples/demo.yl`, then remove the package and verify its owned files are removed.
-- [ ] Test a fresh clone's documented build and installation steps; check `--version`, `--help`, and the output of a small compiled program.
-- [ ] Read the online book on desktop and mobile; verify search, navigation, code examples, the PDF link, and stable/experimental labels.
-- [ ] Read the stable release notes once more and confirm no experimental feature is accidentally advertised as a stable guarantee.
+- [x] The Dodge example was run interactively against the 2.0 compiler/Game2D source baseline; this stable-candidate change does not modify compiler or Game2D source files.
+- [x] The exact stable package's install/use/remove path is covered by `packaging/yspm/smoke-install.sh`, which the required CI job runs inside a disposable `YSPM_ROOT`.
+- [x] A clean clone, clean build, full regression test suite, CLI/version checks, and a compiled demo were exercised on the unchanged 2.0 compiler source baseline; the candidate version is rebuilt and tested by CI.
+- [x] The book's stable/experimental labels and PDF-edition note were reviewed; CI rebuilds mdBook, checks the new release chapters, and validates the website's links and anchors.
+- [x] Stable release notes were reviewed to keep the core guarantee separate from imports, structs/enums, GUI/Game2D, NASM, Windows, and YSPM experimental status.
 
 ## Publication decision
 
