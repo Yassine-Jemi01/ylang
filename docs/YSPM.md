@@ -14,6 +14,9 @@ Requirements:
 
 Build YSPM and then the YLang package from the repository root:
 
+From a workspace with sibling ylang and yspm directories:
+
+    cd ..
     git clone https://github.com/Yassine-Jemi01/yspm.git
     cd yspm
     go build -o yspm ./cmd/yspm
