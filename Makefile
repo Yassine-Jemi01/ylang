@@ -79,9 +79,10 @@ build/gui-example: examples/gui.c build/libylang_gui.a
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(GUI_CFLAGS) $< build/libylang_gui.a $(GUI_LIBS) -o $@
 
 install-gui: gui
-	install -d '$(DESTDIR)$(PREFIX)/include/ylang' '$(DESTDIR)$(PREFIX)/lib' '$(DESTDIR)$(PREFIX)/share/ylang/stdlib/gui'
+	install -d '$(DESTDIR)$(PREFIX)/include/ylang' '$(DESTDIR)$(PREFIX)/lib' '$(DESTDIR)$(PREFIX)/share/ylang/stdlib/gui' '$(DESTDIR)$(PREFIX)/share/ylang/stdlib'
 	install -m 644 include/ylang/gui.h '$(DESTDIR)$(PREFIX)/include/ylang/gui.h'
 	install -m 644 stdlib/gui/gui.c '$(DESTDIR)$(PREFIX)/share/ylang/stdlib/gui/gui.c'
+	install -m 644 stdlib/game2d.yl '$(DESTDIR)$(PREFIX)/share/ylang/stdlib/game2d.yl'
 	install -m 644 build/libylang_gui.a '$(DESTDIR)$(PREFIX)/lib/libylang_gui.a'
 
 install: $(BIN)
