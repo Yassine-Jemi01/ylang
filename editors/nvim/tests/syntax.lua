@@ -33,6 +33,6 @@ assert(group_at(7, "ratio") == "ylangVariable", "typed variable names should be 
 assert(group_at(7, "2.5e-4") == "ylangNumber", "exponent floats should be highlighted")
 assert(group_at(8, "match") == "ylangDeclaration", "match should be highlighted")
 assert(group_at(8, "North") == "ylangMember", "qualified enum members should be highlighted")
-assert(group_at(10, "arg_x") ~= "ylangEnumVariant", "ordinary function parameters must not be colored as enum variants")
+assert(group_at(11, "arg_x") ~= "ylangEnumVariant", "ordinary function parameters must not be colored as enum variants")
 print("YLang Neovim 2.0 syntax tests passed")
 vim.cmd("qa!")
