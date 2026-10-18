@@ -261,7 +261,7 @@ func parseGitHubSource(source string) (owner, repo, tag string, err error) {
 	}
 	parts := strings.Split(repoAndTag[0], "/")
 	if len(parts) != 2 || !partPattern.MatchString(parts[0]) || !partPattern.MatchString(parts[1]) ||
-		parts[1] == "." || parts[1] == ".." {
+		parts[0] == "." || parts[0] == ".." || parts[1] == "." || parts[1] == ".." {
 		return "", "", "", errors.New("expected GitHub source in owner/repo form")
 	}
 	tag = repoAndTag[1]
