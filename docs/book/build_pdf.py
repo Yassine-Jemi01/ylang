@@ -15,28 +15,11 @@ from reportlab.platypus.tableofcontents import TableOfContents
 ROOT = Path(__file__).resolve().parents[2]
 PDF = ROOT / "docs/book/YLang-Book.pdf"
 CHAPTERS = [
-    ("Introduction", "docs/online-book/src/introduction.md"),
-    ("Install YLang", "docs/online-book/src/getting-started.md"),
-    ("Your First Program", "docs/online-book/src/hello-world.md"),
-    ("The Compiler Workflow", "docs/online-book/src/compiler-workflow.md"),
-    ("Language Basics", "docs/online-book/src/language-basics.md"),
-    ("Types and Explicit Conversions", "docs/online-book/src/types.md"),
-    ("Functions and Modules", "docs/online-book/src/modules.md"),
-    ("The Standard Library", "docs/online-book/src/standard-library.md"),
-    ("GUI and Game2D", "docs/online-book/src/gui-game2d.md"),
-    ("Platform Support", "docs/online-book/src/platform-support.md"),
-    ("Stable Core Language Specification", "docs/language-spec.md"),
-    ("Compiler Architecture", "docs/architecture.md"),
-    ("Structs (Experimental)", "docs/STRUCTS.md"),
-    ("Enums and Matching (Experimental)", "docs/ENUMS.md"),
-    ("GUI API (Experimental)", "docs/GUI-API-SPEC.md"),
-    ("Game2D Library (Experimental)", "docs/GAME2D.md"),
-    ("NASM Backend Roadmap", "docs/BACKEND-ROADMAP.md"),
-    ("Windows Setup (Experimental)", "docs/WINDOWS.md"),
-    ("YSPM Linux Packages", "docs/YSPM.md"),
-    ("Compiler Error Codes", "docs/error-codes.md"),
-    ("YLang 2.0.0 Stable Release Notes", "docs/CHANGELOG-2.0.0.md"),
-    ("Option and Result Design Proposal", "docs/OPTION-RESULT-DESIGN.md"),
+    ("Part I — Start Here", "docs/book/source/part-1-start-here.md"),
+    ("Part II — Language Foundations", "docs/book/source/part-2-language-basics.md"),
+    ("Part III — Functions and Standard Library", "docs/book/source/part-3-functions-library.md"),
+    ("Part IV — Errors and Extensions", "docs/book/source/part-4-errors-extensions.md"),
+    ("Part V — Extensions and Reference", "docs/book/source/part-5-ecosystem-reference.md"),
 ]
 NAVY, TEAL, INK = colors.HexColor("#17324D"), colors.HexColor("#167D8D"), colors.HexColor("#202B36")
 MUTED, PALE, RULE = colors.HexColor("#607080"), colors.HexColor("#F3F6F8"), colors.HexColor("#D5DEE6")
@@ -144,7 +127,9 @@ def parse_md(text, s):
                 t.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),NAVY),("GRID",(0,0),(-1,-1),.4,RULE),("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),1.5*mm),("RIGHTPADDING",(0,0),(-1,-1),1.5*mm),("TOPPADDING",(0,0),(-1,-1),1.2*mm),("BOTTOMPADDING",(0,0),(-1,-1),1.2*mm)]))
                 out.extend([t,Spacer(1,3*mm)])
             continue
-        if z.startswith("# "): flush(); out.append(Paragraph(inline(z[2:]),s["Section"]))
+        if z.startswith("# Chapter "): flush(); out.append(Paragraph(inline(z[2:]),s["Chapter"]))
+        elif z.startswith("## Chapter "): flush(); out.append(Paragraph(inline(z[3:]),s["Chapter"]))
+        elif z.startswith("# "): flush(); out.append(Paragraph(inline(z[2:]),s["Section"]))
         elif z.startswith("## "): flush(); out.append(Paragraph(inline(z[3:]),s["Section"]))
         elif z.startswith("### "): flush(); out.append(Paragraph(inline(z[4:]),s["SubSection"]))
         elif z.startswith("#### "): flush(); out.append(Paragraph(inline(z[5:]),s["SubSection"]))
@@ -163,14 +148,13 @@ def main():
     missing=[p for _,p in CHAPTERS if not (ROOT/p).is_file()]
     if missing: print("Missing documentation files:\n"+"\n".join(missing),file=sys.stderr); return 2
     s=styles(); doc=BookDoc(str(PDF),pagesize=A4,leftMargin=20*mm,rightMargin=20*mm,topMargin=22*mm,bottomMargin=22*mm,title="YLang 2.0.0 - Standalone Book",author="YLang Project",subject="Stable core and experimental extensions")
-    story=[Spacer(1,30*mm),Paragraph("THE YLANG BOOK",s["CoverTitle"]),Paragraph("A practical reference for YLang 2.0.0",s["CoverSub"]),Spacer(1,8*mm),HRFlowable(width="34%",hAlign="CENTER",thickness=2,color=TEAL,spaceAfter=8*mm),Paragraph("Stable core language, compiler workflow, standard library, and experimental extensions",s["CoverSub"]),Spacer(1,32*mm),Paragraph("VERSION 2.0.0 STABLE",s["CoverVersion"]),Paragraph("Standalone PDF edition - generated from repository documentation",s["CoverSub"]),Spacer(1,15*mm),Paragraph("The default compiler generates C and uses GCC or Clang. Experimental extensions are labelled separately and do not share the stable-core compatibility guarantee.",s["Body"]),PageBreak(),Paragraph("Contents",s["ContentsTitle"])]
+    story=[Spacer(1,30*mm),Paragraph("THE YLANG BOOK",s["CoverTitle"]),Paragraph("A detailed beginner-friendly guide to YLang 2.0.0",s["CoverSub"]),Spacer(1,8*mm),HRFlowable(width="34%",hAlign="CENTER",thickness=2,color=TEAL,spaceAfter=8*mm),Paragraph("Stable core language, step-by-step examples, standard library, troubleshooting, and experimental extensions",s["CoverSub"]),Spacer(1,32*mm),Paragraph("VERSION 2.0.0 STABLE",s["CoverVersion"]),Paragraph("Standalone book edition - detailed chapters maintained with the source repository",s["CoverSub"]),Spacer(1,15*mm),Paragraph("The default compiler generates C and uses GCC or Clang. Experimental extensions are labelled separately and do not share the stable-core compatibility guarantee.",s["Body"]),PageBreak(),Paragraph("Contents",s["ContentsTitle"])]
     toc=TableOfContents(); toc.levelStyles=[s["TOC0"]]; toc.dotsMinLevel=0; story.extend([toc,PageBreak()])
     for title,rel in CHAPTERS:
         body=(ROOT/rel).read_text(encoding="utf-8")
         body=re.sub(r"^\s*#\s+[^\n]*\n+","",body,count=1)
         body=re.sub(r"^---\s*\n.*?\n---\s*\n","",body,count=1,flags=re.S)
         story.append(Paragraph(escape(title),s["Chapter"]))
-        story.append(Paragraph(f"Source: {escape(rel)}",s["Source"]))
         story.extend(parse_md(body,s)); story.append(PageBreak())
     if isinstance(story[-1],PageBreak): story.pop()
     doc.multiBuild(story)
