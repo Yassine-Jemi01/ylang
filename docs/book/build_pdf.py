@@ -79,7 +79,7 @@ class BookDoc(BaseDocTemplate):
 
     def afterFlowable(self, item):
         if isinstance(item, Paragraph) and item.style.name == "Chapter":
-            title = item.getPlainText(); key = f"chapter-{self.page}-{self._chapter_seq}"; self._chapter_seq += 1
+            title = item.getPlainText(); key = f"chapter-{self._chapter_seq}"; self._chapter_seq += 1
             self.canv.bookmarkPage(key); self.canv.addOutlineEntry(title, key, 0, False)
             self.notify("TOCEntry", (0, title, self.page, key))
 
