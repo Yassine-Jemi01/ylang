@@ -60,11 +60,13 @@ Relative imports work from the importing source file:
 
 YLang treats Windows paths case-insensitively when deduplicating resolved modules. The module search environment variable uses Windows' semicolon-separated path-list convention:
 
-    set YLANG_PATH=C:\dev\ylang-libs;D:\shared\ylang
+In the MSYS2 MINGW64 shell, use forward slashes in drive paths:
+
+    export YLANG_PATH='C:/dev/ylang-libs;D:/shared/ylang'
 
 In PowerShell, use:
 
-    $env:YLANG_PATH = "C:\dev\ylang-libs;D:\shared\ylang"
+    $env:YLANG_PATH = "C:/dev/ylang-libs;D:/shared/ylang"
 
 ## 5. Optional GUI and Game2D
 
