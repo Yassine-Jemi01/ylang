@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#1d3b56">
-  <meta name="description" content="YLang documentation, language specification, compiler guide, and 2.0 beta references.">
+  <meta name="description" content="YLang 2.0.0 stable core documentation, compiler guide, and experimental extension references.">
   <meta property="og:title" content="YLang Documentation">
-  <meta property="og:description" content="Find the stable language guide, compiler instructions, and clearly marked beta references.">
+  <meta property="og:description" content="Find the stable core language guide, compiler instructions, and clearly marked experimental extension references.">
   <title>YLang Documentation</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
@@ -22,7 +22,7 @@
         <a href="index.html">Home</a>
         <a href="learn/index.html">Online book</a>
         <a href="#stable-guide">Reference docs</a>
-        <a href="#beta-reference">2.0 beta</a>
+        <a href="#experimental-reference">Experimental</a>
         <a href="#compiler">Build</a>
       </nav>
       <div class="nav-actions">
@@ -37,11 +37,11 @@
       <div class="container">
         <p class="eyebrow">DOCUMENTATION</p>
         <h1>Find the right <span>reference.</span></h1>
-        <p class="docs-lede">Start with the documented stable language, then use the beta guides to explore new compiler and library features.</p>
+        <p class="docs-lede">Start with the stable 2.0.0 core language, then use the experimental guides to explore newer compiler and library extensions.</p>
         <div class="docs-version-row">
-          <span><i class="version-mark" aria-hidden="true"></i> Stable <strong>1.1.0</strong></span>
-          <span><i class="version-mark version-beta" aria-hidden="true"></i> Preview <strong>2.0.0-beta.2</strong></span>
-          <a href="https://github.com/Yassine-Jemi01/ylang/releases/tag/v2.0.0-beta.2">Beta release notes ↗</a>
+          <span><i class="version-mark" aria-hidden="true"></i> Stable <strong>2.0.0</strong></span>
+          <span><i class="version-mark" aria-hidden="true"></i> Previous stable <strong>1.1.0</strong></span>
+          <a href="https://github.com/Yassine-Jemi01/ylang/releases/tag/v2.0.0">2.0.0 release notes ↗</a>
         </div>
       </div>
     </section>
@@ -50,7 +50,7 @@
       <div class="container">
         <div class="docs-section-head">
           <div><p class="eyebrow">01 / STABLE</p><h2>Learn the language</h2></div>
-          <p>These references cover the stable 1.1.0 subset and the established compiler workflow.</p>
+          <p>These references cover the stable 2.0.0 core language and the established compiler workflow.</p>
         </div>
         <div class="docs-resource-grid">
           <a class="docs-card docs-card-featured" href="learn/index.html">
@@ -60,7 +60,7 @@
           </a>
           <a class="docs-card docs-card-featured" href="YLang-Book.pdf" target="_blank" rel="noreferrer">
             <span class="docs-card-kicker">PDF EDITION</span><h3>Read offline</h3>
-            <p>Open the existing PDF edition for reading or printing without a browser connection.</p>
+            <p>Open the earlier PDF edition for reading or printing. For YLang 2.0.0, use the current online book and language specification.</p>
             <span class="docs-card-link">Open the PDF ↗</span>
           </a>
           <a class="docs-card docs-card-featured" href="https://github.com/Yassine-Jemi01/ylang/blob/main/docs/language-spec.md">
@@ -72,11 +72,11 @@
       </div>
     </section>
 
-    <section class="docs-section docs-section-alt" id="beta-reference">
+    <section class="docs-section docs-section-alt" id="experimental-reference">
       <div class="container">
         <div class="docs-section-head">
-          <div><p class="eyebrow">02 / EXPERIMENTAL</p><h2>Explore the 2.0 beta</h2></div>
-          <p>These features are experimental. Read each guide's limitations before depending on the syntax or runtime.</p>
+          <div><p class="eyebrow">02 / EXPERIMENTAL</p><h2>Explore experimental extensions</h2></div>
+          <p>These extensions remain experimental and are not covered by the stable-core compatibility guarantee. Read each guide's limitations before relying on the syntax or runtime.</p>
         </div>
         <div class="docs-resource-grid">
           <a class="docs-card" href="https://github.com/Yassine-Jemi01/ylang/blob/main/docs/MODULE-SYSTEM-SPEC.md">
@@ -107,9 +107,9 @@
             <span class="docs-card-kicker">ROADMAP</span><h3>YLang 2.0 design</h3>
             <p>Implemented milestones and ideas still under consideration.</p><span class="docs-card-link">Read the roadmap ↗</span>
           </a>
-          <a class="docs-card" href="https://github.com/Yassine-Jemi01/ylang/blob/main/docs/CHANGELOG-2.0-BETA.md">
-            <span class="docs-card-kicker">RELEASE NOTES</span><h3>Beta features and limits</h3>
-            <p>What is new, what is not implemented, and how to report a problem.</p><span class="docs-card-link">Read beta notes ↗</span>
+          <a class="docs-card" href="https://github.com/Yassine-Jemi01/ylang/blob/main/docs/CHANGELOG-2.0.0.md">
+            <span class="docs-card-kicker">RELEASE NOTES</span><h3>YLang 2.0.0 release notes</h3>
+            <p>Stable-core compatibility, experimental extensions, known limits, and how to report problems.</p><span class="docs-card-link">Read release notes ↗</span>
           </a>
         </div>
       </div>
@@ -139,7 +139,7 @@ make test
         <div class="docs-notice">
           <span class="notice-label">NOTE</span>
           <div><h2>Experimental does not mean complete.</h2>
-            <p>The C backend remains the default. NASM supports a restricted experimental subset. Native Windows support is experimental and currently tested through a focused MinGW-w64 smoke suite. <code>Option&lt;T&gt;</code> and <code>Result&lt;T, E&gt;</code> are design proposals, not implemented features. The beta does not claim production stability.</p>
+            <p>The C backend remains the default. NASM supports a restricted experimental subset. Native Windows support is experimental and currently tested through a focused MinGW-w64 smoke suite. <code>Option&lt;T&gt;</code> and <code>Result&lt;T, E&gt;</code> are design proposals, not implemented features. Experimental extensions are not covered by the stable-core compatibility guarantee; YLang does not make a Rust-level memory-safety or sandbox claim.</p>
             <a class="docs-inline-link" href="https://github.com/Yassine-Jemi01/ylang/releases">Review release status ↗</a>
           </div>
         </div>
@@ -150,7 +150,7 @@ make test
   <footer class="site-footer">
     <div class="container footer-top">
       <a class="brand footer-brand" href="index.html"><img src="assets/ylang-logo-icon.svg" alt="" width="30" height="30"><span>YLang</span></a>
-      <p>Stable references and beta notes, clearly separated.</p>
+      <p>Stable core references and experimental extensions, clearly separated.</p>
       <div class="footer-links"><a href="index.html">Home</a><a href="https://github.com/Yassine-Jemi01/ylang">GitHub</a><a href="https://github.com/Yassine-Jemi01/ylang/issues">Issues</a></div>
     </div>
     <div class="container footer-bottom"><span>© <span id="year">2026</span> YLang contributors</span><span>Clear syntax. Visible compilation.</span></div>

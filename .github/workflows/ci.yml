@@ -163,6 +163,10 @@ jobs:
           trap 'rm -rf "$temp_root"' EXIT
           tar -xzf "$package_path" -C "$temp_root"
           "$temp_root/root/usr/bin/ylang" --version
+      - name: Exercise package install and removal in isolated root
+        run: |
+          package_path="$(find build/ylang-yspm -name '*.yspkg' -type f -print -quit)"
+          YSPM_BIN="$GITHUB_WORKSPACE/tools/yspm-source/build/yspm" bash packaging/yspm/smoke-install.sh "$package_path"
 
   editor-diagnostics:
     runs-on: ubuntu-latest

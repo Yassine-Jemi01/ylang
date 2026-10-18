@@ -1,0 +1,295 @@
+name: Publish YLang stable release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/PUBLISH_STABLE"
+  workflow_dispatch:
+    inputs:
+      confirm_version:
+        description: Type the exact stable version to confirm publication
+        required: true
+        default: "2.0.0"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-test:
+    if: github.ref == 'refs/heads/main'
+    name: build-and-test (${{ matrix.os }}, ${{ matrix.compiler }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        compiler: [gcc, clang]
+        exclude:
+          - os: macos-latest
+            compiler: gcc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out release candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify stable candidate version
+        env:
+          CONFIRM_VERSION: ${{ inputs.confirm_version }}
+        run: |
+          set -euo pipefail
+          EXPECTED_VERSION="$(tr -d '\r\n' < .github/PUBLISH_STABLE)"
+          ACTUAL_VERSION="$(tr -d '\r\n' < VERSION)"
+          test "$ACTUAL_VERSION" = "$EXPECTED_VERSION"
+          if [[ -n "$CONFIRM_VERSION" && "$CONFIRM_VERSION" != "$EXPECTED_VERSION" ]]; then
+            echo "Requested version does not match $EXPECTED_VERSION." >&2
+            exit 1
+          fi
+          if [[ ! "$EXPECTED_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Refusing to publish a prerelease or invalid stable version: $EXPECTED_VERSION" >&2
+            exit 1
+          fi
+      - name: Install toolchain (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential clang libclang-rt-dev nasm libsdl2-dev pkg-config
+      - name: Install toolchain (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          xcode-select --install 2>/dev/null || true
+          brew list llvm >/dev/null 2>&1 || brew install llvm
+          brew list make >/dev/null 2>&1 || brew install make
+          brew list sdl2 >/dev/null 2>&1 || brew install sdl2
+          brew list pkg-config >/dev/null 2>&1 || brew install pkg-config
+      - name: Select compiler
+        id: compiler
+        shell: bash
+        run: |
+          if [[ "${{ matrix.compiler }}" == "clang" && "$RUNNER_OS" == "macOS" ]]; then
+            echo "cc=$(brew --prefix llvm)/bin/clang" >> "$GITHUB_OUTPUT"
+            echo "make=gmake" >> "$GITHUB_OUTPUT"
+          else
+            echo "cc=${{ matrix.compiler }}" >> "$GITHUB_OUTPUT"
+            echo "make=make" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Verify generated C runtime template
+        run: python3 tools/embed_text.py runtime/runtime_template.c src/runtime_template.h --check
+      - name: Build compiler
+        run: ${{ steps.compiler.outputs.make }} clean all CC="${{ steps.compiler.outputs.cc }}"
+      - name: Build optional GUI runtime
+        run: ${{ steps.compiler.outputs.make }} gui gui-example game2d-example CC="${{ steps.compiler.outputs.cc }}"
+      - name: Run regression tests
+        run: ${{ steps.compiler.outputs.make }} test CC="${{ steps.compiler.outputs.cc }}"
+      - name: Fuzz lexer/parser smoke test
+        if: runner.os == 'Linux' && matrix.compiler == 'clang'
+        run: make fuzz-smoke FUZZ_CC=clang
+      - name: Run AddressSanitizer and UndefinedBehaviorSanitizer tests
+        run: ${{ steps.compiler.outputs.make }} sanitize CC="${{ steps.compiler.outputs.cc }}"
+
+  windows-native-smoke:
+    if: github.ref == 'refs/heads/main'
+    name: Windows native compiler smoke tests
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Set up MinGW-w64 toolchain
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-pkgconf
+            make
+            python
+      - name: Verify generated runtime template
+        run: python tools/embed_text.py runtime/runtime_template.c src/runtime_template.h --check
+      - name: Build compiler
+        run: make clean all CC=gcc
+      - name: Build optional SDL2 GUI runtime
+        run: make gui gui-example CC=gcc
+      - name: Check, compile, and run a native Windows program
+        run: |
+          mkdir -p build/windows-smoke
+          cat > build/windows-smoke/hello.yl <<'EOF'
+          function main() -> int {
+              print("Windows smoke:", 40 + 2);
+              return 0;
+          }
+          EOF
+          ./build/ylang.exe check build/windows-smoke/hello.yl
+          ./build/ylang.exe build build/windows-smoke/hello.yl -o build/windows-smoke/hello.exe
+          output="$(./build/windows-smoke/hello.exe)"
+          test "$output" = "Windows smoke: 42"
+      - name: Check multi-file imports with Windows paths
+        run: |
+          mkdir -p build/windows-imports
+          cat > build/windows-imports/math.yl <<'EOF'
+          function answer() -> int {
+              return 42;
+          }
+          EOF
+          cat > build/windows-imports/main.yl <<'EOF'
+          from "./math.yl" import answer;
+          function main() -> int {
+              print(answer());
+              return 0;
+          }
+          EOF
+          ./build/ylang.exe build build/windows-imports/main.yl -o build/windows-imports/main.exe
+          output="$(./build/windows-imports/main.exe)"
+          test "$output" = "42"
+      - name: Check portable standard input runtime
+        run: |
+          cat > build/windows-smoke/input.yl <<'EOF'
+          function main() -> int {
+              print(io.read_line());
+              return 0;
+          }
+          EOF
+          ./build/ylang.exe build build/windows-smoke/input.yl -o build/windows-smoke/input.exe
+          output="$(printf 'native Windows input\n' | ./build/windows-smoke/input.exe)"
+          test "$output" = "native Windows input"
+
+
+  editor-diagnostics:
+    if: github.ref == 'refs/heads/main'
+    name: Editor diagnostics
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Neovim
+        run: sudo apt-get update && sudo apt-get install -y neovim
+      - name: Test VS Code diagnostic parser
+        run: npm test --prefix editors/vscode
+      - name: Test Neovim diagnostic parser
+        run: nvim --headless -u NONE +'luafile editors/nvim/tests/diagnostics.lua'
+
+  website-integrity:
+    name: English-only website integrity
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Set up mdBook
+        uses: peaceiris/actions-mdbook@v2
+        with:
+          mdbook-version: "0.5.4"
+      - name: Build book and validate website
+        run: |
+          python3 tools/build_docs_book.py
+          mdbook build docs/online-book
+          mkdir -p website/learn
+          cp -a docs/online-book/book/. website/learn/
+          test -s website/learn/index.html
+          test -s website/learn/reference/CHANGELOG-2.0.0.html
+          test -s website/learn/reference/STABLE-RELEASE-CHECKLIST.html
+          python3 tools/check_website.py
+
+  build-yspm-package:
+    if: github.ref == 'refs/heads/main'
+    name: Build YLang Linux package for YSPM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Install C build tools
+        run: sudo apt-get update && sudo apt-get install -y build-essential binutils
+      - name: Set up Go for YSPM
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+      - name: Check out YSPM package builder
+        uses: actions/checkout@v4
+        with:
+          repository: Yassine-Jemi01/yspm
+          ref: ba2c2c31b864ca85333fa625b437b3c6b9452e96
+          path: tools/yspm-source
+      - name: Build YSPM
+        working-directory: tools/yspm-source
+        run: |
+          mkdir -p build
+          go build -o build/yspm ./cmd/yspm
+      - name: Build YLang .yspkg
+        run: YSPM_BIN="$GITHUB_WORKSPACE/tools/yspm-source/build/yspm" bash packaging/yspm/build-package.sh
+      - name: Verify package and attach as workflow artifact
+        run: |
+          package_path="$(find build/ylang-yspm -name '*.yspkg' -type f -print -quit)"
+          test -n "$package_path"
+          tar -tzf "$package_path" | grep -Fxq "metadata.json"
+          tar -tzf "$package_path" | grep -Fxq "root/usr/bin/ylang"
+          tar -tzf "$package_path" | grep -Fxq "root/usr/share/ylang/stdlib/game2d.yl"
+          YSPM_BIN="$GITHUB_WORKSPACE/tools/yspm-source/build/yspm" \
+            bash packaging/yspm/smoke-install.sh "$package_path"
+      - name: Upload YSPM package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ylang-yspkg
+          path: build/ylang-yspm/*.yspkg
+          if-no-files-found: error
+
+  publish:
+    if: github.ref == 'refs/heads/main'
+    name: Publish stable GitHub release with YSPM Linux package
+    needs: [build-and-test, windows-native-smoke, build-yspm-package, editor-diagnostics, website-integrity]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Download tested YSPM package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ylang-yspkg
+          path: build/ylang-yspm
+      - name: Verify release metadata
+        run: |
+          EXPECTED_VERSION="$(tr -d '\r\n' < .github/PUBLISH_STABLE)"
+          test "$(tr -d '\r\n' < VERSION)" = "$EXPECTED_VERSION"
+      - name: Ensure release checklist has no open gates
+        run: |
+          if grep -nF -- '- [ ]' docs/STABLE-RELEASE-CHECKLIST.md; then
+            echo "Release blocked: docs/STABLE-RELEASE-CHECKLIST.md contains an unchecked acceptance gate." >&2
+            exit 1
+          fi
+      - name: Create stable release from the tested commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          EXPECTED_VERSION="$(tr -d '\r\n' < .github/PUBLISH_STABLE)"
+          TAG="v${EXPECTED_VERSION}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Refusing to overwrite existing release $TAG." >&2
+            exit 1
+          fi
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists without a release. Refusing to publish against an unverified tag." >&2
+            exit 1
+          fi
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --title "YLang ${EXPECTED_VERSION}" \
+            --notes-file docs/CHANGELOG-2.0.0.md \
+            --latest \
+            build/ylang-yspm/*.yspkg
+          echo "Published stable release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}" >> "$GITHUB_STEP_SUMMARY"
