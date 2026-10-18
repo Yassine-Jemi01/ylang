@@ -222,6 +222,26 @@ The example opens a window, paints the background, and draws a rectangle, then c
 
 Errors include a stable diagnostic code, path, line/column, source excerpt, caret, and a hint when available. Exit status is nonzero when a command fails.
 
+## Optional Linux system package (YSPM)
+
+[YSPM](https://github.com/Yassine-Jemi01/yspm) is your Linux system package manager and uses the native `.yspkg` format. YLang can be packaged for a compatible YSPM system; this is separate from compiling YLang projects or resolving `.yl` imports.
+
+Build a native package locally (Linux x86-64, Go, GCC, GNU Make, and a YSPM checkout with .yspkg build support required):
+
+    git clone https://github.com/Yassine-Jemi01/yspm.git
+    cd yspm
+    go build -o yspm ./cmd/yspm
+    cd ../ylang
+    YSPM_BIN="../yspm/yspm" packaging/yspm/build-package.sh
+
+This creates `build/ylang-yspm/ylang-<version>-amd64.yspkg`. The package includes the compiler, .yl standard library, GUI runtime source/header, license, and available documentation. The release pipeline validates the package and is being prepared to attach it to a future 2.0 beta prerelease; the existing `v2.0.0-beta.1` release remains unchanged and source-only.
+
+When a release includes a .yspkg asset, download it and install it with:
+
+    sudo yspm install ./ylang-<version>-amd64.yspkg
+
+YSPM manages Linux system packages, not project-local YLang module dependencies. The compiler still needs GCC or Clang on the host to compile generated C, and GUI/game builds need SDL2 development files plus pkg-config. See [the YSPM guide](docs/YSPM.md) for the package contents and limits.
+
 ## Language overview
 
 ```ylang
@@ -375,6 +395,7 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [Neovim native diagnostics integration](editors/nvim/README.md)
 - [GUI runtime API](include/ylang/gui.h) and [example](examples/gui.c)
 - [Native Windows setup and limitations](docs/WINDOWS.md)
+- [YSPM Linux system-package integration](docs/YSPM.md)
 
 
 ## Compiler developer checks
