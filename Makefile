@@ -12,6 +12,12 @@ SRC := $(wildcard src/*.c)
 OBJ := $(patsubst src/%.c,build/%.o,$(SRC))
 BIN := build/ylang
 
+ifeq ($(OS),Windows_NT)
+GAME2D_OUTPUT ?= build/dodge.exe
+else
+GAME2D_OUTPUT ?= build/dodge
+endif
+
 .PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
 
 all: $(BIN)
@@ -70,7 +76,7 @@ gui-example: check-sdl2 build/gui-example
 
 game2d-example: check-sdl2 $(BIN)
 	@mkdir -p build
-	YLANG_PATH=stdlib ./build/ylang build examples/games/dodge.yl -o build/dodge
+	YLANG_PATH=stdlib ./build/ylang build examples/games/dodge.yl -o $(GAME2D_OUTPUT)
 
 build/ylang_gui.o: stdlib/gui/gui.c include/ylang/gui.h
 	@mkdir -p build
