@@ -185,7 +185,7 @@ function main() -> int {
 }
 ```
 
-The current subset supports named fields with explicit types, positional construction in declaration order, field reads, passing and returning structs, and assignment between values of the same struct type. Fields of a mutable struct variable can be assigned values of the declared type.
+The current subset supports named fields with explicit types, positional construction in declaration order, field reads, passing and returning structs, and assignment between values of the same struct type. Fields of a mutable struct variable can be assigned values of the declared type, including a field reached through nested structs. For example, if `Hero` contains a `Position pos` field, you can write `hero.pos.x = 9;` directly. The compiler checks the final field's type and requires the root variable to be mutable; you do not need to copy the nested value and rebuild the outer struct just to update one of its fields.
 
 Current limits include recursive by-value fields, methods, inheritance, generics, field defaults, and named constructor arguments. The C backend supports the documented struct subset; the NASM backend does not promise parity.
 

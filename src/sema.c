@@ -140,6 +140,16 @@ static StructField *sema_struct_field(StructDecl *structure, const char *name)
     return NULL;
 }
 
+/* Find the named struct variable that owns a possibly chained field target. */
+static VarDecl *sema_member_root_variable(Expr *expr)
+{
+    while (expr && expr->kind == EXPR_MEMBER) {
+        expr = expr->as.member.target;
+    }
+    if (!expr || expr->kind != EXPR_NAME) return NULL;
+    return expr->as.name.variable;
+}
+
 static Function *module_local_function(Module *module, const char *name)
 {
     if (!module || !module->program) return NULL;
@@ -489,17 +499,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                 target_type = target->type;
             } else if (target && target->kind == EXPR_MEMBER) {
                 target_type = check_expr(checker, target);
-                Expr *base = target->as.member.target;
-                if (base && base->kind == EXPR_NAME) {
-                    var = scope_lookup(checker->scope, base->as.name.name);
-                    if (var) {
-                        base->as.name.variable = var;
-                        base->as.name.name = var->name;
-                    }
-                }
+                var = sema_member_root_variable(target);
                 if (!var || !struct_for_type(c, var->type)) {
                     diagnostic(c, expr->token, "error", "E2078",
-                               "Only a field of a named struct variable can be assigned in this milestone.",
+                               "Only a field path rooted at a named struct variable can be assigned.",
                                "Store the struct in a mutable variable, then assign to its field.");
                 }
             }
