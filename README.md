@@ -6,6 +6,10 @@ YLang is implemented in C17. Its compiler tokenizes and parses `.yl` files, chec
 
 YLang **2.0.0-beta.2** is an experimental prerelease for testing the expanded compiler and standard library. The latest stable release remains **1.1.0**. The beta adds named imports and multi-file compilation, experimental typed enums and structs, and SDL2-backed GUI/2D helpers. The C backend remains the default; the NASM backend is experimental and supports only a restricted subset. This project does not claim Rust-level memory safety or production stability.
 
+## The online book
+
+The [YLang Book](https://yassine-jemi01.github.io/ylang/learn/index.html) is a searchable, multi-page HTML guide with a chapter sidebar, previous/next navigation, theme switching, and copyable examples. It combines step-by-step tutorials with the canonical language, platform, compiler, and library references; it is rendered as a website, not served as raw Markdown.
+
 ## Quick start
 
 ### Requirements
@@ -387,6 +391,7 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 
 ![YLang logo](assets/branding/ylang-logo-full.svg)
 
+- [YLang Book (online HTML)](https://yassine-jemi01.github.io/ylang/learn/index.html)
 - [YLang Book (PDF)](docs/book/YLang-Book.pdf)
 - [Language specification](docs/language-spec.md)
 - [Architecture](docs/architecture.md)

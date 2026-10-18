@@ -5,7 +5,8 @@ on:
     branches: [main]
     paths:
       - "website/**"
-      - "docs/book/**"
+      - "docs/**"
+      - "tools/build_docs_book.py"
       - ".github/workflows/deploy-website.yml"
   workflow_dispatch:
 
@@ -31,7 +32,17 @@ jobs:
         uses: actions/configure-pages@v5
         with:
           enablement: true
-      - name: Add the versioned language book
+      - name: Set up mdBook
+        uses: peaceiris/actions-mdbook@v2
+        with:
+          mdbook-version: "0.5.4"
+      - name: Build the online HTML book
+        run: |
+          python3 tools/build_docs_book.py
+          mdbook build docs/online-book
+          mkdir -p website/learn
+          cp -a docs/online-book/book/. website/learn/
+      - name: Add the versioned PDF edition
         run: cp docs/book/YLang-Book.pdf website/YLang-Book.pdf
       - name: Upload website
         uses: actions/upload-pages-artifact@v3
