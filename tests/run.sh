@@ -335,7 +335,7 @@ if ./build/ylang check build/enum-unknown-variant.yl > build/enum-unknown-varian
     echo "FAIL: unknown enum variant was accepted" >&2
     exit 1
 fi
-grep -q 'E2052' build/enum-unknown-variant.out
+grep -q 'E2080' build/enum-unknown-variant.out
 
 # Public enum example must type-check and execute as documented.
 ./build/ylang check examples/enums.yl >/dev/null
@@ -953,7 +953,7 @@ if ./build/ylang check build/gui-key-type-error.yl > build/gui-key-type-error.ou
     echo "FAIL: gui.key_down accepted a non-string key name" >&2
     exit 1
 fi
-grep -q 'E2044' build/gui-key-type-error.out
+grep -q 'E2090' build/gui-key-type-error.out
 
 # GUI namespace checking must not require SDL2; type errors are caught before build.
 ./build/ylang check examples/gui.yl >/dev/null
@@ -963,7 +963,7 @@ if ./build/ylang check tests/gui-type-error.yl > build/gui-type-error.out 2>&1; 
     echo "FAIL: GUI accepted a string for an integer color channel" >&2
     exit 1
 fi
-grep -q 'E2044' build/gui-type-error.out
+grep -q 'E2090' build/gui-type-error.out
 
 # The experimental NASM backend must reject GUI calls explicitly on its supported target.
 if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
