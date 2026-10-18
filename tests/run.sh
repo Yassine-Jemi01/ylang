@@ -502,6 +502,41 @@ EOF
 printf '15 , 8\n' > build/struct-field-assignment.expected
 diff -u build/struct-field-assignment.expected build/struct-field-assignment.out
 
+# Nested struct field writes should resolve through the root mutable struct variable.
+cat > build/nested-struct-field-assignment.yl <<'EOF'
+struct Position { int x; int y; }
+struct Hero { Position pos; int hp; }
+function main() -> int {
+    let Hero hero = Hero(Position(2, 7), 100);
+    hero.pos.x = 9;
+    hero.pos.y += 3;
+    hero.pos.x++;
+    print(hero.pos.x, ",", hero.pos.y, ",", hero.hp);
+    return 0;
+}
+EOF
+./build/ylang check build/nested-struct-field-assignment.yl >/dev/null
+./build/ylang build build/nested-struct-field-assignment.yl -o build/test-nested-struct-field-assignment >/dev/null
+./build/test-nested-struct-field-assignment > build/nested-struct-field-assignment.out
+printf '10 , 10 , 100\\n' > build/nested-struct-field-assignment.expected
+diff -u build/nested-struct-field-assignment.expected build/nested-struct-field-assignment.out
+
+# Nested assignment still enforces the final field's type.
+cat > build/nested-struct-field-type-error.yl <<'EOF'
+struct Position { int x; int y; }
+struct Hero { Position pos; }
+function main() -> int {
+    let Hero hero = Hero(Position(2, 7));
+    hero.pos.x = "wrong";
+    return 0;
+}
+EOF
+if ./build/ylang check build/nested-struct-field-type-error.yl > build/nested-struct-field-type-error.out 2>&1; then
+    echo "FAIL: nested struct field assignment accepted a mismatched type" >&2
+    exit 1
+fi
+grep -q 'E2001' build/nested-struct-field-type-error.out
+
 cat > build/struct-wrong-field-type.yl <<'EOF'
 struct Point { int x; string label; }
 function main() -> int {
