@@ -23,7 +23,7 @@ function main() -> int {
 
 - Declare a struct before using it; its fields must have valid non-void types.
 - Construct with positional arguments in declaration order: `Point(2, 7)`.
-- Field reads and assignments are supported for fields of a named mutable struct variable, for example `p.x = 10;`. Assignment is type-checked and does not permit assigning a value of a different type.
+- Field reads and assignments are supported for named mutable struct variables, including chained access through nested structs, for example `p.x = 10;` or `hero.pos.x = 10;`. The final field type is checked, and the root variable must be mutable.
 - No recursive by-value fields, methods, inheritance, generic structs, field defaults, or named constructor arguments.
 - The C backend supports structs; NASM parity has not been established.
 - This is experimental until the implementation PR and its CI matrix are reviewed and merged.
