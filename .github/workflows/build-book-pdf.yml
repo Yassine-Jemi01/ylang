@@ -1,0 +1,75 @@
+name: Build standalone YLang book PDF
+
+on:
+  push:
+    branches: [main, docs/refresh-book-2.0.0]
+    paths:
+      - 'docs/book/**'
+      - 'docs/online-book/src/**'
+      - 'docs/language-spec.md'
+      - 'docs/architecture.md'
+      - 'docs/STRUCTS.md'
+      - 'docs/ENUMS.md'
+      - 'docs/GUI-API-SPEC.md'
+      - 'docs/GAME2D.md'
+      - 'docs/BACKEND-ROADMAP.md'
+      - 'docs/WINDOWS.md'
+      - 'docs/YSPM.md'
+      - 'docs/error-codes.md'
+      - 'docs/CHANGELOG-2.0.0.md'
+      - 'docs/OPTION-RESULT-DESIGN.md'
+      - '.github/workflows/build-book-pdf.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: standalone-book-pdf-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-update-pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PDF builder dependency
+        run: python -m pip install --disable-pip-version-check reportlab
+
+      - name: Build the PDF from current repository docs
+        run: python docs/book/build_pdf.py
+
+      - name: Verify generated PDF and required release labels
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          pdf = Path("docs/book/YLang-Book.pdf")
+          data = pdf.read_bytes()
+          assert data.startswith(b"%PDF-"), "output is not a PDF"
+          assert len(data) > 20000, "generated PDF is unexpectedly small"
+          spec = Path("docs/language-spec.md").read_text(encoding="utf-8")
+          notes = Path("docs/CHANGELOG-2.0.0.md").read_text(encoding="utf-8")
+          assert "stable core" in spec.lower()
+          assert "experimental" in notes.lower()
+          print(f"Verified {pdf} ({len(data)} bytes)")
+          PY
+
+      - name: Commit refreshed PDF when changed
+        run: |
+          if git diff --quiet -- docs/book/YLang-Book.pdf; then
+            echo "The PDF is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/book/YLang-Book.pdf
+          git commit -m "docs: refresh standalone YLang 2.0.0 book PDF"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
