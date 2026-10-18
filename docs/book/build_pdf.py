@@ -127,8 +127,14 @@ def parse_md(text, s):
                 t.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),NAVY),("GRID",(0,0),(-1,-1),.4,RULE),("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),1.5*mm),("RIGHTPADDING",(0,0),(-1,-1),1.5*mm),("TOPPADDING",(0,0),(-1,-1),1.2*mm),("BOTTOMPADDING",(0,0),(-1,-1),1.2*mm)]))
                 out.extend([t,Spacer(1,3*mm)])
             continue
-        if z.startswith("# Chapter "): flush(); out.append(Paragraph(inline(z[2:]),s["Chapter"]))
-        elif z.startswith("## Chapter "): flush(); out.append(Paragraph(inline(z[3:]),s["Chapter"]))
+        if z.startswith("# Chapter "):
+            flush()
+            if out: out.append(PageBreak())
+            out.append(Paragraph(inline(z[2:]),s["Chapter"]))
+        elif z.startswith("## Chapter "):
+            flush()
+            if out: out.append(PageBreak())
+            out.append(Paragraph(inline(z[3:]),s["Chapter"]))
         elif z.startswith("# "): flush(); out.append(Paragraph(inline(z[2:]),s["Section"]))
         elif z.startswith("## "): flush(); out.append(Paragraph(inline(z[3:]),s["Section"]))
         elif z.startswith("### "): flush(); out.append(Paragraph(inline(z[4:]),s["SubSection"]))
@@ -154,7 +160,7 @@ def main():
         body=(ROOT/rel).read_text(encoding="utf-8")
         body=re.sub(r"^\s*#\s+[^\n]*\n+","",body,count=1)
         body=re.sub(r"^---\s*\n.*?\n---\s*\n","",body,count=1,flags=re.S)
-        story.append(Paragraph(escape(title),s["Chapter"]))
+        story.append(Paragraph(escape(title),s["Section"]))
         story.extend(parse_md(body,s)); story.append(PageBreak())
     if isinstance(story[-1],PageBreak): story.pop()
     doc.multiBuild(story)
