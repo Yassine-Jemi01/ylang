@@ -8,6 +8,7 @@ EXPECTED_VERSION=$(cat VERSION)
 ./build/ylang --version | grep -Fq "$EXPECTED_VERSION"
 ./build/ylang --help > build/help.out
 grep -q 'ylang check' build/help.out
+grep -Fq "YLang v${EXPECTED_VERSION} — stable compiled language toolchain" build/help.out
 ./build/ylang check examples/type-conversions.yl >/dev/null
 ./build/ylang build examples/type-conversions.yl -o build/test-type-conversions >/dev/null
 ./build/test-type-conversions > build/type-conversions.out
@@ -170,7 +171,7 @@ let int global_negative = -5;
 let int global_minimum = -9223372036854775808;
 let int values[] = [-1, -2];
 function main() -> int {
-    print(global_negative, " ", global_minimum, " ", values[0]);
+    print(global_negative, global_minimum, values[0]);
     return 0;
 }
 EOF
