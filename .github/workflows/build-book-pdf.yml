@@ -2,7 +2,7 @@ name: Build standalone YLang book PDF
 
 on:
   push:
-    branches: [main]
+    branches: [main, docs/refresh-book-2.0.0]
     paths:
       - 'docs/book/**'
       - 'docs/online-book/src/**'
@@ -24,7 +24,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: standalone-book-pdf-main
+  group: standalone-book-pdf-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -34,7 +34,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.ref_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -72,4 +72,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/book/YLang-Book.pdf
           git commit -m "docs: refresh standalone YLang 2.0.0 book PDF"
-          git push origin HEAD:main
+          git push origin "HEAD:${GITHUB_REF_NAME}"
