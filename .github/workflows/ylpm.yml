@@ -32,7 +32,9 @@ jobs:
           go-version: "1.23.x"
           cache: true
           cache-dependency-path: tools/ylpm/go.mod
-      - name: Check Go formatting
+      - name: Format Go source
+        run: gofmt -w main.go main_test.go
+      - name: Verify Go formatting
         run: test -z "$(gofmt -l .)"
       - name: Run unit tests
         run: go test ./...
