@@ -1,14 +1,15 @@
 # YLang diagnostics for Neovim
 
-This lightweight Neovim integration uses YLang's real ylang check command and Neovim's built-in diagnostic UI. It does not require an LSP client, null-ls, or another plugin.
+This lightweight Neovim integration adds native syntax highlighting and uses YLang's real ylang check command with Neovim's built-in diagnostic UI. It does not require an LSP client, null-ls, or another plugin.
 
 ## Features
 
+- Highlights YLang 2.0 declarations, `struct`/`enum`/`match`, imports, fields and enum variants, built-in namespaces, strings/f-strings, comments, numbers, and operators.
 - Marks syntax and semantic errors in the buffer with underlines, signs, and virtual text.
 - Preserves YLang diagnostic codes and compiler hints.
 - Checks the current unsaved buffer while typing, when opening a .yl file, and after saving.
 - Provides :YLangCheck to check immediately and :YLangDiagnostics to show the current line's full message and hint.
-- Runs the compiler without a shell and checks a temporary copy so unsaved text can be validated without touching the source file.
+- Runs the compiler without a shell and checks a temporary copy so unsaved text can be validated without touching the source file. For named files, the scratch file is placed beside the source so relative imports resolve during checks.
 
 ## Install from a YLang checkout
 
@@ -65,8 +66,9 @@ function main() -> int {
 
 The let line should receive a diagnostic. Correct the type and the diagnostic should disappear after the next check.
 
-Run the parser regression test from the repository root with:
+Run the diagnostic parser and syntax-highlighting regression tests from the repository root with:
 
 ~~~sh
 nvim --headless -u NONE +'luafile editors/nvim/tests/diagnostics.lua'
+nvim --headless -u NONE +'luafile editors/nvim/tests/syntax.lua'
 ~~~
