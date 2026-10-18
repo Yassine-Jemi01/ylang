@@ -714,7 +714,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                     (void)snprintf(suggestion, sizeof(suggestion),
                         "%s expects %zu argument(s), but received %zu.",
                         builtin->name, builtin->arity, expr->as.call.count);
-                    diagnostic(c, expr->token, "error", "E2043",
+                    diagnostic(c, expr->token, "error", "E2085",
                                "Incorrect number of GUI function arguments.", suggestion);
                 }
                 for (size_t i = 0; i < expr->as.call.count; i++) {
@@ -725,8 +725,8 @@ static YType check_expr(Checker *checker, Expr *expr)
                         (void)snprintf(suggestion, sizeof(suggestion),
                             "Argument %zu of %s expects %s, but received %s.",
                             i + 1, builtin->name, semantic_type_name(c, builtin->args[i]),
-                            type_name(actual));
-                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2044",
+                            semantic_type_name(c, actual));
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2090",
                                    "GUI argument type mismatch.", suggestion);
                     }
                 }
@@ -738,7 +738,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 strcmp(expr->as.call.name, "to_string") == 0) {
                 const char *name = expr->as.call.name;
                 if (expr->as.call.count != 1) {
-                    diagnostic(c, expr->token, "error", "E2043",
+                    diagnostic(c, expr->token, "error", "E2086",
                                "A conversion function expects exactly one argument.",
                                "Pass one value, for example to_float(42).");
                 }
@@ -765,7 +765,7 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             if (strcmp(expr->as.call.name, "length") == 0) {
                 if (expr->as.call.count != 1) {
-                    diagnostic(c, expr->token, "error", "E2043",
+                    diagnostic(c, expr->token, "error", "E2087",
                                "length expects exactly one array argument.",
                                "Use length(values) to get the number of elements.");
                     for (size_t i = 0; i < expr->as.call.count; i++)
@@ -796,7 +796,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                     (void)snprintf(suggestion, sizeof(suggestion),
                         "%s expects %zu argument(s), but received %zu.",
                         string_builtin->name, string_builtin->arity, expr->as.call.count);
-                    diagnostic(c, expr->token, "error", "E2043",
+                    diagnostic(c, expr->token, "error", "E2088",
                                "Incorrect number of standard-library arguments.", suggestion);
                 }
                 for (size_t i = 0; i < expr->as.call.count; i++) {
@@ -1175,7 +1175,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     char suggestion[192];
                     (void)snprintf(suggestion, sizeof(suggestion),
                                    "Expected a %s return value, but received %s.",
-                                   type_name(expected), type_name(actual));
+                                   semantic_type_name(c, expected), semantic_type_name(c, actual));
                     diagnostic(c, stmt->token, "error", "E2055",
                                "Return type mismatch.", suggestion);
                 }
@@ -1247,7 +1247,7 @@ bool check_program(Compiler *c)
                 char suggestion[256];
                 (void)snprintf(suggestion, sizeof(suggestion),
                     "Global '%s' has type %s, but its initializer has type %s.",
-                    var->name, type_name(var->type), type_name(actual));
+                    var->name, semantic_type_name(c, var->type), semantic_type_name(c, actual));
                 diagnostic(c, var->initializer->token, "error", "E2001",
                            "Global initializer type mismatch.", suggestion);
             }
