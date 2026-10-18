@@ -1,10 +1,10 @@
-# YLang 2.0.0-beta.2
+# YLang 2.0.0
 
 **A small compiled programming language with explicit types and actionable diagnostics.**
 
 YLang is implemented in C17. Its compiler tokenizes and parses `.yl` files, checks names, initialization and types, generates C, and invokes GCC or Clang to produce a native executable. Linux and macOS are the primary tested targets; experimental native Windows support is available for 64-bit Windows with MinGW-w64. Windows support currently has a focused CI smoke suite and is not yet a claim of complete platform parity. It is a compiled language toolchain, not an interpreter.
 
-YLang **2.0.0-beta.2** is an experimental prerelease for testing the expanded compiler and standard library. The latest stable release remains **1.1.0**. The beta adds named imports and multi-file compilation, experimental typed enums and structs, and SDL2-backed GUI/2D helpers. The C backend remains the default; the NASM backend is experimental and supports only a restricted subset. This project does not claim Rust-level memory safety or production stability.
+YLang **2.0.0** is the stable release of the 2.0 line. The stable compatibility commitment covers the documented core language and the default C-backend workflow. Newer subsystems—named imports, typed enums and structs, SDL2-backed GUI/Game2D APIs, the NASM backend, native Windows support, and optional YSPM packaging—remain explicitly experimental and may change independently of the stable core. Linux and macOS are the primary tested targets; native Windows x86-64 uses a limited MinGW-w64 smoke-tested path. YLang does not claim Rust-level memory safety or provide a security sandbox.
 
 ## The online book
 
@@ -140,11 +140,11 @@ are not supported yet. The established C backend remains the default. A backend-
 
 ## Structs (experimental)
 
-This beta preview includes typed struct declarations, positional construction, field reads, struct values passed to or returned from functions, and type-checked mutable field assignment in the C backend. NASM deliberately rejects struct values for now. See [struct reference](docs/STRUCTS.md) and [runnable example](examples/structs.yl).
+This experimental feature set includes typed struct declarations, positional construction, field reads, struct values passed to or returned from functions, and type-checked mutable field assignment in the C backend. NASM deliberately rejects struct values for now. See [struct reference](docs/STRUCTS.md) and [runnable example](examples/structs.yl).
 
 ## Typed enums (experimental)
 
-Typed unit enums and exhaustive `match` statements are included experimentally in the 2.0 beta preview; they are not part of the stable 1.1.0 subset.
+Typed unit enums and exhaustive `match` statements are included experimentally in the 2.0 beta preview; they are not part of the stable 2.0.0 core compatibility guarantee.
 
 ```yl
 enum Direction { North, East, South, West }
@@ -239,7 +239,7 @@ Build a native package locally (Linux x86-64, Go, GCC, GNU Make, and a YSPM chec
     cd ../ylang
     YSPM_BIN="../yspm/yspm" bash packaging/yspm/build-package.sh
 
-This creates `build/ylang-yspm/ylang-<version>-x86_64.yspkg`. The package includes the compiler, .yl standard library, GUI runtime source/header, license, and available documentation. The `v2.0.0-beta.2` release workflow builds and validates the package from the exact tested commit and attaches it to the prerelease; the existing `v2.0.0-beta.1` release remains unchanged and source-only.
+This creates `build/ylang-yspm/ylang-<version>-x86_64.yspkg`. The package includes the compiler, .yl standard library, GUI runtime source/header, license, and available documentation. The stable release workflow builds and validates a Linux x86-64 package from the exact tested commit before attaching it to the release. Prerelease assets remain separate from the stable release.
 
 When a release includes a .yspkg asset, download it and install it with:
 
@@ -316,9 +316,9 @@ Explicit conversions include `to_float(int)`, range-checked `to_int(float)`, and
 - C code generation and native compilation using GCC or Clang
 - A deliberately narrow safe-fix command
 
-## Explicit non-goals for this release
+## Explicit limitations of the stable core
 
-YLang's current language subset does **not** implement classes/OOP, raw pointers/references, `try`/`catch`, modules, generics, or a dedicated LLVM/native-code backend. Arrays are fixed-size: functions may accept array parameters (with the length passed automatically), but arrays cannot be returned or nested, and `const` arrays are not supported. These are not silently approximated; programs using unsupported syntax are rejected. A final ownership/borrowing or garbage-collection model is not defined. `char` is one byte, not a Unicode scalar value.
+The stable core does **not** implement classes/OOP, raw pointers/references, `try`/`catch`, generics, or a dedicated LLVM/native-code backend. Named file imports are available as an experimental extension, not as a stable package/module ecosystem. Arrays are fixed-size: functions may accept array parameters (with the length passed automatically), but arrays cannot be returned or nested, and `const` arrays are not supported. These are not silently approximated; programs using unsupported syntax are rejected. A final ownership/borrowing or garbage-collection model is not defined. `char` is one byte, not a Unicode scalar value.
 
 The C backend uses generated runtime helpers and process-lifetime storage for some formatted strings. Long-running programs that repeatedly create f-string values may grow in memory usage. Do not use this release for security-critical code or to process hostile source as a hardened sandbox. Generated programs are ordinary native programs with the permissions of the user who runs them.
 
@@ -396,7 +396,7 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [Language specification](docs/language-spec.md)
 - [Architecture](docs/architecture.md)
 - [YLang 2.0 design roadmap](docs/YLANG-2.0-DESIGN.md)
-- [YLang 2.0.0-beta.2 release notes and limitations](docs/CHANGELOG-2.0-BETA.md)
+- [YLang 2.0.0 release notes and compatibility policy](docs/CHANGELOG-2.0.0.md)
 - [VS Code language support, compiler diagnostics, and Code Runner setup](editors/vscode/README.md)
 - [Neovim native diagnostics integration](editors/nvim/README.md)
 - [GUI runtime API](include/ylang/gui.h) and [example](examples/gui.c)
