@@ -20,7 +20,7 @@ This document defines the order in which YLang 2.0 should grow. The guiding rule
 
 ## Backend strategy
 
-The C backend remains the default for broad language coverage; it emits C and invokes GCC/Clang. The NASM backend is experimental, restricted to Linux x86-64, and must reject unsupported constructs. YLang does not yet have a complete general-purpose native backend independent of GCC/Clang. The plan is to define a shared typed intermediate representation, keep backend capabilities explicit, and require differential output/exit-status tests for the subset supported by multiple backends. A future proof of concept may evaluate LLVM IR or direct machine-code generation; neither is promised for 2.0.0-beta.1. See [BACKEND-ROADMAP.md](BACKEND-ROADMAP.md).
+The C backend remains the default for broad language coverage; it emits C and invokes GCC/Clang. The NASM backend is experimental, restricted to Linux x86-64, and must reject unsupported constructs. YLang does not yet have a complete general-purpose native backend independent of GCC/Clang. The plan is to define a shared typed intermediate representation, keep backend capabilities explicit, and require differential output/exit-status tests for the subset supported by multiple backends. A future proof of concept may evaluate LLVM IR or direct machine-code generation; neither is promised for the 2.0 beta. See [BACKEND-ROADMAP.md](BACKEND-ROADMAP.md).
 
 ## Milestone 0 — Compiler correctness
 
