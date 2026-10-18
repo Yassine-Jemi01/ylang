@@ -31,7 +31,7 @@ The publication workflow must pass all of these on the exact commit it releases:
 - [x] Structs: tests cover construction, field access, passing/returning values, assignment, compound assignment, increment, and invalid fields/types/arity.
 - [x] Enums: tests cover typed values, function parameters, comparisons, exhaustive matching, invalid variants, duplicate arms, and non-exhaustive matches.
 - [x] NASM: differential tests compare the documented shared subset against the C backend on Linux x86-64; unsupported GUI and struct use must be rejected clearly.
-- [x] GUI/2D: tests cover type checking, generated API calls, runtime/example builds, and non-window collision helpers.
+- [x] GUI/2D: tests cover the playable Dodge sample's type checking and generated calls; release CI also builds and links the sample with SDL2, alongside non-window collision helpers.
 
 ## Explicit beta exclusions
 
