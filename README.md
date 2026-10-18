@@ -228,6 +228,7 @@ Errors include a stable diagnostic code, path, line/column, source excerpt, care
 
 Build a native package locally (Linux x86-64, Go, GCC, GNU Make, and a YSPM checkout with .yspkg build support required):
 
+    cd ..
     git clone https://github.com/Yassine-Jemi01/yspm.git
     cd yspm
     go build -o yspm ./cmd/yspm
