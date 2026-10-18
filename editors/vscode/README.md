@@ -4,12 +4,12 @@ This extension registers the `.yl` file extension as YLang and provides syntax h
 
 ## Included
 
-- Highlighting for keywords, types, booleans, numbers, strings, characters, f-strings, function declarations/calls, operators, and `//` comments.
+- YLang 2.0 highlighting for `struct` and `enum` declarations, enum variants, exhaustive `match` arms, named `from ... import ...` imports, typed variables and struct fields, built-in namespaces, functions, operators, arrays, scientific-notation numbers, strings, f-strings, and both `//` and `/* ... */` comments.
 - Matching brackets, automatic closing pairs, comment toggling, and basic indentation.
 - Light/dark YLang icons for icon themes that support language icons.
 - A default Code Runner executor for `.yl` files: compile with YLang, then run the generated executable.
 - Syntax and semantic diagnostics from the real `ylang check` compiler command, including current array/type diagnostics, diagnostic codes, full explanations, and actionable compiler hints in diagnostic details.
-- Checks on open, while editing, and on save. Checks use a temporary copy of the current editor buffer, so unsaved edits are checked too.
+- Checks on open, while editing, and on save. Checks use a temporary copy of the current editor buffer, so unsaved edits are checked too. For saved files in writable directories, the temporary source is created beside the file so relative imports continue to resolve.
 
 ## Requirements
 
@@ -38,7 +38,8 @@ rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.1.0
 rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.2.0
 rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.3.0
 rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.4.0
-ln -s "$PWD/editors/vscode" ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.4.0
+rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.5.0
+ln -s "$PWD/editors/vscode" ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.5.0
 ```
 
 Fully restart VS Code, or run **Developer: Reload Window** from the Command Palette.
@@ -61,7 +62,7 @@ The checker runs `ylang check` and maps compiler errors/warnings to VS Code's Pr
 
 ## Test the diagnostic parser
 
-No npm install is required. Run the parser regression tests with Node.js:
+No npm install is required. Run the diagnostic parser and YLang 2.0 syntax-grammar regression tests with Node.js:
 
 ```sh
 cd editors/vscode

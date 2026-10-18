@@ -59,6 +59,12 @@ const SHORT_MESSAGES = {
   E1014: "Invalid f-string expression",
   E1015: "print() needs a value",
   E1016: "Unknown standard-library namespace",
+  E1020: "Invalid import declaration",
+  E1022: "Imported file not found",
+  E1023: "Circular import",
+  E1024: "Imported name not found",
+  E1025: "Conflicting or duplicate import",
+  E1026: "Cannot import the entry point",
   E2001: "Type mismatch",
   E2002: "Unknown type",
   E2003: "const needs a value",
@@ -106,7 +112,18 @@ const SHORT_MESSAGES = {
   E2056: "Global value must be a constant",
   E2060: "Missing main() function",
   E2061: "Invalid main() function",
-  E2062: "Some path is missing a return"
+  E2062: "Some path is missing a return",
+  E2057: "match needs an enum value",
+  E2058: "Enum type mismatch in match arm",
+  E2059: "Duplicate enum match arm",
+  E2063: "match is not exhaustive",
+  E2064: "match value cannot call or assign",
+  E2074: "Incorrect struct constructor argument count",
+  E2075: "Struct field type mismatch",
+  E2076: "Field access requires a struct",
+  E2077: "Unknown struct field",
+  E2078: "Unsupported struct assignment target",
+  E2079: "Struct values cannot be printed directly"
 };
 
 function shortMessage(code, original) {
@@ -199,17 +216,52 @@ function parseDiagnostics(text, document) {
   return found;
 }
 
+let temporarySourceCounter = 0;
+
 function temporarySource(document) {
+  const originalPath = document.uri.scheme === "file" ? document.uri.fsPath : "";
+  const originalName = originalPath ? path.basename(originalPath) : "untitled.yl";
+  const filename = originalName.toLowerCase().endsWith(".yl") ? originalName : "untitled.yl";
+
+  // Keep the scratch source beside the real file so imports such as
+  // from "./math.yl" import add; resolve exactly as they do for the saved file.
+  if (originalPath) {
+    const sourceDirectory = path.dirname(originalPath);
+    const stem = filename.replace(/\.yl$/i, "");
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const tempFile = path.join(
+        sourceDirectory,
+        `.${stem}.ylang-check-${process.pid}-${Date.now()}-${temporarySourceCounter++}.yl`
+      );
+      try {
+        fs.writeFileSync(tempFile, document.getText(), { encoding: "utf8", flag: "wx" });
+        return { tempFile, tempDirectory: undefined };
+      } catch (error) {
+        if (error.code === "EEXIST") continue;
+        break;
+      }
+    }
+  }
+
+  // Untitled files (or read-only source directories) still get ordinary
+  // diagnostics through a system temporary directory. Relative imports may
+  // not resolve in this fallback because there is no writable sibling path.
   const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "ylang-vscode-"));
-  const originalName = document.uri.scheme === "file"
-    ? path.basename(document.uri.fsPath)
-    : "untitled.yl";
-  const filename = originalName.toLowerCase().endsWith(".yl")
-    ? originalName
-    : "untitled.yl";
   const tempFile = path.join(tempDirectory, filename);
   fs.writeFileSync(tempFile, document.getText(), "utf8");
   return { tempDirectory, tempFile };
+}
+
+function cleanupTemporarySource(temporary) {
+  try {
+    if (temporary.tempDirectory) {
+      fs.rmSync(temporary.tempDirectory, { recursive: true, force: true });
+    } else {
+      fs.rmSync(temporary.tempFile, { force: true });
+    }
+  } catch (cleanupError) {
+    output.appendLine("Could not remove temporary files: " + String(cleanupError));
+  }
 }
 
 function showCompilerMissing(compiler) {
@@ -256,11 +308,7 @@ function checkDocument(document, revision) {
     ["check", temporary.tempFile],
     { cwd, timeout, maxBuffer: 1024 * 1024, encoding: "utf8" },
     (error, stdout, stderr) => {
-      try {
-        fs.rmSync(temporary.tempDirectory, { recursive: true, force: true });
-      } catch (cleanupError) {
-        output.appendLine("Could not remove temporary files: " + String(cleanupError));
-      }
+      cleanupTemporarySource(temporary);
 
       if (state.child === child) state.child = undefined;
       if (state.revision !== revision) return;
@@ -371,5 +419,11 @@ function deactivate() {
   documentStates.clear();
 }
 
-module.exports = { activate, deactivate, _parseDiagnostics: parseDiagnostics };
+module.exports = {
+  activate,
+  deactivate,
+  _parseDiagnostics: parseDiagnostics,
+  _temporarySource: temporarySource,
+  _cleanupTemporarySource: cleanupTemporarySource
+};
 

@@ -183,6 +183,8 @@ jobs:
         run: npm test --prefix editors/vscode
       - name: Test Neovim diagnostic parser
         run: nvim --headless -u NONE +'luafile editors/nvim/tests/diagnostics.lua'
+      - name: Test Neovim syntax highlighting
+        run: nvim --headless -u NONE +'luafile editors/nvim/tests/syntax.lua'
 
 
   website-integrity:

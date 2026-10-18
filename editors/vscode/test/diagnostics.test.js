@@ -2,6 +2,9 @@
 
 const assert = require("node:assert/strict");
 const Module = require("node:module");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 
 class Position {
   constructor(line, character) {
@@ -107,5 +110,48 @@ const unknown = extension._parseDiagnostics([
 ].join("\n"), document);
 assert.equal(unknown.length, 1);
 assert.equal(unknown[0].message, "A new compiler diagnostic");
+
+
+const v2Diagnostics = extension._parseDiagnostics([
+  "error[E1022]: Imported source file could not be resolved or read.",
+  "  --> /workspace/main.yl:2:1",
+  "   |",
+  '  2 | from "./math.yl" import add;',
+  "   | ^",
+  "error[E2063]: This match is not exhaustive.",
+  "  --> /workspace/main.yl:8:5",
+  "   |",
+  "  8 | match (direction) {",
+  "   |     ^",
+  "error[E2077]: This struct has no field with that name.",
+  "  --> /workspace/main.yl:10:15",
+  "   |",
+  " 10 | print(point.z);",
+  "   |               ^"
+].join("\n"), document);
+assert.equal(v2Diagnostics.length, 3, "YLang 2.0 import, enum, and struct diagnostics should parse");
+assert.equal(v2Diagnostics[0].message, "Imported file not found");
+assert.equal(v2Diagnostics[1].message, "match is not exhaustive");
+assert.equal(v2Diagnostics[2].message, "Unknown struct field");
+
+
+const scratchRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ylang-relative-import-test-"));
+try {
+  const sourcePath = path.join(scratchRoot, "main.yl");
+  fs.writeFileSync(path.join(scratchRoot, "math.yl"), "function add() -> int { return 42; }\n");
+  const scratchDocument = {
+    uri: { scheme: "file", fsPath: sourcePath },
+    getText() { return 'from "./math.yl" import add;\nfunction main() -> int { return add(); }\n'; }
+  };
+  const scratch = extension._temporarySource(scratchDocument);
+  assert.equal(path.dirname(scratch.tempFile), scratchRoot,
+    "unsaved checks should preserve the original directory for relative imports");
+  assert.ok(path.basename(scratch.tempFile).endsWith(".yl"),
+    "temporary compiler input should retain the YLang source extension");
+  extension._cleanupTemporarySource(scratch);
+  assert.equal(fs.existsSync(scratch.tempFile), false, "temporary source should be cleaned up");
+} finally {
+  fs.rmSync(scratchRoot, { recursive: true, force: true });
+}
 
 console.log("VS Code diagnostic parser tests passed");

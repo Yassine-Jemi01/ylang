@@ -4,6 +4,7 @@ local namespace = vim.api.nvim_create_namespace("ylang")
 local jobs = {}
 local generations = {}
 local notified_missing = false
+local temporary_source_counter = 0
 
 local SHORT_MESSAGES = {
   E1001 = "Invalid character",
@@ -18,6 +19,13 @@ local SHORT_MESSAGES = {
   E1014 = "Invalid f-string expression",
   E1015 = "print() needs a value",
   E1016 = "Unknown standard-library namespace",
+  E1020 = "Invalid import declaration",
+  E1022 = "Imported file not found",
+  E1023 = "Circular import",
+  E1024 = "Imported name not found",
+  E1025 = "Conflicting or duplicate import",
+  E1026 = "Cannot import the entry point",
+
   E2001 = "Type mismatch",
   E2002 = "Unknown type",
   E2003 = "const needs a value",
@@ -66,6 +74,18 @@ local SHORT_MESSAGES = {
   E2060 = "Missing main() function",
   E2061 = "Invalid main() function",
   E2062 = "Some path is missing a return",
+  E2057 = "match needs an enum value",
+  E2058 = "Enum type mismatch in match arm",
+  E2059 = "Duplicate enum match arm",
+  E2063 = "match is not exhaustive",
+  E2064 = "match value cannot call or assign",
+  E2074 = "Incorrect struct constructor argument count",
+  E2075 = "Struct field type mismatch",
+  E2076 = "Field access requires a struct",
+  E2077 = "Unknown struct field",
+  E2078 = "Unsupported struct assignment target",
+  E2079 = "Struct values cannot be printed directly",
+
 }
 
 local function parse_header(line)
@@ -221,15 +241,30 @@ function M.check(bufnr)
   local generation = generations[bufnr]
   stop_job(bufnr)
 
-  local temp_path = vim.fn.tempname() .. ".yl"
+  local original_path = vim.api.nvim_buf_get_name(bufnr)
+  local temp_path
+  if original_path ~= "" then
+    temporary_source_counter = temporary_source_counter + 1
+    local directory = vim.fn.fnamemodify(original_path, ":p:h")
+    local stem = vim.fn.fnamemodify(original_path, ":t:r")
+    temp_path = directory .. "/." .. stem .. ".ylang-check-"
+      .. tostring(vim.fn.getpid()) .. "-" .. tostring(temporary_source_counter) .. ".yl"
+  else
+    temp_path = vim.fn.tempname() .. ".yl"
+  end
+
   local source_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
   if vim.fn.writefile(source_lines, temp_path) ~= 0 then
-    vim.notify("Could not create a temporary YLang source file.", vim.log.levels.ERROR)
-    return
+    -- Read-only directory fallback preserves diagnostics, though relative
+    -- imports cannot be resolved until a writable sibling path is available.
+    temp_path = vim.fn.tempname() .. ".yl"
+    if vim.fn.writefile(source_lines, temp_path) ~= 0 then
+      vim.notify("Could not create a temporary YLang source file.", vim.log.levels.ERROR)
+      return
+    end
   end
 
   local compiler = compiler_executable()
-  local original_path = vim.api.nvim_buf_get_name(bufnr)
   local cwd = original_path ~= ""
       and vim.fn.fnamemodify(original_path, ":p:h")
       or vim.fn.getcwd()
