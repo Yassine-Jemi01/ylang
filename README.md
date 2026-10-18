@@ -144,7 +144,7 @@ This experimental feature set includes typed struct declarations, positional con
 
 ## Typed enums (experimental)
 
-Typed unit enums and exhaustive `match` statements are included experimentally in the 2.0 beta preview; they are not part of the stable 2.0.0 core compatibility guarantee.
+Typed unit enums and exhaustive `match` statements are available as an experimental 2.0 extension; they are not part of the stable 2.0.0 core compatibility guarantee.
 
 ```yl
 enum Direction { North, East, South, West }
