@@ -95,7 +95,7 @@ def styles():
     s.add(ParagraphStyle(name="Body", fontName="Helvetica", fontSize=8.8, leading=12.6, textColor=INK, spaceAfter=2.4*mm, allowWidows=0, allowOrphans=0))
     s.add(ParagraphStyle(name="BulletText", parent=s["Body"], leftIndent=3*mm, spaceAfter=1*mm))
     s.add(ParagraphStyle(name="Source", fontName="Helvetica-Oblique", fontSize=7.5, leading=10, textColor=MUTED, spaceAfter=4*mm))
-    s.add(ParagraphStyle(name="Code", fontName="Courier", fontSize=7.2, leading=9.4, textColor=INK))
+    s.add(ParagraphStyle(name="BookCodeStyle", fontName="Courier", fontSize=7.2, leading=9.4, textColor=INK))
     s.add(ParagraphStyle(name="ContentsTitle", fontName="Helvetica-Bold", fontSize=22, leading=27, textColor=NAVY, spaceAfter=7*mm))
     s.add(ParagraphStyle(name="TOC0", fontName="Helvetica-Bold", fontSize=9, leading=13, leftIndent=0, textColor=NAVY, spaceBefore=1*mm))
     s.add(ParagraphStyle(name="Cell", fontName="Helvetica", fontSize=7.2, leading=9, textColor=INK))
@@ -104,7 +104,7 @@ def styles():
 
 
 def codebox(text, s):
-    t = Table([[Preformatted(text.rstrip(), s["Code"], maxLineLength=106, splitChars=" \t")]], colWidths=[A4[0]-40*mm])
+    t = Table([[Preformatted(text.rstrip(), s["BookCodeStyle"], maxLineLength=106, splitChars=" \t")]], colWidths=[A4[0]-40*mm])
     t.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),PALE),("BOX",(0,0),(-1,-1),.5,RULE),("LEFTPADDING",(0,0),(-1,-1),3*mm),("RIGHTPADDING",(0,0),(-1,-1),3*mm),("TOPPADDING",(0,0),(-1,-1),2*mm),("BOTTOMPADDING",(0,0),(-1,-1),2*mm),("VALIGN",(0,0),(-1,-1),"TOP")]))
     return t
 
