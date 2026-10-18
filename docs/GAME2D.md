@@ -38,8 +38,7 @@ From the repository root, build YLang first, then check and build the sample:
 
     make
     make test
-    YLANG_PATH=stdlib ./build/ylang check examples/games/dodge.yl
-    YLANG_PATH=stdlib ./build/ylang build examples/games/dodge.yl -o build/dodge
+    make game2d-example
     ./build/dodge
 
 Controls:
