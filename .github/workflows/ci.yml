@@ -56,6 +56,75 @@ jobs:
       - name: Run AddressSanitizer and UndefinedBehaviorSanitizer tests
         run: ${{ steps.compiler.outputs.make }} sanitize CC="${{ steps.compiler.outputs.cc }}"
 
+  windows-native-smoke:
+    name: Windows native compiler smoke tests
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up MinGW-w64 toolchain
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-pkgconf
+            make
+            python
+      - name: Verify generated runtime template
+        run: python tools/embed_text.py runtime/runtime_template.c src/runtime_template.h --check
+      - name: Build compiler
+        run: make clean all CC=gcc
+      - name: Build optional SDL2 GUI runtime
+        run: make gui gui-example CC=gcc
+      - name: Check, compile, and run a native Windows program
+        run: |
+          mkdir -p build/windows-smoke
+          cat > build/windows-smoke/hello.yl <<'EOF'
+          function main() -> int {
+              print("Windows smoke:", 40 + 2);
+              return 0;
+          }
+          EOF
+          ./build/ylang.exe check build/windows-smoke/hello.yl
+          ./build/ylang.exe build build/windows-smoke/hello.yl -o build/windows-smoke/hello.exe
+          output="$(./build/windows-smoke/hello.exe)"
+          test "$output" = "Windows smoke: 42"
+      - name: Check multi-file imports with Windows paths
+        run: |
+          mkdir -p build/windows-imports
+          cat > build/windows-imports/math.yl <<'EOF'
+          function answer() -> int {
+              return 42;
+          }
+          EOF
+          cat > build/windows-imports/main.yl <<'EOF'
+          from "./math.yl" import answer;
+          function main() -> int {
+              print(answer());
+              return 0;
+          }
+          EOF
+          ./build/ylang.exe build build/windows-imports/main.yl -o build/windows-imports/main.exe
+          output="$(./build/windows-imports/main.exe)"
+          test "$output" = "42"
+      - name: Check portable standard input runtime
+        run: |
+          cat > build/windows-smoke/input.yl <<'EOF'
+          function main() -> int {
+              print(io.read_line());
+              return 0;
+          }
+          EOF
+          ./build/ylang.exe build build/windows-smoke/input.yl -o build/windows-smoke/input.exe
+          output="$(printf 'native Windows input\n' | ./build/windows-smoke/input.exe)"
+          test "$output" = "native Windows input"
+
   editor-diagnostics:
     runs-on: ubuntu-latest
     steps:
