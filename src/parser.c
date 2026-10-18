@@ -927,7 +927,7 @@ static Stmt *parse_match_after_keyword(Parser *p, Token token)
         MatchArm *arm = arena_alloc(&p->compiler->arena, sizeof(*arm));
         arm->token = arm_token;
         if (pattern->kind != EXPR_ENUM_VALUE) {
-            diagnostic(p->compiler, pattern->token, "error", "E2055",
+            diagnostic(p->compiler, pattern->token, "error", "E2084",
                        "A match arm must name an enum variant.",
                        "Use a pattern such as Direction.North -> { ... }.");
         } else {
@@ -1119,7 +1119,7 @@ static EnumDecl *parse_enum(Parser *p, Token enum_token)
         EnumDecl *existing = p->compiler->enums[i];
         if (existing->module == p->compiler->current_module &&
             strcmp(existing->name, name) == 0) {
-            diagnostic(p->compiler, name_token, "error", "E2050",
+            diagnostic(p->compiler, name_token, "error", "E2081",
                        "This enum type is already declared in the current module.",
                        "Choose a unique enum type name.");
             break;
@@ -1144,7 +1144,7 @@ static EnumDecl *parse_enum(Parser *p, Token enum_token)
         if (variant_token.length == 0) break;
         char *variant_name = token_copy(p->compiler, variant_token);
         if (find_enum_variant(enumeration, variant_name)) {
-            diagnostic(p->compiler, variant_token, "error", "E2051",
+            diagnostic(p->compiler, variant_token, "error", "E2082",
                        "This enum variant is declared more than once.",
                        "Each variant name must be unique within its enum.");
         } else {
@@ -1163,7 +1163,7 @@ static EnumDecl *parse_enum(Parser *p, Token enum_token)
         }
     }
     if (enumeration->variant_count == 0) {
-        diagnostic(p->compiler, name_token, "error", "E2053",
+        diagnostic(p->compiler, name_token, "error", "E2083",
                    "An enum must declare at least one variant.",
                    "Add one or more variants inside the braces.");
     }
