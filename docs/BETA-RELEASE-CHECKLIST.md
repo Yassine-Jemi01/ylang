@@ -1,12 +1,12 @@
-# YLang 2.0.0-beta.1 Release Gate
+# YLang 2.0 Beta Release Gate
 
-This checklist defines the scope and automated gates for the source-only `2.0.0-beta.1` prerelease. It does not promise that experimental features are production-ready. The stable 1.1.0 release remains the recommended choice for the documented stable subset.
+This checklist defines the release gates for future YLang 2.0 beta prereleases. `v2.0.0-beta.1` is already published as a source-only prerelease; its tag will not be overwritten. A later prerelease can include the optional Linux YSPM package only after the build and release gates below pass. Experimental features remain experimental, and stable 1.1.0 remains the recommended choice for the documented stable subset.
 
 ## Version and publication safeguards
 
-- [x] `VERSION` and `.github/PUBLISH_BETA` must both equal `2.0.0-beta.1`.
+- [x] `VERSION` and `.github/PUBLISH_BETA` must match the requested prerelease version.
 - [x] The release workflow only publishes from `main`; a workflow dispatch from another branch cannot publish.
-- [x] The release workflow checks out and tests the event commit, then creates tag `v2.0.0-beta.1` at that same SHA.
+- [x] The release workflow checks out and tests the event commit, then creates the matching `v${PUBLISH_BETA}` tag at that same SHA.
 - [x] Publication is blocked if any checklist item is unchecked.
 - [x] Publication is blocked if the target tag exists without a release; an existing release is never overwritten.
 - [x] Publication is a GitHub prerelease, not a stable release.
@@ -21,6 +21,7 @@ The publication workflow must pass all of these on the exact commit it releases:
 - [x] Optional SDL2 GUI runtime and example compile/link checks on the supported CI systems.
 - [x] The full regression suite, including the frontend unit tests.
 - [x] Generated runtime-template consistency check.
+- [ ] YSPM integration CI builds a `.yspkg` from the exact candidate commit, validates package metadata and required files, and starts the packaged compiler.
 - [x] Bounded lexer/parser fuzz smoke test on Linux with Clang.
 - [x] AddressSanitizer and UndefinedBehaviorSanitizer test suite.
 - [x] VS Code and Neovim diagnostic parser tests.
@@ -38,8 +39,8 @@ The publication workflow must pass all of these on the exact commit it releases:
 - [x] `Option<T>` and `Result<T, E>` are **not implemented**. The design document is a proposal only.
 - [x] The C backend remains the default. NASM is experimental, limited to a subset, and not a complete alternative backend.
 - [x] Live GUI window interaction is not tested in headless CI; running GUI examples requires a graphical session.
-- [x] Native Windows builds are not supported by the current POSIX-based compiler driver.
-- [x] The release is source-only. No precompiled binaries or installers are included.
+- [x] Native Windows x86-64 uses MinGW-w64 in an experimental smoke-tested path; full feature parity is not claimed.
+- [x] No general-purpose precompiled binaries or Windows/macOS installers are promised. A Linux `.yspkg` asset for compatible YSPM systems is a separate optional package and does not replace source distribution.
 - [x] Structs, enums, module imports, and game/GUI APIs remain experimental and may change before stable 2.0.0.
 - [x] YLang does not claim Rust-level memory safety or production stability.
 
@@ -56,7 +57,7 @@ The publication workflow must pass all of these on the exact commit it releases:
 The release workflow must remain blocked until each planned release requirement is implemented and verified on the exact candidate commit:
 
 - [ ] Native Windows x86-64 support passes clean-build, native executable, module-import, standard-input, and SDL2 compile/link smoke tests.
-- [ ] The YLang package manager (ylpm) is merged, tested on Linux/macOS/Windows, and documented, including lockfile and integrity behavior.
+- [ ] The YSPM `.yspkg` package is built and verified in CI, attached to a new prerelease from the tested commit, and documented as a Linux system package.
 - [ ] The Game2D library builds and links a playable simple game example; the API and installation steps are documented.
 - [ ] The website and installation documentation describe the actual 2.0 feature set, platform support, experimental boundaries, and package/game workflows.
 
@@ -64,4 +65,4 @@ Object-oriented programming and the complete LLVM/native backend are intentional
 
 ## Publication decision
 
-The workflow is the final automated gate: it will publish `v2.0.0-beta.1` only after the complete CI matrix, fuzz smoke test, sanitizers, and editor checks pass on the exact `main` commit. These checked items record the tested scope and explicit exclusions; they do not imply that the beta is stable.
+The workflow is the final automated gate: it will publish a new prerelease only after the complete CI matrix, native Windows smoke test, YSPM package build, playable Game2D example, fuzz smoke test, sanitizers, editor checks, and website checks pass on the exact `main` commit. Existing tags/releases are never overwritten. These checked items record tested scope and explicit exclusions; they do not imply that the beta is stable.
