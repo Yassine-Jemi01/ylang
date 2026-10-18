@@ -51,6 +51,17 @@ The publication workflow must pass all of these on the exact commit it releases:
 - [x] Website is English-only and links to the current beta release and documentation.
 - [x] Bug reports should include the exact version/commit, operating system, compiler, command, minimal reproducer, expected output, and actual output.
 
+## Mandatory requirements for the final 2.0 release
+
+The release workflow must remain blocked until each planned release requirement is implemented and verified on the exact candidate commit:
+
+- [ ] Native Windows x86-64 support passes clean-build, native executable, module-import, standard-input, and SDL2 compile/link smoke tests.
+- [ ] The YLang package manager (ylpm) is merged, tested on Linux/macOS/Windows, and documented, including lockfile and integrity behavior.
+- [ ] The Game2D library builds and links a playable simple game example; the API and installation steps are documented.
+- [ ] The website and installation documentation describe the actual 2.0 feature set, platform support, experimental boundaries, and package/game workflows.
+
+Object-oriented programming and the complete LLVM/native backend are intentionally out of scope for this release gate; they remain future work.
+
 ## Publication decision
 
 The workflow is the final automated gate: it will publish `v2.0.0-beta.1` only after the complete CI matrix, fuzz smoke test, sanitizers, and editor checks pass on the exact `main` commit. These checked items record the tested scope and explicit exclusions; they do not imply that the beta is stable.
