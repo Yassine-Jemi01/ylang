@@ -26,7 +26,8 @@ cleanup() {
 trap cleanup EXIT
 
 CFLAGS="${YLANG_PACKAGE_CFLAGS:--std=c17 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes -O2}"
-make -C "$ROOT" clean all CC="$CC" CFLAGS="$CFLAGS" PREFIX=/usr
+LDFLAGS="${YLANG_PACKAGE_LDFLAGS:--static}"
+make -C "$ROOT" clean all CC="$CC" CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" PREFIX=/usr
 make -C "$ROOT" DESTDIR="$STAGE" PREFIX=/usr install
 
 install -d \
