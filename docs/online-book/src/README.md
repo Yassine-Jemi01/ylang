@@ -6,10 +6,10 @@ This is a real multi-page HTML book—not a raw Markdown page or a list of links
 
 ## Choose the right version
 
-- **Stable line — 1.1.0:** the conservative, documented language subset.
-- **Preview line — 2.0.0-beta.2:** adds named imports and multi-file compilation, experimental typed structs and enums, optional SDL2 GUI/Game2D helpers, a Linux YSPM package, and an experimental native Windows path.
+- **Stable core — 2.0.0:** the documented core language and default C-backend workflow.
+- **Previous stable line — 1.1.0:** useful for older projects that intentionally stay on that contract.
 
-The 2.0 beta is for evaluation and feedback. Structs, enums, imports, GUI/Game2D, NASM, and native Windows support have explicit limitations; the beta is not a promise of production stability or Rust-level memory safety.
+Named imports, structs, enums, GUI/Game2D, NASM, native Windows support, and optional YSPM packaging remain experimental extensions with explicit limits. They are not covered by the stable-core compatibility guarantee; YLang does not claim Rust-level memory safety or provide a security sandbox.
 
 ## Start reading
 
@@ -19,4 +19,4 @@ The 2.0 beta is for evaluation and feedback. Structs, enums, imports, GUI/Game2D
 - Explore [types and explicit conversions](types.md), then [functions and modules](modules.md).
 - Build a small graphical project with [GUI and Game2D](gui-game2d.md).
 
-For a print-friendly edition, open the [existing PDF book](../YLang-Book.pdf). For source, issues, and release downloads, visit the [YLang GitHub repository](https://github.com/Yassine-Jemi01/ylang).
+For a print-friendly edition, open the [existing PDF book](../YLang-Book.pdf). The PDF is an earlier edition; use this online book and the current language specification for the 2.0.0 release. For source, issues, and release downloads, visit the [YLang GitHub repository](https://github.com/Yassine-Jemi01/ylang).
