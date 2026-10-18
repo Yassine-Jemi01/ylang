@@ -5,6 +5,12 @@
       "include": "#comments"
     },
     {
+      "include": "#struct-declaration"
+    },
+    {
+      "include": "#enum-declaration"
+    },
+    {
       "include": "#function-declaration"
     },
     {
@@ -15,6 +21,18 @@
     },
     {
       "include": "#character"
+    },
+    {
+      "include": "#variable-declaration"
+    },
+    {
+      "include": "#namespace"
+    },
+    {
+      "include": "#qualified-type"
+    },
+    {
+      "include": "#member-access"
     },
     {
       "include": "#boolean"
@@ -47,6 +65,21 @@
         {
           "match": "//.*$",
           "name": "comment.line.double-slash.ylang"
+        },
+        {
+          "name": "comment.block.ylang",
+          "begin": "/\\*",
+          "end": "\\*/",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.begin.ylang"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.end.ylang"
+            }
+          }
         }
       ]
     },
@@ -148,6 +181,9 @@
       },
       "patterns": [
         {
+          "include": "#namespace"
+        },
+        {
           "include": "#boolean"
         },
         {
@@ -167,6 +203,9 @@
         },
         {
           "include": "#operators"
+        },
+        {
+          "include": "#member-access"
         }
       ]
     },
@@ -175,7 +214,7 @@
       "name": "constant.language.boolean.ylang"
     },
     "keywords": {
-      "match": "\\b(?:function|return|let|const|if|else|loop|break|continue|and|or|not)\\b",
+      "match": "\\b(?:function|return|let|const|if|else|loop|while|for|break|continue|and|or|not|struct|enum|match|from|import)\\b",
       "name": "keyword.control.ylang"
     },
     "types": {
@@ -191,16 +230,156 @@
       "name": "entity.name.function.call.ylang"
     },
     "numbers": {
-      "match": "\\b(?:0[xX][0-9A-Fa-f]+|[0-9]+(?:\\.[0-9]+)?)\\b",
+      "match": "\\b(?:0[xX][0-9A-Fa-f]+|[0-9]+(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)\\b",
       "name": "constant.numeric.ylang"
     },
     "operators": {
-      "match": "==|!=|<=|>=|[=<>+*/%!-]",
+      "match": "->|\\+\\+|\\+=|==|!=|<=|>=|[=<>+*/%!-]",
       "name": "keyword.operator.ylang"
     },
     "punctuation": {
-      "match": "[{}()\\[\\],.;]",
+      "match": "[{}()\\[\\],.;:]",
       "name": "punctuation.ylang"
+    },
+    "struct-declaration": {
+      "name": "meta.struct.declaration.ylang",
+      "begin": "\\b(struct)(\\s+)([A-Za-z_][A-Za-z0-9_]*)(\\s*)(\\{)",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.declaration.struct.ylang"
+        },
+        "3": {
+          "name": "entity.name.type.struct.ylang"
+        },
+        "5": {
+          "name": "punctuation.section.block.begin.ylang"
+        }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.block.end.ylang"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#comments"
+        },
+        {
+          "include": "#field-declaration"
+        },
+        {
+          "include": "#f-string"
+        },
+        {
+          "include": "#string"
+        },
+        {
+          "include": "#character"
+        },
+        {
+          "include": "#types"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#operators"
+        },
+        {
+          "include": "#punctuation"
+        }
+      ]
+    },
+    "field-declaration": {
+      "match": "\\b([A-Za-z_][A-Za-z0-9_]*)(\\s+)([A-Za-z_][A-Za-z0-9_]*)(\\s*\\[\\])?(\\s*;)",
+      "captures": {
+        "1": {
+          "name": "storage.type.ylang"
+        },
+        "3": {
+          "name": "variable.other.member.ylang"
+        },
+        "4": {
+          "name": "punctuation.ylang"
+        },
+        "5": {
+          "name": "punctuation.terminator.statement.ylang"
+        }
+      }
+    },
+    "enum-declaration": {
+      "name": "meta.enum.declaration.ylang",
+      "begin": "\\b(enum)(\\s+)([A-Za-z_][A-Za-z0-9_]*)(\\s*)(\\{)",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.declaration.enum.ylang"
+        },
+        "3": {
+          "name": "entity.name.type.enum.ylang"
+        },
+        "5": {
+          "name": "punctuation.section.block.begin.ylang"
+        }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.block.end.ylang"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#comments"
+        },
+        {
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b(?=\\s*(?:,|\\}))",
+          "name": "constant.other.enum.variant.ylang"
+        },
+        {
+          "match": ",",
+          "name": "punctuation.separator.comma.ylang"
+        }
+      ]
+    },
+    "variable-declaration": {
+      "match": "\\b(let)(\\s+)(const\\s+)?([A-Za-z_][A-Za-z0-9_]*)(\\s+)([A-Za-z_][A-Za-z0-9_]*)(\\s*\\[\\])?",
+      "captures": {
+        "1": {
+          "name": "keyword.declaration.variable.ylang"
+        },
+        "3": {
+          "name": "storage.modifier.const.ylang"
+        },
+        "4": {
+          "name": "storage.type.ylang"
+        },
+        "6": {
+          "name": "variable.other.ylang"
+        },
+        "7": {
+          "name": "punctuation.ylang"
+        }
+      }
+    },
+    "namespace": {
+      "match": "\\b(?:math|string|path|io|image|gui)\\b(?=\\s*\\.)",
+      "name": "support.namespace.ylang"
+    },
+    "qualified-type": {
+      "match": "\\b[A-Z][A-Za-z0-9_]*\\b(?=\\s*\\.)",
+      "name": "entity.name.type.qualified.ylang"
+    },
+    "member-access": {
+      "match": "(\\.)([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": {
+          "name": "punctuation.accessor.ylang"
+        },
+        "2": {
+          "name": "variable.other.member.ylang"
+        }
+      }
     }
   }
 }
