@@ -60,7 +60,7 @@ YLang diagnostics include stable codes to help users search documentation and re
 | E2062 | A non-void function path can end without returning. | Return a value on every supported path. |
 | E2063 | Enum `match` is not exhaustive. | Add an arm for every variant. |
 | E2064 | `match` input contains a call or assignment. | Store the value in a variable before matching. |
-| E2070 | Duplicate struct or enum type name. | Use a unique type name. |
+| E2070 | A struct declaration conflicts with an existing struct or enum name. | Choose a unique name for the struct. |
 | E2071 | Duplicate struct field name. | Use a unique field name. |
 | E2072 | Unsupported struct field type. | Use a field type supported by the experimental struct feature. |
 | E2073 | Struct has no supported fields. | Add at least one supported field. |
