@@ -514,7 +514,7 @@ static YType check_expr(Checker *checker, Expr *expr)
             expr->as.assign.variable = var;
             if (expr->as.assign.is_compound &&
                 target_type != TYPE_INT && target_type != TYPE_FLOAT) {
-                diagnostic(c, expr->token, "error", "E2034",
+                diagnostic(c, expr->token, "error", "E2095",
                            "The '+=' operator requires an int or float target.",
                            "Use '+=' only with matching int or float values.");
             }
@@ -780,7 +780,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 checker->allow_array_name = previous;
                 if (arg->kind != EXPR_NAME || !arg->as.name.variable ||
                     !arg->as.name.variable->is_array) {
-                    diagnostic(c, arg->token, "error", "E2027",
+                    diagnostic(c, arg->token, "error", "E2096",
                                "length requires an array variable.",
                                "Pass a declared array, for example length(values).");
                     expr->type = TYPE_ERROR;
@@ -817,13 +817,13 @@ static YType check_expr(Checker *checker, Expr *expr)
                     (void)snprintf(suggestion, sizeof(suggestion),
                         "%s expects %zu argument(s), but received %zu.",
                         math_builtin->name, math_builtin->arity, expr->as.call.count);
-                    diagnostic(c, expr->token, "error", "E2041",
+                    diagnostic(c, expr->token, "error", "E2097",
                                "Incorrect number of math function arguments.", suggestion);
                 }
                 for (size_t i = 0; i < expr->as.call.count; i++) {
                     YType arg_type = check_expr(checker, expr->as.call.args[i]);
                     if (arg_type != TYPE_ERROR && arg_type != TYPE_FLOAT) {
-                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2042",
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2098",
                                    "Math functions require float arguments.",
                                    "Use a float value, for example math.sqrt(9.0). YLang does not implicitly convert int to float.");
                     }
@@ -877,11 +877,11 @@ static YType check_expr(Checker *checker, Expr *expr)
                 if (param->is_array) {
                     if (arg->kind != EXPR_NAME || !arg->as.name.variable ||
                         !arg->as.name.variable->is_array) {
-                        diagnostic(c, arg->token, "error", "E2029",
+                        diagnostic(c, arg->token, "error", "E2094",
                                    "This parameter expects an array argument.",
                                    "Pass a declared array variable, for example sum(values).");
                     } else if (arg->as.name.variable->type != param->type) {
-                        diagnostic(c, arg->token, "error", "E2042",
+                        diagnostic(c, arg->token, "error", "E2099",
                                    "Function array element type mismatch.",
                                    "Pass an array whose element type matches the parameter declaration.");
                     }
