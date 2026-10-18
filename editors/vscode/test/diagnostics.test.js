@@ -138,10 +138,10 @@ assert.equal(v2Diagnostics[2].message, "Unknown struct field");
 const scratchRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ylang-relative-import-test-"));
 try {
   const sourcePath = path.join(scratchRoot, "main.yl");
-  fs.writeFileSync(path.join(scratchRoot, "math.yl"), "function add() -> int { return 42; }\\n");
+  fs.writeFileSync(path.join(scratchRoot, "math.yl"), "function add() -> int { return 42; }\n");
   const scratchDocument = {
     uri: { scheme: "file", fsPath: sourcePath },
-    getText() { return 'from "./math.yl" import add;\\nfunction main() -> int { return add(); }\\n'; }
+    getText() { return 'from "./math.yl" import add;\nfunction main() -> int { return add(); }\n'; }
   };
   const scratch = extension._temporarySource(scratchDocument);
   assert.equal(path.dirname(scratch.tempFile), scratchRoot,
