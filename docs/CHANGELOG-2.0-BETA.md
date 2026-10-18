@@ -8,7 +8,7 @@ YLang 2.0.0-beta.1 is an early, source-only prerelease for testing the expanded 
 - **Typed enums and exhaustive matching (experimental):** unit enum variants, enum values in variables and function signatures, type checks, and exhaustive `match` statements.
 - **Typed structs (experimental):** positional construction, field access, passing and returning struct values, and type-checked mutable field assignment.
 - **Optional SDL2 GUI runtime:** window creation, event polling, drawing primitives, and cleanup APIs.
-- **2D game helpers (experimental):** drawing, input, timing, and collision helpers built around the optional GUI runtime.
+- **2D game helpers (experimental):** drawing, input, timing, and collision helpers built around the optional GUI runtime, with a playable Dodge sample and an API guide.
 - **Improved compiler validation:** regression coverage, frontend unit tests, a lexer/parser fuzz smoke test, sanitizers, and editor-diagnostic tests in CI.
 
 ## Backend status
