@@ -83,5 +83,12 @@ YLang diagnostics include stable codes to help users search documentation and re
 | E2090 | GUI function argument type mismatch. | Pass values of the types required by the GUI API. |
 | E2091 | Direct printing of enum values is unsupported. | Compare variants and print a string label. |
 | E2092 | Assignment target is unknown or unsupported. | Assign to a declared mutable variable, array element, or supported struct field. |
+| E2093 | Increment operator has an invalid target. | Use `++` on a mutable numeric variable or supported struct field. |
+| E2094 | Function parameter expects an array argument. | Pass a declared array variable of the expected element type. |
+| E2095 | `+=` target is not an `int` or `float`. | Use `+=` only with numeric variables or fields. |
+| E2096 | `length` received a non-array value. | Pass a declared array to `length`. |
+| E2097 | Wrong number of math function arguments. | Match the math function's documented arity. |
+| E2098 | Math function argument is not a `float`. | Use a float literal or explicitly convert an integer with `to_float`. |
+| E2099 | Function array argument has the wrong element type. | Pass an array whose element type matches the parameter. |
 
 Runtime arithmetic and bounds failures currently use descriptive text rather than compiler error codes. Runtime source line and function attribution are not yet implemented.
