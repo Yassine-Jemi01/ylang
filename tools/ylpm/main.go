@@ -513,6 +513,11 @@ func extractSourceZip(archivePath, destination string) error {
 			strings.Contains(raw, ":") {
 			return fmt.Errorf("unsafe archive path %q", entry.Name)
 		}
+		for _, segment := range strings.Split(raw, "/") {
+			if segment == "." || segment == ".." {
+				return fmt.Errorf("unsafe archive path %q", entry.Name)
+			}
+		}
 		clean := path.Clean(raw)
 		if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
 			return fmt.Errorf("unsafe archive path %q", entry.Name)
