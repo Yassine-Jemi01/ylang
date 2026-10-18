@@ -1,6 +1,6 @@
-# YLang Language Specification — 1.1.0
+# YLang Core Language Specification — 2.0.0
 
-This document defines the supported language subset for the YLang 1.1.0 release. Syntax not listed here is not part of the v1.0 language contract.
+This document defines the stable core language contract for YLang 2.0.0. Named imports, structs, enums, GUI/Game2D APIs, the NASM backend, native Windows support, and YSPM packaging are documented separately and remain experimental; their behavior is not covered by the stable-core compatibility guarantee. Syntax not listed here is not part of the stable core contract.
 
 ## Explicit conversions
 
