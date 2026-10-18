@@ -14,9 +14,10 @@ syn keyword ylangBuiltin print
 " Qualified built-in namespaces and user-defined enum/struct names.
 syn match ylangNamespace "\<\(math\|string\|path\|io\|image\|gui\)\>\ze\."
 syn match ylangDeclaredType "\<[A-Z][A-Za-z0-9_]*\>"
+syn region ylangEnumDeclaration start=/\<enum\>/ end=/}/ contains=ylangDeclaration,ylangDeclaredType,ylangEnumVariant,ylangLineComment,ylangBlockComment,ylangTodo
 syn match ylangQualifiedType "\<[A-Z][A-Za-z0-9_]*\>\ze\s*\."
 syn match ylangMember "\.\zs[A-Za-z_][A-Za-z0-9_]*"
-syn match ylangEnumVariant "\<[A-Za-z_][A-Za-z0-9_]*\>\ze\s*[,}]"
+syn match ylangEnumVariant "\<[A-Za-z_][A-Za-z0-9_]*\>\ze\s*[,}]" contained
 syn match ylangField "\<[A-Za-z_][A-Za-z0-9_]*\>\ze\s*;"
 syn match ylangVariable "\<[A-Za-z_][A-Za-z0-9_]*\>\ze\s*\%(=\|+=\|++\)"
 
