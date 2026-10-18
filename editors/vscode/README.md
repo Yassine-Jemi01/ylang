@@ -38,7 +38,8 @@ rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.1.0
 rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.2.0
 rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.3.0
 rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.4.0
-ln -s "$PWD/editors/vscode" ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.4.0
+rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.5.0
+ln -s "$PWD/editors/vscode" ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.5.0
 ```
 
 Fully restart VS Code, or run **Developer: Reload Window** from the Command Palette.
