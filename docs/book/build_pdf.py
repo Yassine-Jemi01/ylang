@@ -63,7 +63,7 @@ def inline(text):
 
 class BookDoc(BaseDocTemplate):
     def __init__(self, path, **kw):
-        super().__init__(path, **kw); self.seq = 0
+        super().__init__(path, **kw); self._chapter_seq = 0
         frame = Frame(self.leftMargin, self.bottomMargin, self.width, self.height, id="main", leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
         self.addPageTemplates([PageTemplate(id="book", frames=frame, onPage=self.decorate)])
 
@@ -79,7 +79,7 @@ class BookDoc(BaseDocTemplate):
 
     def afterFlowable(self, item):
         if isinstance(item, Paragraph) and item.style.name == "Chapter":
-            title = item.getPlainText(); key = f"chapter-{self.page}-{self.seq}"; self.seq += 1
+            title = item.getPlainText(); key = f"chapter-{self.page}-{self._chapter_seq}"; self._chapter_seq += 1
             self.canv.bookmarkPage(key); self.canv.addOutlineEntry(title, key, 0, False)
             self.notify("TOCEntry", (0, title, self.page, key))
 
