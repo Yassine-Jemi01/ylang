@@ -518,7 +518,7 @@ EOF
 ./build/ylang check build/nested-struct-field-assignment.yl >/dev/null
 ./build/ylang build build/nested-struct-field-assignment.yl -o build/test-nested-struct-field-assignment >/dev/null
 ./build/test-nested-struct-field-assignment > build/nested-struct-field-assignment.out
-printf '10 , 10 , 100\\n' > build/nested-struct-field-assignment.expected
+printf '10 , 10 , 100\n' > build/nested-struct-field-assignment.expected
 diff -u build/nested-struct-field-assignment.expected build/nested-struct-field-assignment.out
 
 # Nested assignment still enforces the final field's type.
