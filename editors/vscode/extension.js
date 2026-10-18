@@ -140,7 +140,14 @@ const SHORT_MESSAGES = {
   E2089: "Unknown GUI function",
   E2090: "GUI argument type mismatch",
   E2091: "Cannot print enum values",
-  E2092: "Invalid assignment target"
+  E2092: "Invalid assignment target",
+  E2093: "Invalid increment target",
+  E2094: "Function needs an array argument",
+  E2095: "'+=' needs an int or float target",
+  E2096: "length needs an array",
+  E2097: "Wrong number of math arguments",
+  E2098: "Math arguments must be float",
+  E2099: "Array element type mismatch"
 };
 
 function shortMessage(code, original) {
