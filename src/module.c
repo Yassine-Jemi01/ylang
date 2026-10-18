@@ -64,7 +64,11 @@ static Module *new_module(Compiler *compiler, const char *path,
 
 static bool path_separator_char(char ch)
 {
+#ifdef _WIN32
     return ch == '/' || ch == '\\';
+#else
+    return ch == '/';
+#endif
 }
 
 static bool canonical_paths_equal(const char *left, const char *right)
@@ -96,10 +100,14 @@ static bool path_is_absolute(const char *path)
 static const char *last_path_separator(const char *path)
 {
     const char *slash = strrchr(path, '/');
+#ifdef _WIN32
     const char *backslash = strrchr(path, '\\');
     if (!slash) return backslash;
     if (!backslash) return slash;
     return slash > backslash ? slash : backslash;
+#else
+    return slash;
+#endif
 }
 
 static char *canonical_join(Compiler *compiler, const char *directory,
