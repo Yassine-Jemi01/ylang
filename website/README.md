@@ -1,6 +1,6 @@
 # YLang website
 
-A small, responsive landing page and documentation index built with plain HTML, CSS, and JavaScript. No framework or build step is required.
+A small landing page plus a multi-page online programming book. The marketing pages use plain HTML/CSS/JavaScript; the reader-facing book is generated as static HTML by mdBook.
 
 ## Design
 
@@ -9,7 +9,10 @@ The design uses a clear blue-and-yellow palette inspired by the way Python prese
 ## Files
 
 - `index.html` — concise overview, feature links, compiler flow, and quick start.
-- `docs.html` — stable language references separated from experimental 2.0 guides.
+- `docs.html` — entry point for the online book, PDF edition, and stable/beta reference pages.
+- `learn/` — generated mdBook HTML output, including the chapter sidebar, search, theme selector, and navigation.
+- `../docs/online-book/` — mdBook configuration and tutorial source.
+- `../tools/build_docs_book.py` — syncs canonical `docs/*.md` reference files into the book before a build.
 - `styles.css` and `docs.css` — shared responsive styles and documentation layouts.
 - `script.js` — mobile navigation, copy-to-clipboard controls, and current footer year.
 - `assets/` — YLang mark and favicon.
@@ -21,4 +24,4 @@ Open `index.html` in a browser or serve the repository root with any static file
 
 ## Publishing
 
-Changes to `website/**` and `docs/book/**` on `main` trigger the GitHub Pages workflow. The beta publishing workflow is separate and runs the test matrix before creating a prerelease.
+Changes to `website/**`, `docs/**`, or the book builder on `main` trigger GitHub Pages to rebuild the HTML book and deploy the full website. The beta publishing workflow is separate and runs the test matrix before creating a prerelease.

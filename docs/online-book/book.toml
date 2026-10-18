@@ -1,0 +1,26 @@
+[book]
+title = "The YLang Book"
+authors = ["YLang contributors"]
+language = "en"
+multilingual = false
+src = "src"
+description = "Learn YLang from your first program to its compiler, libraries, and platform guides."
+
+[build]
+build-dir = "book"
+create-missing = false
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+smart-punctuation = true
+git-repository-url = "https://github.com/Yassine-Jemi01/ylang"
+additional-css = ["theme/ylang-book.css"]
+
+[output.html.search]
+enable = true
+limit-results = 30
+
+[output.html.fold]
+enable = true
+level = 1
