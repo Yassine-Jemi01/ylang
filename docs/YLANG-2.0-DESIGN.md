@@ -20,7 +20,7 @@ This document defines the order in which YLang 2.0 should grow. The guiding rule
 
 ## Backend strategy
 
-The C backend remains the default for broad language coverage; it emits C and invokes GCC/Clang. The NASM backend is experimental, restricted to Linux x86-64, and must reject unsupported constructs. YLang does not yet have a complete general-purpose native backend independent of GCC/Clang. The plan is to define a shared typed intermediate representation, keep backend capabilities explicit, and require differential output/exit-status tests for the subset supported by multiple backends. A future proof of concept may evaluate LLVM IR or direct machine-code generation; neither is promised for 2.0.0-beta.1. See [BACKEND-ROADMAP.md](BACKEND-ROADMAP.md).
+The C backend remains the default for broad language coverage; it emits C and invokes GCC/Clang. The NASM backend is experimental, restricted to Linux x86-64, and must reject unsupported constructs. YLang does not yet have a complete general-purpose native backend independent of GCC/Clang. The plan is to define a shared typed intermediate representation, keep backend capabilities explicit, and require differential output/exit-status tests for the subset supported by multiple backends. A future proof of concept may evaluate LLVM IR or direct machine-code generation; neither is promised for the 2.0 beta. See [BACKEND-ROADMAP.md](BACKEND-ROADMAP.md).
 
 ## Milestone 0 — Compiler correctness
 
@@ -118,7 +118,7 @@ A runtime tracker that frees allocations at process exit is not a substitute for
 
 ## Milestone 4 — Object-oriented features (deferred; not part of 2.0)
 
-OOP is intentionally deferred. Do not add methods, classes, inheritance, or receiver semantics to the 2.0 release work; focus on Windows, ylpm, and a playable minimal 2D game first.
+OOP is intentionally deferred. Do not add methods, classes, inheritance, or receiver semantics to the 2.0 release work; focus on Windows portability, YSPM system-package integration, and the playable minimal Game2D sample.
 
 Add methods only after structs and field access are stable.
 
@@ -146,7 +146,7 @@ Standard-library priorities:
 
 YSPM (https://github.com/Yassine-Jemi01/yspm) is a Linux system package manager that installs native system packages in the .yspkg format. It is not a package manager for project-local .yl module dependencies, so YLang must not pretend that YSPM resolves source imports or replaces YLANG_PATH.
 
-YLang will provide a release packaging script at packaging/yspm/build-package.sh. It stages the compiler, source-level standard library, optional GUI runtime sources and public header, license, and available documentation, then asks the YSPM CLI to produce a native Linux x86-64 package. CI builds and inspects the package from the exact candidate commit. Future beta prereleases can attach the generated .yspkg to their GitHub release; already-published tags are never silently overwritten.
+YLang will provide a release packaging script at packaging/yspm/build-package.sh. It stages the compiler, source-level standard library, optional GUI runtime sources and public header, license, and available documentation, then asks the YSPM CLI to produce a native Linux x86-64 package. CI builds and inspects the package from the exact candidate commit. The beta.2 release workflow builds and attaches the generated .yspkg to the prerelease from the exact tested commit; already-published tags are never overwritten.
 
 The 2.0 release gate requires:
 - The package builds from the exact tested commit using a pinned YSPM source revision.
@@ -218,6 +218,6 @@ These documents are references for principles, not specifications to copy wholes
 - Implement struct as the first aggregate type; do not conflate structs with classes.
 - Specify ownership and lifetime rules before safe pointers.
 - Prefer explicit errors (Result) over hidden failure states, but keep Result syntax out of scope until implemented.
-- Require native Windows, ylpm, and a playable minimal Game2D example before publishing 2.0.
+- Require native Windows smoke tests, the YSPM package artifact, and a playable minimal Game2D example before publishing a 2.0 beta.
 - Defer OOP and the full LLVM/native backend to future releases.
 - Treat the website, package manager, documentation, and compiler artifacts as release outputs that must reflect verified builds.

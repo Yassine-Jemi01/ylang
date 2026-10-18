@@ -53,4 +53,4 @@ Only advertise a general independent backend after it can build and run the supp
 
 ## Out of scope
 
-This is a roadmap, not a promise that LLVM, a direct machine-code backend, Windows support, or a self-hosting compiler will ship in 2.0.0-beta.1. Do not delay the beta for those future milestones, but do not imply that the current NASM subset already removes the C compiler requirement for general YLang programs.
+This is a roadmap, not a promise that LLVM, a direct machine-code backend, Windows support, or a self-hosting compiler will ship in the 2.0 beta. Do not delay the beta for those future milestones, but do not imply that the current NASM subset already removes the C compiler requirement for general YLang programs.
