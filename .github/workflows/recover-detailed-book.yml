@@ -1,0 +1,26 @@
+name: Recover previous detailed book
+
+on:
+  push:
+    branches: [docs/recover-detailed-book]
+    paths: ['.github/workflows/recover-detailed-book.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out previous release book
+        uses: actions/checkout@v4
+        with:
+          ref: 2690c50ff54748a5fda8528f4142e82c718aec6f
+          path: prior
+      - name: Save original book as an artifact for inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: original-detailed-ylang-book
+          path: prior/docs/book/YLang-Book.pdf
+          if-no-files-found: error
+          retention-days: 2
