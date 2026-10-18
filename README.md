@@ -174,6 +174,28 @@ YLANG_PATH="$HOME/ylang-libs" ylang build main.yl -o main
 
 Imports can be nested, and repeated references to the same canonical file reuse the loaded module. Circular imports, missing files/names, duplicate imports, and imports of `main()` are rejected with diagnostics. The C backend supports the module graph; the experimental NASM backend supports imports only when all imported features are in its supported subset. Import aliases, qualified module namespaces, package manifests, and a package registry are not implemented yet.
 
+## Experimental package manager (ylpm)
+
+The initial ylpm tool manages YLang project dependencies and build/run commands across Linux, macOS, and Windows.
+
+    cd tools/ylpm
+    go test ./...
+    go build -o ylpm .
+
+Initialize a project and add a tagged GitHub source package:
+
+    ylpm init my-game
+    ylpm add math github:owner/ylang-math@v1.0.0
+    ylpm install
+    ylpm build
+    ylpm run
+
+The manifest is ylang.json, the integrity lockfile is ylpm.lock, and source packages are installed under yl_modules/. Package directories are added to YLANG_PATH during ylpm build and ylpm run. Keep the manifest and lockfile in version control.
+
+This is an initial source-based manager, not a central registry: there are no version ranges, dependency solver, publisher signatures, or package search index yet. The lockfile records SHA-256 for the source archive and rejects changed archives on later installs; it is an integrity check, not proof that a publisher is trustworthy.
+
+See [the full package manager guide](docs/PACKAGE-MANAGER.md) for details on source format, security limits, and current limitations.
+
 ## Command-line reference
 
 ```text
