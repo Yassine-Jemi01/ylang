@@ -199,8 +199,15 @@ func readManifest(root string) (Manifest, error) {
 	if manifest.Entry == "" {
 		manifest.Entry = "main.yl"
 	}
-	if filepath.IsAbs(manifest.Entry) {
-		return Manifest{}, errors.New("manifest entry must be relative")
+	// The manifest is shared across operating systems, so reject Windows
+	// separators and drive syntax even when this process runs on POSIX.
+	if filepath.IsAbs(manifest.Entry) || strings.ContainsAny(manifest.Entry, "\\:") {
+		return Manifest{}, errors.New("manifest entry must be a portable relative path using '/' separators")
+	}
+	for _, segment := range strings.Split(manifest.Entry, "/") {
+		if segment == ".." {
+			return Manifest{}, errors.New("manifest entry must stay inside the project directory")
+		}
 	}
 	cleanEntry := filepath.Clean(manifest.Entry)
 	if cleanEntry == "." || cleanEntry == ".." || strings.HasPrefix(cleanEntry, ".."+string(os.PathSeparator)) {
