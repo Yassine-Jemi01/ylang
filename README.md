@@ -2,7 +2,7 @@
 
 **A small compiled programming language with explicit types and actionable diagnostics.**
 
-YLang is implemented in C17. Its compiler tokenizes and parses `.yl` files, checks names, initialization and types, generates C, and invokes GCC or Clang to produce a native executable. The compiler currently targets POSIX systems; Linux and macOS are the supported portability targets. Native Windows support remains future work. It is a compiled language toolchain, not an interpreter.
+YLang is implemented in C17. Its compiler tokenizes and parses `.yl` files, checks names, initialization and types, generates C, and invokes GCC or Clang to produce a native executable. Linux and macOS are the primary tested targets; experimental native Windows support is being added for 64-bit Windows with MinGW-w64. Windows support currently has a focused CI smoke suite and is not yet a claim of complete platform parity. It is a compiled language toolchain, not an interpreter.
 
 YLang **2.0.0-beta.1** is an experimental prerelease for testing the expanded compiler and standard library. The latest stable release remains **1.1.0**. The beta adds named imports and multi-file compilation, experimental typed enums and structs, and SDL2-backed GUI/2D helpers. The C backend remains the default; the NASM backend is experimental and supports only a restricted subset. This project does not claim Rust-level memory safety or production stability.
 
@@ -10,7 +10,7 @@ YLang **2.0.0-beta.1** is an experimental prerelease for testing the expanded co
 
 ### Requirements
 
-- Linux (Fedora and Ubuntu) or macOS 13+ (CI-tested targets; Windows is not supported yet)
+- Linux (Fedora and Ubuntu), macOS 13+, or experimental Windows x86-64 with MinGW-w64 (see [Windows setup](docs/WINDOWS.md))
 - A C17 compiler to build YLang itself (`gcc` or `clang`)
 - GNU Make (`make` on Linux; `gmake` on macOS)
 - GCC or Clang available on `PATH` to compile generated C into executables
@@ -40,6 +40,12 @@ For the optional GUI runtime, also install SDL2 and pkg-config:
 ```sh
 brew install sdl2 pkg-config
 ```
+
+### Experimental Windows setup
+
+Native Windows builds are tested with MinGW-w64 in an MSYS2 MINGW64 shell. MSVC is not supported by this initial port.
+
+See [the Windows setup guide](docs/WINDOWS.md) for MSYS2 installation, SDL2 dependencies, native compile/run instructions, and the current limitations.
 
 ### Build from source
 
@@ -368,6 +374,7 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [VS Code language support, compiler diagnostics, and Code Runner setup](editors/vscode/README.md)
 - [Neovim native diagnostics integration](editors/nvim/README.md)
 - [GUI runtime API](include/ylang/gui.h) and [example](examples/gui.c)
+- [Native Windows setup and limitations](docs/WINDOWS.md)
 
 
 ## Compiler developer checks
