@@ -1,5 +1,7 @@
 # Changelog
 
+All notable changes to YLang are documented here. This project follows semantic versioning for future releases.
+
 ## [2.0.1] — patch release
 
 - Fixed mutable assignment to chained nested struct fields, for example `hero.pos.x = 9;`.
