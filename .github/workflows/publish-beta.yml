@@ -198,7 +198,7 @@ jobs:
           mkdir -p build
           go build -o build/yspm ./cmd/yspm
       - name: Build YLang .yspkg
-        run: YSPM_BIN="$GITHUB_WORKSPACE/tools/yspm-source/build/yspm" packaging/yspm/build-package.sh
+        run: YSPM_BIN="$GITHUB_WORKSPACE/tools/yspm-source/build/yspm" bash packaging/yspm/build-package.sh
       - name: Verify package and attach as workflow artifact
         run: |
           package_path="$(find build/ylang-yspm -name '*.yspkg' -type f -print -quit)"
