@@ -122,6 +122,15 @@ static StructDecl *struct_for_type(Compiler *compiler, YType type)
     return NULL;
 }
 
+static const char *semantic_type_name(Compiler *compiler, YType type)
+{
+    EnumDecl *enumeration = enum_for_type(compiler, type);
+    if (enumeration) return enumeration->name;
+    StructDecl *structure = struct_for_type(compiler, type);
+    if (structure) return structure->name;
+    return type_name(type);
+}
+
 static StructField *sema_struct_field(StructDecl *structure, const char *name)
 {
     if (!structure) return NULL;
@@ -333,8 +342,8 @@ static YType check_expr(Checker *checker, Expr *expr)
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
                         "Field '%s' expects %s, but received %s.",
-                        structure->fields[i]->name, type_name(structure->fields[i]->type),
-                        type_name(actual));
+                        structure->fields[i]->name, semantic_type_name(c, structure->fields[i]->type),
+                        semantic_type_name(c, actual));
                     diagnostic(c, expr->as.struct_init.args[i]->token, "error", "E2075",
                                "Struct field initializer type mismatch.", suggestion);
                 }
@@ -396,7 +405,7 @@ static YType check_expr(Checker *checker, Expr *expr)
         case EXPR_CHAR:
             if (expr->token.length < 3 || expr->token.length > 4) {
                 diagnostic(c, expr->token, "error", "E2012",
-                           "YLang 1.0 char literals must contain one byte.",
+                           "Character literals must contain one byte.",
                            "Use a single ASCII character such as 'A' or an escape such as '\\n'.");
                 expr->type = TYPE_ERROR;
             } else expr->type = TYPE_CHAR;
@@ -413,7 +422,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                     }
                     if (expr_contains_call_or_assignment(part->expression)) {
                         diagnostic(c, part->expression->token, "error", "E2014",
-                                   "Function calls and assignments are not allowed inside f-string interpolations in YLang 1.0.",
+                                   "Function calls and assignments are not allowed inside f-string interpolations yet.",
                                    "Compute the value in a separate statement, then interpolate the variable.");
                     }
                 }
@@ -460,7 +469,7 @@ static YType check_expr(Checker *checker, Expr *expr)
         case EXPR_ASSIGN: {
             if (checker->allowed_assignment != expr) {
                 diagnostic(c, expr->token, "error", "E2023",
-                           "Assignment is a statement in YLang 1.0, not a nested value expression.",
+                           "Assignment is a statement, not a nested value expression.",
                            "Move the assignment to its own statement, then use the variable.");
             }
             Expr *target = expr->as.assign.target;
@@ -495,7 +504,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 }
             }
             if (!var) {
-                diagnostic(c, expr->token, "error", "E2020",
+                diagnostic(c, expr->token, "error", "E2092",
                            "Cannot assign to an unknown variable, invalid array element, or unsupported field target.",
                            "Declare the variable first and use a valid variable, array element, or struct field.");
                 (void)check_expr(checker, expr->as.assign.right);
@@ -527,7 +536,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 char suggestion[256];
                 (void)snprintf(suggestion, sizeof(suggestion),
                     "The assignment target has type %s, but the assigned expression has type %s.",
-                    type_name(target_type), type_name(right));
+                    semantic_type_name(c, target_type), semantic_type_name(c, right));
                 diagnostic(c, expr->token, "error", "E2001",
                            "Assignment type mismatch.", suggestion);
             }
@@ -618,10 +627,14 @@ static YType check_expr(Checker *checker, Expr *expr)
                 return expr->type;
             }
             if (op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL) {
-                if (left != right || left == TYPE_VOID) {
+                if (left != right || left == TYPE_VOID || left >= TYPE_STRUCT_BASE) {
                     diagnostic(c, expr->token, "error", "E2036",
-                               "Equality comparisons require matching non-void types.",
-                               "Compare values of the same type.");
+                               left >= TYPE_STRUCT_BASE && right >= TYPE_STRUCT_BASE && left == right
+                                   ? "Struct values do not support equality comparisons yet."
+                                   : "Equality comparisons require matching comparable non-void types.",
+                               left >= TYPE_STRUCT_BASE && right >= TYPE_STRUCT_BASE && left == right
+                                   ? "Compare the struct's fields explicitly, for example 'point.x == other.x'."
+                                   : "Compare values of the same comparable type.");
                     expr->type = TYPE_ERROR;
                 } else expr->type = TYPE_BOOL;
                 return expr->type;
@@ -688,7 +701,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 c->uses_gui = true;
                 const GuiBuiltin *builtin = find_gui_builtin(expr->as.call.name);
                 if (!builtin) {
-                    diagnostic(c, expr->token, "error", "E2040",
+                    diagnostic(c, expr->token, "error", "E2089",
                                "Unknown GUI function.",
                                "Use a documented gui.* function such as gui.init() or gui.create_window(...).");
                     for (size_t i = 0; i < expr->as.call.count; i++)
@@ -711,7 +724,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                         char suggestion[256];
                         (void)snprintf(suggestion, sizeof(suggestion),
                             "Argument %zu of %s expects %s, but received %s.",
-                            i + 1, builtin->name, type_name(builtin->args[i]),
+                            i + 1, builtin->name, semantic_type_name(c, builtin->args[i]),
                             type_name(actual));
                         diagnostic(c, expr->as.call.args[i]->token, "error", "E2044",
                                    "GUI argument type mismatch.", suggestion);
@@ -876,8 +889,8 @@ static YType check_expr(Checker *checker, Expr *expr)
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
                         "Argument %zu of '%s' expects %s, but received %s.",
-                        i + 1, function->name, type_name(param->type),
-                        type_name(arg_type));
+                        i + 1, function->name, semantic_type_name(c, param->type),
+                        semantic_type_name(c, arg_type));
                     diagnostic(c, arg->token, "error", "E2042",
                                "Function argument type mismatch.", suggestion);
                 }
@@ -965,7 +978,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
                         "'%s' has type %s, but its initializer has type %s.",
-                        var->name, type_name(var->type), type_name(init_type));
+                        var->name, semantic_type_name(c, var->type), semantic_type_name(c, init_type));
                     diagnostic(c, var->initializer->token, "error", "E2001",
                                "Variable initializer type mismatch.", suggestion);
                 }
@@ -982,7 +995,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                                "print() cannot print a void expression.",
                                "Print a value or change the function to return one.");
                 } else if (type >= TYPE_ENUM_BASE && type < TYPE_STRUCT_BASE) {
-                    diagnostic(c, stmt->as.print.args[i]->token, "error", "E2054",
+                    diagnostic(c, stmt->as.print.args[i]->token, "error", "E2091",
                                "print() does not yet format user-defined enum values.",
                                "Compare the enum against its named variants and print a string label.");
                 } else if (type >= TYPE_STRUCT_BASE) {
@@ -1148,7 +1161,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 if (expected != TYPE_VOID) {
                     char suggestion[192];
                     (void)snprintf(suggestion, sizeof(suggestion),
-                                   "This function returns %s, so return a value.", type_name(expected));
+                                   "This function returns %s, so return a value.", semantic_type_name(c, expected));
                     diagnostic(c, stmt->token, "error", "E2053",
                                "Missing return value.", suggestion);
                 }
@@ -1240,7 +1253,7 @@ bool check_program(Compiler *c)
             }
             if (!global_initializer_is_constant(var->initializer)) {
                 diagnostic(c, var->token, "error", "E2056",
-                           "Global initializers must be constant literals in YLang 1.0.",
+                           "Global initializers must be constant expressions.",
                            "Move computed initialization into function main().");
             }
         }
