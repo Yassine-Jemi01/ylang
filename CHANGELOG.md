@@ -7,8 +7,6 @@ All notable changes to YLang are documented here. This project follows semantic 
 - Fixed mutable assignment to chained nested struct fields, for example `hero.pos.x = 9;`.
 - Added regression coverage for direct nested writes, compound assignment, increment, and type mismatch rejection.
 
-All notable changes to YLang are documented here. This project follows semantic versioning for future releases.
-
 ## [2.0.0-beta.2] — experimental prerelease
 
 - Consolidated the experimental native Windows x86-64 path using MinGW-w64, including native executable, multi-file import, standard-input, and SDL2 build smoke tests.
