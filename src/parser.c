@@ -758,7 +758,7 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
             if (min_precedence > 1) break;
             advance_parser(p);
             if (left->kind != EXPR_NAME && left->kind != EXPR_MEMBER) {
-                diagnostic(p->compiler, op, "error", "E1004",
+                diagnostic(p->compiler, op, "error", "E2093",
                            "The '++' operator requires a mutable variable or struct field.",
                            "Use 'count++' or increment a numeric field of a mutable struct variable.");
                 left = new_expr(p->compiler, EXPR_ERROR, op);
