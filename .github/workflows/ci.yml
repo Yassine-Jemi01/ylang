@@ -125,6 +125,45 @@ jobs:
           output="$(printf 'native Windows input\n' | ./build/windows-smoke/input.exe)"
           test "$output" = "native Windows input"
 
+  yspm-package-smoke:
+    name: Build and inspect YLang .yspkg package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out YLang
+        uses: actions/checkout@v4
+      - name: Install C build tools
+        run: sudo apt-get update && sudo apt-get install -y build-essential binutils
+      - name: Set up Go for YSPM
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+      - name: Check out YSPM package builder
+        uses: actions/checkout@v4
+        with:
+          repository: Yassine-Jemi01/yspm
+          ref: ba2c2c31b864ca85333fa625b437b3c6b9452e96
+          path: tools/yspm-source
+      - name: Build YSPM
+        working-directory: tools/yspm-source
+        run: |
+          mkdir -p build
+          go build -o build/yspm ./cmd/yspm
+      - name: Build YLang native package
+        run: YSPM_BIN="$GITHUB_WORKSPACE/tools/yspm-source/build/yspm" packaging/yspm/build-package.sh
+      - name: Inspect package structure and compiler
+        run: |
+          package_path="$(find build/ylang-yspm -name '*.yspkg' -type f -print -quit)"
+          test -n "$package_path"
+          tar -tzf "$package_path" > build/ylang-yspm/package-files.txt
+          grep -Fxq "metadata.json" build/ylang-yspm/package-files.txt
+          grep -Fxq "root/usr/bin/ylang" build/ylang-yspm/package-files.txt
+          grep -Fxq "root/usr/share/ylang/stdlib/game2d.yl" build/ylang-yspm/package-files.txt
+          tar -xzOf "$package_path" metadata.json | python3 -c 'import json,sys; p=json.load(sys.stdin); assert p["name"] == "ylang"; assert p["architecture"] == "amd64"; assert p["abi"] == "yspm-abi-1"'
+          temp_root="$(mktemp -d)"
+          trap 'rm -rf "$temp_root"' EXIT
+          tar -xzf "$package_path" -C "$temp_root"
+          "$temp_root/root/usr/bin/ylang" --version
+
   editor-diagnostics:
     runs-on: ubuntu-latest
     steps:
