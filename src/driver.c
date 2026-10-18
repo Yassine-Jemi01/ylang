@@ -373,6 +373,10 @@ static int run_native_compiler(const char *cc, const char *c_path,
         args[n++] = "-Wl,-z,relro,-z,now";
 #endif
     }
+#ifdef _WIN32
+    /* The generated runtime uses ShellExecuteA for image.open(). */
+    args[n++] = "-lshell32";
+#endif
     args[n++] = "-o";
     args[n++] = (char *)output_path;
     args[n] = NULL;
