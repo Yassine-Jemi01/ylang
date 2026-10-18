@@ -125,7 +125,7 @@ const v2Diagnostics = extension._parseDiagnostics([
   "   |",
   " 10 | print(point.z);",
   "   |               ^"
-].join("\\n"), document);
+].join("\n"), document);
 assert.equal(v2Diagnostics.length, 3, "YLang 2.0 import, enum, and struct diagnostics should parse");
 assert.equal(v2Diagnostics[0].message, "Imported file not found");
 assert.equal(v2Diagnostics[1].message, "match is not exhaustive");
