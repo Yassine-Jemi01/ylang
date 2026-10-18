@@ -76,7 +76,7 @@ static bool canonical_paths_equal(const char *left, const char *right)
         if (path_separator_char((char)a) && path_separator_char((char)b)) continue;
         if (tolower(a) != tolower(b)) return false;
     }
-    return *left == '\\0' && *right == '\\0';
+    return *left == '\0' && *right == '\0';
 #else
     return strcmp(left, right) == 0;
 #endif
