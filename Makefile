@@ -12,7 +12,7 @@ SRC := $(wildcard src/*.c)
 OBJ := $(patsubst src/%.c,build/%.o,$(SRC))
 BIN := build/ylang
 
-.PHONY: all clean test sanitize install uninstall print-version gui gui-example install-gui check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
+.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
 
 all: $(BIN)
 
@@ -67,6 +67,10 @@ check-sdl2:
 gui: check-sdl2 build/libylang_gui.a
 
 gui-example: check-sdl2 build/gui-example
+
+game2d-example: check-sdl2 $(BIN)
+	@mkdir -p build
+	YLANG_PATH=stdlib ./build/ylang build examples/games/dodge.yl -o build/dodge
 
 build/ylang_gui.o: stdlib/gui/gui.c include/ylang/gui.h
 	@mkdir -p build
