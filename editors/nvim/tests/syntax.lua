@@ -25,7 +25,7 @@ assert(group_at(1, "struct") == "ylangDeclaration", "struct keyword should be hi
 assert(group_at(1, "Point") == "ylangDeclaredType", "declared struct name should be highlighted")
 assert(group_at(4, "enum") == "ylangDeclaration", "enum keyword should be highlighted")
 assert(group_at(4, "North") == "ylangEnumVariant", "enum variants should be highlighted")
-assert(group_at(5, "from") == "ylangKeyword", "module imports should be highlighted")
+assert(group_at(5, "from") == "ylangDeclaration", "module imports should be highlighted")
 assert(group_at(6, "main") == "ylangFunctionDeclaration", "function declarations should be highlighted")
 assert(group_at(7, "ratio") == "ylangVariable", "typed variable names should be highlighted")
 assert(group_at(7, "2.5e-4") == "ylangNumber", "exponent floats should be highlighted")
