@@ -171,14 +171,15 @@ func TestProjectEnvironmentUsesPlatformPathSeparator(t *testing.T) {
 			break
 		}
 	}
-	if !strings.Contains(value, filepath.Abs(module)) {
-		absolute, _ := filepath.Abs(module)
-		if !strings.Contains(value, absolute) {
-			t.Fatalf("module directory missing from YLANG_PATH: %q", value)
-		}
+	absolute, err := filepath.Abs(module)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if runtime.GOOS == "windows" && strings.Contains(value, ":") {
-		t.Fatalf("Windows YLANG_PATH should use semicolons, got %q", value)
+	if !strings.Contains(value, absolute) {
+		t.Fatalf("module directory missing from YLANG_PATH: %q", value)
+	}
+	if runtime.GOOS == "windows" && len(filepath.SplitList(value)) != 1 {
+		t.Fatalf("expected one Windows path-list entry, got %q", value)
 	}
 }
 
