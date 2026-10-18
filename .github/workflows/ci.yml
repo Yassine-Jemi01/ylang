@@ -47,7 +47,7 @@ jobs:
       - name: Build compiler
         run: ${{ steps.compiler.outputs.make }} clean all CC="${{ steps.compiler.outputs.cc }}"
       - name: Build optional GUI runtime
-        run: ${{ steps.compiler.outputs.make }} gui gui-example CC="${{ steps.compiler.outputs.cc }}"
+        run: ${{ steps.compiler.outputs.make }} gui gui-example game2d-example CC="${{ steps.compiler.outputs.cc }}"
       - name: Run regression tests
         run: ${{ steps.compiler.outputs.make }} test CC="${{ steps.compiler.outputs.cc }}"
       - name: Fuzz lexer/parser smoke test
