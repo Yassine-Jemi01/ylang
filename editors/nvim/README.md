@@ -11,6 +11,26 @@ This lightweight Neovim integration adds native syntax highlighting and uses YLa
 - Provides :YLangCheck to check immediately and :YLangDiagnostics to show the current line's full message and hint.
 - Runs the compiler without a shell and checks a temporary copy so unsaved text can be validated without touching the source file. For named files, the scratch file is placed beside the source so relative imports resolve during checks.
 
+## Install without a plugin manager
+
+From the root of a YLang checkout, run:
+
+~~~sh
+sh editors/nvim/install.sh
+~~~
+
+The installer creates a symlink at `~/.local/share/nvim/site/pack/ylang/start/ylang-nvim` (or under `$XDG_DATA_HOME`). It refuses to overwrite an existing non-symlink directory. To uninstall a symlink-based installation, remove that symlink.
+
+Set the compiler path in `~/.config/nvim/init.lua` so diagnostics use the compiler you built:
+
+~~~lua
+vim.g.ylang_compiler_path = vim.fn.expand("/absolute/path/to/ylang/build/ylang")
+vim.g.ylang_check_on_change = true
+vim.g.ylang_check_on_save = true
+~~~
+
+Restart Neovim, open a `.yl` file, and run `:YLangCheck`. Run `:YLangDiagnostics` to show the current line's complete compiler message and hint.
+
 ## Install from a YLang checkout
 
 Add the plugin folder to Neovim's runtime path in ~/.config/nvim/init.lua:
