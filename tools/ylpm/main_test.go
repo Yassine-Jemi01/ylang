@@ -99,7 +99,7 @@ func TestInitProjectCreatesManifestAndEntry(t *testing.T) {
 
 func TestExtractSourceZipCreatesFiles(t *testing.T) {
 	archive := makeZip(t, map[string]string{
-		"example-lib-v1/README.md": "readme",
+		"example-lib-v1/README.md":   "readme",
 		"example-lib-v1/src/math.yl": "function answer() -> int { return 42; }\n",
 	})
 	destination := t.TempDir()
@@ -118,7 +118,7 @@ func TestExtractSourceZipCreatesFiles(t *testing.T) {
 func TestExtractSourceZipRejectsTraversal(t *testing.T) {
 	archive := makeZip(t, map[string]string{
 		"package/../outside.yl": "must not escape",
-		"package/src/main.yl": "function main() -> int { return 0; }\n",
+		"package/src/main.yl":   "function main() -> int { return 0; }\n",
 	})
 	destination := t.TempDir()
 	if err := extractSourceZip(archive, destination); err == nil {
@@ -141,8 +141,8 @@ func TestExtractSourceZipRejectsNonSourcePackage(t *testing.T) {
 func TestReadManifestRejectsPathTraversal(t *testing.T) {
 	root := t.TempDir()
 	manifest := Manifest{
-		Name: "example",
-		Entry: "../outside.yl",
+		Name:         "example",
+		Entry:        "../outside.yl",
 		Dependencies: map[string]string{},
 	}
 	if err := writeJSON(filepath.Join(root, manifestFilename), manifest); err != nil {
