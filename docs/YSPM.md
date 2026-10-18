@@ -21,7 +21,7 @@ From a workspace with sibling ylang and yspm directories:
     cd yspm
     go build -o yspm ./cmd/yspm
     cd ../ylang
-    YSPM_BIN="../yspm/yspm" packaging/yspm/build-package.sh
+    YSPM_BIN="../yspm/yspm" bash packaging/yspm/build-package.sh
 
 The script builds YLang for `/usr`, stages the compiler, .yl standard-library files, GUI runtime sources, public GUI header, license, and available documentation, then asks YSPM to produce:
 
