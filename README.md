@@ -233,7 +233,7 @@ Build a native package locally (Linux x86-64, Go, GCC, GNU Make, and a YSPM chec
     cd yspm
     go build -o yspm ./cmd/yspm
     cd ../ylang
-    YSPM_BIN="../yspm/yspm" packaging/yspm/build-package.sh
+    YSPM_BIN="../yspm/yspm" bash packaging/yspm/build-package.sh
 
 This creates `build/ylang-yspm/ylang-<version>-amd64.yspkg`. The package includes the compiler, .yl standard library, GUI runtime source/header, license, and available documentation. The release pipeline validates the package and is being prepared to attach it to a future 2.0 beta prerelease; the existing `v2.0.0-beta.1` release remains unchanged and source-only.
 
