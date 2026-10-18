@@ -67,6 +67,9 @@ class BookDoc(BaseDocTemplate):
         frame = Frame(self.leftMargin, self.bottomMargin, self.width, self.height, id="main", leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
         self.addPageTemplates([PageTemplate(id="book", frames=frame, onPage=self.decorate)])
 
+    def beforeDocument(self):
+        self._chapter_seq = 0
+
     def decorate(self, canvas, doc):
         canvas.saveState()
         if doc.page > 1:
