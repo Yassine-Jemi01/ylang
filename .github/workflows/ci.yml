@@ -158,7 +158,7 @@ jobs:
           grep -Fxq "metadata.json" build/ylang-yspm/package-files.txt
           grep -Fxq "root/usr/bin/ylang" build/ylang-yspm/package-files.txt
           grep -Fxq "root/usr/share/ylang/stdlib/game2d.yl" build/ylang-yspm/package-files.txt
-          tar -xzOf "$package_path" metadata.json | python3 -c 'import json,sys; p=json.load(sys.stdin); assert p["name"] == "ylang"; assert p["architecture"] == "amd64"; assert p["abi"] == "yspm-abi-1"'
+          tar -xzOf "$package_path" metadata.json | python3 -c 'import json,sys; p=json.load(sys.stdin); assert p["name"] == "ylang"; assert p["architecture"] == "x86_64"; assert p["abi"] == "yspm-abi-1"'
           temp_root="$(mktemp -d)"
           trap 'rm -rf "$temp_root"' EXIT
           tar -xzf "$package_path" -C "$temp_root"
