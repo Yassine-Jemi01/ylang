@@ -646,7 +646,7 @@ static Expr *parse_primary(Parser *p)
                     EnumVariant *variant = find_enum_variant(
                         enumeration, token_copy(p->compiler, member));
                     if (!variant) {
-                        diagnostic(p->compiler, member, "error", "E2052",
+                        diagnostic(p->compiler, member, "error", "E2080",
                                    "Unknown variant for this enum type.",
                                    "Use a variant declared inside the enum definition.");
                         return new_expr(p->compiler, EXPR_ERROR, member);
@@ -739,6 +739,18 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
             indexed->as.index.target = left;
             indexed->as.index.index = index;
             left = indexed;
+            continue;
+        }
+        if (p->current.type == TOKEN_DOT && min_precedence <= 8) {
+            Token dot = p->current;
+            advance_parser(p);
+            Token member = consume(p, TOKEN_IDENTIFIER,
+                "Expected a member name after '.'.",
+                "Write a field access such as 'point.x' or 'points[index].x'.");
+            Expr *member_expr = new_expr(p->compiler, EXPR_MEMBER, dot);
+            member_expr->as.member.target = left;
+            member_expr->as.member.name = token_copy(p->compiler, member);
+            left = member_expr;
             continue;
         }
         if (p->current.type == TOKEN_PLUS_PLUS) {
