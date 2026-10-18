@@ -419,5 +419,11 @@ function deactivate() {
   documentStates.clear();
 }
 
-module.exports = { activate, deactivate, _parseDiagnostics: parseDiagnostics };
+module.exports = {
+  activate,
+  deactivate,
+  _parseDiagnostics: parseDiagnostics,
+  _temporarySource: temporarySource,
+  _cleanupTemporarySource: cleanupTemporarySource
+};
 
