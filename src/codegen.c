@@ -416,6 +416,45 @@ static void emit_expr_to_file(FILE *out, Expr *expr)
     sb_destroy(&sb);
 }
 
+/* Global initializers must stay within C's constant-expression rules.
+   Runtime checked arithmetic helpers such as yl_neg_i64() are not valid here. */
+static void emit_constant_initializer(StringBuilder *sb, Expr *expr)
+{
+    if (!expr) {
+        sb_append(sb, "0");
+        return;
+    }
+    if (expr->kind == EXPR_UNARY && expr->as.unary.op.type == TOKEN_MINUS) {
+        if (expr->is_min_int) {
+            sb_append(sb, "INT64_MIN");
+        } else {
+            sb_append(sb, "(-");
+            emit_constant_initializer(sb, expr->as.unary.right);
+            sb_append(sb, ")");
+        }
+        return;
+    }
+    if (expr->kind == EXPR_ARRAY) {
+        sb_append(sb, "{");
+        for (size_t i = 0; i < expr->as.array.count; i++) {
+            if (i) sb_append(sb, ", ");
+            emit_constant_initializer(sb, expr->as.array.items[i]);
+        }
+        sb_append(sb, "}");
+        return;
+    }
+    emit_expr(sb, expr);
+}
+
+static void emit_global_initializer_to_file(FILE *out, Expr *expr)
+{
+    StringBuilder sb;
+    sb_init(&sb);
+    emit_constant_initializer(&sb, expr);
+    fputs(sb.data ? sb.data : "0", out);
+    sb_destroy(&sb);
+}
+
 static void emit_indent(FILE *out, unsigned indent)
 {
     for (unsigned i = 0; i < indent; i++) fputs("    ", out);
@@ -600,7 +639,7 @@ bool generate_c(Compiler *c, const char *path)
         fprintf(out, " %s", var->c_name);
         if (var->is_array) fprintf(out, "[%zu]", var->array_length);
         if (var->initializer) {
-            fputs(" = ", out); emit_expr_to_file(out, var->initializer);
+            fputs(" = ", out); emit_global_initializer_to_file(out, var->initializer);
         } else if (var->type == TYPE_STRING) {
             fputs(" = \"\"", out);
         } else if (var->type == TYPE_FLOAT) {
