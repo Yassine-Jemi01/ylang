@@ -32,6 +32,8 @@ jobs:
           go-version: "1.23.x"
           cache: true
           cache-dependency-path: tools/ylpm/go.mod
+      - name: Show Go formatting diff
+        run: gofmt -d main.go main_test.go
       - name: Format Go source
         run: gofmt -w main.go main_test.go
       - name: Verify Go formatting
