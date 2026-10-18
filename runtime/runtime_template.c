@@ -153,10 +153,3 @@ static bool yl_image_open(const char *path) { if (!path || !*path || !yl_path_ex
 #endif
         _exit(127); } int status = 0; while (waitpid(child, &status, 0) < 0) { if (errno == EINTR) continue; return false; } return WIFEXITED(status) && WEXITSTATUS(status) == 0; }
 #endif
-#if defined(__APPLE__)
-        execlp("open", "open", path, (char *)NULL);
-#else
-        execlp("xdg-open", "xdg-open", path, (char *)NULL);
-#endif
-        _exit(127); } int status = 0; while (waitpid(child, &status, 0) < 0) { if (errno == EINTR) continue; return false; } return WIFEXITED(status) && WEXITSTATUS(status) == 0; }
-
