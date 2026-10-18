@@ -59,6 +59,12 @@ const SHORT_MESSAGES = {
   E1014: "Invalid f-string expression",
   E1015: "print() needs a value",
   E1016: "Unknown standard-library namespace",
+  E1020: "Invalid import declaration",
+  E1022: "Imported file not found",
+  E1023: "Circular import",
+  E1024: "Imported name not found",
+  E1025: "Conflicting or duplicate import",
+  E1026: "Cannot import the entry point",
   E2001: "Type mismatch",
   E2002: "Unknown type",
   E2003: "const needs a value",
@@ -106,7 +112,18 @@ const SHORT_MESSAGES = {
   E2056: "Global value must be a constant",
   E2060: "Missing main() function",
   E2061: "Invalid main() function",
-  E2062: "Some path is missing a return"
+  E2062: "Some path is missing a return",
+  E2057: "match needs an enum value",
+  E2058: "Enum type mismatch in match arm",
+  E2059: "Duplicate enum match arm",
+  E2063: "match is not exhaustive",
+  E2064: "match value cannot call or assign",
+  E2074: "Incorrect struct constructor argument count",
+  E2075: "Struct field type mismatch",
+  E2076: "Field access requires a struct",
+  E2077: "Unknown struct field",
+  E2078: "Unsupported struct assignment target",
+  E2079: "Struct values cannot be printed directly"
 };
 
 function shortMessage(code, original) {
