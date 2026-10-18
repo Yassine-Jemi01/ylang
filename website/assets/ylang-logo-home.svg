@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 384" role="img" aria-labelledby="title">
-  <title id="title">YLang</title>
-  <rect width="384" height="384" rx="82" fill="#173d3d"/>
-  <path d="M92 92 192 192" fill="none" stroke="#71d1cb" stroke-width="34" stroke-linecap="round"/>
-  <path d="M292 92 192 192" fill="none" stroke="#f2a56d" stroke-width="34" stroke-linecap="round"/>
-  <path d="M192 192v104" fill="none" stroke="#f5f7f3" stroke-width="34" stroke-linecap="round"/>
-</svg>
