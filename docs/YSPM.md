@@ -25,15 +25,15 @@ From a workspace with sibling ylang and yspm directories:
 
 The script builds YLang for `/usr`, stages the compiler, .yl standard-library files, GUI runtime sources, public GUI header, license, and available documentation, then asks YSPM to produce:
 
-    build/ylang-yspm/ylang-<version>-amd64.yspkg
+    build/ylang-yspm/ylang-<version>-x86_64.yspkg
 
-The package builder defaults to ABI `yspm-abi-1` and architecture `amd64`. Override these only to match the target YSPM repository/system. The script defaults to static linking for the compiler executable to reduce undeclared runtime shared-library requirements; set `YLANG_PACKAGE_LDFLAGS` only when intentionally building a different variant.
+The package builder defaults to ABI `yspm-abi-1` and architecture `x86_64`. Override these only to match the target YSPM repository/system. The script defaults to static linking for the compiler executable to reduce undeclared runtime shared-library requirements; set `YLANG_PACKAGE_LDFLAGS` only when intentionally building a different variant.
 
 ## Install a published package
 
 When a .yspkg asset is published for a YLang release, download that asset and install it with YSPM:
 
-    sudo yspm install ./ylang-<version>-amd64.yspkg
+    sudo yspm install ./ylang-<version>-x86_64.yspkg
 
 The exact package filename depends on the release version. The package can also be built locally using the command above.
 
