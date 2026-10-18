@@ -116,7 +116,9 @@ Safety requirements:
 
 A runtime tracker that frees allocations at process exit is not a substitute for an ownership model. A borrow checker is a substantial feature and should be implemented incrementally with compile-fail tests.
 
-## Milestone 4 — Object-oriented features
+## Milestone 4 — Object-oriented features (deferred; not part of 2.0)
+
+OOP is intentionally deferred. Do not add methods, classes, inheritance, or receiver semantics to the 2.0 release work; focus on Windows, ylpm, and a playable minimal 2D game first.
 
 Add methods only after structs and field access are stable.
 
