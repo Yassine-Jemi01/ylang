@@ -368,6 +368,7 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [VS Code language support, compiler diagnostics, and Code Runner setup](editors/vscode/README.md)
 - [Neovim native diagnostics integration](editors/nvim/README.md)
 - [GUI runtime API](include/ylang/gui.h) and [example](examples/gui.c)
+- [Game2D guide](docs/GAME2D.md), [playable Dodge example](examples/games/dodge.yl), and [helper module](stdlib/game2d.yl)
 
 
 ## Compiler developer checks
