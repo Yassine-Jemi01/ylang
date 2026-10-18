@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <meta name="theme-color" content="#f5f2e9">
-  <meta name="description" content="Official YLang documentation, book, language specification, compiler notes, and experimental 2.0 API references.">
+  <meta name="theme-color" content="#1d3b56">
+  <meta name="description" content="YLang documentation, language specification, compiler guide, and 2.0 beta references.">
   <meta property="og:title" content="YLang Documentation">
-  <meta property="og:description" content="The language guide, compiler references, and clearly labeled 2.0 beta material.">
+  <meta property="og:description" content="Find the stable language guide, compiler instructions, and clearly marked beta references.">
   <title>YLang Documentation</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
@@ -17,18 +17,15 @@
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="container nav-wrap">
-      <a class="brand" href="index.html" aria-label="YLang home">
-        <img src="assets/ylang-logo-icon.svg" alt="" width="34" height="34">
-        <span>YLang</span>
-      </a>
-      <nav class="site-nav docs-nav" id="site-nav" aria-label="Main navigation">
+      <a class="brand" href="index.html" aria-label="YLang home"><img src="assets/ylang-logo-icon.svg" alt="" width="34" height="34"><span>YLang</span></a>
+      <nav class="site-nav" id="site-nav" aria-label="Main navigation">
         <a href="index.html">Home</a>
         <a href="#stable-guide">Stable guide</a>
         <a href="#beta-reference">2.0 beta</a>
-        <a href="#compiler">Build and install</a>
+        <a href="#compiler">Build</a>
       </nav>
       <div class="nav-actions">
-        <a class="nav-github" href="https://github.com/Yassine-Jemi01/ylang" target="_blank" rel="noreferrer">Source on GitHub <span aria-hidden="true">↗</span></a>
+        <a class="nav-github" href="https://github.com/Yassine-Jemi01/ylang">GitHub ↗</a>
         <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open navigation"><span></span><span></span></button>
       </div>
     </div>
@@ -36,14 +33,14 @@
 
   <main id="main">
     <section class="docs-hero">
-      <div class="container docs-hero-inner">
-        <p class="eyebrow"><span class="eyebrow-rule"></span> YLANG DOCUMENTATION</p>
-        <h1>Reference first.<br><em>Build with confidence.</em></h1>
-        <p class="docs-lede">Start with the documented stable language subset, then explore the compiler and experimental 2.0 features through specific guides and examples.</p>
+      <div class="container">
+        <p class="eyebrow">DOCUMENTATION</p>
+        <h1>Find the right <span>reference.</span></h1>
+        <p class="docs-lede">Start with the documented stable language, then use the beta guides to explore new compiler and library features.</p>
         <div class="docs-version-row">
-          <span><i class="version-mark version-stable"></i> Stable: <strong>1.1.0</strong></span>
-          <span><i class="version-mark version-beta"></i> Preview: <strong>2.0.0-beta.1</strong></span>
-          <a href="https://github.com/Yassine-Jemi01/ylang/releases/tag/v2.0.0-beta.1">Beta release notes <span aria-hidden="true">↗</span></a>
+          <span><i class="version-mark" aria-hidden="true"></i> Stable <strong>1.1.0</strong></span>
+          <span><i class="version-mark version-beta" aria-hidden="true"></i> Preview <strong>2.0.0-beta.1</strong></span>
+          <a href="https://github.com/Yassine-Jemi01/ylang/releases/tag/v2.0.0-beta.1">Beta release notes ↗</a>
         </div>
       </div>
     </section>
@@ -51,24 +48,19 @@
     <section class="docs-section" id="stable-guide">
       <div class="container">
         <div class="docs-section-head">
-          <div>
-            <p class="eyebrow">01 / LEARN</p>
-            <h2>The stable language guide</h2>
-          </div>
-          <p>These resources describe the stable 1.1.0 language subset. A feature in the 2.0 preview may have different availability or limitations.</p>
+          <div><p class="eyebrow">01 / STABLE</p><h2>Learn the language</h2></div>
+          <p>These references cover the stable 1.1.0 subset and the established compiler workflow.</p>
         </div>
         <div class="docs-resource-grid docs-resource-grid-two">
           <a class="docs-card docs-card-featured" href="YLang-Book.pdf" target="_blank" rel="noreferrer">
-            <span class="docs-card-kicker">PDF BOOK</span>
-            <h3>The YLang book</h3>
-            <p>Read the existing language book in PDF format. Check the online specification when validating current compiler behavior.</p>
-            <span class="docs-card-link">Open the book <span aria-hidden="true">↗</span></span>
+            <span class="docs-card-kicker">PDF BOOK</span><h3>The YLang book</h3>
+            <p>Read the existing language guide as a PDF. Check the specification when validating current behavior.</p>
+            <span class="docs-card-link">Open the book ↗</span>
           </a>
           <a class="docs-card docs-card-featured" href="https://github.com/Yassine-Jemi01/ylang/blob/main/docs/language-spec.md">
-            <span class="docs-card-kicker">LANGUAGE REFERENCE</span>
-            <h3>Language specification</h3>
-            <p>The authoritative overview of supported syntax, types, expressions, and stable behavior.</p>
-            <span class="docs-card-link">Read the specification <span aria-hidden="true">↗</span></span>
+            <span class="docs-card-kicker">LANGUAGE REFERENCE</span><h3>Language specification</h3>
+            <p>Supported syntax, types, expressions, and the exact limits of the stable language.</p>
+            <span class="docs-card-link">Read the specification ↗</span>
           </a>
         </div>
       </div>
@@ -77,48 +69,33 @@
     <section class="docs-section docs-section-alt" id="beta-reference">
       <div class="container">
         <div class="docs-section-head">
-          <div>
-            <p class="eyebrow">02 / EXPLORE</p>
-            <h2>The 2.0 beta references</h2>
-          </div>
+          <div><p class="eyebrow">02 / EXPERIMENTAL</p><h2>Explore the 2.0 beta</h2></div>
           <p>These features are experimental. Read each guide's limitations before depending on the syntax or runtime.</p>
         </div>
         <div class="docs-resource-grid">
           <a class="docs-card" href="https://github.com/Yassine-Jemi01/ylang/blob/main/docs/MODULE-SYSTEM-SPEC.md">
-            <span class="docs-card-kicker">MODULES</span>
-            <h3>Imports and source files</h3>
-            <p>Named imports, file resolution, module diagnostics, and known restrictions.</p>
-            <span class="docs-card-link">Module reference <span aria-hidden="true">↗</span></span>
+            <span class="docs-card-kicker">MODULES</span><h3>Imports and source files</h3>
+            <p>Named imports, file resolution, diagnostics, and current restrictions.</p><span class="docs-card-link">Module reference ↗</span>
           </a>
           <a class="docs-card" href="https://github.com/Yassine-Jemi01/ylang/blob/main/docs/STRUCTS.md">
-            <span class="docs-card-kicker">VALUE TYPES</span>
-            <h3>Typed structs</h3>
-            <p>Field declarations, positional construction, field access, and mutable assignment.</p>
-            <span class="docs-card-link">Struct reference <span aria-hidden="true">↗</span></span>
+            <span class="docs-card-kicker">VALUE TYPES</span><h3>Typed structs</h3>
+            <p>Field declarations, construction, field access, and assignments.</p><span class="docs-card-link">Struct reference ↗</span>
           </a>
           <a class="docs-card" href="https://github.com/Yassine-Jemi01/ylang/blob/main/docs/ENUMS.md">
-            <span class="docs-card-kicker">MATCHING</span>
-            <h3>Enums and exhaustive match</h3>
-            <p>Unit enums, distinct types, matching rules, and unsupported enum forms.</p>
-            <span class="docs-card-link">Enum reference <span aria-hidden="true">↗</span></span>
+            <span class="docs-card-kicker">MATCHING</span><h3>Enums and exhaustive match</h3>
+            <p>Unit enums, distinct types, matching rules, and unsupported forms.</p><span class="docs-card-link">Enum reference ↗</span>
           </a>
           <a class="docs-card" href="https://github.com/Yassine-Jemi01/ylang/blob/main/docs/game2d.md">
-            <span class="docs-card-kicker">SDL2 / 2D</span>
-            <h3>GUI and game helpers</h3>
-            <p>Window lifecycle, drawing, input, timing, collision helpers, and dependencies.</p>
-            <span class="docs-card-link">2D library guide <span aria-hidden="true">↗</span></span>
+            <span class="docs-card-kicker">SDL2 / 2D</span><h3>GUI and game helpers</h3>
+            <p>Window lifecycle, drawing, input, timing, collision helpers, and dependencies.</p><span class="docs-card-link">2D library guide ↗</span>
           </a>
           <a class="docs-card" href="https://github.com/Yassine-Jemi01/ylang/blob/main/docs/YLANG-2.0-DESIGN.md">
-            <span class="docs-card-kicker">ROADMAP</span>
-            <h3>YLang 2.0 design</h3>
-            <p>Planned language and tooling milestones, with the implemented subset distinguished from future design.</p>
-            <span class="docs-card-link">Read the roadmap <span aria-hidden="true">↗</span></span>
+            <span class="docs-card-kicker">ROADMAP</span><h3>YLang 2.0 design</h3>
+            <p>Implemented milestones and ideas still under consideration.</p><span class="docs-card-link">Read the roadmap ↗</span>
           </a>
           <a class="docs-card" href="https://github.com/Yassine-Jemi01/ylang/blob/main/docs/CHANGELOG-2.0-BETA.md">
-            <span class="docs-card-kicker">RELEASE NOTES</span>
-            <h3>Beta features and limits</h3>
-            <p>What changed in the preview, what is not implemented, and how to report a problem.</p>
-            <span class="docs-card-link">Read beta notes <span aria-hidden="true">↗</span></span>
+            <span class="docs-card-kicker">RELEASE NOTES</span><h3>Beta features and limits</h3>
+            <p>What is new, what is not implemented, and how to report a problem.</p><span class="docs-card-link">Read beta notes ↗</span>
           </a>
         </div>
       </div>
@@ -127,13 +104,13 @@
     <section class="docs-section" id="compiler">
       <div class="container docs-build-grid">
         <div>
-          <p class="eyebrow">03 / COMPILER</p>
-          <h2>Build and test from source.</h2>
-          <p>The supported development targets are Linux and macOS. You need a C17 compiler and GNU Make. GUI examples also need SDL2 development files and <code>pkg-config</code>.</p>
-          <a class="docs-inline-link" href="https://github.com/Yassine-Jemi01/ylang#quick-start">Full setup instructions <span aria-hidden="true">↗</span></a>
+          <p class="eyebrow">03 / TOOLCHAIN</p>
+          <h2>Build from source.</h2>
+          <p>Linux and macOS are the supported targets. Install a C17 compiler and GNU Make. GUI examples also require SDL2 development files and <code>pkg-config</code>.</p>
+          <a class="docs-inline-link" href="https://github.com/Yassine-Jemi01/ylang#quick-start">Full setup instructions ↗</a>
         </div>
-        <div class="docs-terminal">
-          <div class="terminal-heading"><span>TERMINAL</span><button class="copy-button copy-button-light" type="button" data-copy="docs-commands">Copy commands</button></div>
+        <div class="terminal-card">
+          <div class="terminal-heading"><span>TERMINAL</span><button class="copy-button" type="button" data-copy="docs-commands">Copy commands</button></div>
           <pre><code id="docs-commands">git clone https://github.com/Yassine-Jemi01/ylang.git
 cd ylang
 make
@@ -146,11 +123,10 @@ make test
     <section class="docs-notice-section">
       <div class="container">
         <div class="docs-notice">
-          <span class="notice-label">IMPORTANT</span>
-          <div>
-            <h2>Experimental does not mean complete.</h2>
-            <p>The C backend remains the default compiler path. NASM is limited to a restricted subset and remains experimental. <code>Option&lt;T&gt;</code> and <code>Result&lt;T, E&gt;</code> are design proposals, not implemented language features. The beta does not claim Rust-level memory safety, native Windows support, or production stability. No prebuilt installers are included in the source-only beta.</p>
-            <a class="docs-inline-link" href="https://github.com/Yassine-Jemi01/ylang/releases">Review release status <span aria-hidden="true">↗</span></a>
+          <span class="notice-label">NOTE</span>
+          <div><h2>Experimental does not mean complete.</h2>
+            <p>The C backend remains the default. NASM supports a restricted experimental subset. <code>Option&lt;T&gt;</code> and <code>Result&lt;T, E&gt;</code> are design proposals, not implemented features. The beta does not claim native Windows support or production stability.</p>
+            <a class="docs-inline-link" href="https://github.com/Yassine-Jemi01/ylang/releases">Review release status ↗</a>
           </div>
         </div>
       </div>
@@ -160,17 +136,10 @@ make test
   <footer class="site-footer">
     <div class="container footer-top">
       <a class="brand footer-brand" href="index.html"><img src="assets/ylang-logo-icon.svg" alt="" width="30" height="30"><span>YLang</span></a>
-      <p>Language documentation and compiler references.</p>
-      <div class="footer-links">
-        <a href="index.html">Home</a>
-        <a href="https://github.com/Yassine-Jemi01/ylang">GitHub</a>
-        <a href="https://github.com/Yassine-Jemi01/ylang/issues">Issues</a>
-      </div>
+      <p>Stable references and beta notes, clearly separated.</p>
+      <div class="footer-links"><a href="index.html">Home</a><a href="https://github.com/Yassine-Jemi01/ylang">GitHub</a><a href="https://github.com/Yassine-Jemi01/ylang/issues">Issues</a></div>
     </div>
-    <div class="container footer-bottom">
-      <span>© <span id="year">2026</span> YLang contributors</span>
-      <span>Stable references and beta notes, clearly separated.</span>
-    </div>
+    <div class="container footer-bottom"><span>© <span id="year">2026</span> YLang contributors</span><span>Clear syntax. Visible compilation.</span></div>
   </footer>
   <script src="script.js"></script>
 </body>
