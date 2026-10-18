@@ -173,22 +173,66 @@ jobs:
       - name: Validate website
         run: python3 tools/check_website.py
 
+  build-yspm-package:
+    if: github.ref == 'refs/heads/main'
+    name: Build YLang Linux package for YSPM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Install C build tools
+        run: sudo apt-get update && sudo apt-get install -y build-essential binutils
+      - name: Set up Go for YSPM
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+      - name: Check out YSPM package builder
+        uses: actions/checkout@v4
+        with:
+          repository: Yassine-Jemi01/yspm
+          ref: ba2c2c31b864ca85333fa625b437b3c6b9452e96
+          path: tools/yspm-source
+      - name: Build YSPM
+        working-directory: tools/yspm-source
+        run: |
+          mkdir -p build
+          go build -o build/yspm ./cmd/yspm
+      - name: Build YLang .yspkg
+        run: YSPM_BIN="$GITHUB_WORKSPACE/tools/yspm-source/build/yspm" packaging/yspm/build-package.sh
+      - name: Verify package and attach as workflow artifact
+        run: |
+          package_path="$(find build/ylang-yspm -name '*.yspkg' -type f -print -quit)"
+          test -n "$package_path"
+          tar -tzf "$package_path" | grep -Fxq "metadata.json"
+          tar -tzf "$package_path" | grep -Fxq "root/usr/bin/ylang"
+      - name: Upload YSPM package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ylang-yspkg
+          path: build/ylang-yspm/*.yspkg
+          if-no-files-found: error
+
   publish:
     if: github.ref == 'refs/heads/main'
-    name: Publish source-only GitHub prerelease
-    needs: [build-and-test, windows-native-smoke, editor-diagnostics, website-integrity]
+    name: Publish GitHub prerelease with YSPM Linux package
+    needs: [build-and-test, windows-native-smoke, build-yspm-package, editor-diagnostics, website-integrity]
     runs-on: ubuntu-latest
     steps:
       - name: Check out tested commit
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
+      - name: Download tested YSPM package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ylang-yspkg
+          path: build/ylang-yspm
       - name: Verify release metadata
-        env:
-          EXPECTED_VERSION: 2.0.0-beta.1
         run: |
+          EXPECTED_VERSION="$(tr -d '\r\n' < .github/PUBLISH_BETA)"
           test "$(tr -d '\r\n' < VERSION)" = "$EXPECTED_VERSION"
-          test "$(tr -d '\r\n' < .github/PUBLISH_BETA)" = "$EXPECTED_VERSION"
       - name: Ensure release checklist has no open gates
         run: |
           if grep -nF -- '- [ ]' docs/BETA-RELEASE-CHECKLIST.md; then
@@ -198,8 +242,8 @@ jobs:
       - name: Create prerelease from the tested commit
         env:
           GH_TOKEN: ${{ github.token }}
-          EXPECTED_VERSION: 2.0.0-beta.1
         run: |
+          EXPECTED_VERSION="$(tr -d '\r\n' < .github/PUBLISH_BETA)"
           TAG="v${EXPECTED_VERSION}"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists; no duplicate will be created."
@@ -213,5 +257,6 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "YLang ${EXPECTED_VERSION}" \
             --notes-file docs/CHANGELOG-2.0-BETA.md \
-            --prerelease
+            --prerelease \
+            build/ylang-yspm/*.yspkg
           echo "Published https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}" >> "$GITHUB_STEP_SUMMARY"
