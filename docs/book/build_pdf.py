@@ -83,7 +83,7 @@ def styles():
     s.add(ParagraphStyle(name="Source", fontName="Helvetica-Oblique", fontSize=7.5, leading=10, textColor=MUTED, spaceAfter=4*mm))
     s.add(ParagraphStyle(name="BookCodeStyle", fontName="Courier", fontSize=7.2, leading=9.4, textColor=INK))
     s.add(ParagraphStyle(name="ContentsTitle", fontName="Helvetica-Bold", fontSize=22, leading=27, textColor=NAVY, spaceAfter=7*mm))
-    s.add(ParagraphStyle(name="TOC0", fontName="Helvetica-Bold", fontSize=9, leading=13, leftIndent=0, textColor=NAVY, spaceBefore=1*mm))
+    s.add(ParagraphStyle(name="TOC0", fontName="Helvetica-Bold", fontSize=8, leading=10, leftIndent=0, textColor=NAVY, spaceBefore=0.4*mm))
     s.add(ParagraphStyle(name="Cell", fontName="Helvetica", fontSize=7.2, leading=9, textColor=INK))
     s.add(ParagraphStyle(name="CellHead", fontName="Helvetica-Bold", fontSize=7.2, leading=9, textColor=colors.white))
     return s
