@@ -30,6 +30,8 @@ static char *canonical_path(Compiler *compiler, const char *path)
     return copy;
 }
 
+static bool canonical_paths_equal(const char *left, const char *right);
+
 static Module *find_module(Compiler *compiler, const char *canonical)
 {
     for (size_t i = 0; i < compiler->module_count; i++) {
@@ -62,7 +64,7 @@ static Module *new_module(Compiler *compiler, const char *path,
 
 static bool path_separator_char(char ch)
 {
-    return ch == '/' || ch == '\\\\';
+    return ch == '/' || ch == '\\';
 }
 
 static bool canonical_paths_equal(const char *left, const char *right)
@@ -94,7 +96,7 @@ static bool path_is_absolute(const char *path)
 static const char *last_path_separator(const char *path)
 {
     const char *slash = strrchr(path, '/');
-    const char *backslash = strrchr(path, '\\\\');
+    const char *backslash = strrchr(path, '\\');
     if (!slash) return backslash;
     if (!backslash) return slash;
     return slash > backslash ? slash : backslash;
@@ -115,7 +117,7 @@ static char *canonical_join(Compiler *compiler, const char *directory,
     memcpy(joined, directory, directory_length);
     size_t offset = directory_length;
 #ifdef _WIN32
-    if (separator) joined[offset++] = '\\\\';
+    if (separator) joined[offset++] = '\\';
 #else
     if (separator) joined[offset++] = '/';
 #endif
