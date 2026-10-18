@@ -198,7 +198,7 @@ ylang fix <file.yl> -o <fixed.yl>
 
 ## Optional GUI runtime (SDL2)
 
-YLang includes an optional SDL2-backed GUI namespace for `.yl` programs: `gui.init()`, `gui.create_window(...)`, `gui.poll()`, `gui.clear(...)`, `gui.draw_rect(...)`, `gui.present()`, `gui.last_error()`, `gui.close()`, and `gui.shutdown()`. The compiler checks argument types without requiring SDL2; native builds that use `gui.*` need SDL2 development files and `pkg-config`. The compiler driver is POSIX-based, so native Windows builds are not supported yet.
+YLang includes an optional SDL2-backed GUI namespace for `.yl` programs: `gui.init()`, `gui.create_window(...)`, `gui.poll()`, `gui.clear(...)`, `gui.draw_rect(...)`, `gui.present()`, `gui.last_error()`, `gui.close()`, and `gui.shutdown()`. The compiler checks argument types without requiring SDL2; native builds that use `gui.*` need SDL2 development files and `pkg-config`. Linux and macOS remain the primary tested targets; native Windows x86-64 with MinGW-w64 is experimental. See the [Windows setup guide](docs/WINDOWS.md) for its tested scope and limitations.
 
 Install SDL2 development files and `pkg-config`, then build a YLang GUI program:
 
