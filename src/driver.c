@@ -9,8 +9,24 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#ifdef _WIN32
+#include <direct.h>
+#include <io.h>
+#include <process.h>
+#ifndef R_OK
+#define R_OK 4
+#endif
+#define access _access
+#define popen _popen
+#define pclose _pclose
+#define unlink _unlink
+#define rmdir _rmdir
+#define ylang_mkdir(path, mode) _mkdir(path)
+#else
 #include <sys/wait.h>
 #include <unistd.h>
+#define ylang_mkdir(path, mode) mkdir(path, mode)
+#endif
 
 
 /* ------------------------ safe source fixes --------------------------- */
@@ -192,6 +208,56 @@ static bool resolve_gui_paths(char *runtime_path, size_t runtime_capacity,
     return access(runtime_path, R_OK) == 0 && access(include_path, R_OK) == 0;
 }
 
+
+static char *create_temporary_directory(const char *prefix)
+{
+#ifdef _WIN32
+    const char *base = getenv("TEMP");
+    if (!base || !*base) base = getenv("TMP");
+    if (!base || !*base) base = ".";
+    size_t base_length = strlen(base);
+    bool has_separator = base_length > 0U &&
+        (base[base_length - 1U] == '/' || base[base_length - 1U] == '\\');
+    size_t capacity = base_length + strlen(prefix) + 80U;
+    char *path = malloc(capacity);
+    if (!path) { errno = ENOMEM; return NULL; }
+    for (unsigned int attempt = 0; attempt < 1000U; attempt++) {
+        int written = snprintf(path, capacity, "%s%s%s-%lu-%u",
+            base, has_separator ? "" : "\\", prefix,
+            (unsigned long)_getpid(), attempt);
+        if (written < 0 || (size_t)written >= capacity) {
+            free(path);
+            errno = ENAMETOOLONG;
+            return NULL;
+        }
+        if (_mkdir(path) == 0) return path;
+        if (errno != EEXIST) {
+            int saved = errno;
+            free(path);
+            errno = saved;
+            return NULL;
+        }
+    }
+    free(path);
+    errno = EEXIST;
+    return NULL;
+#else
+    const char *base = getenv("TMPDIR");
+    if (!base || !*base) base = "/tmp";
+    size_t capacity = strlen(base) + strlen(prefix) + 10U;
+    char *path = malloc(capacity);
+    if (!path) { errno = ENOMEM; return NULL; }
+    int written = snprintf(path, capacity, "%s/%s-XXXXXX", base, prefix);
+    if (written < 0 || (size_t)written >= capacity || !mkdtemp(path)) {
+        int saved = errno ? errno : ENAMETOOLONG;
+        free(path);
+        errno = saved;
+        return NULL;
+    }
+    return path;
+#endif
+}
+
 static bool read_sdl2_flags(char *storage, size_t capacity,
                             char **flags, size_t flag_capacity,
                             size_t *flag_count)
@@ -209,15 +275,18 @@ static bool read_sdl2_flags(char *storage, size_t capacity,
     }
     storage[used] = '\0';
     int status = pclose(pipe);
+#ifdef _WIN32
+    if (status == -1 || status != 0 || used == 0 || used + 1 >= capacity) {
+#else
     if (status == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0 ||
         used == 0 || used + 1 >= capacity) {
+#endif
         fputs("ylang: GUI build requires SDL2 development files and pkg-config (Fedora: SDL2-devel pkgconf-pkg-config; Debian/Ubuntu: libsdl2-dev pkg-config; macOS: brew install sdl2 pkg-config).\n", stderr);
         return false;
     }
     *flag_count = 0;
-    char *save = NULL;
-    for (char *part = strtok_r(storage, " \t\r\n", &save);
-         part != NULL; part = strtok_r(NULL, " \t\r\n", &save)) {
+    for (char *part = strtok(storage, " \t\r\n");
+         part != NULL; part = strtok(NULL, " \t\r\n")) {
         if (*flag_count >= flag_capacity) {
             fputs("ylang: too many SDL2 compiler flags returned by pkg-config.\n", stderr);
             return false;
@@ -274,11 +343,13 @@ static int run_native_compiler(const char *cc, const char *c_path,
     args[n++] = "-Wno-unused-but-set-variable";
     args[n++] = (char *)optimization;
     args[n++] = "-g";
-#if !defined(__APPLE__)
+#if !defined(__APPLE__) && !defined(_WIN32)
     args[n++] = "-D_FORTIFY_SOURCE=3";
 #endif
     args[n++] = "-fstack-protector-strong";
+#if !defined(_WIN32)
     args[n++] = "-fPIE";
+#endif
     if (uses_gui) {
         args[n++] = "-I";
         args[n++] = include_path;
@@ -288,7 +359,7 @@ static int run_native_compiler(const char *cc, const char *c_path,
         for (size_t i = 0; i < sdl_flag_count; i++) args[n++] = sdl_flags[i];
 #if defined(__APPLE__)
         args[n++] = "-pie";
-#else
+#elif !defined(_WIN32)
         args[n++] = "-pie";
         args[n++] = "-Wl,-z,relro,-z,now";
 #endif
@@ -297,15 +368,28 @@ static int run_native_compiler(const char *cc, const char *c_path,
         args[n++] = "-lm";
 #if defined(__APPLE__)
         args[n++] = "-pie";
-#else
+#elif !defined(_WIN32)
         args[n++] = "-pie";
         args[n++] = "-Wl,-z,relro,-z,now";
 #endif
     }
+#ifdef _WIN32
+    /* The generated runtime uses ShellExecuteA for image.open(). */
+    args[n++] = "-lshell32";
+#endif
     args[n++] = "-o";
     args[n++] = (char *)output_path;
     args[n] = NULL;
 
+#ifdef _WIN32
+    intptr_t status = _spawnvp(_P_WAIT, cc, (const char * const *)args);
+    if (status == -1) {
+        fprintf(stderr, "ylang: could not execute native compiler '%s': %s\n",
+                cc, strerror(errno));
+        return 1;
+    }
+    return (int)status;
+#else
     pid_t pid = fork();
     if (pid < 0) {
         fprintf(stderr, "ylang: could not start native compiler: %s\n", strerror(errno));
@@ -324,10 +408,19 @@ static int run_native_compiler(const char *cc, const char *c_path,
     }
     if (WIFEXITED(status)) return WEXITSTATUS(status);
     return 1;
+#endif
 }
 
 static int run_external(char *const argv[])
 {
+#ifdef _WIN32
+    intptr_t status = _spawnvp(_P_WAIT, argv[0], (const char * const *)argv);
+    if (status == -1) {
+        fprintf(stderr, "ylang: cannot execute '%s': %s\n", argv[0], strerror(errno));
+        return 1;
+    }
+    return (int)status;
+#else
     pid_t pid = fork();
     if (pid < 0) {
         fprintf(stderr, "ylang: cannot start '%s': %s\n", argv[0], strerror(errno));
@@ -351,6 +444,7 @@ static int run_external(char *const argv[])
     if (WIFEXITED(status)) return WEXITSTATUS(status);
     if (WIFSIGNALED(status)) return 128 + WTERMSIG(status);
     return 1;
+#endif
 }
 
 int ylang_run(const char *command, const char *input_path,
@@ -448,8 +542,8 @@ int ylang_run(const char *command, const char *input_path,
             return 64;
         }
 
-        char *temporary_directory = strdup("/tmp/ylang-asm-build-XXXXXX");
-        if (!temporary_directory || !mkdtemp(temporary_directory)) {
+        char *temporary_directory = create_temporary_directory("ylang-asm-build");
+        if (!temporary_directory) {
             fprintf(stderr, "ylang: cannot create temporary assembly build directory: %s\n",
                     strerror(errno));
             free(temporary_directory);
@@ -507,7 +601,7 @@ int ylang_run(const char *command, const char *input_path,
     if (strcmp(command, "emit-asm") == 0) {
         const char *asm_path = output_path;
         if (!asm_path) {
-            if (mkdir("build", 0755) != 0 && errno != EEXIST) {
+            if (ylang_mkdir("build", 0755) != 0 && errno != EEXIST) {
                 fprintf(stderr, "ylang: cannot create build directory: %s\n",
                         strerror(errno));
                 arena_destroy(&compiler.arena);
@@ -547,7 +641,7 @@ int ylang_run(const char *command, const char *input_path,
 
     if (emit_c_command) {
         if (!c_path) {
-            if (mkdir("build", 0755) != 0 && errno != EEXIST) {
+            if (ylang_mkdir("build", 0755) != 0 && errno != EEXIST) {
                 fprintf(stderr, "ylang: cannot create build directory: %s\n", strerror(errno));
                 arena_destroy(&compiler.arena);
                 free(source);
@@ -564,8 +658,8 @@ int ylang_run(const char *command, const char *input_path,
             return 64;
         }
     } else {
-        char *template = strdup("/tmp/ylang-build-XXXXXX");
-        if (!template || !mkdtemp(template)) {
+        char *template = create_temporary_directory("ylang-build");
+        if (!template) {
             fprintf(stderr, "ylang: cannot create a temporary build directory: %s\n", strerror(errno));
             free(template);
             arena_destroy(&compiler.arena);

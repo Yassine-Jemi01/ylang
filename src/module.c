@@ -3,6 +3,7 @@
 #include "internal.h"
 
 #include <errno.h>
+#include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,19 +19,25 @@ static void set_module_context(Compiler *compiler, Module *module)
 
 static char *canonical_path(Compiler *compiler, const char *path)
 {
+#ifdef _WIN32
+    char *resolved = _fullpath(NULL, path, 0);
+#else
     char *resolved = realpath(path, NULL);
+#endif
     if (!resolved) return NULL;
     char *copy = arena_strndup(&compiler->arena, resolved, strlen(resolved));
     free(resolved);
     return copy;
 }
 
+static bool canonical_paths_equal(const char *left, const char *right);
+
 static Module *find_module(Compiler *compiler, const char *canonical)
 {
     for (size_t i = 0; i < compiler->module_count; i++) {
         Module *module = compiler->modules[i];
         if (module->canonical_path &&
-            strcmp(module->canonical_path, canonical) == 0) return module;
+            canonical_paths_equal(module->canonical_path, canonical)) return module;
     }
     return NULL;
 }
@@ -55,12 +62,60 @@ static Module *new_module(Compiler *compiler, const char *path,
     return module;
 }
 
+static bool path_separator_char(char ch)
+{
+#ifdef _WIN32
+    return ch == '/' || ch == '\\';
+#else
+    return ch == '/';
+#endif
+}
+
+static bool canonical_paths_equal(const char *left, const char *right)
+{
+#ifdef _WIN32
+    while (*left && *right) {
+        unsigned char a = (unsigned char)*left++;
+        unsigned char b = (unsigned char)*right++;
+        if (path_separator_char((char)a) && path_separator_char((char)b)) continue;
+        if (tolower(a) != tolower(b)) return false;
+    }
+    return *left == '\0' && *right == '\0';
+#else
+    return strcmp(left, right) == 0;
+#endif
+}
+
+static bool path_is_absolute(const char *path)
+{
+#ifdef _WIN32
+    return path_separator_char(path[0]) ||
+           (isalpha((unsigned char)path[0]) && path[1] == ':' &&
+            path_separator_char(path[2]));
+#else
+    return path[0] == '/';
+#endif
+}
+
+static const char *last_path_separator(const char *path)
+{
+    const char *slash = strrchr(path, '/');
+#ifdef _WIN32
+    const char *backslash = strrchr(path, '\\');
+    if (!slash) return backslash;
+    if (!backslash) return slash;
+    return slash > backslash ? slash : backslash;
+#else
+    return slash;
+#endif
+}
+
 static char *canonical_join(Compiler *compiler, const char *directory,
                             size_t directory_length, const char *requested)
 {
     size_t requested_length = strlen(requested);
     size_t separator = directory_length > 0U &&
-                       directory[directory_length - 1U] == '/' ? 0U : 1U;
+                       path_separator_char(directory[directory_length - 1U]) ? 0U : 1U;
     if (directory_length > SIZE_MAX - requested_length - separator - 1U) {
         errno = ENAMETOOLONG;
         return NULL;
@@ -69,7 +124,11 @@ static char *canonical_join(Compiler *compiler, const char *directory,
     char *joined = arena_alloc(&compiler->arena, size);
     memcpy(joined, directory, directory_length);
     size_t offset = directory_length;
+#ifdef _WIN32
+    if (separator) joined[offset++] = '\\';
+#else
     if (separator) joined[offset++] = '/';
+#endif
     memcpy(joined + offset, requested, requested_length + 1U);
     return canonical_path(compiler, joined);
 }
@@ -77,11 +136,11 @@ static char *canonical_join(Compiler *compiler, const char *directory,
 static char *resolve_import_path(Compiler *compiler, Module *from,
                                  const char *requested)
 {
-    if (requested[0] == '/') return canonical_path(compiler, requested);
+    if (path_is_absolute(requested)) return canonical_path(compiler, requested);
 
     /* Prefer paths relative to the importing file. */
     const char *base = from->canonical_path ? from->canonical_path : from->path;
-    const char *slash = strrchr(base, '/');
+    const char *slash = last_path_separator(base);
     size_t directory_length;
     if (!slash) {
         base = ".";
@@ -94,12 +153,16 @@ static char *resolve_import_path(Compiler *compiler, Module *from,
     char *resolved = canonical_join(compiler, base, directory_length, requested);
     if (resolved) return resolved;
 
-    /* YLANG_PATH is a colon-separated list of directories for reusable modules. */
+    /* YLANG_PATH uses the platform's conventional path-list separator. */
     const char *search_path = getenv("YLANG_PATH");
     if (!search_path || !*search_path) return NULL;
     const char *entry = search_path;
     while (*entry) {
+#ifdef _WIN32
+        const char *end = strchr(entry, ';');
+#else
         const char *end = strchr(entry, ':');
+#endif
         size_t entry_length = end ? (size_t)(end - entry) : strlen(entry);
         if (entry_length > 0U) {
             resolved = canonical_join(compiler, entry, entry_length, requested);

@@ -1,4 +1,6 @@
+#ifndef _WIN32
 #define _POSIX_C_SOURCE 200809L
+#endif
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -11,9 +13,15 @@
 #include <math.h>
 #include <errno.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <shellapi.h>
+#else
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#endif
 
 bool ylgui_api_init(void);
 bool ylgui_api_create_window(const char *, int64_t, int64_t);
@@ -79,12 +87,64 @@ static const char *yl_string_replace(const char *value, const char *needle, cons
 static const char *yl_string_case(const char *value, bool upper) { size_t n = strlen(value); char *result = malloc(n + 1); if (!result) yl_runtime_error("out of memory"); for (size_t i = 0; i < n; i++) { unsigned char c = (unsigned char)value[i]; result[i] = (char)(upper ? toupper(c) : tolower(c)); } result[n] = '\0'; return (const char *)yl_track(result); }
 static const char *yl_string_upper(const char *value) { return yl_string_case(value, true); }
 static const char *yl_string_lower(const char *value) { return yl_string_case(value, false); }
-static const char *yl_read_line(void) { char *line = NULL; size_t capacity = 0; ssize_t got = getline(&line, &capacity, stdin); if (got < 0) { if (ferror(stdin)) { free(line); yl_runtime_error("failed to read standard input"); } free(line); line = malloc(1); if (!line) yl_runtime_error("out of memory"); line[0] = '\0'; return (const char *)yl_track(line); } while (got > 0 && (line[got - 1] == '\n' || line[got - 1] == '\r')) line[--got] = '\0'; return (const char *)yl_track(line); }
+static const char *yl_read_line(void) {
+    size_t capacity = 128U;
+    size_t length = 0U;
+    char *line = malloc(capacity);
+    if (!line) yl_runtime_error("out of memory");
+    int ch = 0;
+    while ((ch = fgetc(stdin)) != EOF && ch != '\n') {
+        if (length + 1U >= capacity) {
+            if (capacity > SIZE_MAX / 2U) {
+                free(line);
+                yl_runtime_error("input line is too large");
+            }
+            size_t next = capacity * 2U;
+            char *grown = realloc(line, next);
+            if (!grown) {
+                free(line);
+                yl_runtime_error("out of memory");
+            }
+            line = grown;
+            capacity = next;
+        }
+        line[length++] = (char)ch;
+    }
+    if (ch == EOF && ferror(stdin)) {
+        free(line);
+        yl_runtime_error("failed to read standard input");
+    }
+    while (length > 0U && line[length - 1U] == '\r') length--;
+    line[length] = '\0';
+    return (const char *)yl_track(line);
+}
 static const char *yl_read_file(const char *path) { FILE *file = fopen(path, "rb"); if (!file) yl_runtime_error("cannot open file for reading"); if (fseek(file, 0, SEEK_END) != 0) { fclose(file); yl_runtime_error("cannot seek input file"); } long end = ftell(file); if (end < 0 || (uintmax_t)end >= (uintmax_t)SIZE_MAX) { fclose(file); yl_runtime_error("input file is too large"); } rewind(file); size_t size = (size_t)end; char *data = malloc(size + 1); if (!data) { fclose(file); yl_runtime_error("out of memory"); } size_t got = fread(data, 1, size, file); bool failed = ferror(file) != 0 || got != size; fclose(file); if (failed) { free(data); yl_runtime_error("failed to read input file"); } if (memchr(data, '\0', size)) { free(data); yl_runtime_error("binary files are not supported by string I/O"); } data[size] = '\0'; return (const char *)yl_track(data); }
 static bool yl_write_file(const char *path, const char *content) { FILE *file = fopen(path, "wb"); if (!file) return false; size_t size = strlen(content); bool ok = fwrite(content, 1, size, file) == size; if (fclose(file) != 0) ok = false; return ok; }
 static bool yl_path_exists(const char *path) { struct stat info; return path && stat(path, &info) == 0; }
-static const char *yl_path_basename(const char *path) { if (!path) return ""; size_t end = strlen(path); while (end > 1 && path[end - 1] == '/') end--; size_t start = end; while (start > 0 && path[start - 1] != '/') start--; size_t length = end - start; bool root = length == 0 && end == 1 && path[0] == '/'; if (root) length = 1; char *result = malloc(length + 1); if (!result) yl_runtime_error("out of memory"); memcpy(result, path + (root ? 0 : start), length); result[length] = '\0'; return (const char *)yl_track(result); }
+static bool yl_path_separator(char ch) { return ch == '/' || ch == '\\'; }
+static const char *yl_path_basename(const char *path) {
+    if (!path) return "";
+    size_t end = strlen(path);
+    while (end > 1U && yl_path_separator(path[end - 1U])) end--;
+    size_t start = end;
+    while (start > 0U && !yl_path_separator(path[start - 1U])) start--;
+    size_t length = end - start;
+    bool root = length == 0U && end == 1U && yl_path_separator(path[0]);
+    if (root) length = 1U;
+    char *result = malloc(length + 1U);
+    if (!result) yl_runtime_error("out of memory");
+    memcpy(result, path + (root ? 0U : start), length);
+    result[length] = '\0';
+    return (const char *)yl_track(result);
+}
 static const char *yl_path_extension(const char *path) { const char *base = yl_path_basename(path); const char *dot = strrchr(base, '.'); if (!dot || dot == base) return ""; return dot + 1; }
+#ifdef _WIN32
+static bool yl_image_open(const char *path) {
+    if (!path || !*path || !yl_path_exists(path)) return false;
+    HINSTANCE result = ShellExecuteA(NULL, "open", path, NULL, NULL, SW_SHOWNORMAL);
+    return (INT_PTR)result > 32;
+}
+#else
 static bool yl_image_open(const char *path) { if (!path || !*path || !yl_path_exists(path)) return false; pid_t child = fork(); if (child < 0) return false; if (child == 0) {
 #if defined(__APPLE__)
         execlp("open", "open", path, (char *)NULL);
@@ -92,4 +152,4 @@ static bool yl_image_open(const char *path) { if (!path || !*path || !yl_path_ex
         execlp("xdg-open", "xdg-open", path, (char *)NULL);
 #endif
         _exit(127); } int status = 0; while (waitpid(child, &status, 0) < 0) { if (errno == EINTR) continue; return false; } return WIFEXITED(status) && WEXITSTATUS(status) == 0; }
-
+#endif

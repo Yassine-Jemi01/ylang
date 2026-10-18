@@ -2,7 +2,7 @@
 
 **A small compiled programming language with explicit types and actionable diagnostics.**
 
-YLang is implemented in C17. Its compiler tokenizes and parses `.yl` files, checks names, initialization and types, generates C, and invokes GCC or Clang to produce a native executable. The compiler currently targets POSIX systems; Linux and macOS are the supported portability targets. Native Windows support remains future work. It is a compiled language toolchain, not an interpreter.
+YLang is implemented in C17. Its compiler tokenizes and parses `.yl` files, checks names, initialization and types, generates C, and invokes GCC or Clang to produce a native executable. Linux and macOS are the primary tested targets; experimental native Windows support is available for 64-bit Windows with MinGW-w64. Windows support currently has a focused CI smoke suite and is not yet a claim of complete platform parity. It is a compiled language toolchain, not an interpreter.
 
 YLang **2.0.0-beta.1** is an experimental prerelease for testing the expanded compiler and standard library. The latest stable release remains **1.1.0**. The beta adds named imports and multi-file compilation, experimental typed enums and structs, and SDL2-backed GUI/2D helpers. The C backend remains the default; the NASM backend is experimental and supports only a restricted subset. This project does not claim Rust-level memory safety or production stability.
 
@@ -10,7 +10,7 @@ YLang **2.0.0-beta.1** is an experimental prerelease for testing the expanded co
 
 ### Requirements
 
-- Linux (Fedora and Ubuntu) or macOS 13+ (CI-tested targets; Windows is not supported yet)
+- Linux (Fedora and Ubuntu), macOS 13+, or experimental Windows x86-64 with MinGW-w64 (see [Windows setup](docs/WINDOWS.md))
 - A C17 compiler to build YLang itself (`gcc` or `clang`)
 - GNU Make (`make` on Linux; `gmake` on macOS)
 - GCC or Clang available on `PATH` to compile generated C into executables
@@ -40,6 +40,12 @@ For the optional GUI runtime, also install SDL2 and pkg-config:
 ```sh
 brew install sdl2 pkg-config
 ```
+
+### Experimental Windows setup
+
+Native Windows builds are tested with MinGW-w64 in an MSYS2 MINGW64 shell. MSVC is not supported by this initial port.
+
+See [the Windows setup guide](docs/WINDOWS.md) for MSYS2 installation, SDL2 dependencies, native compile/run instructions, and the current limitations.
 
 ### Build from source
 
@@ -192,7 +198,7 @@ ylang fix <file.yl> -o <fixed.yl>
 
 ## Optional GUI runtime (SDL2)
 
-YLang includes an optional SDL2-backed GUI namespace for `.yl` programs: `gui.init()`, `gui.create_window(...)`, `gui.poll()`, `gui.clear(...)`, `gui.draw_rect(...)`, `gui.present()`, `gui.last_error()`, `gui.close()`, and `gui.shutdown()`. The compiler checks argument types without requiring SDL2; native builds that use `gui.*` need SDL2 development files and `pkg-config`. The compiler driver is POSIX-based, so native Windows builds are not supported yet.
+YLang includes an optional SDL2-backed GUI namespace for `.yl` programs: `gui.init()`, `gui.create_window(...)`, `gui.poll()`, `gui.clear(...)`, `gui.draw_rect(...)`, `gui.present()`, `gui.last_error()`, `gui.close()`, and `gui.shutdown()`. The compiler checks argument types without requiring SDL2; native builds that use `gui.*` need SDL2 development files and `pkg-config`. Linux and macOS remain the primary tested targets; native Windows x86-64 with MinGW-w64 is experimental. See the [Windows setup guide](docs/WINDOWS.md) for its tested scope and limitations.
 
 Install SDL2 development files and `pkg-config`, then build a YLang GUI program:
 
@@ -215,6 +221,27 @@ macOS: `brew install sdl2 pkg-config`
 The example opens a window, paints the background, and draws a rectangle, then closes cleanly. It is a minimal smoke example, not a complete game loop. On headless systems, compilation works but running it requires a display session. To install the optional runtime files for builds outside the source tree, use `sudo gmake install-gui` on macOS (or `sudo make install-gui` on Linux).
 
 Errors include a stable diagnostic code, path, line/column, source excerpt, caret, and a hint when available. Exit status is nonzero when a command fails.
+
+## Optional Linux system package (YSPM)
+
+[YSPM](https://github.com/Yassine-Jemi01/yspm) is your Linux system package manager and uses the native `.yspkg` format. YLang can be packaged for a compatible YSPM system; this is separate from compiling YLang projects or resolving `.yl` imports.
+
+Build a native package locally (Linux x86-64, Go, GCC, GNU Make, and a YSPM checkout with .yspkg build support required):
+
+    cd ..
+    git clone https://github.com/Yassine-Jemi01/yspm.git
+    cd yspm
+    go build -o yspm ./cmd/yspm
+    cd ../ylang
+    YSPM_BIN="../yspm/yspm" bash packaging/yspm/build-package.sh
+
+This creates `build/ylang-yspm/ylang-<version>-x86_64.yspkg`. The package includes the compiler, .yl standard library, GUI runtime source/header, license, and available documentation. The release pipeline validates the package and is being prepared to attach it to a future 2.0 beta prerelease; the existing `v2.0.0-beta.1` release remains unchanged and source-only.
+
+When a release includes a .yspkg asset, download it and install it with:
+
+    sudo yspm install ./ylang-<version>-x86_64.yspkg
+
+YSPM manages Linux system packages, not project-local YLang module dependencies. The compiler still needs GCC or Clang on the host to compile generated C, and GUI/game builds need SDL2 development files plus pkg-config. See [the YSPM guide](docs/YSPM.md) for the package contents and limits.
 
 ## Language overview
 
@@ -368,6 +395,9 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [VS Code language support, compiler diagnostics, and Code Runner setup](editors/vscode/README.md)
 - [Neovim native diagnostics integration](editors/nvim/README.md)
 - [GUI runtime API](include/ylang/gui.h) and [example](examples/gui.c)
+- [Native Windows setup and limitations](docs/WINDOWS.md)
+- [YSPM Linux system-package integration](docs/YSPM.md)
+- [Game2D guide](docs/GAME2D.md), [playable Dodge example](examples/games/dodge.yl), and [helper module](stdlib/game2d.yl) (build with `make game2d-example`)
 
 
 ## Compiler developer checks

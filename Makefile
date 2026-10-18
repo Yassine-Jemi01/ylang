@@ -12,7 +12,13 @@ SRC := $(wildcard src/*.c)
 OBJ := $(patsubst src/%.c,build/%.o,$(SRC))
 BIN := build/ylang
 
-.PHONY: all clean test sanitize install uninstall print-version gui gui-example install-gui check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
+ifeq ($(OS),Windows_NT)
+GAME2D_OUTPUT ?= build/dodge.exe
+else
+GAME2D_OUTPUT ?= build/dodge
+endif
+
+.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
 
 all: $(BIN)
 
@@ -68,6 +74,10 @@ gui: check-sdl2 build/libylang_gui.a
 
 gui-example: check-sdl2 build/gui-example
 
+game2d-example: check-sdl2 $(BIN)
+	@mkdir -p build
+	YLANG_PATH=stdlib ./build/ylang build examples/games/dodge.yl -o $(GAME2D_OUTPUT)
+
 build/ylang_gui.o: stdlib/gui/gui.c include/ylang/gui.h
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(GUI_CFLAGS) -c stdlib/gui/gui.c -o $@
@@ -79,8 +89,9 @@ build/gui-example: examples/gui.c build/libylang_gui.a
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(GUI_CFLAGS) $< build/libylang_gui.a $(GUI_LIBS) -o $@
 
 install-gui: gui
-	install -d '$(DESTDIR)$(PREFIX)/include/ylang' '$(DESTDIR)$(PREFIX)/lib' '$(DESTDIR)$(PREFIX)/share/ylang/stdlib/gui'
+	install -d '$(DESTDIR)$(PREFIX)/include/ylang' '$(DESTDIR)$(PREFIX)/lib' '$(DESTDIR)$(PREFIX)/share/ylang/stdlib/gui' '$(DESTDIR)$(PREFIX)/share/ylang/stdlib'
 	install -m 644 include/ylang/gui.h '$(DESTDIR)$(PREFIX)/include/ylang/gui.h'
+	install -m 644 stdlib/game2d.yl '$(DESTDIR)$(PREFIX)/share/ylang/stdlib/game2d.yl'
 	install -m 644 stdlib/gui/gui.c '$(DESTDIR)$(PREFIX)/share/ylang/stdlib/gui/gui.c'
 	install -m 644 build/libylang_gui.a '$(DESTDIR)$(PREFIX)/lib/libylang_gui.a'
 
