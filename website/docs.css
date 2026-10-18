@@ -49,3 +49,49 @@
   .docs-card, .docs-card-featured { min-height: 205px; }
   .docs-notice { grid-template-columns: 1fr; gap: 15px; padding: 19px; }
 }
+
+
+/* Keep the documentation page compact and consistent with the main site. */
+.docs-hero { background: #e4ebf3; }
+.docs-hero h1 {
+  font-family: var(--sans);
+  font-weight: 760;
+  line-height: 1.04;
+  letter-spacing: -.055em;
+}
+.docs-hero h1 em { font-family: var(--sans); font-style: normal; font-weight: 760; color: #2f6f9f; }
+.docs-lede { color: #4c6378; }
+.docs-version-row { border-color: #c5d2df; }
+.docs-version-row a { color: #2f6f9f; }
+.version-stable { background: #2f6f9f; }
+.version-beta { background: #d4aa27; }
+.docs-section-alt, .docs-notice-section { background: #dce6f0; border-color: #c5d2df; }
+.docs-section-head h2, .docs-build-grid h2 {
+  font-family: var(--sans);
+  font-weight: 730;
+  letter-spacing: -.045em;
+}
+.docs-card, .docs-card-featured {
+  background: #f7f9fc;
+  border: 1px solid #c5d4e2;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(28,55,78,.035);
+  min-height: 210px;
+}
+.docs-card-featured { min-height: 220px; background: #f7f9fc; }
+.docs-card:hover { transform: translateY(-2px); border-color: #86a8c4; box-shadow: 0 8px 18px rgba(28,55,78,.07); }
+.docs-card-kicker { color: #926700; }
+.docs-card h3 { font-family: var(--sans); font-weight: 720; letter-spacing: -.035em; font-size: 1.22rem; }
+.docs-card-link, .docs-inline-link { color: #2f6f9f; }
+.docs-build-grid code, .docs-notice code { color: #2f6f9f; }
+.docs-notice {
+  background: #fff4c9;
+  border: 1px solid #e4d18c;
+  border-radius: 10px;
+}
+.notice-label { color: #745400; border-color: #d7bd59; border-radius: 5px; }
+.docs-notice h2 { font-family: var(--sans); font-weight: 730; }
+.docs-terminal .terminal-heading { background: #294860; }
+@media (max-width: 560px) {
+  .docs-card, .docs-card-featured { min-height: 190px; }
+}
