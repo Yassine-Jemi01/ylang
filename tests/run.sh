@@ -54,7 +54,7 @@ grep -q 'contains a NUL byte' build/embedded-nul.out
         printf ')'
         depth=$((depth - 1))
     done
-    printf '; }\\n'
+    printf '; }\n'
 } > build/deep-expression-nesting.yl
 if ./build/ylang check build/deep-expression-nesting.yl > build/deep-expression-nesting.out 2>&1; then
     echo "FAIL: excessively nested expression was accepted" >&2
