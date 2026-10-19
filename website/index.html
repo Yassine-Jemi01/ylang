@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <meta name="theme-color" content="#f7f8f3">
-  <meta name="description" content="YLang is an open-source compiled programming language with explicit types, readable syntax, and examples you can build.">
+  <meta name="theme-color" content="#f5f7f2">
+  <meta name="description" content="Meet YLang, an open-source compiled programming language with readable syntax, explicit types, and a compiler you can explore.">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="YLang — Build something real">
-  <meta property="og:description" content="Meet YLang: an open-source compiled language built around readable syntax and explicit types.">
-  <title>YLang — Build something real</title>
+  <meta property="og:title" content="YLang — Readable code. Native programs.">
+  <meta property="og:description" content="A small compiled language with readable syntax, explicit types, and an open-source compiler.">
+  <title>YLang — Readable code. Native programs.</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="home.css">
@@ -38,26 +38,50 @@
   </header>
 
   <main id="main">
-    <section class="hero">
+    <section class="hero" aria-labelledby="hero-title">
       <div class="container hero-grid">
         <div class="hero-copy">
-          <p class="eyebrow"><span class="eyebrow-mark" aria-hidden="true"></span> AN OPEN-SOURCE PROGRAMMING LANGUAGE</p>
-          <h1>Small language.<br><span>Real programs.</span></h1>
-          <p class="hero-lede">YLang is a compiled language with readable syntax and explicit types. Start with a small program, explore the compiler, and build something of your own.</p>
+          <p class="eyebrow"><span class="eyebrow-mark" aria-hidden="true"></span> A COMPILED LANGUAGE, BUILT IN THE OPEN</p>
+          <h1 id="hero-title">Readable code.<br><span>Native programs.</span></h1>
+          <p class="hero-lede">YLang combines a readable syntax with explicit types and a compiler you can explore. Start small, understand what your code does, and build from source.</p>
           <div class="hero-actions">
             <a class="button button-primary" href="docs.html#compiler">Get started <span aria-hidden="true">→</span></a>
             <a class="button button-secondary" href="learn/index.html">Read the book</a>
           </div>
-          <p class="hero-note">YLang 2.0.0 <span aria-hidden="true">·</span> Open source <span aria-hidden="true">·</span> Experimental GUI and game APIs</p>
+          <div class="hero-meta" aria-label="Project status">
+            <span class="version-pill"><strong>2.0.0</strong> stable core</span>
+            <span class="hero-meta-note">GUI and Game2D APIs are experimental</span>
+          </div>
+        </div>
+
+        <div class="code-window" aria-label="YLang code example">
+          <div class="code-window-bar">
+            <div class="code-window-heading">
+              <span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="code-filename">hello.yl</span>
+            </div>
+            <button class="copy-button" type="button" data-copy="hero-example" aria-label="Copy hello.yl example">Copy</button>
+          </div>
+          <pre><code id="hero-example"><span class="tok-keyword">function</span> main() <span class="tok-op">-&gt;</span> <span class="tok-type">int</span> {
+    <span class="tok-keyword">let</span> <span class="tok-keyword">const</span> <span class="tok-type">string</span> name = <span class="tok-string">&quot;YLang&quot;</span>;
+    <span class="tok-keyword">let</span> <span class="tok-type">int</span> answer = <span class="tok-number">40</span> + <span class="tok-number">2</span>;
+    print(f<span class="tok-string">&quot;Hello from {name}!&quot;</span>);
+    print(<span class="tok-string">&quot;Answer:&quot;</span>, answer);
+    <span class="tok-keyword">return</span> <span class="tok-number">0</span>;
+}</code></pre>
+          <div class="code-window-foot">
+            <code>./build/ylang build hello.yl -o hello</code>
+            <span>Compile · Run</span>
+          </div>
         </div>
       </div>
     </section>
 
     <section class="principles" aria-label="Language highlights">
       <div class="container principles-grid">
-        <p><strong>Readable syntax</strong><span>Keep the code easy to follow.</span></p>
-        <p><strong>Explicit types</strong><span>Make data and intent clear.</span></p>
-        <p><strong>Build from source</strong><span>Explore the compiler in the open.</span></p>
+        <p><strong>Readable syntax</strong><span>Code that is easy to scan.</span></p>
+        <p><strong>Explicit types</strong><span>Make data and intent visible.</span></p>
+        <p><strong>Open development</strong><span>Explore the compiler on GitHub.</span></p>
       </div>
     </section>
 
@@ -65,22 +89,22 @@
       <div class="container language-layout">
         <div class="language-intro">
           <p class="eyebrow"><span class="eyebrow-mark" aria-hidden="true"></span> THE LANGUAGE</p>
-          <h2 id="language-title">Clarity is a feature.</h2>
-          <p>YLang aims to keep programs readable while making important decisions visible. No oversized promises—just a language and compiler you can explore.</p>
+          <h2 id="language-title">Clear decisions.<br>Less guesswork.</h2>
+          <p>YLang is designed to keep the important parts of a program visible, from its types to the steps used to compile it. The stable core stays focused while newer features continue to evolve.</p>
           <a class="text-link" href="https://github.com/Yassine-Jemi01/ylang">Explore the source <span aria-hidden="true">↗</span></a>
         </div>
         <div class="language-list">
           <article class="language-item">
             <span class="language-index" aria-hidden="true">01</span>
-            <div><h3>Readable by design</h3><p>Syntax that keeps the structure of a program easy to scan.</p></div>
+            <div><h3>Readable by design</h3><p>Follow the structure of a program without fighting unnecessary syntax.</p></div>
           </article>
           <article class="language-item">
             <span class="language-index" aria-hidden="true">02</span>
-            <div><h3>Explicit types</h3><p>Make data and intent visible instead of relying on hidden conversions.</p></div>
+            <div><h3>Types you can see</h3><p>Explicit types help make values and intent clear as you read.</p></div>
           </article>
           <article class="language-item">
             <span class="language-index" aria-hidden="true">03</span>
-            <div><h3>Built in the open</h3><p>Read the compiler, follow development, and contribute on GitHub.</p></div>
+            <div><h3>A compiler in the open</h3><p>Read the implementation, run the tests, and follow development in public.</p></div>
           </article>
         </div>
       </div>
@@ -89,8 +113,8 @@
     <section class="closing">
       <div class="container closing-inner">
         <div>
-          <p class="eyebrow">START WITH THE BASICS</p>
-          <h2>Read it. Run it. Make it yours.</h2>
+          <p class="eyebrow">YOUR FIRST PROGRAM STARTS HERE</p>
+          <h2>Read it. Build it. Make it yours.</h2>
         </div>
         <div class="closing-links">
           <a class="button button-primary" href="docs.html#compiler">Start with the compiler <span aria-hidden="true">→</span></a>
