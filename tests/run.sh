@@ -59,6 +59,12 @@ grep -q 'contains a NUL byte' build/embedded-nul.out
 if ./build/ylang check build/deep-expression-nesting.yl > build/deep-expression-nesting.out 2>&1; then
     echo "FAIL: excessively nested expression was accepted" >&2
     exit 1
+else
+    nesting_status=$?
+    if [ "$nesting_status" -ne 1 ]; then
+        echo "FAIL: expected a parser diagnostic exit status of 1, got $nesting_status" >&2
+        exit 1
+    fi
 fi
 grep -q 'E1015' build/deep-expression-nesting.out
 if grep -qi 'segmentation fault' build/deep-expression-nesting.out; then
