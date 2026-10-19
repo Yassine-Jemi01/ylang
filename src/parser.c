@@ -717,12 +717,42 @@ static int precedence(TokenType type)
     }
 }
 
+static void skip_excessive_expression(Parser *p)
+{
+    unsigned paren_depth = 0;
+    unsigned bracket_depth = 0;
+
+    while (p->current.type != TOKEN_EOF) {
+        TokenType type = p->current.type;
+        if (paren_depth == 0 && bracket_depth == 0 &&
+            (type == TOKEN_SEMICOLON || type == TOKEN_COMMA ||
+             type == TOKEN_RIGHT_PAREN || type == TOKEN_RIGHT_BRACKET ||
+             type == TOKEN_RIGHT_BRACE)) {
+            return;
+        }
+
+        if (type == TOKEN_LEFT_PAREN) {
+            paren_depth++;
+        } else if (type == TOKEN_RIGHT_PAREN) {
+            if (paren_depth > 0) paren_depth--;
+            else if (bracket_depth == 0) return;
+        } else if (type == TOKEN_LEFT_BRACKET) {
+            bracket_depth++;
+        } else if (type == TOKEN_RIGHT_BRACKET) {
+            if (bracket_depth > 0) bracket_depth--;
+            else if (paren_depth == 0) return;
+        }
+        advance_parser(p);
+    }
+}
+
 static Expr *parse_precedence(Parser *p, int min_precedence)
 {
     if (p->expression_depth >= PARSER_MAX_EXPRESSION_DEPTH) {
         diagnostic(p->compiler, p->current, "error", "E1015",
                    "Expression nesting exceeds the maximum supported depth.",
                    "Simplify nested parentheses, unary operators, or nested call/index expressions.");
+        skip_excessive_expression(p);
         return new_expr(p->compiler, EXPR_ERROR, p->current);
     }
     p->expression_depth++;
