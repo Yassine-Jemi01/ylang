@@ -13,8 +13,9 @@ on:
         default: "2.0.0"
         type: string
 
+# Build and test jobs only need read access; release publishing opts into write.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-and-test:
@@ -254,6 +255,8 @@ jobs:
     name: Publish stable GitHub release with YSPM Linux package
     needs: [build-and-test, windows-native-smoke, build-yspm-package, editor-diagnostics, website-integrity]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Check out tested commit
         uses: actions/checkout@v4

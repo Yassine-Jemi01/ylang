@@ -41,6 +41,37 @@ if ./build/ylang check build/embedded-nul.yl > build/embedded-nul.out 2>&1; then
 fi
 grep -q 'contains a NUL byte' build/embedded-nul.out
 
+# Excessively nested expressions must fail with a parser diagnostic, not a crash.
+{
+    printf 'function main() -> int { return '
+    depth=0
+    while [ "$depth" -lt 1000 ]; do
+        printf '('
+        depth=$((depth + 1))
+    done
+    printf '0'
+    while [ "$depth" -gt 0 ]; do
+        printf ')'
+        depth=$((depth - 1))
+    done
+    printf '; }\n'
+} > build/deep-expression-nesting.yl
+if ./build/ylang check build/deep-expression-nesting.yl > build/deep-expression-nesting.out 2>&1; then
+    echo "FAIL: excessively nested expression was accepted" >&2
+    exit 1
+else
+    nesting_status=$?
+    if [ "$nesting_status" -ne 1 ]; then
+        echo "FAIL: expected a parser diagnostic exit status of 1, got $nesting_status" >&2
+        exit 1
+    fi
+fi
+grep -q 'E1015' build/deep-expression-nesting.out
+if grep -qi 'segmentation fault' build/deep-expression-nesting.out; then
+    echo "FAIL: deeply nested expression crashed the compiler" >&2
+    exit 1
+fi
+
 ./build/ylang check examples/demo.yl
 ./build/ylang build examples/demo.yl -o build/test-demo >/dev/null
 ./build/test-demo > build/test-demo.out
