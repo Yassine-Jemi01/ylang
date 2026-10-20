@@ -497,18 +497,18 @@ static Expr *parse_fstring(Parser *p, Token token)
     while (pos < length) {
         char ch = inside[pos];
         if (ch == '\\' && pos + 1 < length) {
-            char escaped = inside[pos + 1];
-            switch (escaped) {
-                case 'n': sb_append_n(&text, "\n", 1); break;
-                case 't': sb_append_n(&text, "\t", 1); break;
-                case 'r': sb_append_n(&text, "\r", 1); break;
-                case '\\': sb_append_n(&text, "\\", 1); break;
-                case '"': sb_append_n(&text, "\"", 1); break;
-                case '{': sb_append_n(&text, "{", 1); break;
-                case '}': sb_append_n(&text, "}", 1); break;
-                default: sb_append_n(&text, &ch, 1); sb_append_n(&text, &escaped, 1); break;
+            unsigned char decoded = 0;
+            size_t consumed = 0;
+            if (decode_escape_sequence(inside + pos + 1, length - pos - 1,
+                                       &decoded, &consumed)) {
+                char output = (char)decoded;
+                sb_append_n(&text, &output, 1);
+                pos += consumed + 1U;
+            } else {
+                sb_append_n(&text, &ch, 1);
+                sb_append_n(&text, inside + pos + 1, 1);
+                pos += 2U;
             }
-            pos += 2;
             continue;
         }
         if (ch == '{' && pos + 1 < length && inside[pos + 1] == '{') {
@@ -1316,18 +1316,21 @@ static char *decode_import_path(Parser *p, Token token)
             sb_destroy(&decoded);
             return arena_strndup(&p->compiler->arena, "", 0);
         }
-        char escaped = token.start[++i];
-        switch (escaped) {
-            case '\\': sb_append_n(&decoded, "\\", 1); break;
-            case '"': sb_append_n(&decoded, "\"", 1); break;
-            case '/': sb_append_n(&decoded, "/", 1); break;
-            default:
-                diagnostic(p->compiler, token, "error", "E1020",
-                           "Unsupported escape in import path.",
-                           "Use ordinary path characters, \\\\, or \\\".");
-                sb_destroy(&decoded);
-                return arena_strndup(&p->compiler->arena, "", 0);
+        char escaped = token.start[i + 1U];
+        unsigned char decoded = 0;
+        size_t consumed = 0;
+        if ((escaped != '\\' && escaped != '"' && escaped != '/') ||
+            !decode_escape_sequence(token.start + i + 1U, end - i - 1U,
+                                    &decoded, &consumed)) {
+            diagnostic(p->compiler, token, "error", "E1020",
+                       "Unsupported escape in import path.",
+                       "Use ordinary path characters, \\\\, or \\\\".");
+            sb_destroy(&decoded);
+            return arena_strndup(&p->compiler->arena, "", 0);
         }
+        char path_character = (char)decoded;
+        sb_append_n(&decoded, &path_character, 1);
+        i += consumed;
     }
     char *path = arena_strndup(&p->compiler->arena,
                                decoded.data ? decoded.data : "",
