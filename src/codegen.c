@@ -499,6 +499,88 @@ static const char *builtin_c_name(const char *name)
     return NULL;
 }
 
+static void append_temp_name(StringBuilder *sb, Expr *owner, const char *suffix)
+{
+    sb_appendf(sb, "yl_codegen_tmp_%zu_%s", owner->codegen_id, suffix);
+}
+
+static void append_indexed_temp_name(StringBuilder *sb, Expr *owner,
+                                     const char *prefix, size_t index)
+{
+    sb_appendf(sb, "yl_codegen_tmp_%zu_%s%zu", owner->codegen_id, prefix, index);
+}
+
+static void emit_binary_operation_with_temps(StringBuilder *sb, Expr *expr)
+{
+    TokenType op = expr->as.binary.op.type;
+    Expr *left = expr->as.binary.left;
+
+    if (expr->type == TYPE_INT && op == TOKEN_PLUS) {
+        sb_append(sb, "yl_add_i64(");
+        append_temp_name(sb, expr, "left"); sb_append(sb, ", ");
+        append_temp_name(sb, expr, "right"); sb_append(sb, ")");
+    } else if (expr->type == TYPE_INT && op == TOKEN_MINUS) {
+        sb_append(sb, "yl_sub_i64(");
+        append_temp_name(sb, expr, "left"); sb_append(sb, ", ");
+        append_temp_name(sb, expr, "right"); sb_append(sb, ")");
+    } else if (expr->type == TYPE_INT && op == TOKEN_STAR) {
+        sb_append(sb, "yl_mul_i64(");
+        append_temp_name(sb, expr, "left"); sb_append(sb, ", ");
+        append_temp_name(sb, expr, "right"); sb_append(sb, ")");
+    } else if (expr->type == TYPE_INT && op == TOKEN_SLASH) {
+        sb_append(sb, "yl_div_i64(");
+        append_temp_name(sb, expr, "left"); sb_append(sb, ", ");
+        append_temp_name(sb, expr, "right"); sb_append(sb, ")");
+    } else if (expr->type == TYPE_INT && op == TOKEN_PERCENT) {
+        sb_append(sb, "yl_mod_i64(");
+        append_temp_name(sb, expr, "left"); sb_append(sb, ", ");
+        append_temp_name(sb, expr, "right"); sb_append(sb, ")");
+    } else if (left->type == TYPE_FLOAT && op == TOKEN_SLASH) {
+        sb_append(sb, "yl_div_f64(");
+        append_temp_name(sb, expr, "left"); sb_append(sb, ", ");
+        append_temp_name(sb, expr, "right"); sb_append(sb, ")");
+    } else if (left->type == TYPE_STRING &&
+               (op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
+                op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL ||
+                op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL)) {
+        sb_append(sb, "(strcmp(");
+        append_temp_name(sb, expr, "left"); sb_append(sb, ", ");
+        append_temp_name(sb, expr, "right"); sb_append(sb, ") ");
+        switch (op) {
+            case TOKEN_LESS: sb_append(sb, "< 0)"); break;
+            case TOKEN_LESS_EQUAL: sb_append(sb, "<= 0)"); break;
+            case TOKEN_GREATER: sb_append(sb, "> 0)"); break;
+            case TOKEN_GREATER_EQUAL: sb_append(sb, ">= 0)"); break;
+            case TOKEN_EQUAL_EQUAL: sb_append(sb, "== 0)"); break;
+            case TOKEN_BANG_EQUAL: sb_append(sb, "!= 0)"); break;
+            default: sb_append(sb, "0)"); break;
+        }
+    } else {
+        sb_append(sb, "(");
+        append_temp_name(sb, expr, "left");
+        sb_append(sb, " ");
+        switch (op) {
+            case TOKEN_PLUS: sb_append(sb, "+"); break;
+            case TOKEN_MINUS: sb_append(sb, "-"); break;
+            case TOKEN_STAR: sb_append(sb, "*"); break;
+            case TOKEN_SLASH: sb_append(sb, "/"); break;
+            case TOKEN_PERCENT: sb_append(sb, "%"); break;
+            case TOKEN_EQUAL_EQUAL: sb_append(sb, "=="); break;
+            case TOKEN_BANG_EQUAL: sb_append(sb, "!="); break;
+            case TOKEN_LESS: sb_append(sb, "<"); break;
+            case TOKEN_LESS_EQUAL: sb_append(sb, "<="); break;
+            case TOKEN_GREATER: sb_append(sb, ">"); break;
+            case TOKEN_GREATER_EQUAL: sb_append(sb, ">="); break;
+            case TOKEN_AND: sb_append(sb, "&&"); break;
+            case TOKEN_OR: sb_append(sb, "||"); break;
+            default: sb_append(sb, "?"); break;
+        }
+        sb_append(sb, " ");
+        append_temp_name(sb, expr, "right");
+        sb_append(sb, ")");
+    }
+}
+
 static void emit_expr(StringBuilder *sb, Expr *expr)
 {
     if (!expr) { sb_append(sb, "0"); return; }
