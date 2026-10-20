@@ -71,6 +71,23 @@ static void emit_expr(StringBuilder *sb, Expr *expr);
 
 static void emit_expr_raw(StringBuilder *sb, Expr *expr);
 
+static bool stmt_ends_in_match(Stmt *stmt)
+{
+    if (!stmt) return false;
+    if (stmt->kind == STMT_MATCH) return true;
+    if (stmt->kind == STMT_BLOCK) {
+        if (stmt->as.block.count == 0U) return false;
+        return stmt_ends_in_match(stmt->as.block.items[stmt->as.block.count - 1U]);
+    }
+    if (stmt->kind == STMT_IF) {
+        return stmt->as.if_stmt.else_branch &&
+            (stmt_ends_in_match(stmt->as.if_stmt.then_branch) ||
+             stmt_ends_in_match(stmt->as.if_stmt.else_branch));
+    }
+    return false;
+}
+
+
 static bool expr_has_side_effects(Expr *expr)
 {
     if (!expr) return false;
@@ -873,11 +890,13 @@ bool generate_c(Compiler *c, const char *path)
                 emit_stmt(c, out, fn->body->as.block.items[j], 1);
             /* The semantic checker rejects reachable fallthrough; this keeps
                exhaustive enum-match lowering warning-free for C compilers. */
-            if (fn->return_type != TYPE_VOID) fputs("    return 0;\n", out);
+            if (fn->return_type != TYPE_VOID && stmt_ends_in_match(fn->body))
+                fputs("    return 0;\n", out);
             fputs("}\n", out);
         } else {
             emit_stmt(c, out, fn->body, 0);
-            if (fn->return_type != TYPE_VOID) fputs("return 0;\n", out);
+            if (fn->return_type != TYPE_VOID && stmt_ends_in_match(fn->body))
+                fputs("return 0;\n", out);
         }
         fputc('\n', out);
     }
