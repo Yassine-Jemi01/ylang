@@ -40,6 +40,62 @@ static int test_lexer(void)
     return 0;
 }
 
+static int test_escape_decoding(void)
+{
+    unsigned char value = 0;
+    size_t consumed = 0;
+    if (!decode_escape_sequence("x4142", 5U, &value, &consumed) ||
+        value != 0x41U || consumed != 3U) {
+        return fail("hex escapes must consume exactly two digits");
+    }
+    if (decode_escape_sequence("q", 1U, &value, &consumed)) {
+        return fail("unknown escape sequences must be reported to the caller");
+    }
+
+    const char *literal = "\"A\\x4142\\q\\0Z\"";
+    Token string_token = {
+        .type = TOKEN_STRING,
+        .start = literal,
+        .length = strlen(literal),
+        .line = 1,
+        .column = 1,
+        .message = NULL
+    };
+    unsigned char *bytes = NULL;
+    size_t length = 0;
+    const unsigned char expected[] = { 'A', 'A', '4', '2', 'q', 0, 'Z' };
+    if (!decode_quoted_literal(string_token, &bytes, &length)) {
+        return fail("quoted strings must decode successfully");
+    }
+    const int bad_string = length != sizeof(expected) ||
+                           memcmp(bytes, expected, sizeof(expected)) != 0;
+    free(bytes);
+    if (bad_string) {
+        return fail("quoted string decoding must preserve exact bytes and embedded NULs");
+    }
+
+    const char *character = "'\\n'";
+    Token char_token = {
+        .type = TOKEN_CHAR,
+        .start = character,
+        .length = strlen(character),
+        .line = 1,
+        .column = 1,
+        .message = NULL
+    };
+    bytes = NULL;
+    length = 0;
+    if (!decode_quoted_literal(char_token, &bytes, &length)) {
+        return fail("quoted character escapes must decode successfully");
+    }
+    const int bad_char = length != 1U || bytes[0] != (unsigned char)'\n';
+    free(bytes);
+    if (bad_char) {
+        return fail("character escape decoding must match string escape decoding");
+    }
+    return 0;
+}
+
 static int test_parser(void)
 {
     const char *source =
@@ -69,6 +125,7 @@ static int test_parser(void)
 int main(void)
 {
     if (test_lexer() != 0) return EXIT_FAILURE;
+    if (test_escape_decoding() != 0) return EXIT_FAILURE;
     if (test_parser() != 0) return EXIT_FAILURE;
     puts("Lexer/parser unit tests passed.");
     return EXIT_SUCCESS;
