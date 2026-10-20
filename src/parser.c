@@ -749,7 +749,7 @@ static void skip_excessive_expression(Parser *p)
 static Expr *parse_precedence(Parser *p, int min_precedence)
 {
     if (p->expression_depth >= PARSER_MAX_EXPRESSION_DEPTH) {
-        diagnostic(p->compiler, p->current, "error", "E1015",
+        diagnostic(p->compiler, p->current, "error", "E1017",
                    "Expression nesting exceeds the maximum supported depth.",
                    "Simplify nested parentheses, unary operators, or nested call/index expressions.");
         skip_excessive_expression(p);
