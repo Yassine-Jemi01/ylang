@@ -158,6 +158,6 @@ int main(void)
     if (test_string_builder() != 0) return EXIT_FAILURE;
     if (test_diagnostic_accounting() != 0) return EXIT_FAILURE;
     if (test_parser() != 0) return EXIT_FAILURE;
-    puts("Lexer/parser unit tests passed.");
+    puts("Frontend unit tests passed.");
     return EXIT_SUCCESS;
 }
