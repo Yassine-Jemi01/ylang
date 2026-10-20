@@ -204,21 +204,151 @@ static Token scan_number(Lexer *lexer)
     return make_token(lexer, TOKEN_NUMBER);
 }
 
+static bool scan_escape_sequence(Lexer *lexer, const char **message)
+{
+    if (peek(lexer) != '\\') {
+        *message = "Expected an escape sequence.";
+        return false;
+    }
+    advance_char(lexer);
+
+    char escaped = peek(lexer);
+    if (escaped == '\0' || escaped == '\n') {
+        *message = "Incomplete escape sequence.";
+        return false;
+    }
+    advance_char(lexer);
+
+    if (escaped == 'x') {
+        unsigned value = 0;
+        size_t digits = 0;
+        while (is_hex_digit(peek(lexer))) {
+            char digit_char = advance_char(lexer);
+            unsigned digit = digit_char >= '0' && digit_char <= '9'
+                ? (unsigned)(digit_char - '0')
+                : (digit_char >= 'a' && digit_char <= 'f'
+                    ? (unsigned)(digit_char - 'a' + 10)
+                    : (unsigned)(digit_char - 'A' + 10));
+            if (value <= 255U) {
+                value = value * 16U + digit;
+                if (value > 255U) value = 256U;
+            }
+            digits++;
+        }
+        if (digits == 0U) {
+            *message = "Hex escape sequence requires at least one hexadecimal digit.";
+            return false;
+        }
+        if (value > 255U) {
+            *message = "Hex escape sequence is outside the byte range.";
+            return false;
+        }
+        return true;
+    }
+
+    if (escaped >= '0' && escaped <= '7') {
+        unsigned value = (unsigned)(escaped - '0');
+        for (size_t digits = 1U; digits < 3U; digits++) {
+            char next = peek(lexer);
+            if (next < '0' || next > '7') break;
+            (void)advance_char(lexer);
+            if (value <= 255U) {
+                value = value * 8U + (unsigned)(next - '0');
+                if (value > 255U) value = 256U;
+            }
+        }
+        if (value > 255U) {
+            *message = "Octal escape sequence is outside the byte range.";
+            return false;
+        }
+        return true;
+    }
+
+    if (strchr("'\"?\\abfnrtv", escaped) != NULL) return true;
+
+    *message = "Unsupported escape sequence.";
+    return false;
+}
+
+static bool scan_escape_sequence(Lexer *lexer, const char **message)
+{
+    if (peek(lexer) != '\\') {
+        *message = "Expected an escape sequence.";
+        return false;
+    }
+    advance_char(lexer);
+
+    char escaped = peek(lexer);
+    if (escaped == '\0' || escaped == '\n') {
+        *message = "Incomplete escape sequence.";
+        return false;
+    }
+    advance_char(lexer);
+
+    if (escaped == 'x') {
+        unsigned value = 0;
+        size_t digits = 0;
+        while (is_hex_digit(peek(lexer))) {
+            char digit_char = advance_char(lexer);
+            unsigned digit = digit_char >= '0' && digit_char <= '9'
+                ? (unsigned)(digit_char - '0')
+                : (digit_char >= 'a' && digit_char <= 'f'
+                    ? (unsigned)(digit_char - 'a' + 10)
+                    : (unsigned)(digit_char - 'A' + 10));
+            if (value <= 255U) {
+                value = value * 16U + digit;
+                if (value > 255U) value = 256U;
+            }
+            digits++;
+        }
+        if (digits == 0U) {
+            *message = "Hex escape sequence requires at least one hexadecimal digit.";
+            return false;
+        }
+        if (value > 255U) {
+            *message = "Hex escape sequence is outside the byte range.";
+            return false;
+        }
+        return true;
+    }
+
+    if (escaped >= '0' && escaped <= '7') {
+        unsigned value = (unsigned)(escaped - '0');
+        for (size_t digits = 1U; digits < 3U; digits++) {
+            char next = peek(lexer);
+            if (next < '0' || next > '7') break;
+            (void)advance_char(lexer);
+            if (value <= 255U) {
+                value = value * 8U + (unsigned)(next - '0');
+                if (value > 255U) value = 256U;
+            }
+        }
+        if (value > 255U) {
+            *message = "Octal escape sequence is outside the byte range.";
+            return false;
+        }
+        return true;
+    }
+
+    if (strchr("'\"?\\abfnrtv", escaped) != NULL) return true;
+
+    *message = "Unsupported escape sequence.";
+    return false;
+}
+
 static Token scan_string(Lexer *lexer, TokenType type)
 {
+    const char *escape_error = NULL;
     while (peek(lexer) != '"' && peek(lexer) != '\0') {
         if (peek(lexer) == '\n') {
             return error_token(lexer, "String literals cannot contain a newline.");
         }
 
         if (peek(lexer) == '\\') {
-            advance_char(lexer);
-
-            if (peek(lexer) == '\0' || peek(lexer) == '\n') {
-                break;
+            const char *message = NULL;
+            if (!scan_escape_sequence(lexer, &message) && !escape_error) {
+                escape_error = message;
             }
-
-            advance_char(lexer);
         } else {
             advance_char(lexer);
         }
@@ -229,6 +359,7 @@ static Token scan_string(Lexer *lexer, TokenType type)
     }
 
     advance_char(lexer);
+    if (escape_error) return error_token(lexer, escape_error);
     return make_token(lexer, type);
 }
 
