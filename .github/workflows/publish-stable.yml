@@ -10,7 +10,7 @@ on:
       confirm_version:
         description: Type the exact stable version to confirm publication
         required: true
-        default: "2.0.0"
+        default: "2.0.1"
         type: string
 
 # Build and test jobs only need read access; release publishing opts into write.
@@ -202,7 +202,7 @@ jobs:
           mkdir -p website/learn
           cp -a docs/online-book/book/. website/learn/
           test -s website/learn/index.html
-          test -s website/learn/reference/CHANGELOG-2.0.0.html
+          test -s website/learn/reference/CHANGELOG-2.0.1.html
           test -s website/learn/reference/STABLE-RELEASE-CHECKLIST.html
           python3 tools/check_website.py
 
@@ -294,7 +294,7 @@ jobs:
           gh release create "$TAG" \
             --target "$GITHUB_SHA" \
             --title "YLang ${EXPECTED_VERSION}" \
-            --notes-file docs/CHANGELOG-2.0.0.md \
+            --notes-file docs/CHANGELOG-2.0.1.md \
             --latest \
             build/ylang-yspm/*.yspkg
           echo "Published stable release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}" >> "$GITHUB_STEP_SUMMARY"
