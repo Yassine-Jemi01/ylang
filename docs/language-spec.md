@@ -1,6 +1,6 @@
-# YLang Core Language Specification — 2.0.0
+# YLang Core Language Specification — 2.0.1
 
-This document defines the stable core language contract for YLang 2.0.0. Named imports, structs, enums, GUI/Game2D APIs, the NASM backend, native Windows support, and YSPM packaging are documented separately and remain experimental; their behavior is not covered by the stable-core compatibility guarantee. Syntax not listed here is not part of the stable core contract.
+This document defines the stable core language contract for YLang 2.0.1. Named imports, structs, enums, GUI/Game2D APIs, the NASM backend, native Windows support, and YSPM packaging are documented separately and remain experimental; their behavior is not covered by the stable-core compatibility guarantee. Syntax not listed here is not part of the stable core contract.
 
 ## Explicit conversions
 
@@ -82,7 +82,7 @@ let string message = "Hello\n";
 let string greeting = f"Hello {message}";
 ```
 
-`char` is one byte, not a Unicode scalar. Integer literals support decimal notation and hexadecimal notation such as `0xFF`; floating-point literals support decimal notation and scientific notation such as `1e3` or `2.5e-4`. A string literal must be terminated. F-strings begin with `f"` and interpolate expressions inside `{}`. Supported interpolations include variables and operators. Function calls and assignments are not allowed inside interpolation expressions; compute the value in a preceding statement. Literal braces can be escaped as documented by the lexer (`{{`, `}}`, `\{`, and `\}`).
+`char` is one byte, not a Unicode scalar. Integer literals support decimal notation and hexadecimal notation such as `0xFF`; floating-point literals support decimal notation and scientific notation such as `1e3` or `2.5e-4`. String literals support the standard single-character escapes (`\\`, `\"`, `\'`, `\?`, `\a`, `\b`, `\f`, `\n`, `\r`, `\t`, `\v`), one-to-three-digit octal escapes, and hexadecimal escapes introduced by `\\x` with one or more hex digits; numeric escapes must fit in one byte. Strings are NUL-terminated, so an embedded `\\0` ends the observable string at that point rather than representing an embedded NUL byte. A string literal must be terminated. F-strings begin with `f"` and interpolate expressions inside `{}`. Supported interpolations include variables and operators. Function calls and assignments are not allowed inside interpolation expressions; compute the value in a preceding statement. Literal braces can be escaped as documented by the lexer (`{{`, `}}`, `\{`, and `\}`).
 
 ## 6. Output
 
