@@ -38,9 +38,9 @@ regen-runtime-template:
 print-version:
 	@printf '%s\n' '$(VERSION)'
 
-build/frontend-unit: tests/frontend_unit.c src/parser.c src/lexer.c src/internal.h include/ylang/compiler.h include/ylang/lexer.h
+build/frontend-unit: tests/frontend_unit.c src/parser.c src/lexer.c src/gui_builtins.c src/internal.h include/ylang/compiler.h include/ylang/lexer.h
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) -Isrc $(CFLAGS) tests/frontend_unit.c src/parser.c src/lexer.c $(LDFLAGS) -o $@
+	$(CC) $(CPPFLAGS) -Isrc $(CFLAGS) tests/frontend_unit.c src/parser.c src/lexer.c src/gui_builtins.c $(LDFLAGS) -o $@
 
 frontend-unit-test: build/frontend-unit
 	./build/frontend-unit
