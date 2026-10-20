@@ -105,7 +105,7 @@ Supported printable values are `int`, `float`, `bool`, `char`, and `string`. `pr
 - Grouping: `(expression)`
 - Calls: `name(argument, ...)`
 
-Operator precedence is conventional: unary operators, multiplication/division/modulo, addition/subtraction, comparisons/equality, `and`, then `or`. Parentheses may be used to make grouping explicit.
+Operator precedence is conventional: unary operators, multiplication/division/modulo, addition/subtraction, comparisons/equality, `and`, then `or`. Parentheses may be used to make grouping explicit. Evaluations with observable side effects are sequenced from left to right: function-call arguments, eager binary operands, struct initializer fields, and array initializer elements. For assignment, the target location is evaluated before the right-hand side. Boolean `and` and `or` short-circuit from left to right.
 
 Signed integer overflow, integer division/modulo by zero, and floating-point division by zero are handled by generated runtime helpers and terminate the program with a runtime-error message and status 70. This does not mean every possible C-level issue is guarded or that the language is memory-safe.
 

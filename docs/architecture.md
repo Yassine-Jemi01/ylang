@@ -3,12 +3,13 @@
 YLang 2.0.0 uses a conventional multi-stage compiler pipeline. The stable core compiles through generated C and GCC/Clang; named imports, structs, enums, GUI/Game2D, and the NASM backend are explicitly experimental extensions.
 
 1. **Lexer (`src/lexer.c`)** — turns source text into positioned tokens.
-2. **Parser (`src/parser.c`)** — builds the program representation and emits syntax diagnostics.
-3. **Semantic analysis (`src/sema.c`)** — resolves names, validates initialization and constant assignment, and checks types.
-4. **Module loader (`src/module.c`)** — recursively loads imported files, detects cycles, resolves named imports, and merges module ASTs while retaining per-module visibility.
-5. **C code generator (`src/codegen.c`)** — writes C for the checked program, including runtime helpers for supported checked arithmetic operations.
-6. **Driver (`src/driver.c`)** — orchestrates module loading and checking, writes generated C, and invokes GCC or Clang without going through a shell.
-7. **CLI (`src/main.c`)** — parses user commands and their options.
+2. **Parser (`src/parser.c`)** — builds the program representation and calls shared diagnostics when syntax is invalid.
+3. **Frontend utilities** — `src/arena.c` owns arena allocation and arena-backed vectors; `src/strbuf.c` owns generated-text buffers; `src/diagnostics.c` formats source-located errors and warnings.
+4. **Semantic analysis (`src/sema.c`)** — resolves names, validates initialization and constant assignment, and checks types.
+5. **Module loader (`src/module.c`)** — recursively loads imported files, detects cycles, resolves named imports, and merges module ASTs while retaining per-module visibility.
+6. **C code generator (`src/codegen.c`)** — writes C for the checked program, including runtime helpers for supported checked arithmetic operations.
+7. **Driver (`src/driver.c`)** — orchestrates module loading and checking, writes generated C, and invokes GCC or Clang without going through a shell.
+8. **CLI (`src/main.c`)** — parses user commands and their options.
 
 The internal compiler model is declared in `src/internal.h`; the public-facing compiler and token declarations are in `include/ylang/`.
 
