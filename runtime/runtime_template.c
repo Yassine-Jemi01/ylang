@@ -51,14 +51,16 @@ static void yl_cleanup(void) {
         free(yl_tracked);
         yl_tracked = next;
     }
-
+}
+static void *yl_track(void *ptr) {
     YLTracked *node = malloc(sizeof(*node));
     if (!node) yl_runtime_error("out of memory");
     node->ptr = ptr;
     node->next = yl_tracked;
     yl_tracked = node;
     return ptr;
-(bool value) { return value ? "true" : "false"; }
+}
+static const char *yl_boolstr(bool value) { return value ? "true" : "false"; }
 static const char *yl_format(const char *format, ...);
 static const char *yl_to_string_int(int64_t value) { return yl_format("%lld", (long long)value); }
 static const char *yl_to_string_float(double value) { return yl_format("%.17g", value); }
@@ -73,7 +75,6 @@ static int64_t yl_to_int(double value) {
 }
 static bool yl_string_is_int(const char *value) {
     if (!value || !*value) return false;
-
     errno = 0;
     char *end = NULL;
     (void)strtoll(value, &end, 10);
@@ -92,12 +93,10 @@ static const char *yl_format(const char *format, ...) {
     va_copy(copy, args);
     int needed = vsnprintf(NULL, 0, format, copy);
     va_end(copy);
-
     if (needed < 0) {
         va_end(args);
         yl_runtime_error("formatting failed");
     }
-
     char *buffer = malloc((size_t)needed + 1);
     if (!buffer) {
         va_end(args);
@@ -106,7 +105,8 @@ static const char *yl_format(const char *format, ...) {
     (void)vsnprintf(buffer, (size_t)needed + 1, format, args);
     va_end(args);
     return (const char *)yl_track(buffer);
-(int64_t a, int64_t b) {
+}
+static int64_t yl_add_i64(int64_t a, int64_t b) {
     int64_t result;
     if (__builtin_add_overflow(a, b, &result)) {
         yl_runtime_error("integer overflow in addition");
@@ -187,7 +187,6 @@ static const char *yl_string_concat(const char *left, const char *right) {
 static const char *yl_string_replace(const char *value, const char *needle,
                                     const char *replacement) {
     if (!*needle) return yl_format("%s", value);
-
     size_t value_length = strlen(value);
     size_t needle_length = strlen(needle);
     size_t replacement_length = strlen(replacement);
@@ -197,7 +196,6 @@ static const char *yl_string_replace(const char *value, const char *needle,
         match_count++;
         scan += needle_length;
     }
-
     size_t result_length;
     if (replacement_length >= needle_length) {
         size_t delta = replacement_length - needle_length;
@@ -211,10 +209,8 @@ static const char *yl_string_replace(const char *value, const char *needle,
     if (result_length == SIZE_MAX) {
         yl_runtime_error("string replacement result is too large");
     }
-
     char *result = malloc(result_length + 1);
     if (!result) yl_runtime_error("out of memory");
-
     const char *src = value;
     char *dst = result;
     const char *match;
@@ -233,7 +229,6 @@ static const char *yl_string_case(const char *value, bool upper) {
     size_t length = strlen(value);
     char *result = malloc(length + 1);
     if (!result) yl_runtime_error("out of memory");
-
     for (size_t i = 0; i < length; i++) {
         unsigned char ch = (unsigned char)value[i];
         result[i] = (char)(upper ? toupper(ch) : tolower(ch));
@@ -281,21 +276,18 @@ static const char *yl_read_file(const char *path) {
         fclose(file);
         yl_runtime_error("cannot seek input file");
     }
-
     long end = ftell(file);
     if (end < 0 || (uintmax_t)end >= (uintmax_t)SIZE_MAX) {
         fclose(file);
         yl_runtime_error("input file is too large");
     }
     rewind(file);
-
     size_t size = (size_t)end;
     char *data = malloc(size + 1);
     if (!data) {
         fclose(file);
         yl_runtime_error("out of memory");
     }
-
     size_t got = fread(data, 1, size, file);
     bool failed = ferror(file) != 0 || got != size;
     fclose(file);
@@ -307,14 +299,12 @@ static const char *yl_read_file(const char *path) {
         free(data);
         yl_runtime_error("binary files are not supported by string I/O");
     }
-
     data[size] = '\0';
     return (const char *)yl_track(data);
 }
 static bool yl_write_file(const char *path, const char *content) {
     FILE *file = fopen(path, "wb");
     if (!file) return false;
-
     size_t size = strlen(content);
     bool ok = fwrite(content, 1, size, file) == size;
     if (fclose(file) != 0) ok = false;
@@ -357,7 +347,6 @@ static bool yl_image_open(const char *path) {
 #else
 static bool yl_image_open(const char *path) {
     if (!path || !*path || !yl_path_exists(path)) return false;
-
     pid_t child = fork();
     if (child < 0) return false;
     if (child == 0) {
@@ -368,10 +357,11 @@ static bool yl_image_open(const char *path) {
 #endif
         _exit(127);
     }
-
     int status = 0;
     while (waitpid(child, &status, 0) < 0) {
         if (errno == EINTR) continue;
         return false;
     }
     return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+#endif
