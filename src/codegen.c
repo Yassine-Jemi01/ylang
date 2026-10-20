@@ -395,7 +395,355 @@ static void emit_temp_declarations_stmt(Compiler *compiler, FILE *out,
     }
 }
 
-static void emit_expr(StringBuilder *sb, Expr *expr);
+
+typedef struct {
+    const Expr *expr;
+    size_t first_temp;
+    size_t second_temp;
+    size_t *item_temps;
+    size_t item_temp_count;
+    bool sequence_operands;
+    bool sequence_items;
+    bool sequence_assignment;
+} CodegenExprInfo;
+
+typedef struct {
+    const Expr *key;
+    size_t info_index;
+} CodegenInfoSlot;
+
+typedef struct {
+    YType type;
+    bool is_pointer;
+} CodegenTemp;
+
+typedef struct {
+    Compiler *compiler;
+    CodegenExprInfo *infos;
+    size_t info_count;
+    size_t info_capacity;
+    CodegenInfoSlot *index;
+    size_t index_capacity;
+    CodegenTemp *temps;
+    size_t temp_count;
+    size_t temp_capacity;
+} CodegenContext;
+
+static void emit_expr(StringBuilder *sb, Expr *expr, CodegenContext *ctx);
+static void emit_indent(FILE *out, unsigned indent);
+
+static void codegen_allocation_failure(void)
+{
+    fputs("ylang: fatal: out of memory preparing ordered expression evaluation\n",
+          stderr);
+    exit(70);
+}
+
+static size_t codegen_expr_hash(const Expr *expr)
+{
+    uintptr_t value = (uintptr_t)(const void *)expr;
+    value >>= 4U;
+    value ^= value >> 17U;
+    value *= (uintptr_t)0x9e3779b9U;
+    value ^= value >> 11U;
+    return (size_t)value;
+}
+
+static void codegen_reserve_info_index(CodegenContext *ctx, size_t needed)
+{
+    if (ctx->index_capacity != 0U &&
+        needed * 10U < ctx->index_capacity * 7U) {
+        return;
+    }
+
+    size_t capacity = ctx->index_capacity ? ctx->index_capacity : 128U;
+    while (needed * 10U >= capacity * 7U) {
+        if (capacity > SIZE_MAX / 2U) codegen_allocation_failure();
+        capacity *= 2U;
+    }
+    if (capacity > SIZE_MAX / sizeof(*ctx->index)) codegen_allocation_failure();
+
+    CodegenInfoSlot *slots = calloc(capacity, sizeof(*slots));
+    if (!slots) codegen_allocation_failure();
+    for (size_t i = 0; i < ctx->index_capacity; i++) {
+        if (!ctx->index[i].key) continue;
+        size_t position = codegen_expr_hash(ctx->index[i].key) & (capacity - 1U);
+        while (slots[position].key) position = (position + 1U) & (capacity - 1U);
+        slots[position] = ctx->index[i];
+    }
+    free(ctx->index);
+    ctx->index = slots;
+    ctx->index_capacity = capacity;
+}
+
+static CodegenExprInfo *codegen_expr_info(CodegenContext *ctx,
+                                          const Expr *expr, bool create)
+{
+    if (!ctx || !expr) return NULL;
+    if (create) codegen_reserve_info_index(ctx, ctx->info_count + 1U);
+    if (ctx->index_capacity == 0U) return NULL;
+
+    size_t position = codegen_expr_hash(expr) & (ctx->index_capacity - 1U);
+    while (ctx->index[position].key) {
+        if (ctx->index[position].key == expr) {
+            return &ctx->infos[ctx->index[position].info_index];
+        }
+        position = (position + 1U) & (ctx->index_capacity - 1U);
+    }
+    if (!create) return NULL;
+
+    if (ctx->info_count == ctx->info_capacity) {
+        size_t capacity = ctx->info_capacity ? ctx->info_capacity * 2U : 64U;
+        if (capacity < ctx->info_capacity ||
+            capacity > SIZE_MAX / sizeof(*ctx->infos)) {
+            codegen_allocation_failure();
+        }
+        CodegenExprInfo *grown = realloc(ctx->infos, capacity * sizeof(*grown));
+        if (!grown) codegen_allocation_failure();
+        ctx->infos = grown;
+        ctx->info_capacity = capacity;
+    }
+
+    size_t index = ctx->info_count++;
+    CodegenExprInfo *info = &ctx->infos[index];
+    memset(info, 0, sizeof(*info));
+    info->expr = expr;
+    info->first_temp = SIZE_MAX;
+    info->second_temp = SIZE_MAX;
+    ctx->index[position].key = expr;
+    ctx->index[position].info_index = index;
+    return info;
+}
+
+static size_t codegen_new_temp(CodegenContext *ctx, YType type, bool is_pointer)
+{
+    if (ctx->temp_count == ctx->temp_capacity) {
+        size_t capacity = ctx->temp_capacity ? ctx->temp_capacity * 2U : 64U;
+        if (capacity < ctx->temp_capacity ||
+            capacity > SIZE_MAX / sizeof(*ctx->temps)) {
+            codegen_allocation_failure();
+        }
+        CodegenTemp *grown = realloc(ctx->temps, capacity * sizeof(*grown));
+        if (!grown) codegen_allocation_failure();
+        ctx->temps = grown;
+        ctx->temp_capacity = capacity;
+    }
+    size_t id = ctx->temp_count++;
+    ctx->temps[id] = (CodegenTemp){ .type = type, .is_pointer = is_pointer };
+    return id;
+}
+
+static void codegen_allocate_item_temps(CodegenContext *ctx,
+                                        CodegenExprInfo *info,
+                                        Expr **items, size_t count,
+                                        const Function *function)
+{
+    if (count == 0U) return;
+    if (count > SIZE_MAX / sizeof(*info->item_temps)) codegen_allocation_failure();
+    info->item_temps = malloc(count * sizeof(*info->item_temps));
+    if (!info->item_temps) codegen_allocation_failure();
+    info->item_temp_count = count;
+    for (size_t i = 0; i < count; i++) {
+        bool array_parameter = function && i < function->param_count &&
+                               function->params[i]->is_array;
+        info->item_temps[i] = codegen_new_temp(ctx, items[i]->type, array_parameter);
+    }
+    info->sequence_items = true;
+}
+
+static bool prepare_expr(CodegenContext *ctx, Expr *expr)
+{
+    if (!expr) return false;
+
+    switch (expr->kind) {
+        case EXPR_CALL: {
+            bool argument_effect = false;
+            for (size_t i = 0; i < expr->as.call.count; i++) {
+                bool item_effect = prepare_expr(ctx, expr->as.call.args[i]);
+                argument_effect = argument_effect || item_effect;
+            }
+            if (argument_effect && expr->as.call.count > 1U) {
+                CodegenExprInfo *info = codegen_expr_info(ctx, expr, true);
+                codegen_allocate_item_temps(ctx, info, expr->as.call.args,
+                                            expr->as.call.count,
+                                            expr->as.call.function);
+            }
+            return true;
+        }
+        case EXPR_BINARY: {
+            bool left_effect = prepare_expr(ctx, expr->as.binary.left);
+            bool right_effect = prepare_expr(ctx, expr->as.binary.right);
+            TokenType op = expr->as.binary.op.type;
+            if ((left_effect || right_effect) &&
+                op != TOKEN_AND && op != TOKEN_OR) {
+                CodegenExprInfo *info = codegen_expr_info(ctx, expr, true);
+                info->sequence_operands = true;
+                info->first_temp = codegen_new_temp(
+                    ctx, expr->as.binary.left->type, false);
+                info->second_temp = codegen_new_temp(
+                    ctx, expr->as.binary.right->type, false);
+            }
+            return left_effect || right_effect;
+        }
+        case EXPR_ASSIGN: {
+            bool target_effect = prepare_expr(ctx, expr->as.assign.target);
+            bool value_effect = prepare_expr(ctx, expr->as.assign.right);
+            if (target_effect || value_effect) {
+                CodegenExprInfo *info = codegen_expr_info(ctx, expr, true);
+                info->sequence_assignment = true;
+                info->first_temp = codegen_new_temp(
+                    ctx, expr->as.assign.target->type, true);
+                info->second_temp = codegen_new_temp(
+                    ctx, expr->as.assign.right->type, false);
+            }
+            return true;
+        }
+        case EXPR_STRUCT_INIT: {
+            bool item_effect = false;
+            for (size_t i = 0; i < expr->as.struct_init.count; i++) {
+                bool effect = prepare_expr(ctx, expr->as.struct_init.args[i]);
+                item_effect = item_effect || effect;
+            }
+            if (item_effect && expr->as.struct_init.count > 1U) {
+                CodegenExprInfo *info = codegen_expr_info(ctx, expr, true);
+                codegen_allocate_item_temps(ctx, info, expr->as.struct_init.args,
+                                            expr->as.struct_init.count, NULL);
+            }
+            return item_effect;
+        }
+        case EXPR_ARRAY: {
+            bool item_effect = false;
+            for (size_t i = 0; i < expr->as.array.count; i++) {
+                bool effect = prepare_expr(ctx, expr->as.array.items[i]);
+                item_effect = item_effect || effect;
+            }
+            if (item_effect && expr->as.array.count > 0U) {
+                CodegenExprInfo *info = codegen_expr_info(ctx, expr, true);
+                info->sequence_items = true;
+            }
+            return item_effect;
+        }
+        case EXPR_MEMBER:
+            return prepare_expr(ctx, expr->as.member.target);
+        case EXPR_INDEX: {
+            bool target_effect = prepare_expr(ctx, expr->as.index.target);
+            bool index_effect = prepare_expr(ctx, expr->as.index.index);
+            return target_effect || index_effect;
+        }
+        case EXPR_UNARY:
+            return prepare_expr(ctx, expr->as.unary.right);
+        case EXPR_FSTRING: {
+            bool effect = false;
+            for (size_t i = 0; i < expr->as.fstring.count; i++) {
+                if (expr->as.fstring.parts[i].expression) {
+                    bool part_effect = prepare_expr(
+                        ctx, expr->as.fstring.parts[i].expression);
+                    effect = effect || part_effect;
+                }
+            }
+            return effect;
+        }
+        default:
+            return false;
+    }
+}
+
+static void prepare_stmt(CodegenContext *ctx, Stmt *stmt)
+{
+    if (!stmt) return;
+    switch (stmt->kind) {
+        case STMT_BLOCK:
+            for (size_t i = 0; i < stmt->as.block.count; i++)
+                prepare_stmt(ctx, stmt->as.block.items[i]);
+            break;
+        case STMT_VAR:
+            (void)prepare_expr(ctx, stmt->as.variable->initializer);
+            break;
+        case STMT_PRINT:
+            for (size_t i = 0; i < stmt->as.print.count; i++)
+                (void)prepare_expr(ctx, stmt->as.print.args[i]);
+            break;
+        case STMT_IF:
+            (void)prepare_expr(ctx, stmt->as.if_stmt.condition);
+            prepare_stmt(ctx, stmt->as.if_stmt.then_branch);
+            prepare_stmt(ctx, stmt->as.if_stmt.else_branch);
+            break;
+        case STMT_LOOP:
+            prepare_stmt(ctx, stmt->as.loop_body);
+            break;
+        case STMT_WHILE:
+            (void)prepare_expr(ctx, stmt->as.while_stmt.condition);
+            prepare_stmt(ctx, stmt->as.while_stmt.body);
+            break;
+        case STMT_FOR:
+            prepare_stmt(ctx, stmt->as.for_stmt.initializer);
+            (void)prepare_expr(ctx, stmt->as.for_stmt.condition);
+            (void)prepare_expr(ctx, stmt->as.for_stmt.increment);
+            prepare_stmt(ctx, stmt->as.for_stmt.body);
+            break;
+        case STMT_MATCH:
+            (void)prepare_expr(ctx, stmt->as.match_stmt.value);
+            for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++)
+                prepare_stmt(ctx, stmt->as.match_stmt.arms[i]->body);
+            break;
+        case STMT_RETURN:
+            (void)prepare_expr(ctx, stmt->as.return_value);
+            break;
+        case STMT_EXPR:
+            (void)prepare_expr(ctx, stmt->as.expression);
+            break;
+        case STMT_BREAK:
+        case STMT_CONTINUE:
+            break;
+    }
+}
+
+static void codegen_context_destroy(CodegenContext *ctx)
+{
+    for (size_t i = 0; i < ctx->info_count; i++) free(ctx->infos[i].item_temps);
+    free(ctx->infos);
+    free(ctx->index);
+    free(ctx->temps);
+    memset(ctx, 0, sizeof(*ctx));
+}
+
+static void emit_temp_name(StringBuilder *sb, size_t id)
+{
+    sb_appendf(sb, "yl_codegen_tmp_%zu", id);
+}
+
+static void emit_temp_assignment(StringBuilder *sb, CodegenContext *ctx,
+                                 size_t id, Expr *expr)
+{
+    sb_append(sb, "(");
+    emit_temp_name(sb, id);
+    sb_append(sb, " = ");
+    emit_expr(sb, expr, ctx);
+    sb_append(sb, ")");
+}
+
+static void emit_temp_declarations(FILE *out, const CodegenContext *ctx,
+                                   unsigned indent)
+{
+    for (size_t i = 0; i < ctx->temp_count; i++) {
+        emit_indent(out, indent);
+        const char *type = c_base_type(ctx->compiler, ctx->temps[i].type);
+        if (ctx->temps[i].is_pointer) {
+            fprintf(out, "%s *yl_codegen_tmp_%zu;\n", type, i);
+        } else {
+            fprintf(out, "%s yl_codegen_tmp_%zu;\n", type, i);
+        }
+    }
+}
+
+static void emit_binary_operand(StringBuilder *sb, Expr *expr,
+                                CodegenContext *ctx, size_t temp_id)
+{
+    if (temp_id != SIZE_MAX) emit_temp_name(sb, temp_id);
+    else emit_expr(sb, expr, ctx);
+}
+
+
 
 static void append_fstring_format_text(StringBuilder *format, const char *text)
 {
