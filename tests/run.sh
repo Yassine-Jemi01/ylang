@@ -91,6 +91,12 @@ fi
 ./build/test-demo > build/test-demo.out
 diff -u tests/expected-demo.txt build/test-demo.out
 
+# Calls, arithmetic operands, struct initializers, and array initializers evaluate left to right.
+./build/ylang check tests/evaluation-order.yl >/dev/null
+./build/ylang build tests/evaluation-order.yl -o build/test-evaluation-order >/dev/null
+./build/test-evaluation-order > build/evaluation-order.out
+diff -u tests/expected-evaluation-order.txt build/evaluation-order.out
+
 # Safe auto-fix: replace a common typo in code, but leave strings/comments alone.
 ./build/ylang fix tests/typo-print.yl -o build/typo-print-fixed.yl > build/fix.out 2> build/fix.err
 grep -q "replaced 'pritn' with 'print'" build/fix.err
