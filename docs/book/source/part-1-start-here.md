@@ -12,7 +12,7 @@ The normal workflow has three stages:
 
 The compiler itself is implemented in C17. That implementation detail does not mean you write C when using YLang. Your source remains YLang, and the C backend is the default translation path.
 
-## What is stable in 2.0.0?
+## What is stable in 2.0.1?
 
 The stable core includes explicit declarations, constants, scalar types, functions, control flow, fixed-size homogeneous arrays, strings, formatted strings, standard input, text-file operations, path utilities, math helpers, and the documented command-line tools. Explicit typing means the compiler does not silently change an integer into a float to make an expression compile.
 
@@ -109,7 +109,7 @@ Ensure `$HOME/.local/bin` is on your `PATH` if you want to invoke `ylang` from a
 ylang --version
 ```
 
-The compiler should report version `2.0.0`. If you see an older version, your shell may be finding another executable earlier in `PATH`. Compare `command -v ylang` with `./build/ylang --version` to diagnose which one you are running.
+The compiler should report version `2.0.1`. If you see an older version, your shell may be finding another executable earlier in `PATH`. Compare `command -v ylang` with `./build/ylang --version` to diagnose which one you are running.
 
 ---
 
