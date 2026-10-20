@@ -412,14 +412,22 @@ static YType check_expr(Checker *checker, Expr *expr)
         }
         case EXPR_BOOL: expr->type = TYPE_BOOL; return expr->type;
         case EXPR_STRING: expr->type = TYPE_STRING; return expr->type;
-        case EXPR_CHAR:
-            if (expr->token.length < 3 || expr->token.length > 4) {
+        case EXPR_CHAR: {
+            unsigned char *bytes = NULL;
+            size_t length = 0;
+            const bool valid = decode_quoted_literal(expr->token, &bytes, &length) &&
+                               length == 1U;
+            free(bytes);
+            if (!valid) {
                 diagnostic(c, expr->token, "error", "E2012",
-                           "Character literals must contain one byte.",
-                           "Use a single ASCII character such as 'A' or an escape such as '\\n'.");
+                           "Character literals must decode to exactly one byte.",
+                           "Use a character such as 'A', an escape such as '\\n', or a two-digit hex escape such as '\\x41'.");
                 expr->type = TYPE_ERROR;
-            } else expr->type = TYPE_CHAR;
+            } else {
+                expr->type = TYPE_CHAR;
+            }
             return expr->type;
+        }
         case EXPR_FSTRING:
             for (size_t i = 0; i < expr->as.fstring.count; i++) {
                 FPart *part = &expr->as.fstring.parts[i];
