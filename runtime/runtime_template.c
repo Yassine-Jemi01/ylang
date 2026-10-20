@@ -63,7 +63,7 @@ static void *yl_track(void *ptr) {
 static const char *yl_boolstr(bool value) { return value ? "true" : "false"; }
 static const char *yl_format(const char *format, ...);
 static const char *yl_to_string_int(int64_t value) { return yl_format("%lld", (long long)value); }
-static const char *yl_to_string_float(double value) { return yl_format("%.17g", value); }
+static const char *yl_to_string_float(double value) { return yl_format("%.15g", value); }
 static const char *yl_to_string_char(char value) { return yl_format("%c", (int)value); }
 static int64_t yl_to_int(double value) {
     if (!isfinite(value) ||
@@ -75,6 +75,12 @@ static int64_t yl_to_int(double value) {
 }
 static bool yl_string_is_int(const char *value) {
     if (!value || !*value) return false;
+    const unsigned char *cursor = (const unsigned char *)value;
+    if (*cursor == '+' || *cursor == '-') cursor++;
+    if (*cursor < '0' || *cursor > '9') return false;
+    for (; *cursor; cursor++) {
+        if (*cursor < '0' || *cursor > '9') return false;
+    }
     errno = 0;
     char *end = NULL;
     (void)strtoll(value, &end, 10);
@@ -315,7 +321,7 @@ static bool yl_path_exists(const char *path) {
     return path && stat(path, &info) == 0;
 }
 static bool yl_path_separator(char ch) {
-    return ch == '/' || ch == '\\';
+    return ch == '/';
 }
 static const char *yl_path_basename(const char *path) {
     if (!path) return "";
@@ -350,10 +356,21 @@ static bool yl_image_open(const char *path) {
     pid_t child = fork();
     if (child < 0) return false;
     if (child == 0) {
+        const char *argument = path;
+        char *safe_path = NULL;
+        if (path[0] == '-') {
+            size_t length = strlen(path);
+            safe_path = malloc(length + 3U);
+            if (!safe_path) _exit(127);
+            safe_path[0] = '.';
+            safe_path[1] = '/';
+            memcpy(safe_path + 2U, path, length + 1U);
+            argument = safe_path;
+        }
 #if defined(__APPLE__)
-        execlp("open", "open", path, (char *)NULL);
+        execlp("open", "open", argument, (char *)NULL);
 #else
-        execlp("xdg-open", "xdg-open", path, (char *)NULL);
+        execlp("xdg-open", "xdg-open", argument, (char *)NULL);
 #endif
         _exit(127);
     }
