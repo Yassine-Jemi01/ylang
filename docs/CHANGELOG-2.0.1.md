@@ -16,7 +16,7 @@ YLang 2.0.1 is a corrective release in the 2.0 line. It keeps the documented sta
 - `path.basename` follows POSIX path separators; a backslash is an ordinary filename character.
 - On POSIX systems, `image.open` prefixes relative paths beginning with a hyphen before invoking the system opener, avoiding option-like arguments without using a shell.
 - Module imports are restricted to resolved `.yl` source files, preventing unrelated text files from being treated as YLang programs or echoed in diagnostics.
-- The language specification now clarifies that strings are NUL-terminated and that embedded `\\0` cannot be represented as an embedded NUL character in the current string model.
+- The language specification now clarifies that strings are NUL-terminated and that embedded `\0` cannot be represented as an embedded NUL character in the current string model.
 
 ## Release tooling
 
