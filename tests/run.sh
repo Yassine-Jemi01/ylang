@@ -1224,6 +1224,27 @@ folder\name.txt
 EOF
 diff -u build/evaluation-order.expected build/evaluation-order.out
 
+cat > build/match-return.yl <<'EOF'
+enum Direction { North, East }
+function score(Direction direction) -> int {
+    match (direction) {
+        Direction.North -> { return 1; }
+        Direction.East -> { return 2; }
+    }
+}
+function main() -> int {
+    print(score(Direction.North));
+    return 0;
+}
+EOF
+./build/ylang build build/match-return.yl -o build/test-match-return > /dev/null 2> build/match-return-build.err
+if grep -q 'control reaches end of non-void function' build/match-return-build.err; then
+    cat build/match-return-build.err >&2
+    echo "FAIL: exhaustive match generated a fallthrough warning" >&2
+    exit 1
+fi
+[ "$(./build/test-match-return)" = "1" ]
+
 if command -v clang >/dev/null 2>&1; then
     ./build/ylang build build/evaluation-order.yl -o build/test-evaluation-order-clang --cc clang >/dev/null
     ./build/test-evaluation-order-clang > build/evaluation-order-clang.out
