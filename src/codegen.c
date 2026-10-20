@@ -202,6 +202,92 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
         }
     }
 
+    if (expr->kind == EXPR_ASSIGN &&
+        (expr_has_side_effects(expr->as.assign.target) ||
+         expr_has_side_effects(expr->as.assign.right))) {
+        Expr *target = expr->as.assign.target;
+        Expr *right = expr->as.assign.right;
+        char pointer_name[96];
+        char target_name[112];
+        char right_name[96];
+        (void)snprintf(pointer_name, sizeof(pointer_name), "yl_seq_%zu_%zu_ptr",
+                       expr->token.line, expr->token.column);
+        (void)snprintf(target_name, sizeof(target_name), "(*%s)", pointer_name);
+        (void)snprintf(right_name, sizeof(right_name), "yl_seq_%zu_%zu_rhs",
+                       expr->token.line, expr->token.column);
+        VarDecl target_var = { .type = target->type, .c_name = target_name };
+        VarDecl right_var = { .type = right->type, .c_name = right_name };
+        Expr target_expr = { .kind = EXPR_NAME, .type = target->type };
+        Expr right_expr = { .kind = EXPR_NAME, .type = right->type };
+        target_expr.as.name.variable = &target_var;
+        right_expr.as.name.variable = &right_var;
+
+        sb_appendf(sb, "(__extension__ ({ __auto_type %s = &(", pointer_name);
+        emit_expr(sb, target);
+        sb_appendf(sb, "); __auto_type %s = ", right_name);
+        emit_expr(sb, right);
+        sb_append(sb, "; ");
+        Expr rewritten_assignment = *expr;
+        rewritten_assignment.as.assign.target = &target_expr;
+        rewritten_assignment.as.assign.right = &right_expr;
+        emit_expr_raw(sb, &rewritten_assignment);
+        sb_append(sb, "; }))");
+        return;
+    }
+
+    if (expr->kind == EXPR_STRUCT_INIT && expr->as.struct_init.count > 1U) {
+        bool needs_sequence = false;
+        for (size_t i = 0; i < expr->as.struct_init.count; i++) {
+            if (expr_has_side_effects(expr->as.struct_init.args[i])) {
+                needs_sequence = true;
+                break;
+            }
+        }
+        if (needs_sequence) {
+            size_t count = expr->as.struct_init.count;
+            Expr **rewritten = calloc(count, sizeof(*rewritten));
+            Expr *temporary_exprs = calloc(count, sizeof(*temporary_exprs));
+            VarDecl *temporary_vars = calloc(count, sizeof(*temporary_vars));
+            char (*temporary_names)[96] = calloc(count, sizeof(*temporary_names));
+            if (!rewritten || !temporary_exprs || !temporary_vars || !temporary_names) {
+                free(rewritten);
+                free(temporary_exprs);
+                free(temporary_vars);
+                free(temporary_names);
+                emit_expr_raw(sb, expr);
+                return;
+            }
+
+            sb_append(sb, "(__extension__ ({ ");
+            for (size_t i = 0; i < count; i++) {
+                Expr *argument = expr->as.struct_init.args[i];
+                (void)snprintf(temporary_names[i], sizeof(temporary_names[i]),
+                               "yl_seq_%zu_%zu_%zu", expr->token.line,
+                               expr->token.column, i);
+                temporary_vars[i].type = argument->type;
+                temporary_vars[i].c_name = temporary_names[i];
+                temporary_exprs[i].kind = EXPR_NAME;
+                temporary_exprs[i].type = argument->type;
+                temporary_exprs[i].as.name.variable = &temporary_vars[i];
+                rewritten[i] = &temporary_exprs[i];
+
+                sb_appendf(sb, "__auto_type %s = ", temporary_names[i]);
+                emit_expr(sb, argument);
+                sb_append(sb, "; ");
+            }
+
+            Expr rewritten_init = *expr;
+            rewritten_init.as.struct_init.args = rewritten;
+            emit_expr_raw(sb, &rewritten_init);
+            sb_append(sb, "; }))");
+            free(rewritten);
+            free(temporary_exprs);
+            free(temporary_vars);
+            free(temporary_names);
+            return;
+        }
+    }
+
     if (expr->kind == EXPR_BINARY &&
         expr->as.binary.op.type != TOKEN_AND &&
         expr->as.binary.op.type != TOKEN_OR &&
