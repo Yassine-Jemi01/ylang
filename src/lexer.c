@@ -204,7 +204,8 @@ static Token scan_number(Lexer *lexer)
     return make_token(lexer, TOKEN_NUMBER);
 }
 
-static bool scan_escape_sequence(Lexer *lexer, const char **message)
+static bool scan_escape_sequence(Lexer *lexer, const char **message,
+                                 bool allow_fstring_braces)
 {
     if (peek(lexer) != '\\') {
         *message = "Expected an escape sequence.";
@@ -264,7 +265,8 @@ static bool scan_escape_sequence(Lexer *lexer, const char **message)
         return true;
     }
 
-    if (strchr("'\"?\\abfnrtv", escaped) != NULL) return true;
+    if (strchr("'\"?\\abfnrtv", escaped) != NULL ||
+        (allow_fstring_braces && (escaped == '{' || escaped == '}'))) return true;
 
     *message = "Unsupported escape sequence.";
     return false;
@@ -280,7 +282,7 @@ static Token scan_string(Lexer *lexer, TokenType type)
 
         if (peek(lexer) == '\\') {
             const char *message = NULL;
-            if (!scan_escape_sequence(lexer, &message) && !escape_error) {
+            if (!scan_escape_sequence(lexer, &message, type == TOKEN_FSTRING) && !escape_error) {
                 escape_error = message;
             }
         } else {
@@ -364,7 +366,7 @@ Token lexer_next(Lexer *lexer)
             /* YLang chars are one byte or one validated escape sequence. */
             const char *escape_error = NULL;
             if (peek(lexer) == '\\') {
-                if (!scan_escape_sequence(lexer, &escape_error)) {
+                if (!scan_escape_sequence(lexer, &escape_error, false)) {
                     while (peek(lexer) != '\'' && peek(lexer) != '\0' &&
                            peek(lexer) != '\n') {
                         advance_char(lexer);
