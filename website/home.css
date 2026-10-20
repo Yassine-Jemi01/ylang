@@ -26,7 +26,9 @@ body { background: var(--color-background); color: var(--color-text); }
   background: rgba(245, 247, 242, .94);
   border-bottom: 1px solid var(--color-border);
 }
-.nav-wrap { min-height: 72px; gap: 26px; }
+.nav-wrap { min-height: 72px; gap: 22px; }
+.nav-actions { order: 2; margin-left: auto; }
+.site-nav { order: 3; margin-left: 0; }
 .brand { color: var(--color-brand-800); font-size: 1.3rem; letter-spacing: -.045em; }
 .brand img { width: 34px; height: 34px; }
 .site-nav { gap: clamp(18px, 3vw, 32px); }
@@ -47,7 +49,8 @@ body { background: var(--color-background); color: var(--color-text); }
 .menu-toggle span { background: var(--color-brand-800); }
 
 .hero {
-  padding-block: clamp(56px, 7.4vw, 98px);
+  padding-top: clamp(24px, 3vw, 42px);
+  padding-bottom: clamp(56px, 7.4vw, 98px);
   background: var(--color-background);
   border-bottom: 1px solid var(--color-border);
 }
@@ -71,7 +74,7 @@ body { background: var(--color-background); color: var(--color-text); }
 h1, h2, h3 { color: var(--color-brand-800); }
 .hero h1 {
   max-width: 660px;
-  margin-top: 21px;
+  margin-top: 12px;
   font-size: clamp(3.15rem, 5.7vw, 5.25rem);
   line-height: .99;
   font-weight: 780;
@@ -224,8 +227,8 @@ h1, h2, h3 { color: var(--color-brand-800); }
   .nav-actions { margin-left: auto; }
   .nav-github { display: none; }
   .menu-toggle { display: block; }
-  .hero { padding-block: 52px; }
-  .hero h1 { margin-top: 18px; font-size: clamp(2.8rem, 10vw, 4.2rem); }
+  .hero { padding: 28px 0 52px; }
+  .hero h1 { margin-top: 10px; font-size: clamp(2.8rem, 10vw, 4.2rem); }
   .hero-lede { margin-top: 18px; font-size: 1rem; }
   .hero-actions { align-items: stretch; }
   .principles-grid { grid-template-columns: 1fr; padding-block: 5px; }
