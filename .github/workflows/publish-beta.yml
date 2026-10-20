@@ -170,6 +170,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
+      - name: Set up mdBook
+        uses: peaceiris/actions-mdbook@v2
+        with:
+          mdbook-version: "0.5.4"
+      - name: Build and inspect the online book
+        run: |
+          python3 tools/build_docs_book.py
+          mdbook build docs/online-book
+          mkdir -p website/learn
+          cp -a docs/online-book/book/. website/learn/
+          test -s website/learn/index.html
+          test -s website/learn/reference/language-spec.html
       - name: Validate website
         run: python3 tools/check_website.py
 
