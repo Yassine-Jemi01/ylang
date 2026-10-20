@@ -24,7 +24,11 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     compiler.source = source;
     compiler.source_length = size;
     compiler.quiet_diagnostics = true;
-    (void)parse_program(&compiler);
+    Program *program = parse_program(&compiler);
+    if (program) {
+        /* Exercise semantic analysis on both valid and error-recovered ASTs. */
+        (void)check_program(&compiler);
+    }
 
     arena_destroy(&compiler.arena);
     free(source);
