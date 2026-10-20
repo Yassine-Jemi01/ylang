@@ -1129,6 +1129,12 @@ static bool emit_runtime(FILE *out)
 
 bool generate_c(Compiler *c, const char *path)
 {
+    size_t next_codegen_id = 1U;
+    for (size_t i = 0; i < c->program->global_count; i++)
+        assign_expr_codegen_ids(c->program->globals[i]->initializer, &next_codegen_id);
+    for (size_t i = 0; i < c->program->function_count; i++)
+        assign_stmt_codegen_ids(c->program->functions[i]->body, &next_codegen_id);
+
     FILE *out = fopen(path, "wb");
     if (!out) {
         fprintf(stderr, "ylang: cannot write generated C file '%s': %s\n", path, strerror(errno));
@@ -1209,9 +1215,15 @@ bool generate_c(Compiler *c, const char *path)
             }
             first_param = false;
         }
-        fputs(") ", out); fputc('\n', out);
-        emit_stmt(c, out, fn->body, 0);
-        fputc('\n', out);
+        fputs(") {\n", out);
+        emit_temp_declarations_stmt(c, out, fn->body, 1U);
+        if (fn->body && fn->body->kind == STMT_BLOCK) {
+            for (size_t j = 0; j < fn->body->as.block.count; j++)
+                emit_stmt(c, out, fn->body->as.block.items[j], 1U);
+        } else {
+            emit_stmt(c, out, fn->body, 1U);
+        }
+        fputs("}\n\n", out);
     }
 
     Function *main_fn = find_function(c, "main");
