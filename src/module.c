@@ -213,22 +213,12 @@ static char *read_module_source(Compiler *compiler, const char *path,
 
 static Function *module_find_function(Module *module, const char *name)
 {
-    if (!module || !module->program) return NULL;
-    for (size_t i = 0; i < module->program->function_count; i++) {
-        Function *function = module->program->functions[i];
-        if (strcmp(function->name, name) == 0) return function;
-    }
-    return NULL;
+    return module ? program_find_function(module->program, name) : NULL;
 }
 
 static VarDecl *module_find_global(Module *module, const char *name)
 {
-    if (!module || !module->program) return NULL;
-    for (size_t i = 0; i < module->program->global_count; i++) {
-        VarDecl *variable = module->program->globals[i];
-        if (strcmp(variable->name, name) == 0) return variable;
-    }
-    return NULL;
+    return module ? program_find_global(module->program, name) : NULL;
 }
 
 static bool module_owns_name(Module *module, const char *name)
