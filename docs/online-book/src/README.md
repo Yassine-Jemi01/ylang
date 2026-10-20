@@ -7,7 +7,8 @@ This is a real multi-page HTML book—not a raw Markdown page or a list of links
 ## Choose the right version
 
 - **Stable core — 2.0.1:** the documented core language and default C-backend workflow.
-- **Previous stable line — 1.1.0:** useful for older projects that intentionally stay on that contract.
+- **Previous stable release — 2.0.0:** useful for projects that pin the original 2.0 stable patch.
+- **Earlier stable line — 1.1.0:** useful for older projects that intentionally stay on that contract.
 
 Named imports, structs, enums, GUI/Game2D, NASM, native Windows support, and optional YSPM packaging remain experimental extensions with explicit limits. They are not covered by the stable-core compatibility guarantee; YLang does not claim Rust-level memory safety or provide a security sandbox.
 
