@@ -20,7 +20,7 @@ diff -u tests/expected-type-conversions.txt build/type-conversions.out
 ./build/test-escape-parity > build/escape-parity.out
 diff -u tests/expected-escape-parity.txt build/escape-parity.out
 
-# F-strings share valid escape decoding but preserve unknown escapes literally.
+# F-strings use the same escape decoder and unknown-escape fallback.
 cat > build/fstring-escape.yl <<'EOF'
 function main() -> int {
     print(f"hex \x4142");
