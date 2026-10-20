@@ -1170,6 +1170,15 @@ bool generate_c(Compiler *c, const char *path)
             first_param = false;
         }
         fputs(") {\n", out);
+        if (fn->body && fn->body->kind == STMT_BLOCK) {
+            emit_temp_declarations_stmt(c, out, fn->body, 1U);
+            for (size_t j = 0; j < fn->body->as.block.count; j++) {
+                emit_stmt(c, out, fn->body->as.block.items[j], 1U);
+            }
+        } else {
+            emit_temp_declarations_stmt(c, out, fn->body, 1U);
+            emit_stmt(c, out, fn->body, 1U);
+        }
         fputs("}\n\n", out);
     }
 
