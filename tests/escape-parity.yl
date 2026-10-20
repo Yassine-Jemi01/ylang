@@ -1,0 +1,7 @@
+function main() -> int {
+    print("hex", "\x4142");
+    print("unknown", "\q");
+    print("nul", "left\0right");
+    print('B', '\q', '\x42');
+    return 0;
+}

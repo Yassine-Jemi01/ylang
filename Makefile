@@ -46,9 +46,9 @@ regen-runtime-template:
 print-version:
 	@printf '%s\n' '$(VERSION)'
 
-build/frontend-unit: tests/frontend_unit.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/internal.h include/ylang/compiler.h include/ylang/lexer.h
+build/frontend-unit: tests/frontend_unit.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c src/internal.h include/ylang/compiler.h include/ylang/lexer.h
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) -Isrc $(CFLAGS) tests/frontend_unit.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c $(LDFLAGS) -o $@
+	$(CC) $(CPPFLAGS) -Isrc $(CFLAGS) tests/frontend_unit.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c $(LDFLAGS) -o $@
 
 frontend-unit-test: build/frontend-unit
 	./build/frontend-unit
@@ -61,7 +61,7 @@ FUZZ_CFLAGS ?= -std=c17 -O1 -g -Wall -Wextra -Wpedantic -fsanitize=fuzzer,addres
 
 fuzz-frontend:
 	@mkdir -p build
-	$(FUZZ_CC) $(CPPFLAGS) -Isrc $(FUZZ_CFLAGS) tests/fuzz_frontend.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c -o build/fuzz-frontend
+	$(FUZZ_CC) $(CPPFLAGS) -Isrc $(FUZZ_CFLAGS) tests/fuzz_frontend.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c -o build/fuzz-frontend
 
 fuzz-smoke: fuzz-frontend
 	@mkdir -p build/fuzz-corpus

@@ -13,6 +13,25 @@ grep -Fq "YLang v${EXPECTED_VERSION} — stable compiled language toolchain" bui
 ./build/ylang build examples/type-conversions.yl -o build/test-type-conversions >/dev/null
 ./build/test-type-conversions > build/type-conversions.out
 diff -u tests/expected-type-conversions.txt build/type-conversions.out
+
+# String and character escapes must have the same byte semantics in generated C.
+./build/ylang check tests/escape-parity.yl >/dev/null
+./build/ylang build tests/escape-parity.yl -o build/test-escape-parity >/dev/null
+./build/test-escape-parity > build/escape-parity.out
+diff -u tests/expected-escape-parity.txt build/escape-parity.out
+
+# F-strings use the same escape decoder and unknown-escape fallback.
+cat > build/fstring-escape.yl <<'EOF'
+function main() -> int {
+    print(f"hex \x4142");
+    print(f"unknown \q");
+    print(f"brace \{x\}");
+    return 0;
+}
+EOF
+./build/ylang build build/fstring-escape.yl -o build/test-fstring-escape >/dev/null
+./build/test-fstring-escape > build/fstring-escape.out
+diff -u tests/expected-fstring-escapes.txt build/fstring-escape.out
 if ./build/ylang check tests/invalid-to-int.yl > build/invalid-to-int.out 2>&1; then
     echo "FAIL: to_int accepted an int argument" >&2
     exit 1
@@ -1115,6 +1134,7 @@ EOF
         diff -u "build/parity-$parity_label-c.out" "build/parity-$parity_label-asm.out"
     }
     run_backend_parity tests/asm-basic.yl arithmetic
+    run_backend_parity tests/escape-parity.yl escapes
     run_backend_parity build/enum-basic.yl enums-match
     run_backend_parity build/imports/repeated-asm.yl imported-functions
     echo "PASS: C/NASM differential parity samples"
