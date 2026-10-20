@@ -31,6 +31,12 @@ static int test_lexer(void)
         }
     }
 
+    Lexer hex_character = lexer_init("'\\x42'");
+    Token character = lexer_next(&hex_character);
+    if (character.type != TOKEN_CHAR || character.length != 6U) {
+        return fail("lexer must consume two hexadecimal digits in a character escape");
+    }
+
     Lexer bad_comment = lexer_init("/* never closed");
     Token error = lexer_next(&bad_comment);
     if (error.type != TOKEN_ERROR || !error.message ||
