@@ -72,6 +72,10 @@ Program *parse_program(Compiler *c);
 bool load_program_modules(Compiler *c, const char *input_path);
 bool check_program(Compiler *c);
 Function *find_function(Compiler *c, const char *name);
+uint64_t ylang_hash_name(const char *name);
+Function *program_find_function(Program *program, const char *name);
+VarDecl *program_find_global(Program *program, const char *name);
+ImportName *program_find_import_name(Program *program, const char *name);
 bool generate_c(Compiler *c, const char *path);
 bool generate_asm(Compiler *c, const char *path);
 
