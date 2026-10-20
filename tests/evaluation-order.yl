@@ -1,0 +1,38 @@
+let int counter = 0;
+
+struct Pair {
+    int first;
+    int second;
+}
+
+function next() -> int {
+    counter += 1;
+    return counter;
+}
+
+function pair(int first, int second) -> int {
+    return first * 10 + second;
+}
+
+function main() -> int {
+    counter = 0;
+    print(pair(next(), next()));
+
+    counter = 0;
+    print(next() * 10 + next());
+
+    counter = 0;
+    print(pair(counter, next()));
+
+    counter = 0;
+    print(pair(next(), pair(next(), next())));
+
+    counter = 0;
+    let Pair p = Pair(next(), next());
+    print(p.first, p.second);
+
+    counter = 0;
+    let int values[] = [next(), next()];
+    print(values[0], values[1]);
+    return 0;
+}
