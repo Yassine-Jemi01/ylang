@@ -314,53 +314,6 @@ static unsigned new_label(AsmContext *ctx)
     return ctx->next_label++;
 }
 
-static unsigned char *decode_quoted(Token token, size_t *length)
-{
-    *length = 0;
-    if (token.length < 2) return NULL;
-    size_t capacity = token.length;
-    unsigned char *result = malloc(capacity);
-    if (!result) return NULL;
-    size_t end = token.length - 1;
-    size_t out = 0;
-    for (size_t i = 1; i < end; i++) {
-        unsigned char ch = (unsigned char)token.start[i];
-        if (ch == '\\' && i + 1 < end) {
-            unsigned char escaped = (unsigned char)token.start[++i];
-            switch (escaped) {
-                case 'n': ch = '\n'; break;
-                case 'r': ch = '\r'; break;
-                case 't': ch = '\t'; break;
-                case '0': ch = '\0'; break;
-                case '\\': ch = '\\'; break;
-                case '\'': ch = '\''; break;
-                case '"': ch = '"'; break;
-                case '{': ch = '{'; break;
-                case '}': ch = '}'; break;
-                case 'x':
-                    if (i + 2 < end) {
-                        char hex[3] = { token.start[i + 1], token.start[i + 2], '\0' };
-                        char *hex_end = NULL;
-                        unsigned long parsed = strtoul(hex, &hex_end, 16);
-                        if (hex_end && *hex_end == '\0') {
-                            ch = (unsigned char)parsed;
-                            i += 2;
-                        } else {
-                            ch = 'x';
-                        }
-                    } else {
-                        ch = 'x';
-                    }
-                    break;
-                default: ch = escaped; break;
-            }
-        }
-        result[out++] = ch;
-    }
-    *length = out;
-    return result;
-}
-
 static size_t intern_string(AsmContext *ctx, Expr *expr)
 {
     for (size_t i = 0; i < ctx->string_count; i++) {
@@ -384,8 +337,8 @@ static size_t intern_string(AsmContext *ctx, Expr *expr)
         ctx->string_capacity = next;
     }
     size_t length = 0;
-    unsigned char *bytes = decode_quoted(expr->token, &length);
-    if (!bytes) {
+    unsigned char *bytes = NULL;
+    if (!decode_quoted_literal(expr->token, &bytes, &length)) {
         fputs("ylang: cannot decode a string literal for NASM output.\n", stderr);
         ctx->okay = false;
         return 0;
@@ -517,8 +470,9 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             return true;
         case EXPR_CHAR: {
             size_t length = 0;
-            unsigned char *bytes = decode_quoted(expr->token, &length);
-            if (!bytes || length != 1U) {
+            unsigned char *bytes = NULL;
+            if (!decode_quoted_literal(expr->token, &bytes, &length) ||
+                length != 1U) {
                 free(bytes);
                 fputs("ylang: internal error decoding a YLang character.\n", stderr);
                 ctx->okay = false;
@@ -972,20 +926,22 @@ static void emit_bytes(FILE *out, const char *label,
                        const unsigned char *bytes, size_t length,
                        bool terminate)
 {
-    fprintf(out, "%s: db ", label);
+    fprintf(out, "%s:", label);
     if (length == 0U) {
-        fputs("0", out);
-    } else {
-        for (size_t i = 0; i < length; i++) {
-            if (i != 0U) {
-                if (i % 16U == 0U) fputs("\n    db ", out);
-                else fputs(", ", out);
-            }
-            fprintf(out, "%u", (unsigned)bytes[i]);
-        }
-        if (terminate) fputs(", 0", out);
+        if (terminate) fputs(" db 0", out);
+        fputc('\n', out);
+        return;
     }
-    if (length == 0U && !terminate) fputs("0", out);
+
+    fputs(" db ", out);
+    for (size_t i = 0; i < length; i++) {
+        if (i != 0U) {
+            if (i % 16U == 0U) fputs("\n    db ", out);
+            else fputs(", ", out);
+        }
+        fprintf(out, "%u", (unsigned)bytes[i]);
+    }
+    if (terminate) fputs(", 0", out);
     fputc('\n', out);
 }
 

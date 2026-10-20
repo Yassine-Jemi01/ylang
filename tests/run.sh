@@ -13,6 +13,25 @@ grep -Fq "YLang v${EXPECTED_VERSION} — stable compiled language toolchain" bui
 ./build/ylang build examples/type-conversions.yl -o build/test-type-conversions >/dev/null
 ./build/test-type-conversions > build/type-conversions.out
 diff -u tests/expected-type-conversions.txt build/type-conversions.out
+
+# String and character escapes must have the same byte semantics in generated C.
+./build/ylang check tests/escape-parity.yl >/dev/null
+./build/ylang build tests/escape-parity.yl -o build/test-escape-parity >/dev/null
+./build/test-escape-parity > build/escape-parity.out
+diff -u tests/expected-escape-parity.txt build/escape-parity.out
+
+# F-strings use the same escape decoder and unknown-escape fallback.
+cat > build/fstring-escape.yl <<'EOF'
+function main() -> int {
+    print(f"hex \x4142");
+    print(f"unknown \q");
+    print(f"brace \{x\}");
+    return 0;
+}
+EOF
+./build/ylang build build/fstring-escape.yl -o build/test-fstring-escape >/dev/null
+./build/test-fstring-escape > build/fstring-escape.out
+diff -u tests/expected-fstring-escapes.txt build/fstring-escape.out
 if ./build/ylang check tests/invalid-to-int.yl > build/invalid-to-int.out 2>&1; then
     echo "FAIL: to_int accepted an int argument" >&2
     exit 1
@@ -91,6 +110,12 @@ fi
 ./build/test-demo > build/test-demo.out
 diff -u tests/expected-demo.txt build/test-demo.out
 
+# Calls, arithmetic operands, struct initializers, and array initializers evaluate left to right.
+./build/ylang check tests/evaluation-order.yl >/dev/null
+./build/ylang build tests/evaluation-order.yl -o build/test-evaluation-order >/dev/null
+./build/test-evaluation-order > build/evaluation-order.out
+diff -u tests/expected-evaluation-order.txt build/evaluation-order.out
+
 # Safe auto-fix: replace a common typo in code, but leave strings/comments alone.
 ./build/ylang fix tests/typo-print.yl -o build/typo-print-fixed.yl > build/fix.out 2> build/fix.err
 grep -q "replaced 'pritn' with 'print'" build/fix.err
@@ -120,6 +145,41 @@ diff -u tests/expected-int-min.txt build/int-min.out
 diff -u tests/expected-conditions.txt build/test-conditions.out
 
 ./build/ylang check tests/branch-init.yl >/dev/null
+
+# Definite initialization merges nested if/else paths, but not a one-sided assignment.
+cat > build/branch-init-nested.yl <<'EOF'
+function main() -> int {
+    let int score;
+    if (true) {
+        if (false) {
+            score = 10;
+        } else {
+            score = 20;
+        }
+    } else {
+        score = 30;
+    }
+    print(score);
+    return 0;
+}
+EOF
+./build/ylang check build/branch-init-nested.yl >/dev/null
+
+cat > build/branch-init-missing-else.yl <<'EOF'
+function main() -> int {
+    let int score;
+    if (true) {
+        score = 10;
+    }
+    print(score);
+    return 0;
+}
+EOF
+if ./build/ylang check build/branch-init-missing-else.yl > build/branch-init-missing-else.out 2>&1; then
+    echo "FAIL: a variable assigned on only one if path was accepted" >&2
+    exit 1
+fi
+grep -q 'E2021' build/branch-init-missing-else.out
 if ./build/ylang check tests/type-error.yl > build/type-error.out 2>&1; then
     echo "FAIL: type-error.yl was accepted" >&2
     exit 1
@@ -861,6 +921,31 @@ EOF
 printf 'data-private-YLang module\nroot-collision-test\n7 7\n' > build/module-imports.expected
 diff -u build/module-imports.expected build/module-imports.out
 
+# Semantic diagnostics inside an imported module must point at that module's file and line.
+cat > build/imports/diagnostic-module.yl <<'EOF'
+function imported_value() -> int {
+    let int result = true;
+    return result;
+}
+EOF
+cat > build/imports/diagnostic-main.yl <<'EOF'
+from "./diagnostic-module.yl" import imported_value;
+function main() -> int {
+    return imported_value();
+}
+EOF
+if ./build/ylang check build/imports/diagnostic-main.yl > build/imports/diagnostic-attribution.out 2>&1; then
+    echo "FAIL: a type error in an imported module was accepted" >&2
+    exit 1
+fi
+grep -q 'E2001' build/imports/diagnostic-attribution.out
+grep -Fq 'diagnostic-module.yl:2:' build/imports/diagnostic-attribution.out
+if grep -Fq 'diagnostic-main.yl:2:' build/imports/diagnostic-attribution.out; then
+    echo "FAIL: imported-module type error was attributed to the root file" >&2
+    exit 1
+fi
+
+
 # Names from a module remain private unless imported.
 cat > build/imports/private-name.yl <<'EOF'
 from "./data.yl" import system_data;
@@ -1046,10 +1131,26 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     ./build/test-asm-basic-cli > build/asm-basic-cli.out
     diff -u tests/expected-asm-basic.txt build/asm-basic-cli.out
 
+    # Empty string literals must emit exactly one terminator and print a blank line.
+    cat > build/asm-empty-string.yl <<'EOF'
+function main() -> int {
+    print("");
+    return 0;
+}
+EOF
+    ./build/ylang emit-asm build/asm-empty-string.yl -o build/asm-empty-string.asm >/dev/null
+    grep -Fq "yl_str_0: db 0" build/asm-empty-string.asm
+    ./build/ylang build-asm build/asm-empty-string.yl -o build/test-asm-empty-string >/dev/null
+    ./build/test-asm-empty-string > build/asm-empty-string.out
+    : > build/asm-empty-string.expected
+    echo >> build/asm-empty-string.expected
+    diff -u build/asm-empty-string.expected build/asm-empty-string.out
+
     # Differential parity tests: programs in the shared subset must behave the same
     # when compiled by the default C backend and the experimental NASM backend.
     run_backend_parity() {
         parity_source=$1
+
         parity_label=$2
         ./build/ylang build "$parity_source" -o "build/parity-$parity_label-c" >/dev/null
         ./build/ylang build-asm "$parity_source" -o "build/parity-$parity_label-asm" >/dev/null
@@ -1058,6 +1159,7 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
         diff -u "build/parity-$parity_label-c.out" "build/parity-$parity_label-asm.out"
     }
     run_backend_parity tests/asm-basic.yl arithmetic
+    run_backend_parity tests/escape-parity.yl escapes
     run_backend_parity build/enum-basic.yl enums-match
     run_backend_parity build/imports/repeated-asm.yl imported-functions
     echo "PASS: C/NASM differential parity samples"

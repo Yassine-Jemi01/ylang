@@ -63,6 +63,10 @@ void sb_append(StringBuilder *sb, const char *text);
 void sb_appendf(StringBuilder *sb, const char *format, ...);
 void sb_destroy(StringBuilder *sb);
 
+bool decode_escape_sequence(const char *text, size_t available,
+                            unsigned char *value, size_t *consumed);
+bool decode_quoted_literal(Token token, unsigned char **bytes, size_t *length);
+
 void diagnostic(Compiler *c, Token token, const char *level,
                 const char *code, const char *message, const char *suggestion);
 char *token_copy(Compiler *c, Token token);

@@ -43,7 +43,7 @@ jobs:
             echo "make=make" >> "$GITHUB_OUTPUT"
           fi
       - name: Verify generated C runtime template
-        run: python3 tools/embed_text.py runtime/runtime_template.c src/runtime_template.h --check
+        run: make check-runtime-template
       - name: Build compiler
         run: ${{ steps.compiler.outputs.make }} clean all CC="${{ steps.compiler.outputs.cc }}"
       - name: Build optional GUI runtime
@@ -77,11 +77,11 @@ jobs:
             make
             python
       - name: Verify generated runtime template
-        run: python tools/embed_text.py runtime/runtime_template.c src/runtime_template.h --check
+        run: make check-runtime-template PYTHON=python
       - name: Build compiler
-        run: make clean all CC=gcc
+        run: make clean all CC=gcc PYTHON=python
       - name: Build optional SDL2 GUI runtime
-        run: make gui gui-example game2d-example CC=gcc
+        run: make gui gui-example game2d-example CC=gcc PYTHON=python
       - name: Check, compile, and run a native Windows program
         run: |
           mkdir -p build/windows-smoke

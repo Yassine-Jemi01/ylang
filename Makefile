@@ -2,7 +2,8 @@
 VERSION := $(shell cat VERSION)
 CC = gcc
 AR ?= ar
-CPPFLAGS += -Iinclude -DYLANG_VERSION=\"$(VERSION)\" -DYLANG_SHARE_DIR=\"$(PREFIX)/share/ylang\" -DYLANG_INCLUDE_DIR=\"$(PREFIX)/include\"
+PYTHON ?= python3
+CPPFLAGS += -Iinclude -Ibuild -DYLANG_VERSION=\"$(VERSION)\" -DYLANG_SHARE_DIR=\"$(PREFIX)/share/ylang\" -DYLANG_INCLUDE_DIR=\"$(PREFIX)/include\"
 CFLAGS ?= -std=c17 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes -g3 -O0
 LDFLAGS ?=
 PREFIX ?= /usr/local
@@ -29,18 +30,25 @@ build/%.o: src/%.c
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-check-runtime-template:
-	@python3 tools/embed_text.py runtime/runtime_template.c src/runtime_template.h --check
+build/runtime_template.h: runtime/runtime_template.c tools/embed_text.py
+	@mkdir -p build
+	@$(PYTHON) tools/embed_text.py $< $@
+
+build/codegen.o: build/runtime_template.h
+
+check-runtime-template: build/runtime_template.h
+	@$(PYTHON) tools/embed_text.py runtime/runtime_template.c build/runtime_template.h --check
 
 regen-runtime-template:
-	@python3 tools/embed_text.py runtime/runtime_template.c src/runtime_template.h
+	@mkdir -p build
+	@$(PYTHON) tools/embed_text.py runtime/runtime_template.c build/runtime_template.h
 
 print-version:
 	@printf '%s\n' '$(VERSION)'
 
-build/frontend-unit: tests/frontend_unit.c src/parser.c src/lexer.c src/internal.h include/ylang/compiler.h include/ylang/lexer.h
+build/frontend-unit: tests/frontend_unit.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c src/internal.h include/ylang/compiler.h include/ylang/lexer.h
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) -Isrc $(CFLAGS) tests/frontend_unit.c src/parser.c src/lexer.c $(LDFLAGS) -o $@
+	$(CC) $(CPPFLAGS) -Isrc $(CFLAGS) tests/frontend_unit.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c $(LDFLAGS) -o $@
 
 frontend-unit-test: build/frontend-unit
 	./build/frontend-unit
@@ -53,7 +61,7 @@ FUZZ_CFLAGS ?= -std=c17 -O1 -g -Wall -Wextra -Wpedantic -fsanitize=fuzzer,addres
 
 fuzz-frontend:
 	@mkdir -p build
-	$(FUZZ_CC) $(CPPFLAGS) -Isrc $(FUZZ_CFLAGS) tests/fuzz_frontend.c src/parser.c src/lexer.c src/sema.c -o build/fuzz-frontend
+	$(FUZZ_CC) $(CPPFLAGS) -Isrc $(FUZZ_CFLAGS) tests/fuzz_frontend.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c src/sema.c -o build/fuzz-frontend
 
 fuzz-smoke: fuzz-frontend
 	@mkdir -p build/fuzz-corpus

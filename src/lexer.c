@@ -296,11 +296,20 @@ Token lexer_next(Lexer *lexer)
             return scan_string(lexer, TOKEN_STRING);
 
         case '\'': {
-            /* YLang 1.0 char literals contain exactly one byte or one escape. */
+            /* Character literals may contain one byte, a single-character escape, or \xNN. */
             if (peek(lexer) == '\\') {
                 advance_char(lexer);
                 if (peek(lexer) != '\0' && peek(lexer) != '\n') {
+                    char escaped = peek(lexer);
                     advance_char(lexer);
+                    if (escaped == 'x') {
+                        for (unsigned digit = 0; digit < 2U; digit++) {
+                            if (peek(lexer) != '\0' && peek(lexer) != '\n' &&
+                                peek(lexer) != '\'') {
+                                advance_char(lexer);
+                            }
+                        }
+                    }
                 }
             } else if (peek(lexer) != '\0' && peek(lexer) != '\n' && peek(lexer) != '\'') {
                 advance_char(lexer);

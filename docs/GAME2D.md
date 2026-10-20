@@ -82,6 +82,8 @@ The example in this repository uses a relative import because it is intended to 
 | game2d_last_error() | Return the last GUI/runtime error message. |
 | game2d_close() | Close the window and shut down SDL2. Call it before returning from the game. |
 
+`game2d_delta_ms()` initializes its timing baseline when `game2d_open()` succeeds; clamp unusually large deltas after pauses. The collision helpers are deterministic and do not open a window, but `game2d.yl` also wraps the optional GUI runtime, so importing the combined module still requires SDL2 even when a program only calls the collision helpers.
+
 RGB channels must be between 0 and 255, and rectangle widths and heights must be positive. Always exit the loop cleanly and call game2d_close() so SDL resources are released.
 
 ## Example API pattern

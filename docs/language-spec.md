@@ -82,7 +82,7 @@ let string message = "Hello\n";
 let string greeting = f"Hello {message}";
 ```
 
-`char` is one byte, not a Unicode scalar. Integer literals support decimal notation and hexadecimal notation such as `0xFF`; floating-point literals support decimal notation and scientific notation such as `1e3` or `2.5e-4`. A string literal must be terminated. F-strings begin with `f"` and interpolate expressions inside `{}`. Supported interpolations include variables and operators. Function calls and assignments are not allowed inside interpolation expressions; compute the value in a preceding statement. Literal braces can be escaped as documented by the lexer (`{{`, `}}`, `\{`, and `\}`).
+`char` is one byte, not a Unicode scalar. Integer literals support decimal notation and hexadecimal notation such as `0xFF`; floating-point literals support decimal notation and scientific notation such as `1e3` or `2.5e-4`. A string literal must be terminated. F-strings begin with `f"` and interpolate expressions inside `{}`. Supported interpolations include variables and operators. Function calls and assignments are not allowed inside interpolation expressions; compute the value in a preceding statement. Quoted string and character literals decode `\n`, `\r`, `\t`, `\0`, `\\`, `\'`, `\"`, `\{`, `\}`, `\/`, and `\xNN`. A hexadecimal escape consumes exactly two hexadecimal digits, so `\x4142` means byte `0x41` followed by `42`. Unknown or incomplete escapes drop the backslash and keep the following character; for example, `\q` becomes `q`. Character literals must decode to exactly one byte. F-strings apply the same escapes to literal text. Literal braces can also be escaped with doubled braces (`{{` and `}}`).
 
 ## 6. Output
 
@@ -105,7 +105,7 @@ Supported printable values are `int`, `float`, `bool`, `char`, and `string`. `pr
 - Grouping: `(expression)`
 - Calls: `name(argument, ...)`
 
-Operator precedence is conventional: unary operators, multiplication/division/modulo, addition/subtraction, comparisons/equality, `and`, then `or`. Parentheses may be used to make grouping explicit.
+Operator precedence is conventional: unary operators, multiplication/division/modulo, addition/subtraction, comparisons/equality, `and`, then `or`. Parentheses may be used to make grouping explicit. Evaluations with observable side effects are sequenced from left to right: function-call arguments, eager binary operands, struct initializer fields, and array initializer elements. For assignment, the target location is evaluated before the right-hand side. Boolean `and` and `or` short-circuit from left to right.
 
 Signed integer overflow, integer division/modulo by zero, and floating-point division by zero are handled by generated runtime helpers and terminate the program with a runtime-error message and status 70. This does not mean every possible C-level issue is guarded or that the language is memory-safe.
 
