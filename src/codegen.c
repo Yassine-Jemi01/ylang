@@ -1217,12 +1217,8 @@ bool generate_c(Compiler *c, const char *path)
         }
         fputs(") {\n", out);
         emit_temp_declarations_stmt(c, out, fn->body, 1U);
-        if (fn->body && fn->body->kind == STMT_BLOCK) {
-            for (size_t j = 0; j < fn->body->as.block.count; j++)
-                emit_stmt(c, out, fn->body->as.block.items[j], 1U);
-        } else {
-            emit_stmt(c, out, fn->body, 1U);
-        }
+        /* Keep the source function body's block scope, including parameter shadowing rules. */
+        emit_stmt(c, out, fn->body, 1U);
         fputs("}\n\n", out);
     }
 
