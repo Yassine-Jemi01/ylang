@@ -72,6 +72,35 @@ if grep -qi 'segmentation fault' build/deep-expression-nesting.out; then
     exit 1
 fi
 
+# Exercise hashed symbol indexes with enough names to catch collision/probing bugs.
+{
+    index=0
+    while [ "$index" -lt 400 ]; do
+        printf 'let int global_%03d = %d;\\n' "$index" "$index"
+        index=$((index + 1))
+    done
+    index=0
+    while [ "$index" -lt 400 ]; do
+        printf 'function indexed_%03d() -> int { return %d; }\\n' "$index" "$index"
+        index=$((index + 1))
+    done
+    printf 'function main() -> int {\\n'
+    index=0
+    while [ "$index" -lt 400 ]; do
+        printf '    let int local_%03d = %d;\\n' "$index" "$index"
+        index=$((index + 1))
+    done
+    printf '    print(indexed_399(), global_399, local_399);\\n'
+    printf '    return 0;\\n}\\n'
+} > build/symbol-index-stress.yl
+./build/ylang check build/symbol-index-stress.yl >/dev/null
+./build/ylang build build/symbol-index-stress.yl -o build/symbol-index-stress >/dev/null
+symbol_index_output="$(./build/symbol-index-stress)"
+if [ "$symbol_index_output" != "399 399 399" ]; then
+    echo "FAIL: hashed symbol lookup returned unexpected output: $symbol_index_output" >&2
+    exit 1
+fi
+
 ./build/ylang check examples/demo.yl
 ./build/ylang build examples/demo.yl -o build/test-demo >/dev/null
 ./build/test-demo > build/test-demo.out
