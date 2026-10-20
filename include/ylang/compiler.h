@@ -67,6 +67,7 @@ struct Expr {
     Token token;
     YType type;
     bool is_min_int;
+    size_t codegen_id;
     union {
         struct { Expr *right; Token op; } unary;
         struct { Expr *left; Expr *right; Token op; } binary;
