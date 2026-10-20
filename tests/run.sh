@@ -66,7 +66,21 @@ else
         exit 1
     fi
 fi
-grep -q 'E1015' build/deep-expression-nesting.out
+grep -q 'E1017' build/deep-expression-nesting.out
+
+# print() must keep its own stable diagnostic code.
+cat > build/empty-print.yl <<'EOF'
+function main() -> int {
+    print();
+    return 0;
+}
+EOF
+if ./build/ylang check build/empty-print.yl > build/empty-print.out 2>&1; then
+    echo "FAIL: print() without values was accepted" >&2
+    exit 1
+fi
+grep -q 'E1015' build/empty-print.out
+grep -q 'print() needs at least one value' build/empty-print.out
 if grep -qi 'segmentation fault' build/deep-expression-nesting.out; then
     echo "FAIL: deeply nested expression crashed the compiler" >&2
     exit 1
