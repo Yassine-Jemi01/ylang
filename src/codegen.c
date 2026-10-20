@@ -1320,6 +1320,16 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
             break;
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
+            if (var->is_array && array_init_needs_sequence(var->initializer)) {
+                Expr *array = var->initializer;
+                for (size_t i = 0; i < array->as.array.count; i++) {
+                    emit_indent(out, indent);
+                    fprintf(out, "yl_codegen_tmp_%zu_element%zu = ",
+                            array->codegen_id, i);
+                    emit_expr_to_file(out, array->as.array.items[i]);
+                    fputs(";\n", out);
+                }
+            }
             emit_indent(out, indent); emit_var_type(c, out, var, false);
             fprintf(out, " %s", var->c_name);
             if (var->is_array) fprintf(out, "[%zu]", var->array_length);
@@ -1418,6 +1428,14 @@ static bool emit_runtime(FILE *out)
 
 bool generate_c(Compiler *c, const char *path)
 {
+    size_t next_codegen_id = 1U;
+    for (size_t i = 0; i < c->program->global_count; i++) {
+        assign_expr_codegen_ids(c->program->globals[i]->initializer, &next_codegen_id);
+    }
+    for (size_t i = 0; i < c->program->function_count; i++) {
+        assign_stmt_codegen_ids(c->program->functions[i]->body, &next_codegen_id);
+    }
+
     FILE *out = fopen(path, "wb");
     if (!out) {
         fprintf(stderr, "ylang: cannot write generated C file '%s': %s\n", path, strerror(errno));
@@ -1498,9 +1516,17 @@ bool generate_c(Compiler *c, const char *path)
             }
             first_param = false;
         }
-        fputs(") ", out); fputc('\n', out);
-        emit_stmt(c, out, fn->body, 0);
-        fputc('\n', out);
+        fputs(") {\n", out);
+        if (fn->body && fn->body->kind == STMT_BLOCK) {
+            emit_temp_declarations_stmt(c, out, fn->body, 1U);
+            for (size_t j = 0; j < fn->body->as.block.count; j++) {
+                emit_stmt(c, out, fn->body->as.block.items[j], 1U);
+            }
+        } else {
+            emit_temp_declarations_stmt(c, out, fn->body, 1U);
+            emit_stmt(c, out, fn->body, 1U);
+        }
+        fputs("}\n\n", out);
     }
 
     Function *main_fn = find_function(c, "main");
