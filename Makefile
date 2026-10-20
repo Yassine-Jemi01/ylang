@@ -1,8 +1,7 @@
-
 VERSION := $(shell cat VERSION)
 CC = gcc
 AR ?= ar
-CPPFLAGS += -Iinclude -DYLANG_VERSION=\"$(VERSION)\" -DYLANG_SHARE_DIR=\"$(PREFIX)/share/ylang\" -DYLANG_INCLUDE_DIR=\"$(PREFIX)/include\"
+CPPFLAGS += -Iinclude -DYLANG_VERSION=\\\"$(VERSION)\\\" -DYLANG_SHARE_DIR=\\\"$(PREFIX)/share/ylang\\\" -DYLANG_INCLUDE_DIR=\\\"$(PREFIX)/include\\\"
 CFLAGS ?= -std=c17 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes -g3 -O0
 LDFLAGS ?=
 PREFIX ?= /usr/local
@@ -36,11 +35,11 @@ regen-runtime-template:
 	@python3 tools/embed_text.py runtime/runtime_template.c src/runtime_template.h
 
 print-version:
-	@printf '%s\n' '$(VERSION)'
+	@printf '%s\\n' '$(VERSION)'
 
-build/frontend-unit: tests/frontend_unit.c src/parser.c src/lexer.c src/string_utils.c src/internal.h include/ylang/compiler.h include/ylang/lexer.h
+build/frontend-unit: tests/frontend_unit.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c src/internal.h include/ylang/compiler.h include/ylang/lexer.h
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) -Isrc $(CFLAGS) tests/frontend_unit.c src/parser.c src/lexer.c src/string_utils.c $(LDFLAGS) -o $@
+	$(CC) $(CPPFLAGS) -Isrc $(CFLAGS) tests/frontend_unit.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c $(LDFLAGS) -o $@
 
 frontend-unit-test: build/frontend-unit
 	./build/frontend-unit
@@ -53,7 +52,7 @@ FUZZ_CFLAGS ?= -std=c17 -O1 -g -Wall -Wextra -Wpedantic -fsanitize=fuzzer,addres
 
 fuzz-frontend:
 	@mkdir -p build
-	$(FUZZ_CC) $(CPPFLAGS) -Isrc $(FUZZ_CFLAGS) tests/fuzz_frontend.c src/parser.c src/lexer.c src/string_utils.c -o build/fuzz-frontend
+	$(FUZZ_CC) $(CPPFLAGS) -Isrc $(FUZZ_CFLAGS) tests/fuzz_frontend.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c -o build/fuzz-frontend
 
 fuzz-smoke: fuzz-frontend
 	@mkdir -p build/fuzz-corpus
@@ -79,7 +78,6 @@ game2d-example: check-sdl2 $(BIN)
 	YLANG_PATH=stdlib ./build/ylang build examples/games/dodge.yl -o $(GAME2D_OUTPUT)
 
 build/ylang_gui.o: stdlib/gui/gui.c include/ylang/gui.h
-	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(GUI_CFLAGS) -c stdlib/gui/gui.c -o $@
 
 build/libylang_gui.a: build/ylang_gui.o
