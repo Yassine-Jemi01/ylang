@@ -19,6 +19,7 @@ local SHORT_MESSAGES = {
   E1014 = "Invalid f-string expression",
   E1015 = "print() needs a value",
   E1016 = "Unknown standard-library namespace",
+  E1017 = "Expression nesting too deep",
   E1020 = "Invalid import declaration",
   E1022 = "Imported file not found",
   E1023 = "Circular import",
