@@ -12,6 +12,6 @@ YLang does not provide every feature of a mature systems language. `Option<T>` a
 
 ## Stable and experimental material
 
-Throughout the book, the stable 2.0.0 core is distinguished from experimental extensions. Platform and feature pages state which paths are tested and which remain experimental. Do not infer that a syntax feature works in every backend just because the parser accepts it; consult the relevant reference chapter.
+Throughout the book, the stable 2.0.1 core is distinguished from experimental extensions. Platform and feature pages state which paths are tested and which remain experimental. Do not infer that a syntax feature works in every backend just because the parser accepts it; consult the relevant reference chapter.
 
 Continue to [install YLang](getting-started.md), or open the [complete language specification](reference/language-spec.md) when you need an exact syntax and behavior reference.
