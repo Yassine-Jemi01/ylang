@@ -202,6 +202,14 @@ struct Program {
     ImportDecl **imports;
     size_t import_count;
     Module *module;
+
+    /* Arena-backed open-addressed indexes built after parsing the module. */
+    VarDecl **global_index;
+    size_t global_index_capacity;
+    Function **function_index;
+    size_t function_index_capacity;
+    ImportName **import_index;
+    size_t import_index_capacity;
 };
 
 struct Module {
