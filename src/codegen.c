@@ -153,20 +153,8 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "path.basename") == 0) return "yl_path_basename";
     if (strcmp(name, "path.extension") == 0) return "yl_path_extension";
     if (strcmp(name, "image.open") == 0) return "yl_image_open";
-    if (strcmp(name, "gui.init") == 0) return "ylgui_api_init";
-    if (strcmp(name, "gui.create_window") == 0) return "ylgui_api_create_window";
-    if (strcmp(name, "gui.poll") == 0) return "ylgui_api_poll";
-    if (strcmp(name, "gui.key_down") == 0) return "ylgui_api_key_down";
-    if (strcmp(name, "gui.mouse_x") == 0) return "ylgui_api_mouse_x";
-    if (strcmp(name, "gui.mouse_y") == 0) return "ylgui_api_mouse_y";
-    if (strcmp(name, "gui.mouse_button_down") == 0) return "ylgui_api_mouse_button_down";
-    if (strcmp(name, "gui.ticks_ms") == 0) return "ylgui_api_ticks_ms";
-    if (strcmp(name, "gui.clear") == 0) return "ylgui_api_clear";
-    if (strcmp(name, "gui.draw_rect") == 0) return "ylgui_api_draw_rect";
-    if (strcmp(name, "gui.present") == 0) return "ylgui_api_present";
-    if (strcmp(name, "gui.last_error") == 0) return "ylgui_api_last_error";
-    if (strcmp(name, "gui.close") == 0) return "ylgui_api_close";
-    if (strcmp(name, "gui.shutdown") == 0) return "ylgui_api_shutdown";
+    const GuiBuiltinInfo *gui_builtin = find_gui_builtin_info(name);
+    if (gui_builtin) return gui_builtin->c_symbol;
     return NULL;
 }
 
