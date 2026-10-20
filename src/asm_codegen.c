@@ -337,8 +337,8 @@ static size_t intern_string(AsmContext *ctx, Expr *expr)
         ctx->string_capacity = next;
     }
     size_t length = 0;
-    unsigned char *bytes = decode_quoted_literal(expr->token, &length);
-    if (!bytes) {
+    unsigned char *bytes = NULL;
+    if (!decode_quoted_literal(expr->token, &bytes, &length)) {
         fputs("ylang: cannot decode a string literal for NASM output.\n", stderr);
         ctx->okay = false;
         return 0;
@@ -470,8 +470,9 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             return true;
         case EXPR_CHAR: {
             size_t length = 0;
-            unsigned char *bytes = decode_quoted_literal(expr->token, &length);
-            if (!bytes || length != 1U) {
+            unsigned char *bytes = NULL;
+            if (!decode_quoted_literal(expr->token, &bytes, &length) ||
+                length != 1U) {
                 free(bytes);
                 fputs("ylang: internal error decoding a YLang character.\n", stderr);
                 ctx->okay = false;
