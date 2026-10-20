@@ -1,6 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "internal.h"
-#include "runtime_template.h"
+#include <runtime_template.h>
 
 #include <errno.h>
 #include <inttypes.h>
