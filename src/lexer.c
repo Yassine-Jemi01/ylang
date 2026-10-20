@@ -361,11 +361,16 @@ Token lexer_next(Lexer *lexer)
             return scan_string(lexer, TOKEN_STRING);
 
         case '\'': {
-            /* YLang 1.0 char literals contain exactly one byte or one escape. */
+            /* YLang chars are one byte or one validated escape sequence. */
+            const char *escape_error = NULL;
             if (peek(lexer) == '\\') {
-                advance_char(lexer);
-                if (peek(lexer) != '\0' && peek(lexer) != '\n') {
-                    advance_char(lexer);
+                if (!scan_escape_sequence(lexer, &escape_error)) {
+                    while (peek(lexer) != '\'' && peek(lexer) != '\0' &&
+                           peek(lexer) != '\n') {
+                        advance_char(lexer);
+                    }
+                    if (peek(lexer) == '\'') advance_char(lexer);
+                    return error_token(lexer, escape_error);
                 }
             } else if (peek(lexer) != '\0' && peek(lexer) != '\n' && peek(lexer) != '\'') {
                 advance_char(lexer);
