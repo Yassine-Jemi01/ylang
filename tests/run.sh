@@ -1169,4 +1169,172 @@ else
     echo "SKIP: SDL2 integration test (install SDL2 development files and pkg-config to enable)." >&2
 fi
 
+
+# Evaluation order must be left-to-right on both supported C compilers.
+cat > build/evaluation-order.yl <<'EOF'
+let int call_count = 0;
+
+function next() -> int {
+    call_count += 1;
+    return call_count;
+}
+
+function pair(int left, int right) -> int {
+    return left * 10 + right;
+}
+
+function loop_forever() -> int {
+    loop() {}
+}
+
+function while_forever() -> int {
+    while (true) {}
+}
+
+function main() -> int {
+    print(pair(next(), next()));
+    call_count = 0;
+    print(next() * 10 + next());
+    call_count = 0;
+    print(next() < next());
+    print("what??/");
+    print("tri??/graph ??= ??)");
+    print('\x41');
+    print(0.1);
+    print(string.is_int(" 5"));
+    print(string.is_int("5 "));
+    print(path.basename("folder\\name.txt"));
+    return 0;
+}
+EOF
+./build/ylang check build/evaluation-order.yl >/dev/null
+./build/ylang build build/evaluation-order.yl -o build/test-evaluation-order >/dev/null
+./build/test-evaluation-order > build/evaluation-order.out
+cat > build/evaluation-order.expected <<'EOF'
+12
+12
+true
+what??/
+tri??/graph ??= ??)
+A
+0.1
+false
+false
+folder\name.txt
+EOF
+diff -u build/evaluation-order.expected build/evaluation-order.out
+
+if command -v clang >/dev/null 2>&1; then
+    ./build/ylang build build/evaluation-order.yl -o build/test-evaluation-order-clang --cc clang >/dev/null
+    ./build/test-evaluation-order-clang > build/evaluation-order-clang.out
+    diff -u build/evaluation-order.expected build/evaluation-order-clang.out
+fi
+
+# Invalid escape sequences are diagnosed by YLang rather than leaked to C.
+cat > build/invalid-escape-unsupported.yl <<'EOF'
+function main() -> int {
+    print("\q");
+    return 0;
+}
+EOF
+if ./build/ylang check build/invalid-escape-unsupported.yl > build/invalid-escape-unsupported.out 2>&1; then
+    echo "FAIL: unsupported string escape was accepted" >&2
+    exit 1
+fi
+grep -q 'Unsupported escape sequence' build/invalid-escape-unsupported.out
+
+cat > build/invalid-escape-octal.yl <<'EOF'
+function main() -> int {
+    print("\400");
+    return 0;
+}
+EOF
+if ./build/ylang check build/invalid-escape-octal.yl > build/invalid-escape-octal.out 2>&1; then
+    echo "FAIL: out-of-range octal escape was accepted" >&2
+    exit 1
+fi
+grep -q 'Octal escape sequence is outside the byte range' build/invalid-escape-octal.out
+
+cat > build/invalid-escape-hex.yl <<'EOF'
+function main() -> int {
+    print("\xZZ");
+    return 0;
+}
+EOF
+if ./build/ylang check build/invalid-escape-hex.yl > build/invalid-escape-hex.out 2>&1; then
+    echo "FAIL: malformed hexadecimal escape was accepted" >&2
+    exit 1
+fi
+grep -q 'Hex escape sequence requires at least one hexadecimal digit' build/invalid-escape-hex.out
+
+cat > build/invalid-char-escape.yl <<'EOF'
+function main() -> int {
+    print('\x100');
+    return 0;
+}
+EOF
+if ./build/ylang check build/invalid-char-escape.yl > build/invalid-char-escape.out 2>&1; then
+    echo "FAIL: out-of-range character escape was accepted" >&2
+    exit 1
+fi
+grep -q 'Hex escape sequence is outside the byte range' build/invalid-char-escape.out
+
+# parse_int shares the strict grammar enforced by string.is_int.
+cat > build/parse-int-leading-space.yl <<'EOF'
+function main() -> int {
+    print(string.parse_int(" 5"));
+    return 0;
+}
+EOF
+./build/ylang build build/parse-int-leading-space.yl -o build/test-parse-int-leading-space >/dev/null
+set +e
+./build/test-parse-int-leading-space > build/parse-int-leading-space.out 2>&1
+parse_int_status=$?
+set -e
+[ "$parse_int_status" -eq 70 ]
+grep -q 'string.parse_int received invalid or out-of-range integer text' build/parse-int-leading-space.out
+
+# Importing arbitrary text files must not parse or expose their first line.
+mkdir -p build/import-guard
+printf '%s\n' 'YL_IMPORT_GUARD_SECRET_LINE' > build/import-guard/not-a-module.txt
+cat > build/import-guard/main.yl <<'EOF'
+from "./not-a-module.txt" import hidden;
+function main() -> int {
+    return 0;
+}
+EOF
+if ./build/ylang check build/import-guard/main.yl > build/import-guard.out 2>&1; then
+    echo "FAIL: non-.yl import was accepted" >&2
+    exit 1
+fi
+grep -q 'Imported module files must use the .yl extension' build/import-guard.out
+if grep -q 'YL_IMPORT_GUARD_SECRET_LINE' build/import-guard.out; then
+    echo "FAIL: import diagnostics leaked content from a non-YLang file" >&2
+    exit 1
+fi
+
+# image.open must not let a leading-hyphen path become an opener option.
+if [ "$(uname -s)" = "Linux" ]; then
+    touch -- -ylang-image-open-test.png
+    mkdir -p build/fake-xdg-open
+    cat > build/fake-xdg-open/xdg-open <<'EOF'
+#!/bin/sh
+printf '%s\n' "$1" > "$YLANG_OPEN_TEST_CAPTURE"
+exit 0
+EOF
+    chmod +x build/fake-xdg-open/xdg-open
+    cat > build/image-open-option.yl <<'EOF'
+function main() -> int {
+    print(image.open("-ylang-image-open-test.png"));
+    return 0;
+}
+EOF
+    ./build/ylang build build/image-open-option.yl -o build/test-image-open-option >/dev/null
+    PATH="$PWD/build/fake-xdg-open:$PATH" YLANG_OPEN_TEST_CAPTURE="$PWD/build/image-open-argument.out" ./build/test-image-open-option > build/image-open-result.out
+    grep -q '^true
+ build/image-open-result.out
+    grep -Fqx './-ylang-image-open-test.png' build/image-open-argument.out
+    rm -f -- -ylang-image-open-test.png
+fi
+
 echo "All YLang tests passed."
