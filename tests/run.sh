@@ -1228,7 +1228,7 @@ echo "All YLang tests passed."
  build/asm-empty-string.asm
     ./build/ylang build-asm build/asm-empty-string.yl -o build/test-asm-empty-string >/dev/null
     ./build/test-asm-empty-string > build/asm-empty-string.out
-    printf '\\n' > build/asm-empty-string.expected
+    printf '\n' > build/asm-empty-string.expected
     diff -u build/asm-empty-string.expected build/asm-empty-string.out
 
     # Differential parity tests: programs in the shared subset must behave the same
