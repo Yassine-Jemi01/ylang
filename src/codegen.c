@@ -606,6 +606,17 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             break;
         case EXPR_STRUCT_INIT: {
             StructDecl *structure = expr->as.struct_init.structure;
+            bool sequence = struct_init_needs_sequence(expr);
+            if (sequence) {
+                sb_append(sb, "(");
+                for (size_t i = 0; i < expr->as.struct_init.count; i++) {
+                    if (i) sb_append(sb, ", ");
+                    char suffix[32];
+                    (void)snprintf(suffix, sizeof(suffix), "field%zu", i);
+                    emit_temp_assignment(sb, expr, suffix, expr->as.struct_init.args[i]);
+                }
+                sb_append(sb, ", ");
+            }
             sb_append(sb, "(");
             sb_append(sb, structure ? structure->c_name : "int");
             sb_append(sb, "){");
@@ -617,10 +628,17 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     sb_append(sb, ".");
                     sb_append(sb, structure->fields[i]->c_name);
                     sb_append(sb, " = ");
-                    emit_expr(sb, expr->as.struct_init.args[i]);
+                    if (sequence) {
+                        char suffix[32];
+                        (void)snprintf(suffix, sizeof(suffix), "field%zu", i);
+                        emit_temp_name(sb, expr, suffix);
+                    } else {
+                        emit_expr(sb, expr->as.struct_init.args[i]);
+                    }
                 }
             }
             sb_append(sb, "}");
+            if (sequence) sb_append(sb, ")");
             break;
         }
         case EXPR_MEMBER:
@@ -652,14 +670,22 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
         case EXPR_FSTRING:
             emit_fstring_expr(sb, expr);
             break;
-        case EXPR_ARRAY:
+        case EXPR_ARRAY: {
+            bool sequence = array_init_needs_sequence(expr);
             sb_append(sb, "{");
             for (size_t i = 0; i < expr->as.array.count; i++) {
                 if (i) sb_append(sb, ", ");
-                emit_expr(sb, expr->as.array.items[i]);
+                if (sequence) {
+                    char suffix[32];
+                    (void)snprintf(suffix, sizeof(suffix), "element%zu", i);
+                    emit_temp_name(sb, expr, suffix);
+                } else {
+                    emit_expr(sb, expr->as.array.items[i]);
+                }
             }
             sb_append(sb, "}");
             break;
+        }
         case EXPR_INDEX:
             emit_expr(sb, expr->as.index.target);
             sb_append(sb, "[yl_bounds(");
