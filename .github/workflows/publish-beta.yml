@@ -25,7 +25,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out release candidate
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
       - name: Verify requested beta version
@@ -77,9 +77,9 @@ jobs:
         shell: msys2 {0}
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Set up MinGW-w64 toolchain
-        uses: msys2/setup-msys2@v2
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2
         with:
           msystem: MINGW64
           update: true
@@ -145,11 +145,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out release candidate
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - name: Install Neovim
@@ -167,7 +167,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out release candidate
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
       - name: Validate website
@@ -179,17 +179,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out release candidate
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
       - name: Install C build tools
         run: sudo apt-get update && sudo apt-get install -y build-essential binutils
       - name: Set up Go for YSPM
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.23.x"
       - name: Check out YSPM package builder
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: Yassine-Jemi01/yspm
           ref: ba2c2c31b864ca85333fa625b437b3c6b9452e96
@@ -208,7 +208,7 @@ jobs:
           tar -tzf "$package_path" | grep -Fxq "metadata.json"
           tar -tzf "$package_path" | grep -Fxq "root/usr/bin/ylang"
       - name: Upload YSPM package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ylang-yspkg
           path: build/ylang-yspm/*.yspkg
@@ -221,11 +221,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out tested commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
       - name: Download tested YSPM package artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: ylang-yspkg
           path: build/ylang-yspm
