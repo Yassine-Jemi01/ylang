@@ -2,7 +2,7 @@
 VERSION := $(shell cat VERSION)
 CC = gcc
 AR ?= ar
-CPPFLAGS += -Iinclude -DYLANG_VERSION=\"$(VERSION)\" -DYLANG_SHARE_DIR=\"$(PREFIX)/share/ylang\" -DYLANG_INCLUDE_DIR=\"$(PREFIX)/include\"
+CPPFLAGS += -Iinclude -Ibuild -DYLANG_VERSION=\"$(VERSION)\" -DYLANG_SHARE_DIR=\"$(PREFIX)/share/ylang\" -DYLANG_INCLUDE_DIR=\"$(PREFIX)/include\"
 CFLAGS ?= -std=c17 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes -g3 -O0
 LDFLAGS ?=
 PREFIX ?= /usr/local
@@ -29,11 +29,20 @@ build/%.o: src/%.c
 	@mkdir -p build
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-check-runtime-template:
-	@python3 tools/embed_text.py runtime/runtime_template.c src/runtime_template.h --check
+build/runtime_template.h: runtime/runtime_template.c tools/embed_text.py
+	@mkdir -p build
+	@python3 tools/embed_text.py $< $@
+
+build/codegen.o: build/runtime_template.h
+
+check-runtime-template: build/runtime_template.h
+	@python3 tools/embed_text.py runtime/runtime_template.c build/runtime_template.check.h
+	@cmp build/runtime_template.h build/runtime_template.check.h
+	@rm -f build/runtime_template.check.h
 
 regen-runtime-template:
-	@python3 tools/embed_text.py runtime/runtime_template.c src/runtime_template.h
+	@mkdir -p build
+	@python3 tools/embed_text.py runtime/runtime_template.c build/runtime_template.h
 
 print-version:
 	@printf '%s\n' '$(VERSION)'
