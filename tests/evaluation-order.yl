@@ -14,6 +14,11 @@ function pair(int first, int second) -> int {
     return first * 10 + second;
 }
 
+function shadow_parameter(int value) -> int {
+    let int value = 7;
+    return value;
+}
+
 function main() -> int {
     counter = 0;
     print(pair(next(), next()));
@@ -30,6 +35,13 @@ function main() -> int {
     counter = 0;
     let Pair p = Pair(next(), next());
     print(p.first, p.second);
+
+    counter = 0;
+    let int slots[] = [0, 0, 0];
+    slots[next()] = next();
+    print(slots[0], slots[1], counter);
+
+    print(shadow_parameter(99));
 
     counter = 0;
     let int values[] = [next(), next()];
