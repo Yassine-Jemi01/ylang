@@ -1,16 +1,13 @@
 name: Publish YLang stable release
 
+# Release publication is manual-only. Updating the marker can never publish by itself.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/PUBLISH_STABLE"
   workflow_dispatch:
     inputs:
       confirm_version:
         description: Type the exact stable version to confirm publication
         required: true
-        default: "2.0.0"
+        default: "2.0.1"
         type: string
 
 # Build and test jobs only need read access; release publishing opts into write.
@@ -32,7 +29,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out release candidate
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
       - name: Verify stable candidate version
@@ -96,11 +93,11 @@ jobs:
         shell: msys2 {0}
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
       - name: Set up MinGW-w64 toolchain
-        uses: msys2/setup-msys2@v2
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2
         with:
           msystem: MINGW64
           update: true
@@ -166,11 +163,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out release candidate
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - name: Install Neovim
@@ -188,11 +185,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out release candidate
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
       - name: Set up mdBook
-        uses: peaceiris/actions-mdbook@v2
+        uses: peaceiris/actions-mdbook@ee69d230fe19748b7abf22df32acaa93833fad08 # v2.0.0
         with:
           mdbook-version: "0.5.4"
       - name: Build book and validate website
@@ -212,17 +209,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out release candidate
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
       - name: Install C build tools
         run: sudo apt-get update && sudo apt-get install -y build-essential binutils
       - name: Set up Go for YSPM
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.23.x"
       - name: Check out YSPM package builder
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: Yassine-Jemi01/yspm
           ref: ba2c2c31b864ca85333fa625b437b3c6b9452e96
@@ -244,7 +241,7 @@ jobs:
           YSPM_BIN="$GITHUB_WORKSPACE/tools/yspm-source/build/yspm" \
             bash packaging/yspm/smoke-install.sh "$package_path"
       - name: Upload YSPM package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ylang-yspkg
           path: build/ylang-yspm/*.yspkg
@@ -259,24 +256,45 @@ jobs:
       contents: write
     steps:
       - name: Check out tested commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
       - name: Download tested YSPM package artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: ylang-yspkg
           path: build/ylang-yspm
-      - name: Verify release metadata
+      - name: Verify version-specific release notes and checklist
+        shell: bash
         run: |
+          set -euo pipefail
           EXPECTED_VERSION="$(tr -d '\r\n' < .github/PUBLISH_STABLE)"
-          test "$(tr -d '\r\n' < VERSION)" = "$EXPECTED_VERSION"
-      - name: Ensure release checklist has no open gates
-        run: |
-          if grep -nF -- '- [ ]' docs/STABLE-RELEASE-CHECKLIST.md; then
-            echo "Release blocked: docs/STABLE-RELEASE-CHECKLIST.md contains an unchecked acceptance gate." >&2
+          ACTUAL_VERSION="$(tr -d '\r\n' < VERSION)"
+          test "$ACTUAL_VERSION" = "$EXPECTED_VERSION"
+
+          CHANGELOG_FILE="docs/CHANGELOG-${EXPECTED_VERSION}.md"
+          CHECKLIST_FILE="docs/STABLE-RELEASE-CHECKLIST-${EXPECTED_VERSION}.md"
+          if [[ ! -s "$CHANGELOG_FILE" ]]; then
+            echo "Release blocked: missing version-specific notes: $CHANGELOG_FILE" >&2
             exit 1
           fi
+          if ! grep -Fq "# YLang ${EXPECTED_VERSION}" "$CHANGELOG_FILE"; then
+            echo "Release blocked: $CHANGELOG_FILE has no matching version heading." >&2
+            exit 1
+          fi
+          if [[ ! -s "$CHECKLIST_FILE" ]]; then
+            echo "Release blocked: missing version-specific acceptance checklist: $CHECKLIST_FILE" >&2
+            exit 1
+          fi
+          if ! grep -Fq "# YLang ${EXPECTED_VERSION} Stable Release Acceptance Checklist" "$CHECKLIST_FILE"; then
+            echo "Release blocked: $CHECKLIST_FILE has no matching version heading." >&2
+            exit 1
+          fi
+          if grep -nF -- '- [ ]' "$CHECKLIST_FILE"; then
+            echo "Release blocked: $CHECKLIST_FILE contains an unchecked acceptance gate." >&2
+            exit 1
+          fi
+          echo "CHANGELOG_FILE=$CHANGELOG_FILE" >> "$GITHUB_ENV"
       - name: Create stable release from the tested commit
         env:
           GH_TOKEN: ${{ github.token }}
@@ -294,7 +312,7 @@ jobs:
           gh release create "$TAG" \
             --target "$GITHUB_SHA" \
             --title "YLang ${EXPECTED_VERSION}" \
-            --notes-file docs/CHANGELOG-2.0.0.md \
+            --notes-file "$CHANGELOG_FILE" \
             --latest \
             build/ylang-yspm/*.yspkg
           echo "Published stable release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}" >> "$GITHUB_STEP_SUMMARY"
