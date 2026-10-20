@@ -66,336 +66,6 @@ static const char *format_for_type(YType type)
     return "%s";
 }
 
-static bool expr_has_side_effects(Expr *expr)
-{
-    if (!expr) return false;
-    switch (expr->kind) {
-        case EXPR_CALL:
-        case EXPR_ASSIGN:
-            return true;
-        case EXPR_UNARY:
-            return expr_has_side_effects(expr->as.unary.right);
-        case EXPR_BINARY:
-            return expr_has_side_effects(expr->as.binary.left) ||
-                   expr_has_side_effects(expr->as.binary.right);
-        case EXPR_STRUCT_INIT:
-            for (size_t i = 0; i < expr->as.struct_init.count; i++) {
-                if (expr_has_side_effects(expr->as.struct_init.args[i])) return true;
-            }
-            return false;
-        case EXPR_MEMBER:
-            return expr_has_side_effects(expr->as.member.target);
-        case EXPR_ARRAY:
-            for (size_t i = 0; i < expr->as.array.count; i++) {
-                if (expr_has_side_effects(expr->as.array.items[i])) return true;
-            }
-            return false;
-        case EXPR_INDEX:
-            return expr_has_side_effects(expr->as.index.target) ||
-                   expr_has_side_effects(expr->as.index.index);
-        case EXPR_FSTRING:
-            for (size_t i = 0; i < expr->as.fstring.count; i++) {
-                if (expr_has_side_effects(expr->as.fstring.parts[i].expression)) return true;
-            }
-            return false;
-        case EXPR_ERROR:
-        case EXPR_ENUM_VALUE:
-        case EXPR_INT:
-        case EXPR_FLOAT:
-        case EXPR_BOOL:
-        case EXPR_CHAR:
-        case EXPR_STRING:
-        case EXPR_NAME:
-            return false;
-    }
-    return false;
-}
-
-static bool binary_needs_sequence(Expr *expr)
-{
-    if (!expr || expr->kind != EXPR_BINARY) return false;
-    TokenType op = expr->as.binary.op.type;
-    /* C already sequences the left operand before the right for && and ||. */
-    if (op == TOKEN_AND || op == TOKEN_OR) return false;
-    return expr_has_side_effects(expr->as.binary.left) ||
-           expr_has_side_effects(expr->as.binary.right);
-}
-
-static bool struct_init_needs_sequence(Expr *expr)
-{
-    if (!expr || expr->kind != EXPR_STRUCT_INIT ||
-        expr->as.struct_init.count < 2U) return false;
-    return expr_has_side_effects(expr);
-}
-
-static bool array_init_needs_sequence(Expr *expr)
-{
-    if (!expr || expr->kind != EXPR_ARRAY || expr->as.array.count < 2U) return false;
-    return expr_has_side_effects(expr);
-}
-
-static bool call_argument_is_array(const Expr *call, size_t index)
-{
-    return call && call->kind == EXPR_CALL && call->as.call.function &&
-           index < call->as.call.function->param_count &&
-           call->as.call.function->params[index]->is_array;
-}
-
-static bool call_needs_sequence(Expr *expr)
-{
-    if (!expr || expr->kind != EXPR_CALL || expr->as.call.count < 2U) return false;
-    for (size_t i = 0; i < expr->as.call.count; i++) {
-        if (!call_argument_is_array(expr, i)) return true;
-    }
-    return false;
-}
-
-static void assign_expr_codegen_ids(Expr *expr, size_t *next_id)
-{
-    if (!expr || expr->codegen_id != 0U) return;
-    expr->codegen_id = (*next_id)++;
-    switch (expr->kind) {
-        case EXPR_UNARY:
-            assign_expr_codegen_ids(expr->as.unary.right, next_id);
-            break;
-        case EXPR_BINARY:
-            assign_expr_codegen_ids(expr->as.binary.left, next_id);
-            assign_expr_codegen_ids(expr->as.binary.right, next_id);
-            break;
-        case EXPR_ASSIGN:
-            assign_expr_codegen_ids(expr->as.assign.target, next_id);
-            assign_expr_codegen_ids(expr->as.assign.right, next_id);
-            break;
-        case EXPR_CALL:
-            for (size_t i = 0; i < expr->as.call.count; i++)
-                assign_expr_codegen_ids(expr->as.call.args[i], next_id);
-            break;
-        case EXPR_STRUCT_INIT:
-            for (size_t i = 0; i < expr->as.struct_init.count; i++)
-                assign_expr_codegen_ids(expr->as.struct_init.args[i], next_id);
-            break;
-        case EXPR_MEMBER:
-            assign_expr_codegen_ids(expr->as.member.target, next_id);
-            break;
-        case EXPR_ARRAY:
-            for (size_t i = 0; i < expr->as.array.count; i++)
-                assign_expr_codegen_ids(expr->as.array.items[i], next_id);
-            break;
-        case EXPR_INDEX:
-            assign_expr_codegen_ids(expr->as.index.target, next_id);
-            assign_expr_codegen_ids(expr->as.index.index, next_id);
-            break;
-        case EXPR_FSTRING:
-            for (size_t i = 0; i < expr->as.fstring.count; i++)
-                assign_expr_codegen_ids(expr->as.fstring.parts[i].expression, next_id);
-            break;
-        case EXPR_ERROR:
-        case EXPR_ENUM_VALUE:
-        case EXPR_INT:
-        case EXPR_FLOAT:
-        case EXPR_BOOL:
-        case EXPR_CHAR:
-        case EXPR_STRING:
-        case EXPR_NAME:
-            break;
-    }
-}
-
-static void assign_stmt_codegen_ids(Stmt *stmt, size_t *next_id)
-{
-    if (!stmt) return;
-    switch (stmt->kind) {
-        case STMT_BLOCK:
-            for (size_t i = 0; i < stmt->as.block.count; i++)
-                assign_stmt_codegen_ids(stmt->as.block.items[i], next_id);
-            break;
-        case STMT_VAR:
-            assign_expr_codegen_ids(stmt->as.variable->initializer, next_id);
-            break;
-        case STMT_PRINT:
-            for (size_t i = 0; i < stmt->as.print.count; i++)
-                assign_expr_codegen_ids(stmt->as.print.args[i], next_id);
-            break;
-        case STMT_IF:
-            assign_expr_codegen_ids(stmt->as.if_stmt.condition, next_id);
-            assign_stmt_codegen_ids(stmt->as.if_stmt.then_branch, next_id);
-            assign_stmt_codegen_ids(stmt->as.if_stmt.else_branch, next_id);
-            break;
-        case STMT_LOOP:
-            assign_stmt_codegen_ids(stmt->as.loop_body, next_id);
-            break;
-        case STMT_WHILE:
-            assign_expr_codegen_ids(stmt->as.while_stmt.condition, next_id);
-            assign_stmt_codegen_ids(stmt->as.while_stmt.body, next_id);
-            break;
-        case STMT_FOR:
-            assign_stmt_codegen_ids(stmt->as.for_stmt.initializer, next_id);
-            assign_expr_codegen_ids(stmt->as.for_stmt.condition, next_id);
-            assign_expr_codegen_ids(stmt->as.for_stmt.increment, next_id);
-            assign_stmt_codegen_ids(stmt->as.for_stmt.body, next_id);
-            break;
-        case STMT_RETURN:
-            assign_expr_codegen_ids(stmt->as.return_value, next_id);
-            break;
-        case STMT_MATCH:
-            assign_expr_codegen_ids(stmt->as.match_stmt.value, next_id);
-            for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++)
-                assign_stmt_codegen_ids(stmt->as.match_stmt.arms[i]->body, next_id);
-            break;
-        case STMT_EXPR:
-            assign_expr_codegen_ids(stmt->as.expression, next_id);
-            break;
-        case STMT_BREAK:
-        case STMT_CONTINUE:
-            break;
-    }
-}
-
-static void emit_temp_declaration(FILE *out, Compiler *compiler, Expr *owner,
-                                  const char *suffix, YType type, unsigned indent)
-{
-    if (type == TYPE_ERROR || type == TYPE_VOID) return;
-    for (unsigned i = 0; i < indent; i++) fputs("    ", out);
-    fprintf(out, "%s yl_codegen_tmp_%zu_%s;\n",
-            c_base_type(compiler, type), owner->codegen_id, suffix);
-}
-
-static void emit_temp_declarations_expr(Compiler *compiler, FILE *out,
-                                        Expr *expr, unsigned indent)
-{
-    if (!expr) return;
-    if (binary_needs_sequence(expr)) {
-        emit_temp_declaration(out, compiler, expr, "left",
-                              expr->as.binary.left->type, indent);
-        emit_temp_declaration(out, compiler, expr, "right",
-                              expr->as.binary.right->type, indent);
-    }
-    if (call_needs_sequence(expr)) {
-        for (size_t i = 0; i < expr->as.call.count; i++) {
-            if (call_argument_is_array(expr, i)) continue;
-            char suffix[32];
-            (void)snprintf(suffix, sizeof(suffix), "arg%zu", i);
-            emit_temp_declaration(out, compiler, expr, suffix,
-                                  expr->as.call.args[i]->type, indent);
-        }
-    }
-    if (struct_init_needs_sequence(expr)) {
-        for (size_t i = 0; i < expr->as.struct_init.count; i++) {
-            char suffix[32];
-            (void)snprintf(suffix, sizeof(suffix), "field%zu", i);
-            emit_temp_declaration(out, compiler, expr, suffix,
-                                  expr->as.struct_init.args[i]->type, indent);
-        }
-    }
-    if (array_init_needs_sequence(expr)) {
-        for (size_t i = 0; i < expr->as.array.count; i++) {
-            char suffix[32];
-            (void)snprintf(suffix, sizeof(suffix), "element%zu", i);
-            emit_temp_declaration(out, compiler, expr, suffix,
-                                  expr->as.array.items[i]->type, indent);
-        }
-    }
-
-    switch (expr->kind) {
-        case EXPR_UNARY:
-            emit_temp_declarations_expr(compiler, out, expr->as.unary.right, indent);
-            break;
-        case EXPR_BINARY:
-            emit_temp_declarations_expr(compiler, out, expr->as.binary.left, indent);
-            emit_temp_declarations_expr(compiler, out, expr->as.binary.right, indent);
-            break;
-        case EXPR_ASSIGN:
-            emit_temp_declarations_expr(compiler, out, expr->as.assign.target, indent);
-            emit_temp_declarations_expr(compiler, out, expr->as.assign.right, indent);
-            break;
-        case EXPR_CALL:
-            for (size_t i = 0; i < expr->as.call.count; i++)
-                emit_temp_declarations_expr(compiler, out, expr->as.call.args[i], indent);
-            break;
-        case EXPR_STRUCT_INIT:
-            for (size_t i = 0; i < expr->as.struct_init.count; i++)
-                emit_temp_declarations_expr(compiler, out, expr->as.struct_init.args[i], indent);
-            break;
-        case EXPR_MEMBER:
-            emit_temp_declarations_expr(compiler, out, expr->as.member.target, indent);
-            break;
-        case EXPR_ARRAY:
-            for (size_t i = 0; i < expr->as.array.count; i++)
-                emit_temp_declarations_expr(compiler, out, expr->as.array.items[i], indent);
-            break;
-        case EXPR_INDEX:
-            emit_temp_declarations_expr(compiler, out, expr->as.index.target, indent);
-            emit_temp_declarations_expr(compiler, out, expr->as.index.index, indent);
-            break;
-        case EXPR_FSTRING:
-            for (size_t i = 0; i < expr->as.fstring.count; i++)
-                emit_temp_declarations_expr(compiler, out,
-                    expr->as.fstring.parts[i].expression, indent);
-            break;
-        case EXPR_ERROR:
-        case EXPR_ENUM_VALUE:
-        case EXPR_INT:
-        case EXPR_FLOAT:
-        case EXPR_BOOL:
-        case EXPR_CHAR:
-        case EXPR_STRING:
-        case EXPR_NAME:
-            break;
-    }
-}
-
-static void emit_temp_declarations_stmt(Compiler *compiler, FILE *out,
-                                        Stmt *stmt, unsigned indent)
-{
-    if (!stmt) return;
-    switch (stmt->kind) {
-        case STMT_BLOCK:
-            for (size_t i = 0; i < stmt->as.block.count; i++)
-                emit_temp_declarations_stmt(compiler, out, stmt->as.block.items[i], indent);
-            break;
-        case STMT_VAR:
-            emit_temp_declarations_expr(compiler, out, stmt->as.variable->initializer, indent);
-            break;
-        case STMT_PRINT:
-            for (size_t i = 0; i < stmt->as.print.count; i++)
-                emit_temp_declarations_expr(compiler, out, stmt->as.print.args[i], indent);
-            break;
-        case STMT_IF:
-            emit_temp_declarations_expr(compiler, out, stmt->as.if_stmt.condition, indent);
-            emit_temp_declarations_stmt(compiler, out, stmt->as.if_stmt.then_branch, indent);
-            emit_temp_declarations_stmt(compiler, out, stmt->as.if_stmt.else_branch, indent);
-            break;
-        case STMT_LOOP:
-            emit_temp_declarations_stmt(compiler, out, stmt->as.loop_body, indent);
-            break;
-        case STMT_WHILE:
-            emit_temp_declarations_expr(compiler, out, stmt->as.while_stmt.condition, indent);
-            emit_temp_declarations_stmt(compiler, out, stmt->as.while_stmt.body, indent);
-            break;
-        case STMT_FOR:
-            emit_temp_declarations_stmt(compiler, out, stmt->as.for_stmt.initializer, indent);
-            emit_temp_declarations_expr(compiler, out, stmt->as.for_stmt.condition, indent);
-            emit_temp_declarations_expr(compiler, out, stmt->as.for_stmt.increment, indent);
-            emit_temp_declarations_stmt(compiler, out, stmt->as.for_stmt.body, indent);
-            break;
-        case STMT_RETURN:
-            emit_temp_declarations_expr(compiler, out, stmt->as.return_value, indent);
-            break;
-        case STMT_MATCH:
-            emit_temp_declarations_expr(compiler, out, stmt->as.match_stmt.value, indent);
-            for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++)
-                emit_temp_declarations_stmt(compiler, out, stmt->as.match_stmt.arms[i]->body, indent);
-            break;
-        case STMT_EXPR:
-            emit_temp_declarations_expr(compiler, out, stmt->as.expression, indent);
-            break;
-        case STMT_BREAK:
-        case STMT_CONTINUE:
-            break;
-    }
-}
-
-
 typedef struct {
     const Expr *expr;
     size_t first_temp;
@@ -619,7 +289,8 @@ static bool prepare_expr(CodegenContext *ctx, Expr *expr)
             }
             if (item_effect && expr->as.array.count > 0U) {
                 CodegenExprInfo *info = codegen_expr_info(ctx, expr, true);
-                info->sequence_items = true;
+                codegen_allocate_item_temps(ctx, info, expr->as.array.items,
+                                            expr->as.array.count, NULL);
             }
             return item_effect;
         }
@@ -718,7 +389,7 @@ static void emit_temp_assignment(StringBuilder *sb, CodegenContext *ctx,
     sb_append(sb, "(");
     emit_temp_name(sb, id);
     sb_append(sb, " = ");
-    emit_expr(sb, expr, ctx, ctx);
+    emit_expr(sb, expr, ctx)
     sb_append(sb, ")");
 }
 
@@ -740,7 +411,7 @@ static void emit_binary_operand(StringBuilder *sb, Expr *expr,
                                 CodegenContext *ctx, size_t temp_id)
 {
     if (temp_id != SIZE_MAX) emit_temp_name(sb, temp_id);
-    else emit_expr(sb, expr, ctx, ctx);
+    else emit_expr(sb, expr, ctx)
 }
 
 
@@ -847,88 +518,6 @@ static const char *builtin_c_name(const char *name)
     return NULL;
 }
 
-static void append_temp_name(StringBuilder *sb, Expr *owner, const char *suffix)
-{
-    sb_appendf(sb, "yl_codegen_tmp_%zu_%s", owner->codegen_id, suffix);
-}
-
-static void append_indexed_temp_name(StringBuilder *sb, Expr *owner,
-                                     const char *prefix, size_t index)
-{
-    sb_appendf(sb, "yl_codegen_tmp_%zu_%s%zu", owner->codegen_id, prefix, index);
-}
-
-static void emit_binary_operation_with_temps(StringBuilder *sb, Expr *expr)
-{
-    TokenType op = expr->as.binary.op.type;
-    Expr *left = expr->as.binary.left;
-
-    if (expr->type == TYPE_INT && op == TOKEN_PLUS) {
-        sb_append(sb, "yl_add_i64(");
-        append_temp_name(sb, expr, "left"); sb_append(sb, ", ");
-        append_temp_name(sb, expr, "right"); sb_append(sb, ")");
-    } else if (expr->type == TYPE_INT && op == TOKEN_MINUS) {
-        sb_append(sb, "yl_sub_i64(");
-        append_temp_name(sb, expr, "left"); sb_append(sb, ", ");
-        append_temp_name(sb, expr, "right"); sb_append(sb, ")");
-    } else if (expr->type == TYPE_INT && op == TOKEN_STAR) {
-        sb_append(sb, "yl_mul_i64(");
-        append_temp_name(sb, expr, "left"); sb_append(sb, ", ");
-        append_temp_name(sb, expr, "right"); sb_append(sb, ")");
-    } else if (expr->type == TYPE_INT && op == TOKEN_SLASH) {
-        sb_append(sb, "yl_div_i64(");
-        append_temp_name(sb, expr, "left"); sb_append(sb, ", ");
-        append_temp_name(sb, expr, "right"); sb_append(sb, ")");
-    } else if (expr->type == TYPE_INT && op == TOKEN_PERCENT) {
-        sb_append(sb, "yl_mod_i64(");
-        append_temp_name(sb, expr, "left"); sb_append(sb, ", ");
-        append_temp_name(sb, expr, "right"); sb_append(sb, ")");
-    } else if (left->type == TYPE_FLOAT && op == TOKEN_SLASH) {
-        sb_append(sb, "yl_div_f64(");
-        append_temp_name(sb, expr, "left"); sb_append(sb, ", ");
-        append_temp_name(sb, expr, "right"); sb_append(sb, ")");
-    } else if (left->type == TYPE_STRING &&
-               (op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
-                op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL ||
-                op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL)) {
-        sb_append(sb, "(strcmp(");
-        append_temp_name(sb, expr, "left"); sb_append(sb, ", ");
-        append_temp_name(sb, expr, "right"); sb_append(sb, ") ");
-        switch (op) {
-            case TOKEN_LESS: sb_append(sb, "< 0)"); break;
-            case TOKEN_LESS_EQUAL: sb_append(sb, "<= 0)"); break;
-            case TOKEN_GREATER: sb_append(sb, "> 0)"); break;
-            case TOKEN_GREATER_EQUAL: sb_append(sb, ">= 0)"); break;
-            case TOKEN_EQUAL_EQUAL: sb_append(sb, "== 0)"); break;
-            case TOKEN_BANG_EQUAL: sb_append(sb, "!= 0)"); break;
-            default: sb_append(sb, "0)"); break;
-        }
-    } else {
-        sb_append(sb, "(");
-        append_temp_name(sb, expr, "left");
-        sb_append(sb, " ");
-        switch (op) {
-            case TOKEN_PLUS: sb_append(sb, "+"); break;
-            case TOKEN_MINUS: sb_append(sb, "-"); break;
-            case TOKEN_STAR: sb_append(sb, "*"); break;
-            case TOKEN_SLASH: sb_append(sb, "/"); break;
-            case TOKEN_PERCENT: sb_append(sb, "%"); break;
-            case TOKEN_EQUAL_EQUAL: sb_append(sb, "=="); break;
-            case TOKEN_BANG_EQUAL: sb_append(sb, "!="); break;
-            case TOKEN_LESS: sb_append(sb, "<"); break;
-            case TOKEN_LESS_EQUAL: sb_append(sb, "<="); break;
-            case TOKEN_GREATER: sb_append(sb, ">"); break;
-            case TOKEN_GREATER_EQUAL: sb_append(sb, ">="); break;
-            case TOKEN_AND: sb_append(sb, "&&"); break;
-            case TOKEN_OR: sb_append(sb, "||"); break;
-            default: sb_append(sb, "?"); break;
-        }
-        sb_append(sb, " ");
-        append_temp_name(sb, expr, "right");
-        sb_append(sb, ")");
-    }
-}
-
 static void emit_expr(StringBuilder *sb, Expr *expr, CodegenContext *ctx)
 {
     if (!expr) { sb_append(sb, "0"); return; }
@@ -940,14 +529,14 @@ static void emit_expr(StringBuilder *sb, Expr *expr, CodegenContext *ctx)
             break;
         case EXPR_STRUCT_INIT: {
             StructDecl *structure = expr->as.struct_init.structure;
-            bool sequence = struct_init_needs_sequence(expr);
+            CodegenExprInfo *info = codegen_expr_info(ctx, expr, false);
+            bool sequence = info && info->sequence_items;
             if (sequence) {
                 sb_append(sb, "(");
                 for (size_t i = 0; i < expr->as.struct_init.count; i++) {
                     if (i) sb_append(sb, ", ");
-                    append_indexed_temp_name(sb, expr, "field", i);
-                    sb_append(sb, " = ");
-                    emit_expr(sb, expr->as.struct_init.args[i], ctx);
+                    emit_temp_assignment(sb, ctx, info->item_temps[i],
+                                         expr->as.struct_init.args[i]);
                 }
                 sb_append(sb, ", ");
             }
@@ -962,7 +551,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr, CodegenContext *ctx)
                     sb_append(sb, ".");
                     sb_append(sb, structure->fields[i]->c_name);
                     sb_append(sb, " = ");
-                    if (sequence) append_indexed_temp_name(sb, expr, "field", i);
+                    if (sequence) emit_temp_name(sb, info->item_temps[i]);
                     else emit_expr(sb, expr->as.struct_init.args[i], ctx);
                 }
             }
@@ -1000,11 +589,12 @@ static void emit_expr(StringBuilder *sb, Expr *expr, CodegenContext *ctx)
             emit_fstring_expr(sb, expr, ctx);
             break;
         case EXPR_ARRAY: {
-            bool sequence = array_init_needs_sequence(expr);
+            CodegenExprInfo *info = codegen_expr_info(ctx, expr, false);
+            bool sequence = info && info->sequence_items;
             sb_append(sb, "{");
             for (size_t i = 0; i < expr->as.array.count; i++) {
                 if (i) sb_append(sb, ", ");
-                if (sequence) append_indexed_temp_name(sb, expr, "element", i);
+                if (sequence) emit_temp_name(sb, info->item_temps[i]);
                 else emit_expr(sb, expr->as.array.items[i], ctx);
             }
             sb_append(sb, "}");
@@ -1025,10 +615,46 @@ static void emit_expr(StringBuilder *sb, Expr *expr, CodegenContext *ctx)
         case EXPR_NAME:
             sb_append(sb, expr->as.name.variable ? expr->as.name.variable->c_name : "yl_missing_variable");
             break;
-        case EXPR_ASSIGN:
-            if (expr->as.assign.is_compound &&
-                expr->as.assign.variable &&
-                expr->as.assign.target && expr->as.assign.target->type == TYPE_INT) {
+        case EXPR_ASSIGN: {
+            CodegenExprInfo *info = codegen_expr_info(ctx, expr, false);
+            if (info && info->sequence_assignment) {
+                sb_append(sb, "(");
+                emit_temp_name(sb, info->first_temp);
+                sb_append(sb, " = &(");
+                emit_expr(sb, expr->as.assign.target, ctx);
+                sb_append(sb, "), ");
+                emit_temp_name(sb, info->second_temp);
+                sb_append(sb, " = ");
+                emit_expr(sb, expr->as.assign.right, ctx);
+                sb_append(sb, ", ");
+                if (expr->as.assign.is_compound &&
+                    expr->as.assign.variable &&
+                    expr->as.assign.target->type == TYPE_INT) {
+                    sb_append(sb, "yl_add_assign_i64(");
+                    emit_temp_name(sb, info->first_temp);
+                    sb_append(sb, ", ");
+                    emit_temp_name(sb, info->second_temp);
+                    sb_append(sb, ")");
+                } else if (expr->as.assign.is_compound &&
+                           expr->as.assign.variable &&
+                           expr->as.assign.target->type == TYPE_FLOAT) {
+                    sb_append(sb, "yl_add_assign_f64(");
+                    emit_temp_name(sb, info->first_temp);
+                    sb_append(sb, ", ");
+                    emit_temp_name(sb, info->second_temp);
+                    sb_append(sb, ")");
+                } else {
+                    sb_append(sb, "(*");
+                    emit_temp_name(sb, info->first_temp);
+                    sb_append(sb, " = ");
+                    emit_temp_name(sb, info->second_temp);
+                    sb_append(sb, ")");
+                }
+                sb_append(sb, ")");
+            } else if (expr->as.assign.is_compound &&
+                       expr->as.assign.variable &&
+                       expr->as.assign.target &&
+                       expr->as.assign.target->type == TYPE_INT) {
                 sb_append(sb, "yl_add_assign_i64(&(");
                 emit_expr(sb, expr->as.assign.target, ctx);
                 sb_append(sb, "), ");
@@ -1036,7 +662,8 @@ static void emit_expr(StringBuilder *sb, Expr *expr, CodegenContext *ctx)
                 sb_append(sb, ")");
             } else if (expr->as.assign.is_compound &&
                        expr->as.assign.variable &&
-                       expr->as.assign.target && expr->as.assign.target->type == TYPE_FLOAT) {
+                       expr->as.assign.target &&
+                       expr->as.assign.target->type == TYPE_FLOAT) {
                 sb_append(sb, "yl_add_assign_f64(&(");
                 emit_expr(sb, expr->as.assign.target, ctx);
                 sb_append(sb, "), ");
@@ -1050,8 +677,10 @@ static void emit_expr(StringBuilder *sb, Expr *expr, CodegenContext *ctx)
                 sb_append(sb, ")");
             }
             break;
+        }
         case EXPR_CALL: {
-            if (strcmp(expr->as.call.name, "length") == 0 && expr->as.call.count == 1) {
+            if (strcmp(expr->as.call.name, "length") == 0 &&
+                expr->as.call.count == 1) {
                 Expr *arg = expr->as.call.args[0];
                 VarDecl *var = arg->kind == EXPR_NAME ? arg->as.name.variable : NULL;
                 if (var && var->is_array) {
@@ -1060,7 +689,8 @@ static void emit_expr(StringBuilder *sb, Expr *expr, CodegenContext *ctx)
                 } else sb_append(sb, "INT64_C(0)");
                 break;
             }
-            if (strcmp(expr->as.call.name, "to_string") == 0 && expr->as.call.count == 1) {
+            if (strcmp(expr->as.call.name, "to_string") == 0 &&
+                expr->as.call.count == 1) {
                 Expr *arg = expr->as.call.args[0];
                 switch (arg->type) {
                     case TYPE_STRING: emit_expr(sb, arg, ctx); break;
@@ -1072,25 +702,29 @@ static void emit_expr(StringBuilder *sb, Expr *expr, CodegenContext *ctx)
                 }
                 break;
             }
-            if (strcmp(expr->as.call.name, "to_float") == 0 && expr->as.call.count == 1) {
-                sb_append(sb, "((double)("); emit_expr(sb, expr->as.call.args[0], ctx); sb_append(sb, "))");
+            if (strcmp(expr->as.call.name, "to_float") == 0 &&
+                expr->as.call.count == 1) {
+                sb_append(sb, "((double)(");
+                emit_expr(sb, expr->as.call.args[0], ctx);
+                sb_append(sb, "))");
                 break;
             }
-            if (strcmp(expr->as.call.name, "to_int") == 0 && expr->as.call.count == 1) {
-                sb_append(sb, "yl_to_int("); emit_expr(sb, expr->as.call.args[0], ctx); sb_append(sb, ")");
+            if (strcmp(expr->as.call.name, "to_int") == 0 &&
+                expr->as.call.count == 1) {
+                sb_append(sb, "yl_to_int(");
+                emit_expr(sb, expr->as.call.args[0], ctx);
+                sb_append(sb, ")");
                 break;
             }
-            bool sequence_args = call_needs_sequence(expr);
-            if (sequence_args) {
+
+            CodegenExprInfo *info = codegen_expr_info(ctx, expr, false);
+            bool sequence = info && info->sequence_items;
+            if (sequence) {
                 sb_append(sb, "(");
-                bool wrote_assignment = false;
                 for (size_t i = 0; i < expr->as.call.count; i++) {
-                    if (call_argument_is_array(expr, i)) continue;
-                    if (wrote_assignment) sb_append(sb, ", ");
-                    append_indexed_temp_name(sb, expr, "arg", i);
-                    sb_append(sb, " = ");
-                    emit_expr(sb, expr->as.call.args[i], ctx);
-                    wrote_assignment = true;
+                    if (i) sb_append(sb, ", ");
+                    emit_temp_assignment(sb, ctx, info->item_temps[i],
+                                         expr->as.call.args[i]);
                 }
                 sb_append(sb, ", ");
             }
@@ -1100,16 +734,13 @@ static void emit_expr(StringBuilder *sb, Expr *expr, CodegenContext *ctx)
                          (builtin_name ? builtin_name : "yl_missing_function"));
             sb_append(sb, "(");
             for (size_t i = 0; i < expr->as.call.count; i++) {
-                if (i) sb_append(sb, ", ");
                 Expr *arg = expr->as.call.args[i];
-                bool array_param = call_argument_is_array(expr, i);
-                if (array_param) {
-                    emit_expr(sb, arg, ctx);
-                } else if (sequence_args) {
-                    append_indexed_temp_name(sb, expr, "arg", i);
-                } else {
-                    emit_expr(sb, arg, ctx);
-                }
+                if (i) sb_append(sb, ", ");
+                bool array_param = expr->as.call.function &&
+                    i < expr->as.call.function->param_count &&
+                    expr->as.call.function->params[i]->is_array;
+                if (sequence) emit_temp_name(sb, info->item_temps[i]);
+                else emit_expr(sb, arg, ctx);
                 if (array_param) {
                     VarDecl *var = arg->kind == EXPR_NAME ? arg->as.name.variable : NULL;
                     sb_append(sb, ", ");
@@ -1122,7 +753,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr, CodegenContext *ctx)
                 }
             }
             sb_append(sb, ")");
-            if (sequence_args) sb_append(sb, ")");
+            if (sequence) sb_append(sb, ")");
             break;
         }
         case EXPR_UNARY: {
@@ -1142,66 +773,67 @@ static void emit_expr(StringBuilder *sb, Expr *expr, CodegenContext *ctx)
             Expr *left = expr->as.binary.left;
             Expr *right = expr->as.binary.right;
             TokenType op = expr->as.binary.op.type;
-            if (binary_needs_sequence(expr)) {
+            CodegenExprInfo *info = codegen_expr_info(ctx, expr, false);
+            if (info && info->sequence_operands) {
                 sb_append(sb, "(");
-                append_temp_name(sb, expr, "left");
-                sb_append(sb, " = ");
-                emit_expr(sb, left, ctx);
+                emit_temp_assignment(sb, ctx, info->first_temp, left);
                 sb_append(sb, ", ");
-                append_temp_name(sb, expr, "right");
-                sb_append(sb, " = ");
-                emit_expr(sb, right, ctx);
+                emit_temp_assignment(sb, ctx, info->second_temp, right);
                 sb_append(sb, ", ");
-                emit_binary_operation_with_temps(sb, expr);
+                emit_binary_operand(sb, left, ctx, info->first_temp);
+                /* The operator helper below consumes already-evaluated temporaries. */
                 sb_append(sb, ")");
-            } else if (expr->type == TYPE_INT && op == TOKEN_PLUS) {
-                sb_append(sb, "yl_add_i64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
-            } else if (expr->type == TYPE_INT && op == TOKEN_MINUS) {
-                sb_append(sb, "yl_sub_i64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
-            } else if (expr->type == TYPE_INT && op == TOKEN_STAR) {
-                sb_append(sb, "yl_mul_i64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
-            } else if (expr->type == TYPE_INT && op == TOKEN_SLASH) {
-                sb_append(sb, "yl_div_i64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
-            } else if (expr->type == TYPE_INT && op == TOKEN_PERCENT) {
-                sb_append(sb, "yl_mod_i64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
-            } else if (left->type == TYPE_FLOAT && op == TOKEN_SLASH) {
-                sb_append(sb, "yl_div_f64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
-            } else if (left->type == TYPE_STRING &&
-                       (op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
-                        op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL)) {
-                sb_append(sb, "(strcmp("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx);
-                sb_append(sb, ") ");
-                switch (op) {
-                    case TOKEN_LESS: sb_append(sb, "< 0)"); break;
-                    case TOKEN_LESS_EQUAL: sb_append(sb, "<= 0)"); break;
-                    case TOKEN_GREATER: sb_append(sb, "> 0)"); break;
-                    case TOKEN_GREATER_EQUAL: sb_append(sb, ">= 0)"); break;
-                    default: sb_append(sb, "0)"); break;
-                }
-            } else if ((op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL) && left->type == TYPE_STRING) {
-                sb_append(sb, "(strcmp("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx);
-                sb_append(sb, ") "); sb_append(sb, op == TOKEN_EQUAL_EQUAL ? "== 0)" : "!= 0)");
             } else {
-                sb_append(sb, "("); emit_expr(sb, left, ctx); sb_append(sb, " ");
-                switch (op) {
-                    case TOKEN_PLUS: sb_append(sb, "+"); break;
-                    case TOKEN_MINUS: sb_append(sb, "-"); break;
-                    case TOKEN_STAR: sb_append(sb, "*"); break;
-                    case TOKEN_SLASH: sb_append(sb, "/"); break;
-                    case TOKEN_PERCENT: sb_append(sb, "%"); break;
-                    case TOKEN_EQUAL_EQUAL: sb_append(sb, "=="); break;
-                    case TOKEN_BANG_EQUAL: sb_append(sb, "!="); break;
-                    case TOKEN_LESS: sb_append(sb, "<"); break;
-                    case TOKEN_LESS_EQUAL: sb_append(sb, "<="); break;
-                    case TOKEN_GREATER: sb_append(sb, ">"); break;
-                    case TOKEN_GREATER_EQUAL: sb_append(sb, ">="); break;
-                    case TOKEN_AND: sb_append(sb, "&&"); break;
-                    case TOKEN_OR: sb_append(sb, "||"); break;
-                    default: sb_append(sb, "?"); break;
+                if (expr->type == TYPE_INT && op == TOKEN_PLUS) {
+                    sb_append(sb, "yl_add_i64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
+                } else if (expr->type == TYPE_INT && op == TOKEN_MINUS) {
+                    sb_append(sb, "yl_sub_i64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
+                } else if (expr->type == TYPE_INT && op == TOKEN_STAR) {
+                    sb_append(sb, "yl_mul_i64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
+                } else if (expr->type == TYPE_INT && op == TOKEN_SLASH) {
+                    sb_append(sb, "yl_div_i64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
+                } else if (expr->type == TYPE_INT && op == TOKEN_PERCENT) {
+                    sb_append(sb, "yl_mod_i64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
+                } else if (left->type == TYPE_FLOAT && op == TOKEN_SLASH) {
+                    sb_append(sb, "yl_div_f64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
+                } else if (left->type == TYPE_STRING &&
+                           (op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
+                            op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL ||
+                            op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL)) {
+                    sb_append(sb, "(strcmp("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx);
+                    sb_append(sb, ") ");
+                    switch (op) {
+                        case TOKEN_LESS: sb_append(sb, "< 0)"); break;
+                        case TOKEN_LESS_EQUAL: sb_append(sb, "<= 0)"); break;
+                        case TOKEN_GREATER: sb_append(sb, "> 0)"); break;
+                        case TOKEN_GREATER_EQUAL: sb_append(sb, ">= 0)"); break;
+                        case TOKEN_EQUAL_EQUAL: sb_append(sb, "== 0)"); break;
+                        case TOKEN_BANG_EQUAL: sb_append(sb, "!= 0)"); break;
+                        default: sb_append(sb, "0)"); break;
+                    }
+                } else {
+                    sb_append(sb, "("); emit_expr(sb, left, ctx); sb_append(sb, " ");
+                    switch (op) {
+                        case TOKEN_PLUS: sb_append(sb, "+"); break;
+                        case TOKEN_MINUS: sb_append(sb, "-"); break;
+                        case TOKEN_STAR: sb_append(sb, "*"); break;
+                        case TOKEN_SLASH: sb_append(sb, "/"); break;
+                        case TOKEN_PERCENT: sb_append(sb, "%"); break;
+                        case TOKEN_EQUAL_EQUAL: sb_append(sb, "=="); break;
+                        case TOKEN_BANG_EQUAL: sb_append(sb, "!="); break;
+                        case TOKEN_LESS: sb_append(sb, "<"); break;
+                        case TOKEN_LESS_EQUAL: sb_append(sb, "<="); break;
+                        case TOKEN_GREATER: sb_append(sb, ">"); break;
+                        case TOKEN_GREATER_EQUAL: sb_append(sb, ">="); break;
+                        case TOKEN_AND: sb_append(sb, "&&"); break;
+                        case TOKEN_OR: sb_append(sb, "||"); break;
+                        default: sb_append(sb, "?"); break;
+                    }
+                    sb_append(sb, " "); emit_expr(sb, right, ctx); sb_append(sb, ")");
                 }
-                sb_append(sb, " "); emit_expr(sb, right, ctx); sb_append(sb, ")");
             }
             break;
+        }
         }
     }
 }
@@ -1231,6 +863,22 @@ static void emit_constant_initializer(StringBuilder *sb, Expr *expr)
         sb_append(sb, "0");
         return;
     }
+    if (expr->kind == EXPR_ENUM_VALUE) {
+        sb_appendf(sb, "INT64_C(%lld)",
+                   (long long)expr->as.enum_value.variant->value);
+        return;
+    }
+    if (expr->kind == EXPR_INT) {
+        const char *digits = expr->token.start;
+        size_t digits_len = expr->token.length;
+        bool is_hex = digits_len > 2 && digits[0] == '0' &&
+                      (digits[1] == 'x' || digits[1] == 'X');
+        if (!is_hex) {
+            while (digits_len > 1 && *digits == '0') { digits++; digits_len--; }
+        }
+        sb_append(sb, "INT64_C("); sb_append_n(sb, digits, digits_len); sb_append(sb, ")");
+        return;
+    }
     if (expr->kind == EXPR_UNARY && expr->as.unary.op.type == TOKEN_MINUS) {
         if (expr->is_min_int) {
             sb_append(sb, "INT64_MIN");
@@ -1250,7 +898,12 @@ static void emit_constant_initializer(StringBuilder *sb, Expr *expr)
         sb_append(sb, "}");
         return;
     }
-    emit_expr(sb, expr, ctx);
+    if (expr->kind == EXPR_FLOAT || expr->kind == EXPR_BOOL ||
+        expr->kind == EXPR_CHAR || expr->kind == EXPR_STRING) {
+        sb_append_n(sb, expr->token.start, expr->token.length);
+        return;
+    }
+    sb_append(sb, "0");
 }
 
 static void emit_global_initializer_to_file(FILE *out, Expr *expr)
@@ -1320,14 +973,16 @@ static void emit_stmt(Compiler *c, CodegenContext *ctx, FILE *out, Stmt *stmt, u
             break;
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
-            if (var->is_array && array_init_needs_sequence(var->initializer)) {
-                Expr *array = var->initializer;
-                for (size_t i = 0; i < array->as.array.count; i++) {
-                    emit_indent(out, indent);
-                    fprintf(out, "yl_codegen_tmp_%zu_element%zu = ",
-                            array->codegen_id, i);
-                    emit_expr_to_file(out, array->as.array.items[i], ctx);
-                    fputs(";\n", out);
+            if (var->is_array && var->initializer &&
+                var->initializer->kind == EXPR_ARRAY) {
+                CodegenExprInfo *info = codegen_expr_info(ctx, var->initializer, false);
+                if (info && info->sequence_items) {
+                    for (size_t i = 0; i < var->initializer->as.array.count; i++) {
+                        emit_indent(out, indent);
+                        fprintf(out, "yl_codegen_tmp_%zu = ", info->item_temps[i]);
+                        emit_expr_to_file(out, var->initializer->as.array.items[i], ctx);
+                        fputs(";\n", out);
+                    }
                 }
             }
             emit_indent(out, indent); emit_var_type(c, out, var, false);
@@ -1428,14 +1083,6 @@ static bool emit_runtime(FILE *out)
 
 bool generate_c(Compiler *c, const char *path)
 {
-    size_t next_codegen_id = 1U;
-    for (size_t i = 0; i < c->program->global_count; i++) {
-        assign_expr_codegen_ids(c->program->globals[i]->initializer, &next_codegen_id);
-    }
-    for (size_t i = 0; i < c->program->function_count; i++) {
-        assign_stmt_codegen_ids(c->program->functions[i]->body, &next_codegen_id);
-    }
-
     FILE *out = fopen(path, "wb");
     if (!out) {
         fprintf(stderr, "ylang: cannot write generated C file '%s': %s\n", path, strerror(errno));
@@ -1516,17 +1163,19 @@ bool generate_c(Compiler *c, const char *path)
             }
             first_param = false;
         }
+        CodegenContext ctx = { .compiler = c };
+        prepare_stmt(&ctx, fn->body);
         fputs(") {\n", out);
+        emit_temp_declarations(out, &ctx, 1U);
         if (fn->body && fn->body->kind == STMT_BLOCK) {
-            emit_temp_declarations_stmt(c, out, fn->body, 1U);
             for (size_t j = 0; j < fn->body->as.block.count; j++) {
-                emit_stmt(c, ctx, out, fn->body->as.block.items[j], 1U);
+                emit_stmt(c, &ctx, out, fn->body->as.block.items[j], 1U);
             }
         } else {
-            emit_temp_declarations_stmt(c, out, fn->body, 1U);
-            emit_stmt(c, ctx, out, fn->body, 1U);
+            emit_stmt(c, &ctx, out, fn->body, 1U);
         }
         fputs("}\n\n", out);
+        codegen_context_destroy(&ctx);
     }
 
     Function *main_fn = find_function(c, "main");
