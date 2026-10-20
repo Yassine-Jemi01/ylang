@@ -1089,8 +1089,18 @@ function main() -> int {
 }
 EOF
     ./build/ylang emit-asm build/asm-empty-string.yl -o build/asm-empty-string.asm >/dev/null
-    grep -q '^yl_str_0: db 0
+    grep -Fq "yl_str_0: db 0" build/asm-empty-string.asm
+    ./build/ylang build-asm build/asm-empty-string.yl -o build/test-asm-empty-string >/dev/null
+    ./build/test-asm-empty-string > build/asm-empty-string.out
+    : > build/asm-empty-string.expected
+    echo >> build/asm-empty-string.expected
+    diff -u build/asm-empty-string.expected build/asm-empty-string.out
+
+    # Differential parity tests: programs in the shared subset must behave the same
+    # when compiled by the default C backend and the experimental NASM backend.
+    run_backend_parity() {
         parity_source=$1
+
         parity_label=$2
         ./build/ylang build "$parity_source" -o "build/parity-$parity_label-c" >/dev/null
         ./build/ylang build-asm "$parity_source" -o "build/parity-$parity_label-asm" >/dev/null
