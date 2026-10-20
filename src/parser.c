@@ -1317,18 +1317,18 @@ static char *decode_import_path(Parser *p, Token token)
             return arena_strndup(&p->compiler->arena, "", 0);
         }
         char escaped = token.start[i + 1U];
-        unsigned char decoded = 0;
+        unsigned char decoded_byte = 0;
         size_t consumed = 0;
         if ((escaped != '\\' && escaped != '"' && escaped != '/') ||
             !decode_escape_sequence(token.start + i + 1U, end - i - 1U,
-                                    &decoded, &consumed)) {
+                                    &decoded_byte, &consumed)) {
             diagnostic(p->compiler, token, "error", "E1020",
                        "Unsupported escape in import path.",
-                       "Use ordinary path characters, \\\\, or \\\\".");
+                       "Use ordinary path characters or escape a backslash.");
             sb_destroy(&decoded);
             return arena_strndup(&p->compiler->arena, "", 0);
         }
-        char path_character = (char)decoded;
+        char path_character = (char)decoded_byte;
         sb_append_n(&decoded, &path_character, 1);
         i += consumed;
     }
