@@ -413,10 +413,13 @@ static YType check_expr(Checker *checker, Expr *expr)
         case EXPR_BOOL: expr->type = TYPE_BOOL; return expr->type;
         case EXPR_STRING: expr->type = TYPE_STRING; return expr->type;
         case EXPR_CHAR:
-            if (expr->token.length < 3 || expr->token.length > 4) {
+            /* The lexer already verifies that the literal contains exactly one
+               byte or one valid simple/octal/hex escape. Escape spellings can
+               be longer than four source bytes (for example '\\x41'). */
+            if (expr->token.length < 3) {
                 diagnostic(c, expr->token, "error", "E2012",
                            "Character literals must contain one byte.",
-                           "Use a single ASCII character such as 'A' or an escape such as '\\n'.");
+                           "Use one byte or a valid escape such as '\\n', '\\123', or '\\x41'.");
                 expr->type = TYPE_ERROR;
             } else expr->type = TYPE_CHAR;
             return expr->type;
