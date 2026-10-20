@@ -505,8 +505,8 @@ static Expr *parse_fstring(Parser *p, Token token)
                 sb_append_n(&text, &output, 1);
                 pos += consumed + 1U;
             } else {
-                sb_append_n(&text, &ch, 1);
-                sb_append_n(&text, inside + pos + 1, 1);
+                char output = inside[pos + 1U];
+                sb_append_n(&text, &output, 1);
                 pos += 2U;
             }
             continue;
