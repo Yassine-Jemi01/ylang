@@ -701,10 +701,38 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
         case EXPR_NAME:
             sb_append(sb, expr->as.name.variable ? expr->as.name.variable->c_name : "yl_missing_variable");
             break;
-        case EXPR_ASSIGN:
-            if (expr->as.assign.is_compound &&
-                expr->as.assign.variable &&
-                expr->as.assign.target && expr->as.assign.target->type == TYPE_INT) {
+        case EXPR_ASSIGN: {
+            if (assignment_needs_sequence(expr)) {
+                sb_append(sb, "(");
+                emit_temp_name(sb, expr, "target");
+                sb_append(sb, " = &(");
+                emit_expr(sb, expr->as.assign.target);
+                sb_append(sb, "), ");
+                emit_temp_name(sb, expr, "value");
+                sb_append(sb, " = ");
+                emit_expr(sb, expr->as.assign.right);
+                sb_append(sb, ", ");
+                if (expr->as.assign.is_compound &&
+                    expr->as.assign.variable &&
+                    expr->as.assign.target->type == TYPE_INT) {
+                    sb_append(sb, "yl_add_assign_i64(");
+                    emit_temp_name(sb, expr, "target"); sb_append(sb, ", ");
+                    emit_temp_name(sb, expr, "value"); sb_append(sb, ")");
+                } else if (expr->as.assign.is_compound &&
+                           expr->as.assign.variable &&
+                           expr->as.assign.target->type == TYPE_FLOAT) {
+                    sb_append(sb, "yl_add_assign_f64(");
+                    emit_temp_name(sb, expr, "target"); sb_append(sb, ", ");
+                    emit_temp_name(sb, expr, "value"); sb_append(sb, ")");
+                } else {
+                    sb_append(sb, "(*");
+                    emit_temp_name(sb, expr, "target"); sb_append(sb, " = ");
+                    emit_temp_name(sb, expr, "value"); sb_append(sb, ")");
+                }
+                sb_append(sb, ")");
+            } else if (expr->as.assign.is_compound &&
+                       expr->as.assign.variable &&
+                       expr->as.assign.target && expr->as.assign.target->type == TYPE_INT) {
                 sb_append(sb, "yl_add_assign_i64(&(");
                 emit_expr(sb, expr->as.assign.target);
                 sb_append(sb, "), ");
@@ -726,6 +754,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 sb_append(sb, ")");
             }
             break;
+        }
         case EXPR_CALL: {
             if (strcmp(expr->as.call.name, "length") == 0 && expr->as.call.count == 1) {
                 Expr *arg = expr->as.call.args[0];
@@ -756,6 +785,21 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 sb_append(sb, "yl_to_int("); emit_expr(sb, expr->as.call.args[0]); sb_append(sb, ")");
                 break;
             }
+            bool sequence = call_needs_sequence(expr);
+            if (sequence) {
+                sb_append(sb, "(");
+                bool wrote_assignment = false;
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    if (call_argument_is_array(expr, i)) continue;
+                    if (wrote_assignment) sb_append(sb, ", ");
+                    char suffix[32];
+                    (void)snprintf(suffix, sizeof(suffix), "arg%zu", i);
+                    emit_temp_assignment(sb, expr, suffix, expr->as.call.args[i]);
+                    wrote_assignment = true;
+                }
+                sb_append(sb, ", ");
+            }
+
             const char *builtin_name = builtin_c_name(expr->as.call.name);
             sb_append(sb, expr->as.call.function ? expr->as.call.function->c_name :
                          (builtin_name ? builtin_name : "yl_missing_function"));
@@ -763,10 +807,14 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             for (size_t i = 0; i < expr->as.call.count; i++) {
                 if (i) sb_append(sb, ", ");
                 Expr *arg = expr->as.call.args[i];
-                bool array_param = expr->as.call.function &&
-                    i < expr->as.call.function->param_count &&
-                    expr->as.call.function->params[i]->is_array;
-                emit_expr(sb, arg);
+                bool array_param = call_argument_is_array(expr, i);
+                if (sequence && !array_param) {
+                    char suffix[32];
+                    (void)snprintf(suffix, sizeof(suffix), "arg%zu", i);
+                    emit_temp_name(sb, expr, suffix);
+                } else {
+                    emit_expr(sb, arg);
+                }
                 if (array_param) {
                     VarDecl *var = arg->kind == EXPR_NAME ? arg->as.name.variable : NULL;
                     sb_append(sb, ", ");
@@ -779,6 +827,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 }
             }
             sb_append(sb, ")");
+            if (sequence) sb_append(sb, ")");
             break;
         }
         case EXPR_UNARY: {
