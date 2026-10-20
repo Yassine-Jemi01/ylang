@@ -66,6 +66,335 @@ static const char *format_for_type(YType type)
     return "%s";
 }
 
+static bool expr_has_side_effects(Expr *expr)
+{
+    if (!expr) return false;
+    switch (expr->kind) {
+        case EXPR_CALL:
+        case EXPR_ASSIGN:
+            return true;
+        case EXPR_UNARY:
+            return expr_has_side_effects(expr->as.unary.right);
+        case EXPR_BINARY:
+            return expr_has_side_effects(expr->as.binary.left) ||
+                   expr_has_side_effects(expr->as.binary.right);
+        case EXPR_STRUCT_INIT:
+            for (size_t i = 0; i < expr->as.struct_init.count; i++) {
+                if (expr_has_side_effects(expr->as.struct_init.args[i])) return true;
+            }
+            return false;
+        case EXPR_MEMBER:
+            return expr_has_side_effects(expr->as.member.target);
+        case EXPR_ARRAY:
+            for (size_t i = 0; i < expr->as.array.count; i++) {
+                if (expr_has_side_effects(expr->as.array.items[i])) return true;
+            }
+            return false;
+        case EXPR_INDEX:
+            return expr_has_side_effects(expr->as.index.target) ||
+                   expr_has_side_effects(expr->as.index.index);
+        case EXPR_FSTRING:
+            for (size_t i = 0; i < expr->as.fstring.count; i++) {
+                if (expr_has_side_effects(expr->as.fstring.parts[i].expression)) return true;
+            }
+            return false;
+        case EXPR_ERROR:
+        case EXPR_ENUM_VALUE:
+        case EXPR_INT:
+        case EXPR_FLOAT:
+        case EXPR_BOOL:
+        case EXPR_CHAR:
+        case EXPR_STRING:
+        case EXPR_NAME:
+            return false;
+    }
+    return false;
+}
+
+static bool binary_needs_sequence(Expr *expr)
+{
+    if (!expr || expr->kind != EXPR_BINARY) return false;
+    TokenType op = expr->as.binary.op.type;
+    /* C already sequences the left operand before the right for && and ||. */
+    if (op == TOKEN_AND || op == TOKEN_OR) return false;
+    return expr_has_side_effects(expr->as.binary.left) ||
+           expr_has_side_effects(expr->as.binary.right);
+}
+
+static bool struct_init_needs_sequence(Expr *expr)
+{
+    if (!expr || expr->kind != EXPR_STRUCT_INIT ||
+        expr->as.struct_init.count < 2U) return false;
+    return expr_has_side_effects(expr);
+}
+
+static bool array_init_needs_sequence(Expr *expr)
+{
+    if (!expr || expr->kind != EXPR_ARRAY || expr->as.array.count < 2U) return false;
+    return expr_has_side_effects(expr);
+}
+
+static bool call_argument_is_array(const Expr *call, size_t index)
+{
+    return call && call->kind == EXPR_CALL && call->as.call.function &&
+           index < call->as.call.function->param_count &&
+           call->as.call.function->params[index]->is_array;
+}
+
+static bool call_needs_sequence(Expr *expr)
+{
+    if (!expr || expr->kind != EXPR_CALL || expr->as.call.count < 2U) return false;
+    for (size_t i = 0; i < expr->as.call.count; i++) {
+        if (!call_argument_is_array(expr, i)) return true;
+    }
+    return false;
+}
+
+static void assign_expr_codegen_ids(Expr *expr, size_t *next_id)
+{
+    if (!expr || expr->codegen_id != 0U) return;
+    expr->codegen_id = (*next_id)++;
+    switch (expr->kind) {
+        case EXPR_UNARY:
+            assign_expr_codegen_ids(expr->as.unary.right, next_id);
+            break;
+        case EXPR_BINARY:
+            assign_expr_codegen_ids(expr->as.binary.left, next_id);
+            assign_expr_codegen_ids(expr->as.binary.right, next_id);
+            break;
+        case EXPR_ASSIGN:
+            assign_expr_codegen_ids(expr->as.assign.target, next_id);
+            assign_expr_codegen_ids(expr->as.assign.right, next_id);
+            break;
+        case EXPR_CALL:
+            for (size_t i = 0; i < expr->as.call.count; i++)
+                assign_expr_codegen_ids(expr->as.call.args[i], next_id);
+            break;
+        case EXPR_STRUCT_INIT:
+            for (size_t i = 0; i < expr->as.struct_init.count; i++)
+                assign_expr_codegen_ids(expr->as.struct_init.args[i], next_id);
+            break;
+        case EXPR_MEMBER:
+            assign_expr_codegen_ids(expr->as.member.target, next_id);
+            break;
+        case EXPR_ARRAY:
+            for (size_t i = 0; i < expr->as.array.count; i++)
+                assign_expr_codegen_ids(expr->as.array.items[i], next_id);
+            break;
+        case EXPR_INDEX:
+            assign_expr_codegen_ids(expr->as.index.target, next_id);
+            assign_expr_codegen_ids(expr->as.index.index, next_id);
+            break;
+        case EXPR_FSTRING:
+            for (size_t i = 0; i < expr->as.fstring.count; i++)
+                assign_expr_codegen_ids(expr->as.fstring.parts[i].expression, next_id);
+            break;
+        case EXPR_ERROR:
+        case EXPR_ENUM_VALUE:
+        case EXPR_INT:
+        case EXPR_FLOAT:
+        case EXPR_BOOL:
+        case EXPR_CHAR:
+        case EXPR_STRING:
+        case EXPR_NAME:
+            break;
+    }
+}
+
+static void assign_stmt_codegen_ids(Stmt *stmt, size_t *next_id)
+{
+    if (!stmt) return;
+    switch (stmt->kind) {
+        case STMT_BLOCK:
+            for (size_t i = 0; i < stmt->as.block.count; i++)
+                assign_stmt_codegen_ids(stmt->as.block.items[i], next_id);
+            break;
+        case STMT_VAR:
+            assign_expr_codegen_ids(stmt->as.variable->initializer, next_id);
+            break;
+        case STMT_PRINT:
+            for (size_t i = 0; i < stmt->as.print.count; i++)
+                assign_expr_codegen_ids(stmt->as.print.args[i], next_id);
+            break;
+        case STMT_IF:
+            assign_expr_codegen_ids(stmt->as.if_stmt.condition, next_id);
+            assign_stmt_codegen_ids(stmt->as.if_stmt.then_branch, next_id);
+            assign_stmt_codegen_ids(stmt->as.if_stmt.else_branch, next_id);
+            break;
+        case STMT_LOOP:
+            assign_stmt_codegen_ids(stmt->as.loop_body, next_id);
+            break;
+        case STMT_WHILE:
+            assign_expr_codegen_ids(stmt->as.while_stmt.condition, next_id);
+            assign_stmt_codegen_ids(stmt->as.while_stmt.body, next_id);
+            break;
+        case STMT_FOR:
+            assign_stmt_codegen_ids(stmt->as.for_stmt.initializer, next_id);
+            assign_expr_codegen_ids(stmt->as.for_stmt.condition, next_id);
+            assign_expr_codegen_ids(stmt->as.for_stmt.increment, next_id);
+            assign_stmt_codegen_ids(stmt->as.for_stmt.body, next_id);
+            break;
+        case STMT_RETURN:
+            assign_expr_codegen_ids(stmt->as.return_value, next_id);
+            break;
+        case STMT_MATCH:
+            assign_expr_codegen_ids(stmt->as.match_stmt.value, next_id);
+            for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++)
+                assign_stmt_codegen_ids(stmt->as.match_stmt.arms[i]->body, next_id);
+            break;
+        case STMT_EXPR:
+            assign_expr_codegen_ids(stmt->as.expression, next_id);
+            break;
+        case STMT_BREAK:
+        case STMT_CONTINUE:
+            break;
+    }
+}
+
+static void emit_temp_declaration(FILE *out, Compiler *compiler, Expr *owner,
+                                  const char *suffix, YType type, unsigned indent)
+{
+    if (type == TYPE_ERROR || type == TYPE_VOID) return;
+    for (unsigned i = 0; i < indent; i++) fputs("    ", out);
+    fprintf(out, "%s yl_codegen_tmp_%zu_%s;\n",
+            c_base_type(compiler, type), owner->codegen_id, suffix);
+}
+
+static void emit_temp_declarations_expr(Compiler *compiler, FILE *out,
+                                        Expr *expr, unsigned indent)
+{
+    if (!expr) return;
+    if (binary_needs_sequence(expr)) {
+        emit_temp_declaration(out, compiler, expr, "left",
+                              expr->as.binary.left->type, indent);
+        emit_temp_declaration(out, compiler, expr, "right",
+                              expr->as.binary.right->type, indent);
+    }
+    if (call_needs_sequence(expr)) {
+        for (size_t i = 0; i < expr->as.call.count; i++) {
+            if (call_argument_is_array(expr, i)) continue;
+            char suffix[32];
+            (void)snprintf(suffix, sizeof(suffix), "arg%zu", i);
+            emit_temp_declaration(out, compiler, expr, suffix,
+                                  expr->as.call.args[i]->type, indent);
+        }
+    }
+    if (struct_init_needs_sequence(expr)) {
+        for (size_t i = 0; i < expr->as.struct_init.count; i++) {
+            char suffix[32];
+            (void)snprintf(suffix, sizeof(suffix), "field%zu", i);
+            emit_temp_declaration(out, compiler, expr, suffix,
+                                  expr->as.struct_init.args[i]->type, indent);
+        }
+    }
+    if (array_init_needs_sequence(expr)) {
+        for (size_t i = 0; i < expr->as.array.count; i++) {
+            char suffix[32];
+            (void)snprintf(suffix, sizeof(suffix), "element%zu", i);
+            emit_temp_declaration(out, compiler, expr, suffix,
+                                  expr->as.array.items[i]->type, indent);
+        }
+    }
+
+    switch (expr->kind) {
+        case EXPR_UNARY:
+            emit_temp_declarations_expr(compiler, out, expr->as.unary.right, indent);
+            break;
+        case EXPR_BINARY:
+            emit_temp_declarations_expr(compiler, out, expr->as.binary.left, indent);
+            emit_temp_declarations_expr(compiler, out, expr->as.binary.right, indent);
+            break;
+        case EXPR_ASSIGN:
+            emit_temp_declarations_expr(compiler, out, expr->as.assign.target, indent);
+            emit_temp_declarations_expr(compiler, out, expr->as.assign.right, indent);
+            break;
+        case EXPR_CALL:
+            for (size_t i = 0; i < expr->as.call.count; i++)
+                emit_temp_declarations_expr(compiler, out, expr->as.call.args[i], indent);
+            break;
+        case EXPR_STRUCT_INIT:
+            for (size_t i = 0; i < expr->as.struct_init.count; i++)
+                emit_temp_declarations_expr(compiler, out, expr->as.struct_init.args[i], indent);
+            break;
+        case EXPR_MEMBER:
+            emit_temp_declarations_expr(compiler, out, expr->as.member.target, indent);
+            break;
+        case EXPR_ARRAY:
+            for (size_t i = 0; i < expr->as.array.count; i++)
+                emit_temp_declarations_expr(compiler, out, expr->as.array.items[i], indent);
+            break;
+        case EXPR_INDEX:
+            emit_temp_declarations_expr(compiler, out, expr->as.index.target, indent);
+            emit_temp_declarations_expr(compiler, out, expr->as.index.index, indent);
+            break;
+        case EXPR_FSTRING:
+            for (size_t i = 0; i < expr->as.fstring.count; i++)
+                emit_temp_declarations_expr(compiler, out,
+                    expr->as.fstring.parts[i].expression, indent);
+            break;
+        case EXPR_ERROR:
+        case EXPR_ENUM_VALUE:
+        case EXPR_INT:
+        case EXPR_FLOAT:
+        case EXPR_BOOL:
+        case EXPR_CHAR:
+        case EXPR_STRING:
+        case EXPR_NAME:
+            break;
+    }
+}
+
+static void emit_temp_declarations_stmt(Compiler *compiler, FILE *out,
+                                        Stmt *stmt, unsigned indent)
+{
+    if (!stmt) return;
+    switch (stmt->kind) {
+        case STMT_BLOCK:
+            for (size_t i = 0; i < stmt->as.block.count; i++)
+                emit_temp_declarations_stmt(compiler, out, stmt->as.block.items[i], indent);
+            break;
+        case STMT_VAR:
+            emit_temp_declarations_expr(compiler, out, stmt->as.variable->initializer, indent);
+            break;
+        case STMT_PRINT:
+            for (size_t i = 0; i < stmt->as.print.count; i++)
+                emit_temp_declarations_expr(compiler, out, stmt->as.print.args[i], indent);
+            break;
+        case STMT_IF:
+            emit_temp_declarations_expr(compiler, out, stmt->as.if_stmt.condition, indent);
+            emit_temp_declarations_stmt(compiler, out, stmt->as.if_stmt.then_branch, indent);
+            emit_temp_declarations_stmt(compiler, out, stmt->as.if_stmt.else_branch, indent);
+            break;
+        case STMT_LOOP:
+            emit_temp_declarations_stmt(compiler, out, stmt->as.loop_body, indent);
+            break;
+        case STMT_WHILE:
+            emit_temp_declarations_expr(compiler, out, stmt->as.while_stmt.condition, indent);
+            emit_temp_declarations_stmt(compiler, out, stmt->as.while_stmt.body, indent);
+            break;
+        case STMT_FOR:
+            emit_temp_declarations_stmt(compiler, out, stmt->as.for_stmt.initializer, indent);
+            emit_temp_declarations_expr(compiler, out, stmt->as.for_stmt.condition, indent);
+            emit_temp_declarations_expr(compiler, out, stmt->as.for_stmt.increment, indent);
+            emit_temp_declarations_stmt(compiler, out, stmt->as.for_stmt.body, indent);
+            break;
+        case STMT_RETURN:
+            emit_temp_declarations_expr(compiler, out, stmt->as.return_value, indent);
+            break;
+        case STMT_MATCH:
+            emit_temp_declarations_expr(compiler, out, stmt->as.match_stmt.value, indent);
+            for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++)
+                emit_temp_declarations_stmt(compiler, out, stmt->as.match_stmt.arms[i]->body, indent);
+            break;
+        case STMT_EXPR:
+            emit_temp_declarations_expr(compiler, out, stmt->as.expression, indent);
+            break;
+        case STMT_BREAK:
+        case STMT_CONTINUE:
+            break;
+    }
+}
+
 static void emit_expr(StringBuilder *sb, Expr *expr);
 
 static void append_fstring_format_text(StringBuilder *format, const char *text)
