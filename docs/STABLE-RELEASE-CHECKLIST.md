@@ -25,9 +25,9 @@ The stable publication workflow runs from `main`, tests that exact commit, and r
 
 ## Required manual acceptance checks for the stable candidate
 
-- [ ] The Dodge example has been run interactively against the exact 2.0.1 compiler/Game2D candidate.
-- [ ] The exact 2.0.1 package's install/use/remove path is covered by `packaging/yspm/smoke-install.sh`, which the required CI job runs inside a disposable `YSPM_ROOT`.
-- [ ] A clean clone, clean build, full regression test suite, CLI/version checks, and a compiled demo have been exercised on this exact 2.0.1 candidate.
+- [ ] Run the Dodge example interactively against the exact 2.0.1 compiler/Game2D candidate.
+- [ ] Verify the 2.0.1 package's install/use/remove path with `packaging/yspm/smoke-install.sh` inside a disposable `YSPM_ROOT`.
+- [ ] Exercise a clean clone, clean build, full regression test suite, CLI/version checks, and a compiled demo on this exact 2.0.1 candidate.
 - [ ] The book's stable/experimental labels and PDF-edition note were reviewed; CI rebuilds mdBook, checks the new release chapters, and validates the website's links and anchors.
 - [ ] Stable release notes were reviewed to keep the core guarantee separate from imports, structs/enums, GUI/Game2D, NASM, Windows, and YSPM experimental status.
 
