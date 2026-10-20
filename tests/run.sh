@@ -1359,13 +1359,7 @@ function main() -> int {
 EOF
     ./build/ylang build build/image-open-option.yl -o build/test-image-open-option >/dev/null
     PATH="$PWD/build/fake-xdg-open:$PATH" YLANG_OPEN_TEST_CAPTURE="$PWD/build/image-open-argument.out" ./build/test-image-open-option > build/image-open-result.out
-    grep -q '^true
-    grep -Fqx './-ylang-image-open-test.png' build/image-open-argument.out
-    rm -f -- -ylang-image-open-test.png
-fi
-
-echo "All YLang tests passed."
- build/image-open-result.out
+    grep -q '^true$' build/image-open-result.out
     grep -Fqx './-ylang-image-open-test.png' build/image-open-argument.out
     rm -f -- -ylang-image-open-test.png
 fi
