@@ -1192,11 +1192,15 @@ function while_forever() -> int {
 }
 
 function main() -> int {
+    let int assignment_values[] = [0, 0];
     print(pair(next(), next()));
     call_count = 0;
     print(next() * 10 + next());
     call_count = 0;
     print(next() < next());
+    call_count = 0;
+    assignment_values[next()] = next();
+    print(assignment_values[1]);
     print("what??/");
     print("tri??/graph ??= ??)");
     print('\x41');
@@ -1214,6 +1218,7 @@ cat > build/evaluation-order.expected <<'EOF'
 12
 12
 true
+2
 what??/
 tri??/graph ??= ??)
 A
