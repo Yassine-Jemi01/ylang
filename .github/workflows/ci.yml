@@ -19,7 +19,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install toolchain (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y build-essential clang libclang-rt-dev nasm libsdl2-dev pkg-config
@@ -44,6 +44,14 @@ jobs:
           fi
       - name: Verify generated C runtime template
         run: python3 tools/embed_text.py runtime/runtime_template.c src/runtime_template.h --check
+      - name: Verify stable version marker consistency
+        run: |
+          actual_version="$(tr -d '\r\n' < VERSION)"
+          release_version="$(tr -d '\r\n' < .github/PUBLISH_STABLE)"
+          if [ "$actual_version" != "$release_version" ]; then
+            echo "VERSION ($actual_version) must match .github/PUBLISH_STABLE ($release_version)." >&2
+            exit 1
+          fi
       - name: Build compiler
         run: ${{ steps.compiler.outputs.make }} clean all CC="${{ steps.compiler.outputs.cc }}"
       - name: Build optional GUI runtime
@@ -64,9 +72,9 @@ jobs:
         shell: msys2 {0}
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Set up MinGW-w64 toolchain
-        uses: msys2/setup-msys2@v2
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2
         with:
           msystem: MINGW64
           update: true
@@ -130,15 +138,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out YLang
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install C build tools
         run: sudo apt-get update && sudo apt-get install -y build-essential binutils
       - name: Set up Go for YSPM
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.23.x"
       - name: Check out YSPM package builder
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: Yassine-Jemi01/yspm
           ref: ba2c2c31b864ca85333fa625b437b3c6b9452e96
@@ -172,9 +180,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - name: Install Neovim
@@ -192,9 +200,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Set up mdBook
-        uses: peaceiris/actions-mdbook@v2
+        uses: peaceiris/actions-mdbook@ee69d230fe19748b7abf22df32acaa93833fad08 # v2.0.0
         with:
           mdbook-version: "0.5.4"
       - name: Build and inspect the online book
