@@ -592,6 +592,17 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             break;
         case EXPR_STRUCT_INIT: {
             StructDecl *structure = expr->as.struct_init.structure;
+            bool sequence = struct_init_needs_sequence(expr);
+            if (sequence) {
+                sb_append(sb, "(");
+                for (size_t i = 0; i < expr->as.struct_init.count; i++) {
+                    if (i) sb_append(sb, ", ");
+                    append_indexed_temp_name(sb, expr, "field", i);
+                    sb_append(sb, " = ");
+                    emit_expr(sb, expr->as.struct_init.args[i]);
+                }
+                sb_append(sb, ", ");
+            }
             sb_append(sb, "(");
             sb_append(sb, structure ? structure->c_name : "int");
             sb_append(sb, "){");
@@ -603,10 +614,12 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     sb_append(sb, ".");
                     sb_append(sb, structure->fields[i]->c_name);
                     sb_append(sb, " = ");
-                    emit_expr(sb, expr->as.struct_init.args[i]);
+                    if (sequence) append_indexed_temp_name(sb, expr, "field", i);
+                    else emit_expr(sb, expr->as.struct_init.args[i]);
                 }
             }
             sb_append(sb, "}");
+            if (sequence) sb_append(sb, ")");
             break;
         }
         case EXPR_MEMBER:
@@ -638,14 +651,17 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
         case EXPR_FSTRING:
             emit_fstring_expr(sb, expr);
             break;
-        case EXPR_ARRAY:
+        case EXPR_ARRAY: {
+            bool sequence = array_init_needs_sequence(expr);
             sb_append(sb, "{");
             for (size_t i = 0; i < expr->as.array.count; i++) {
                 if (i) sb_append(sb, ", ");
-                emit_expr(sb, expr->as.array.items[i]);
+                if (sequence) append_indexed_temp_name(sb, expr, "element", i);
+                else emit_expr(sb, expr->as.array.items[i]);
             }
             sb_append(sb, "}");
             break;
+        }
         case EXPR_INDEX:
             emit_expr(sb, expr->as.index.target);
             sb_append(sb, "[yl_bounds(");
@@ -716,6 +732,21 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 sb_append(sb, "yl_to_int("); emit_expr(sb, expr->as.call.args[0]); sb_append(sb, ")");
                 break;
             }
+            bool sequence_args = call_needs_sequence(expr);
+            if (sequence_args) {
+                sb_append(sb, "(");
+                bool wrote_assignment = false;
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    if (call_argument_is_array(expr, i)) continue;
+                    if (wrote_assignment) sb_append(sb, ", ");
+                    append_indexed_temp_name(sb, expr, "arg", i);
+                    sb_append(sb, " = ");
+                    emit_expr(sb, expr->as.call.args[i]);
+                    wrote_assignment = true;
+                }
+                sb_append(sb, ", ");
+            }
+
             const char *builtin_name = builtin_c_name(expr->as.call.name);
             sb_append(sb, expr->as.call.function ? expr->as.call.function->c_name :
                          (builtin_name ? builtin_name : "yl_missing_function"));
@@ -723,10 +754,14 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             for (size_t i = 0; i < expr->as.call.count; i++) {
                 if (i) sb_append(sb, ", ");
                 Expr *arg = expr->as.call.args[i];
-                bool array_param = expr->as.call.function &&
-                    i < expr->as.call.function->param_count &&
-                    expr->as.call.function->params[i]->is_array;
-                emit_expr(sb, arg);
+                bool array_param = call_argument_is_array(expr, i);
+                if (array_param) {
+                    emit_expr(sb, arg);
+                } else if (sequence_args) {
+                    append_indexed_temp_name(sb, expr, "arg", i);
+                } else {
+                    emit_expr(sb, arg);
+                }
                 if (array_param) {
                     VarDecl *var = arg->kind == EXPR_NAME ? arg->as.name.variable : NULL;
                     sb_append(sb, ", ");
@@ -739,6 +774,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 }
             }
             sb_append(sb, ")");
+            if (sequence_args) sb_append(sb, ")");
             break;
         }
         case EXPR_UNARY: {
@@ -758,7 +794,19 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             Expr *left = expr->as.binary.left;
             Expr *right = expr->as.binary.right;
             TokenType op = expr->as.binary.op.type;
-            if (expr->type == TYPE_INT && op == TOKEN_PLUS) {
+            if (binary_needs_sequence(expr)) {
+                sb_append(sb, "(");
+                append_temp_name(sb, expr, "left");
+                sb_append(sb, " = ");
+                emit_expr(sb, left);
+                sb_append(sb, ", ");
+                append_temp_name(sb, expr, "right");
+                sb_append(sb, " = ");
+                emit_expr(sb, right);
+                sb_append(sb, ", ");
+                emit_binary_operation_with_temps(sb, expr);
+                sb_append(sb, ")");
+            } else if (expr->type == TYPE_INT && op == TOKEN_PLUS) {
                 sb_append(sb, "yl_add_i64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
             } else if (expr->type == TYPE_INT && op == TOKEN_MINUS) {
                 sb_append(sb, "yl_sub_i64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
