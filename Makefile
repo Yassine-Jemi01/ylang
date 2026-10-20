@@ -37,9 +37,7 @@ build/runtime_template.h: runtime/runtime_template.c tools/embed_text.py
 build/codegen.o: build/runtime_template.h
 
 check-runtime-template: build/runtime_template.h
-	@$(PYTHON) tools/embed_text.py runtime/runtime_template.c build/runtime_template.check.h
-	@cmp build/runtime_template.h build/runtime_template.check.h
-	@rm -f build/runtime_template.check.h
+	@$(PYTHON) tools/embed_text.py runtime/runtime_template.c build/runtime_template.h --check
 
 regen-runtime-template:
 	@mkdir -p build
