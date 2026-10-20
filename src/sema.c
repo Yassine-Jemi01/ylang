@@ -12,6 +12,8 @@ struct Scope {
     Scope *parent;
     VarDecl **vars;
     size_t count;
+    VarDecl **lookup_slots;
+    size_t lookup_capacity;
 };
 
 typedef struct {
@@ -31,40 +33,136 @@ static Scope *scope_new(Compiler *c, Scope *parent)
     return scope;
 }
 
+static VarDecl *scope_find_local(Scope *scope, const char *name)
+{
+    if (!scope || !scope->lookup_capacity) return NULL;
+    size_t mask = scope->lookup_capacity - 1U;
+    size_t slot = (size_t)(ylang_hash_name(name) & (uint64_t)mask);
+    while (scope->lookup_slots[slot]) {
+        if (strcmp(scope->lookup_slots[slot]->name, name) == 0)
+            return scope->lookup_slots[slot];
+        slot = (slot + 1U) & mask;
+    }
+    return NULL;
+}
+
+static void scope_rehash(Checker *checker, Scope *scope, size_t capacity)
+{
+    VarDecl **slots = arena_alloc(&checker->compiler->arena,
+                                  capacity * sizeof(*slots));
+    size_t mask = capacity - 1U;
+    for (size_t i = 0; i < scope->count; i++) {
+        VarDecl *var = scope->vars[i];
+        size_t slot = (size_t)(ylang_hash_name(var->name) & (uint64_t)mask);
+        while (slots[slot]) slot = (slot + 1U) & mask;
+        slots[slot] = var;
+    }
+    scope->lookup_slots = slots;
+    scope->lookup_capacity = capacity;
+}
+
 static VarDecl *scope_lookup(Scope *scope, const char *name)
 {
     for (Scope *at = scope; at; at = at->parent) {
-        for (size_t i = 0; i < at->count; i++) {
-            if (strcmp(at->vars[i]->name, name) == 0) return at->vars[i];
-        }
+        VarDecl *found = scope_find_local(at, name);
+        if (found) return found;
     }
     return NULL;
 }
 
 static bool scope_add(Checker *checker, Scope *scope, VarDecl *var)
 {
-    for (size_t i = 0; i < scope->count; i++) {
-        if (strcmp(scope->vars[i]->name, var->name) == 0) {
-            diagnostic(checker->compiler, var->token, "error", "E2004",
-                       "This name is already declared in the current scope.",
-                       "Choose a different name or remove the duplicate declaration.");
-            return false;
-        }
+    if (scope_find_local(scope, var->name)) {
+        diagnostic(checker->compiler, var->token, "error", "E2004",
+                   "This name is already declared in the current scope.",
+                   "Choose a different name or remove the duplicate declaration.");
+        return false;
     }
+
+    if (!scope->lookup_capacity ||
+        scope->count >= scope->lookup_capacity - scope->lookup_capacity / 3U - 1U) {
+        size_t capacity = scope->lookup_capacity ? scope->lookup_capacity * 2U : 8U;
+        if (scope->lookup_capacity && scope->lookup_capacity > SIZE_MAX / 2U) {
+            fputs("ylang: fatal: scope symbol index capacity overflow\\n", stderr);
+            exit(70);
+        }
+        scope_rehash(checker, scope, capacity);
+    }
+
     scope->vars = arena_vector_append(&checker->compiler->arena,
                                       scope->vars, scope->count,
                                       sizeof(*scope->vars), &var);
     scope->count++;
+    size_t mask = scope->lookup_capacity - 1U;
+    size_t slot = (size_t)(ylang_hash_name(var->name) & (uint64_t)mask);
+    while (scope->lookup_slots[slot]) slot = (slot + 1U) & mask;
+    scope->lookup_slots[slot] = var;
     return true;
+}
+
+Function *program_find_function(Program *program, const char *name)
+{
+    if (!program) return NULL;
+    if (!program->function_index_capacity) {
+        for (size_t i = 0; i < program->function_count; i++)
+            if (strcmp(program->functions[i]->name, name) == 0)
+                return program->functions[i];
+        return NULL;
+    }
+    size_t mask = program->function_index_capacity - 1U;
+    size_t slot = (size_t)(ylang_hash_name(name) & (uint64_t)mask);
+    while (program->function_index[slot]) {
+        if (strcmp(program->function_index[slot]->name, name) == 0)
+            return program->function_index[slot];
+        slot = (slot + 1U) & mask;
+    }
+    return NULL;
+}
+
+VarDecl *program_find_global(Program *program, const char *name)
+{
+    if (!program) return NULL;
+    if (!program->global_index_capacity) {
+        for (size_t i = 0; i < program->global_count; i++)
+            if (strcmp(program->globals[i]->name, name) == 0)
+                return program->globals[i];
+        return NULL;
+    }
+    size_t mask = program->global_index_capacity - 1U;
+    size_t slot = (size_t)(ylang_hash_name(name) & (uint64_t)mask);
+    while (program->global_index[slot]) {
+        if (strcmp(program->global_index[slot]->name, name) == 0)
+            return program->global_index[slot];
+        slot = (slot + 1U) & mask;
+    }
+    return NULL;
+}
+
+ImportName *program_find_import_name(Program *program, const char *name)
+{
+    if (!program) return NULL;
+    if (!program->import_index_capacity) {
+        for (size_t i = 0; i < program->import_count; i++) {
+            ImportDecl *import = program->imports[i];
+            for (size_t j = 0; j < import->name_count; j++)
+                if (strcmp(import->names[j]->name, name) == 0)
+                    return import->names[j];
+        }
+        return NULL;
+    }
+    size_t mask = program->import_index_capacity - 1U;
+    size_t slot = (size_t)(ylang_hash_name(name) & (uint64_t)mask);
+    while (program->import_index[slot]) {
+        if (strcmp(program->import_index[slot]->name, name) == 0)
+            return program->import_index[slot];
+        slot = (slot + 1U) & mask;
+    }
+    return NULL;
 }
 
 Function *find_function(Compiler *c, const char *name)
 {
-    for (size_t i = 0; i < c->program->function_count; i++) {
-        Function *function = c->program->functions[i];
-        if (strcmp(function->name, name) == 0) return function;
-    }
-    return NULL;
+    return program_find_function(c ? c->program : NULL, name);
 }
 
 static unsigned edit_distance(const char *a, const char *b)
@@ -152,25 +250,12 @@ static VarDecl *sema_member_root_variable(Expr *expr)
 
 static Function *module_local_function(Module *module, const char *name)
 {
-    if (!module || !module->program) return NULL;
-    for (size_t i = 0; i < module->program->function_count; i++) {
-        Function *function = module->program->functions[i];
-        if (strcmp(function->name, name) == 0) return function;
-    }
-    return NULL;
+    return module ? program_find_function(module->program, name) : NULL;
 }
 
 static ImportName *module_imported_name(Module *module, const char *name)
 {
-    if (!module || !module->program) return NULL;
-    for (size_t i = 0; i < module->program->import_count; i++) {
-        ImportDecl *import = module->program->imports[i];
-        for (size_t j = 0; j < import->name_count; j++) {
-            ImportName *symbol = import->names[j];
-            if (strcmp(symbol->name, name) == 0) return symbol;
-        }
-    }
-    return NULL;
+    return module ? program_find_import_name(module->program, name) : NULL;
 }
 
 static Function *resolve_function(Checker *checker, const char *name)
