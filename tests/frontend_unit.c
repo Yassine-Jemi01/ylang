@@ -40,6 +40,91 @@ static int test_lexer(void)
     return 0;
 }
 
+static int test_arena(void)
+{
+    Arena arena = {0};
+    int *items = NULL;
+    for (int i = 0; i < 128; i++) {
+        int item = i * 3;
+        items = arena_vector_append(&arena, items, (size_t)i,
+                                    sizeof(*items), &item);
+    }
+    for (int i = 0; i < 128; i++) {
+        if (items[i] != i * 3) {
+            arena_destroy(&arena);
+            return fail("arena vector growth must preserve existing items");
+        }
+    }
+
+    char *copy = arena_strndup(&arena, "YLang compiler", 5);
+    if (strcmp(copy, "YLang") != 0) {
+        arena_destroy(&arena);
+        return fail("arena_strndup must copy exactly the requested bytes");
+    }
+
+    unsigned char *zeroed = arena_alloc(&arena, 4);
+    for (size_t i = 0; i < 4; i++) {
+        if (zeroed[i] != 0) {
+            arena_destroy(&arena);
+            return fail("arena allocations must be zero-initialized");
+        }
+    }
+
+    void *aligned = arena_alloc(&arena, sizeof(max_align_t));
+    if ((uintptr_t)aligned % _Alignof(max_align_t) != 0) {
+        arena_destroy(&arena);
+        return fail("arena allocations must meet max_align_t alignment");
+    }
+
+    arena_destroy(&arena);
+    return 0;
+}
+
+static int test_string_builder(void)
+{
+    StringBuilder sb;
+    sb_init(&sb);
+    sb_append(&sb, "YLang");
+    sb_append_n(&sb, " compiler", strlen(" compiler"));
+    sb_appendf(&sb, " %d", 2);
+
+    const char *expected = "YLang compiler 2";
+    const int failed = !sb.data || sb.length != strlen(expected) ||
+                       strcmp(sb.data, expected) != 0;
+    sb_destroy(&sb);
+    if (failed) return fail("string builder append operations must preserve contents and length");
+    if (sb.data != NULL || sb.length != 0 || sb.capacity != 0) {
+        return fail("string builder destroy must reset its state");
+    }
+    return 0;
+}
+
+static int test_diagnostic_accounting(void)
+{
+    Compiler compiler = {0};
+    compiler.quiet_diagnostics = true;
+    Token token = {
+        .type = TOKEN_EOF,
+        .start = "",
+        .length = 0,
+        .line = 1,
+        .column = 1,
+        .message = NULL
+    };
+
+    diagnostic(&compiler, token, "error", "E9000", "test error", NULL);
+    if (!compiler.had_error || compiler.error_count != 1 ||
+        compiler.warning_count != 0) {
+        return fail("error diagnostics must update compiler error accounting");
+    }
+
+    diagnostic(&compiler, token, "warning", "W9000", "test warning", NULL);
+    if (compiler.error_count != 1 || compiler.warning_count != 1) {
+        return fail("warning diagnostics must update warning accounting separately");
+    }
+    return 0;
+}
+
 static int test_parser(void)
 {
     const char *source =
@@ -69,6 +154,9 @@ static int test_parser(void)
 int main(void)
 {
     if (test_lexer() != 0) return EXIT_FAILURE;
+    if (test_arena() != 0) return EXIT_FAILURE;
+    if (test_string_builder() != 0) return EXIT_FAILURE;
+    if (test_diagnostic_accounting() != 0) return EXIT_FAILURE;
     if (test_parser() != 0) return EXIT_FAILURE;
     puts("Lexer/parser unit tests passed.");
     return EXIT_SUCCESS;
