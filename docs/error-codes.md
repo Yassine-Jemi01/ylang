@@ -7,7 +7,9 @@ YLang diagnostics include stable codes to help users search documentation and re
 | Code | Meaning | What to do |
 |---|---|---|
 | E1003 | An expression was expected but the current token cannot start one. | Check the preceding operator and use a supported expression. |
+| E1015 | `print()` has no arguments. | Pass at least one value, such as `print(\"\");`. |
 | E1016 | Unknown standard-library namespace. | Use a documented namespace such as `math`, `string`, `io`, `path`, or `image`. |
+| E1017 | Expression nesting exceeds the parser's supported depth. | Simplify deeply nested parentheses, unary operators, or call/index expressions. |
 | E1020 | Malformed import declaration or path. | Use `from "./module.yl" import name;`. |
 | E1022 | Imported source file could not be resolved or read. | Check the path relative to the importing file. |
 | E1023 | Circular module dependency. | Break the import cycle. |
