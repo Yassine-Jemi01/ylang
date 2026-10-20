@@ -35,22 +35,33 @@ static const char *c_base_type(Compiler *compiler, YType type)
     }
 }
 
-static void append_c_quoted(StringBuilder *sb, const char *text)
+static void append_c_quoted_bytes(StringBuilder *sb,
+                                  const unsigned char *text, size_t length)
 {
     sb_append(sb, "\"");
-    for (const unsigned char *p = (const unsigned char *)text; *p; p++) {
-        switch (*p) {
+    for (size_t i = 0; i < length; i++) {
+        unsigned char ch = text[i];
+        switch (ch) {
             case '\\': sb_append(sb, "\\\\"); break;
             case '"': sb_append(sb, "\\\""); break;
             case '\n': sb_append(sb, "\\n"); break;
             case '\r': sb_append(sb, "\\r"); break;
             case '\t': sb_append(sb, "\\t"); break;
             default:
-                if (*p < 32 || *p == 127) sb_appendf(sb, "\\%03o", (unsigned)*p);
-                else sb_append_n(sb, (const char *)p, 1);
+                if (ch < 32U || ch >= 127U) {
+                    sb_appendf(sb, "\\%03o", (unsigned)ch);
+                } else {
+                    sb_append_n(sb, (const char *)&text[i], 1U);
+                }
+                break;
         }
     }
     sb_append(sb, "\"");
+}
+
+static void append_c_quoted(StringBuilder *sb, const char *text)
+{
+    append_c_quoted_bytes(sb, (const unsigned char *)text, strlen(text));
 }
 
 static const char *format_for_type(YType type)
@@ -220,10 +231,29 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
         case EXPR_BOOL:
             sb_append(sb, expr->token.type == TOKEN_TRUE ? "true" : "false");
             break;
-        case EXPR_CHAR:
-        case EXPR_STRING:
-            sb_append_n(sb, expr->token.start, expr->token.length);
+        case EXPR_CHAR: {
+            unsigned char *bytes = NULL;
+            size_t length = 0;
+            if (decode_quoted_literal(expr->token, &bytes, &length) &&
+                length == 1U) {
+                sb_appendf(sb, "((char)0x%02X)", (unsigned)bytes[0]);
+            } else {
+                sb_append(sb, "((char)0)");
+            }
+            free(bytes);
             break;
+        }
+        case EXPR_STRING: {
+            unsigned char *bytes = NULL;
+            size_t length = 0;
+            if (decode_quoted_literal(expr->token, &bytes, &length)) {
+                append_c_quoted_bytes(sb, bytes, length);
+            } else {
+                sb_append(sb, "\"\"");
+            }
+            free(bytes);
+            break;
+        }
         case EXPR_FSTRING:
             emit_fstring_expr(sb, expr);
             break;
