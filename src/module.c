@@ -32,12 +32,70 @@ static char *canonical_path(Compiler *compiler, const char *path)
 
 static bool canonical_paths_equal(const char *left, const char *right);
 
+static uint64_t canonical_path_hash(const char *path)
+{
+    uint64_t hash = UINT64_C(14695981039346656037);
+    while (*path) {
+        unsigned char ch = (unsigned char)*path++;
+#ifdef _WIN32
+        if (ch == '/' || ch == '\\\\') ch = '/';
+        else ch = (unsigned char)tolower(ch);
+#endif
+        hash ^= (uint64_t)ch;
+        hash *= UINT64_C(1099511628211);
+    }
+    return hash;
+}
+
+static void module_index_insert(Compiler *compiler, Module **slots,
+                                size_t capacity, Module *module)
+{
+    size_t mask = capacity - 1U;
+    size_t slot = (size_t)(canonical_path_hash(module->canonical_path) & (uint64_t)mask);
+    while (slots[slot]) {
+        if (canonical_paths_equal(slots[slot]->canonical_path, module->canonical_path))
+            return;
+        slot = (slot + 1U) & mask;
+    }
+    slots[slot] = module;
+}
+
+static void module_index_grow(Compiler *compiler)
+{
+    size_t capacity = compiler->module_index_capacity ?
+                      compiler->module_index_capacity * 2U : 8U;
+    if (compiler->module_index_capacity &&
+        compiler->module_index_capacity > SIZE_MAX / 2U) {
+        fputs("ylang: fatal: module index capacity overflow\\n", stderr);
+        exit(70);
+    }
+    if (capacity > SIZE_MAX / sizeof(*compiler->module_index)) {
+        fputs("ylang: fatal: module index is too large\\n", stderr);
+        exit(70);
+    }
+    Module **slots = arena_alloc(&compiler->arena, capacity * sizeof(*slots));
+    for (size_t i = 0; i < compiler->module_count; i++)
+        module_index_insert(compiler, slots, capacity, compiler->modules[i]);
+    compiler->module_index = slots;
+    compiler->module_index_capacity = capacity;
+}
+
 static Module *find_module(Compiler *compiler, const char *canonical)
 {
-    for (size_t i = 0; i < compiler->module_count; i++) {
-        Module *module = compiler->modules[i];
-        if (module->canonical_path &&
-            canonical_paths_equal(module->canonical_path, canonical)) return module;
+    if (!compiler->module_index_capacity) {
+        for (size_t i = 0; i < compiler->module_count; i++) {
+            Module *module = compiler->modules[i];
+            if (module->canonical_path &&
+                canonical_paths_equal(module->canonical_path, canonical)) return module;
+        }
+        return NULL;
+    }
+    size_t mask = compiler->module_index_capacity - 1U;
+    size_t slot = (size_t)(canonical_path_hash(canonical) & (uint64_t)mask);
+    while (compiler->module_index[slot]) {
+        Module *module = compiler->module_index[slot];
+        if (canonical_paths_equal(module->canonical_path, canonical)) return module;
+        slot = (slot + 1U) & mask;
     }
     return NULL;
 }
@@ -59,6 +117,14 @@ static Module *new_module(Compiler *compiler, const char *path,
         sizeof(*compiler->modules), &module);
     compiler->module_count++;
     if (is_root) compiler->root_module = module;
+
+    if (!compiler->module_index_capacity ||
+        compiler->module_count >= compiler->module_index_capacity -
+                                   compiler->module_index_capacity / 3U - 1U) {
+        module_index_grow(compiler);
+    }
+    module_index_insert(compiler, compiler->module_index,
+                        compiler->module_index_capacity, module);
     return module;
 }
 
