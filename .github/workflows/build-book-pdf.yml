@@ -17,6 +17,7 @@ on:
       - 'docs/YSPM.md'
       - 'docs/error-codes.md'
       - 'docs/CHANGELOG-2.0.0.md'
+      - 'docs/CHANGELOG-2.0.1.md'
       - 'docs/OPTION-RESULT-DESIGN.md'
       - '.github/workflows/build-book-pdf.yml'
 
@@ -56,7 +57,7 @@ jobs:
           assert data.startswith(b"%PDF-"), "output is not a PDF"
           assert len(data) > 20000, "generated PDF is unexpectedly small"
           spec = Path("docs/language-spec.md").read_text(encoding="utf-8")
-          notes = Path("docs/CHANGELOG-2.0.0.md").read_text(encoding="utf-8")
+          notes = Path("docs/CHANGELOG-2.0.1.md").read_text(encoding="utf-8")
           assert "stable core" in spec.lower()
           assert "experimental" in notes.lower()
           print(f"Verified {pdf} ({len(data)} bytes)")
@@ -71,5 +72,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/book/YLang-Book.pdf
-          git commit -m "docs: refresh standalone YLang 2.0.0 book PDF"
+          git commit -m "docs: refresh standalone YLang 2.0.1 book PDF"
           git push origin "HEAD:${GITHUB_REF_NAME}"
