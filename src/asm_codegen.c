@@ -972,20 +972,22 @@ static void emit_bytes(FILE *out, const char *label,
                        const unsigned char *bytes, size_t length,
                        bool terminate)
 {
-    fprintf(out, "%s: db ", label);
+    fprintf(out, "%s:", label);
     if (length == 0U) {
-        fputs("0", out);
-    } else {
-        for (size_t i = 0; i < length; i++) {
-            if (i != 0U) {
-                if (i % 16U == 0U) fputs("\n    db ", out);
-                else fputs(", ", out);
-            }
-            fprintf(out, "%u", (unsigned)bytes[i]);
-        }
-        if (terminate) fputs(", 0", out);
+        if (terminate) fputs(" db 0", out);
+        fputc('\n', out);
+        return;
     }
-    if (length == 0U && !terminate) fputs("0", out);
+
+    fputs(" db ", out);
+    for (size_t i = 0; i < length; i++) {
+        if (i != 0U) {
+            if (i % 16U == 0U) fputs("\n    db ", out);
+            else fputs(", ", out);
+        }
+        fprintf(out, "%u", (unsigned)bytes[i]);
+    }
+    if (terminate) fputs(", 0", out);
     fputc('\n', out);
 }
 
