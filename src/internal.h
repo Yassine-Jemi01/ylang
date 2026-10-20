@@ -50,6 +50,19 @@ typedef struct {
     size_t capacity;
 } StringBuilder;
 
+/* Single source of truth for GUI signature checking and generated C symbols. */
+typedef struct {
+    const char *name;
+    size_t arity;
+    YType result;
+    YType args[7];
+    const char *c_symbol;
+} GuiBuiltinInfo;
+
+extern const GuiBuiltinInfo ylang_gui_builtins[];
+extern const size_t ylang_gui_builtin_count;
+const GuiBuiltinInfo *find_gui_builtin_info(const char *name);
+
 void *arena_alloc(Arena *arena, size_t size);
 char *arena_strndup(Arena *arena, const char *text, size_t length);
 void arena_destroy(Arena *arena);
