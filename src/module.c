@@ -359,6 +359,15 @@ static bool load_module(Compiler *compiler, Module *module)
             continue;
         }
 
+        const char *extension = strrchr(canonical, '.');
+        if (!extension || strcmp(extension, ".yl") != 0) {
+            diagnostic(compiler, import->token, "error", "E1022",
+                       "Imported module files must use the .yl extension.",
+                       "Import a YLang source file whose path ends with '.yl'.");
+            okay = false;
+            continue;
+        }
+
         Module *target = find_module(compiler, canonical);
         if (target && target->loading) {
             diagnostic(compiler, import->token, "error", "E1023",
