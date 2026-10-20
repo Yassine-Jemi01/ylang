@@ -921,6 +921,31 @@ EOF
 printf 'data-private-YLang module\nroot-collision-test\n7 7\n' > build/module-imports.expected
 diff -u build/module-imports.expected build/module-imports.out
 
+# Semantic diagnostics inside an imported module must point at that module's file and line.
+cat > build/imports/diagnostic-module.yl <<'EOF'
+function imported_value() -> int {
+    let int result = true;
+    return result;
+}
+EOF
+cat > build/imports/diagnostic-main.yl <<'EOF'
+from "./diagnostic-module.yl" import imported_value;
+function main() -> int {
+    return imported_value();
+}
+EOF
+if ./build/ylang check build/imports/diagnostic-main.yl > build/imports/diagnostic-attribution.out 2>&1; then
+    echo "FAIL: a type error in an imported module was accepted" >&2
+    exit 1
+fi
+grep -q 'E2001' build/imports/diagnostic-attribution.out
+grep -Fq 'diagnostic-module.yl:2:' build/imports/diagnostic-attribution.out
+if grep -Fq 'diagnostic-main.yl:2:' build/imports/diagnostic-attribution.out; then
+    echo "FAIL: imported-module type error was attributed to the root file" >&2
+    exit 1
+fi
+
+
 # Names from a module remain private unless imported.
 cat > build/imports/private-name.yl <<'EOF'
 from "./data.yl" import system_data;
