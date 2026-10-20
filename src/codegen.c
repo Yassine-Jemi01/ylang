@@ -718,7 +718,7 @@ static void emit_temp_assignment(StringBuilder *sb, CodegenContext *ctx,
     sb_append(sb, "(");
     emit_temp_name(sb, id);
     sb_append(sb, " = ");
-    emit_expr(sb, expr, ctx);
+    emit_expr(sb, expr, ctx, ctx);
     sb_append(sb, ")");
 }
 
@@ -740,7 +740,7 @@ static void emit_binary_operand(StringBuilder *sb, Expr *expr,
                                 CodegenContext *ctx, size_t temp_id)
 {
     if (temp_id != SIZE_MAX) emit_temp_name(sb, temp_id);
-    else emit_expr(sb, expr, ctx);
+    else emit_expr(sb, expr, ctx, ctx);
 }
 
 
@@ -753,7 +753,7 @@ static void append_fstring_format_text(StringBuilder *format, const char *text)
     }
 }
 
-static void emit_fstring_expr(StringBuilder *sb, Expr *expr)
+static void emit_fstring_expr(StringBuilder *sb, Expr *expr, CodegenContext *ctx)
 {
     StringBuilder format, args;
     sb_init(&format);
@@ -769,19 +769,19 @@ static void emit_fstring_expr(StringBuilder *sb, Expr *expr)
             if (arg_count++) sb_append(&args, ", ");
             switch (embedded->type) {
                 case TYPE_INT:
-                    sb_append(&args, "(long long)("); emit_expr(&args, embedded); sb_append(&args, ")");
+                    sb_append(&args, "(long long)("); emit_expr(&args, embedded, ctx); sb_append(&args, ")");
                     break;
                 case TYPE_FLOAT:
-                    sb_append(&args, "(double)("); emit_expr(&args, embedded); sb_append(&args, ")");
+                    sb_append(&args, "(double)("); emit_expr(&args, embedded, ctx); sb_append(&args, ")");
                     break;
                 case TYPE_BOOL:
-                    sb_append(&args, "yl_boolstr("); emit_expr(&args, embedded); sb_append(&args, ")");
+                    sb_append(&args, "yl_boolstr("); emit_expr(&args, embedded, ctx); sb_append(&args, ")");
                     break;
                 case TYPE_CHAR:
-                    sb_append(&args, "(int)("); emit_expr(&args, embedded); sb_append(&args, ")");
+                    sb_append(&args, "(int)("); emit_expr(&args, embedded, ctx); sb_append(&args, ")");
                     break;
                 case TYPE_STRING:
-                    sb_append(&args, "(const char *)("); emit_expr(&args, embedded); sb_append(&args, ")");
+                    sb_append(&args, "(const char *)("); emit_expr(&args, embedded, ctx); sb_append(&args, ")");
                     break;
                 case TYPE_VOID: case TYPE_ERROR: break;
             }
@@ -929,7 +929,7 @@ static void emit_binary_operation_with_temps(StringBuilder *sb, Expr *expr)
     }
 }
 
-static void emit_expr(StringBuilder *sb, Expr *expr)
+static void emit_expr(StringBuilder *sb, Expr *expr, CodegenContext *ctx)
 {
     if (!expr) { sb_append(sb, "0"); return; }
     switch (expr->kind) {
@@ -947,7 +947,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     if (i) sb_append(sb, ", ");
                     append_indexed_temp_name(sb, expr, "field", i);
                     sb_append(sb, " = ");
-                    emit_expr(sb, expr->as.struct_init.args[i]);
+                    emit_expr(sb, expr->as.struct_init.args[i], ctx);
                 }
                 sb_append(sb, ", ");
             }
@@ -963,7 +963,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     sb_append(sb, structure->fields[i]->c_name);
                     sb_append(sb, " = ");
                     if (sequence) append_indexed_temp_name(sb, expr, "field", i);
-                    else emit_expr(sb, expr->as.struct_init.args[i]);
+                    else emit_expr(sb, expr->as.struct_init.args[i], ctx);
                 }
             }
             sb_append(sb, "}");
@@ -971,7 +971,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             break;
         }
         case EXPR_MEMBER:
-            emit_expr(sb, expr->as.member.target);
+            emit_expr(sb, expr->as.member.target, ctx);
             sb_append(sb, ".");
             sb_append(sb, expr->as.member.field ? expr->as.member.field->c_name : expr->as.member.name);
             break;
@@ -997,7 +997,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             sb_append_n(sb, expr->token.start, expr->token.length);
             break;
         case EXPR_FSTRING:
-            emit_fstring_expr(sb, expr);
+            emit_fstring_expr(sb, expr, ctx);
             break;
         case EXPR_ARRAY: {
             bool sequence = array_init_needs_sequence(expr);
@@ -1005,15 +1005,15 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             for (size_t i = 0; i < expr->as.array.count; i++) {
                 if (i) sb_append(sb, ", ");
                 if (sequence) append_indexed_temp_name(sb, expr, "element", i);
-                else emit_expr(sb, expr->as.array.items[i]);
+                else emit_expr(sb, expr->as.array.items[i], ctx);
             }
             sb_append(sb, "}");
             break;
         }
         case EXPR_INDEX:
-            emit_expr(sb, expr->as.index.target);
+            emit_expr(sb, expr->as.index.target, ctx);
             sb_append(sb, "[yl_bounds(");
-            emit_expr(sb, expr->as.index.index);
+            emit_expr(sb, expr->as.index.index, ctx);
             if (expr->as.index.variable && expr->as.index.variable->is_array &&
                 expr->as.index.variable->array_length == 0) {
                 sb_appendf(sb, ", %s_len)]", expr->as.index.variable->c_name);
@@ -1030,23 +1030,23 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 expr->as.assign.variable &&
                 expr->as.assign.target && expr->as.assign.target->type == TYPE_INT) {
                 sb_append(sb, "yl_add_assign_i64(&(");
-                emit_expr(sb, expr->as.assign.target);
+                emit_expr(sb, expr->as.assign.target, ctx);
                 sb_append(sb, "), ");
-                emit_expr(sb, expr->as.assign.right);
+                emit_expr(sb, expr->as.assign.right, ctx);
                 sb_append(sb, ")");
             } else if (expr->as.assign.is_compound &&
                        expr->as.assign.variable &&
                        expr->as.assign.target && expr->as.assign.target->type == TYPE_FLOAT) {
                 sb_append(sb, "yl_add_assign_f64(&(");
-                emit_expr(sb, expr->as.assign.target);
+                emit_expr(sb, expr->as.assign.target, ctx);
                 sb_append(sb, "), ");
-                emit_expr(sb, expr->as.assign.right);
+                emit_expr(sb, expr->as.assign.right, ctx);
                 sb_append(sb, ")");
             } else {
                 sb_append(sb, "(");
-                emit_expr(sb, expr->as.assign.target);
+                emit_expr(sb, expr->as.assign.target, ctx);
                 sb_append(sb, " = ");
-                emit_expr(sb, expr->as.assign.right);
+                emit_expr(sb, expr->as.assign.right, ctx);
                 sb_append(sb, ")");
             }
             break;
@@ -1063,21 +1063,21 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             if (strcmp(expr->as.call.name, "to_string") == 0 && expr->as.call.count == 1) {
                 Expr *arg = expr->as.call.args[0];
                 switch (arg->type) {
-                    case TYPE_STRING: emit_expr(sb, arg); break;
-                    case TYPE_INT: sb_append(sb, "yl_to_string_int("); emit_expr(sb, arg); sb_append(sb, ")"); break;
-                    case TYPE_FLOAT: sb_append(sb, "yl_to_string_float("); emit_expr(sb, arg); sb_append(sb, ")"); break;
-                    case TYPE_BOOL: sb_append(sb, "yl_boolstr("); emit_expr(sb, arg); sb_append(sb, ")"); break;
-                    case TYPE_CHAR: sb_append(sb, "yl_to_string_char("); emit_expr(sb, arg); sb_append(sb, ")"); break;
+                    case TYPE_STRING: emit_expr(sb, arg, ctx); break;
+                    case TYPE_INT: sb_append(sb, "yl_to_string_int("); emit_expr(sb, arg, ctx); sb_append(sb, ")"); break;
+                    case TYPE_FLOAT: sb_append(sb, "yl_to_string_float("); emit_expr(sb, arg, ctx); sb_append(sb, ")"); break;
+                    case TYPE_BOOL: sb_append(sb, "yl_boolstr("); emit_expr(sb, arg, ctx); sb_append(sb, ")"); break;
+                    case TYPE_CHAR: sb_append(sb, "yl_to_string_char("); emit_expr(sb, arg, ctx); sb_append(sb, ")"); break;
                     default: sb_append(sb, "\"\""); break;
                 }
                 break;
             }
             if (strcmp(expr->as.call.name, "to_float") == 0 && expr->as.call.count == 1) {
-                sb_append(sb, "((double)("); emit_expr(sb, expr->as.call.args[0]); sb_append(sb, "))");
+                sb_append(sb, "((double)("); emit_expr(sb, expr->as.call.args[0], ctx); sb_append(sb, "))");
                 break;
             }
             if (strcmp(expr->as.call.name, "to_int") == 0 && expr->as.call.count == 1) {
-                sb_append(sb, "yl_to_int("); emit_expr(sb, expr->as.call.args[0]); sb_append(sb, ")");
+                sb_append(sb, "yl_to_int("); emit_expr(sb, expr->as.call.args[0], ctx); sb_append(sb, ")");
                 break;
             }
             bool sequence_args = call_needs_sequence(expr);
@@ -1089,7 +1089,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     if (wrote_assignment) sb_append(sb, ", ");
                     append_indexed_temp_name(sb, expr, "arg", i);
                     sb_append(sb, " = ");
-                    emit_expr(sb, expr->as.call.args[i]);
+                    emit_expr(sb, expr->as.call.args[i], ctx);
                     wrote_assignment = true;
                 }
                 sb_append(sb, ", ");
@@ -1104,11 +1104,11 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 Expr *arg = expr->as.call.args[i];
                 bool array_param = call_argument_is_array(expr, i);
                 if (array_param) {
-                    emit_expr(sb, arg);
+                    emit_expr(sb, arg, ctx);
                 } else if (sequence_args) {
                     append_indexed_temp_name(sb, expr, "arg", i);
                 } else {
-                    emit_expr(sb, arg);
+                    emit_expr(sb, arg, ctx);
                 }
                 if (array_param) {
                     VarDecl *var = arg->kind == EXPR_NAME ? arg->as.name.variable : NULL;
@@ -1130,11 +1130,11 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             if (expr->is_min_int) {
                 sb_append(sb, "INT64_MIN");
             } else if (op == TOKEN_MINUS && expr->type == TYPE_INT) {
-                sb_append(sb, "yl_neg_i64("); emit_expr(sb, expr->as.unary.right); sb_append(sb, ")");
+                sb_append(sb, "yl_neg_i64("); emit_expr(sb, expr->as.unary.right, ctx); sb_append(sb, ")");
             } else {
                 sb_append(sb, "(");
                 if (op == TOKEN_MINUS) sb_append(sb, "-"); else sb_append(sb, "!");
-                emit_expr(sb, expr->as.unary.right); sb_append(sb, ")");
+                emit_expr(sb, expr->as.unary.right, ctx); sb_append(sb, ")");
             }
             break;
         }
@@ -1146,30 +1146,30 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 sb_append(sb, "(");
                 append_temp_name(sb, expr, "left");
                 sb_append(sb, " = ");
-                emit_expr(sb, left);
+                emit_expr(sb, left, ctx);
                 sb_append(sb, ", ");
                 append_temp_name(sb, expr, "right");
                 sb_append(sb, " = ");
-                emit_expr(sb, right);
+                emit_expr(sb, right, ctx);
                 sb_append(sb, ", ");
                 emit_binary_operation_with_temps(sb, expr);
                 sb_append(sb, ")");
             } else if (expr->type == TYPE_INT && op == TOKEN_PLUS) {
-                sb_append(sb, "yl_add_i64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
+                sb_append(sb, "yl_add_i64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
             } else if (expr->type == TYPE_INT && op == TOKEN_MINUS) {
-                sb_append(sb, "yl_sub_i64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
+                sb_append(sb, "yl_sub_i64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
             } else if (expr->type == TYPE_INT && op == TOKEN_STAR) {
-                sb_append(sb, "yl_mul_i64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
+                sb_append(sb, "yl_mul_i64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
             } else if (expr->type == TYPE_INT && op == TOKEN_SLASH) {
-                sb_append(sb, "yl_div_i64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
+                sb_append(sb, "yl_div_i64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
             } else if (expr->type == TYPE_INT && op == TOKEN_PERCENT) {
-                sb_append(sb, "yl_mod_i64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
+                sb_append(sb, "yl_mod_i64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
             } else if (left->type == TYPE_FLOAT && op == TOKEN_SLASH) {
-                sb_append(sb, "yl_div_f64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
+                sb_append(sb, "yl_div_f64("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx); sb_append(sb, ")");
             } else if (left->type == TYPE_STRING &&
                        (op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
                         op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL)) {
-                sb_append(sb, "(strcmp("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right);
+                sb_append(sb, "(strcmp("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx);
                 sb_append(sb, ") ");
                 switch (op) {
                     case TOKEN_LESS: sb_append(sb, "< 0)"); break;
@@ -1179,10 +1179,10 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     default: sb_append(sb, "0)"); break;
                 }
             } else if ((op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL) && left->type == TYPE_STRING) {
-                sb_append(sb, "(strcmp("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right);
+                sb_append(sb, "(strcmp("); emit_expr(sb, left, ctx); sb_append(sb, ", "); emit_expr(sb, right, ctx);
                 sb_append(sb, ") "); sb_append(sb, op == TOKEN_EQUAL_EQUAL ? "== 0)" : "!= 0)");
             } else {
-                sb_append(sb, "("); emit_expr(sb, left); sb_append(sb, " ");
+                sb_append(sb, "("); emit_expr(sb, left, ctx); sb_append(sb, " ");
                 switch (op) {
                     case TOKEN_PLUS: sb_append(sb, "+"); break;
                     case TOKEN_MINUS: sb_append(sb, "-"); break;
@@ -1199,7 +1199,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     case TOKEN_OR: sb_append(sb, "||"); break;
                     default: sb_append(sb, "?"); break;
                 }
-                sb_append(sb, " "); emit_expr(sb, right); sb_append(sb, ")");
+                sb_append(sb, " "); emit_expr(sb, right, ctx); sb_append(sb, ")");
             }
             break;
         }
@@ -1214,11 +1214,11 @@ static void emit_var_type(Compiler *compiler, FILE *out, VarDecl *var, bool glob
     if (var->is_const && var->type == TYPE_STRING) fputs(" const", out);
 }
 
-static void emit_expr_to_file(FILE *out, Expr *expr)
+static void emit_expr_to_file(FILE *out, Expr *expr, CodegenContext *ctx)
 {
     StringBuilder sb;
     sb_init(&sb);
-    emit_expr(&sb, expr);
+    emit_expr(&sb, expr, ctx);
     fputs(sb.data ? sb.data : "0", out);
     sb_destroy(&sb);
 }
@@ -1250,7 +1250,7 @@ static void emit_constant_initializer(StringBuilder *sb, Expr *expr)
         sb_append(sb, "}");
         return;
     }
-    emit_expr(sb, expr);
+    emit_expr(sb, expr, ctx);
 }
 
 static void emit_global_initializer_to_file(FILE *out, Expr *expr)
@@ -1267,31 +1267,31 @@ static void emit_indent(FILE *out, unsigned indent)
     for (unsigned i = 0; i < indent; i++) fputs("    ", out);
 }
 
-static void emit_print_value(FILE *out, Expr *expr, unsigned indent)
+static void emit_print_value(FILE *out, Expr *expr, unsigned indent, CodegenContext *ctx)
 {
     emit_indent(out, indent);
     switch (expr->type) {
         case TYPE_STRING:
-            fputs("fputs((const char *)(", out); emit_expr_to_file(out, expr);
+            fputs("fputs((const char *)(", out); emit_expr_to_file(out, expr, ctx);
             fputs("), stdout);\n", out); break;
         case TYPE_BOOL:
-            fputs("fputs(yl_boolstr(", out); emit_expr_to_file(out, expr);
+            fputs("fputs(yl_boolstr(", out); emit_expr_to_file(out, expr, ctx);
             fputs("), stdout);\n", out); break;
         case TYPE_CHAR:
-            fputs("printf(\"%c\", (int)(", out); emit_expr_to_file(out, expr);
+            fputs("printf(\"%c\", (int)(", out); emit_expr_to_file(out, expr, ctx);
             fputs("));\n", out); break;
         case TYPE_FLOAT:
-            fputs("printf(\"%.17g\", (double)(", out); emit_expr_to_file(out, expr);
+            fputs("printf(\"%.17g\", (double)(", out); emit_expr_to_file(out, expr, ctx);
             fputs("));\n", out); break;
         case TYPE_INT:
-            fputs("printf(\"%lld\", (long long)(", out); emit_expr_to_file(out, expr);
+            fputs("printf(\"%lld\", (long long)(", out); emit_expr_to_file(out, expr, ctx);
             fputs("));\n", out); break;
         case TYPE_VOID: case TYPE_ERROR:
             fputs("(void)0;\n", out); break;
     }
 }
 
-static void emit_fstring_print(FILE *out, Expr *expr, unsigned indent)
+static void emit_fstring_print(FILE *out, Expr *expr, unsigned indent, CodegenContext *ctx)
 {
     for (size_t i = 0; i < expr->as.fstring.count; i++) {
         FPart *part = &expr->as.fstring.parts[i];
@@ -1303,19 +1303,19 @@ static void emit_fstring_print(FILE *out, Expr *expr, unsigned indent)
             fprintf(out, "fputs(%s, stdout);\n", quoted.data ? quoted.data : "\"\"");
             sb_destroy(&quoted);
         } else if (part->expression) {
-            emit_print_value(out, part->expression, indent);
+            emit_print_value(out, part->expression, indent, ctx);
         }
     }
 }
 
-static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
+static void emit_stmt(Compiler *c, CodegenContext *ctx, FILE *out, Stmt *stmt, unsigned indent)
 {
     if (!stmt) return;
     switch (stmt->kind) {
         case STMT_BLOCK:
             emit_indent(out, indent); fputs("{\n", out);
             for (size_t i = 0; i < stmt->as.block.count; i++)
-                emit_stmt(c, out, stmt->as.block.items[i], indent + 1);
+                emit_stmt(c, ctx, out, stmt->as.block.items[i], indent + 1);
             emit_indent(out, indent); fputs("}\n", out);
             break;
         case STMT_VAR: {
@@ -1326,7 +1326,7 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
                     emit_indent(out, indent);
                     fprintf(out, "yl_codegen_tmp_%zu_element%zu = ",
                             array->codegen_id, i);
-                    emit_expr_to_file(out, array->as.array.items[i]);
+                    emit_expr_to_file(out, array->as.array.items[i], ctx);
                     fputs(";\n", out);
                 }
             }
@@ -1334,7 +1334,7 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
             fprintf(out, " %s", var->c_name);
             if (var->is_array) fprintf(out, "[%zu]", var->array_length);
             if (var->initializer) {
-                fputs(" = ", out); emit_expr_to_file(out, var->initializer);
+                fputs(" = ", out); emit_expr_to_file(out, var->initializer, ctx);
             }
             fputs(";\n", out);
             break;
@@ -1346,41 +1346,41 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
                     emit_indent(out, indent);
                     fputs("fputs(\" \", stdout);\n", out);
                 }
-                if (expr->kind == EXPR_FSTRING) emit_fstring_print(out, expr, indent);
-                else emit_print_value(out, expr, indent);
+                if (expr->kind == EXPR_FSTRING) emit_fstring_print(out, expr, indent, ctx);
+                else emit_print_value(out, expr, indent, ctx);
             }
             emit_indent(out, indent); fputs("putchar('\\n');\n", out);
             break;
         case STMT_IF:
-            emit_indent(out, indent); fputs("if (", out); emit_expr_to_file(out, stmt->as.if_stmt.condition); fputs(") ", out);
-            fputs("\n", out); emit_stmt(c, out, stmt->as.if_stmt.then_branch, indent);
+            emit_indent(out, indent); fputs("if (", out); emit_expr_to_file(out, stmt->as.if_stmt.condition, ctx); fputs(") ", out);
+            fputs("\n", out); emit_stmt(c, ctx, out, stmt->as.if_stmt.then_branch, indent);
             if (stmt->as.if_stmt.else_branch) {
                 emit_indent(out, indent); fputs("else ", out); fputs("\n", out);
-                emit_stmt(c, out, stmt->as.if_stmt.else_branch, indent);
+                emit_stmt(c, ctx, out, stmt->as.if_stmt.else_branch, indent);
             }
             break;
         case STMT_LOOP:
             emit_indent(out, indent); fputs("for (;;) ", out); fputs("\n", out);
-            emit_stmt(c, out, stmt->as.loop_body, indent);
+            emit_stmt(c, ctx, out, stmt->as.loop_body, indent);
             break;
         case STMT_WHILE:
             emit_indent(out, indent); fputs("while (", out);
-            emit_expr_to_file(out, stmt->as.while_stmt.condition);
+            emit_expr_to_file(out, stmt->as.while_stmt.condition, ctx);
             fputs(")\n", out);
-            emit_stmt(c, out, stmt->as.while_stmt.body, indent);
+            emit_stmt(c, ctx, out, stmt->as.while_stmt.body, indent);
             break;
         case STMT_FOR:
             emit_indent(out, indent); fputs("{\n", out);
             if (stmt->as.for_stmt.initializer)
-                emit_stmt(c, out, stmt->as.for_stmt.initializer, indent + 1);
+                emit_stmt(c, ctx, out, stmt->as.for_stmt.initializer, indent + 1);
             emit_indent(out, indent + 1); fputs("for (; ", out);
             if (stmt->as.for_stmt.condition)
-                emit_expr_to_file(out, stmt->as.for_stmt.condition);
+                emit_expr_to_file(out, stmt->as.for_stmt.condition, ctx);
             fputs("; ", out);
             if (stmt->as.for_stmt.increment)
-                emit_expr_to_file(out, stmt->as.for_stmt.increment);
+                emit_expr_to_file(out, stmt->as.for_stmt.increment, ctx);
             fputs(")\n", out);
-            emit_stmt(c, out, stmt->as.for_stmt.body, indent + 1);
+            emit_stmt(c, ctx, out, stmt->as.for_stmt.body, indent + 1);
             emit_indent(out, indent); fputs("}\n", out);
             break;
         case STMT_BREAK:
@@ -1389,7 +1389,7 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); fputs("continue;\n", out); break;
         case STMT_RETURN:
             emit_indent(out, indent); fputs("return", out);
-            if (stmt->as.return_value) { fputc(' ', out); emit_expr_to_file(out, stmt->as.return_value); }
+            if (stmt->as.return_value) { fputc(' ', out); emit_expr_to_file(out, stmt->as.return_value, ctx); }
             fputs(";\n", out); break;
         case STMT_MATCH: {
             char match_name[96];
@@ -1398,7 +1398,7 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); fputs("{\n", out);
             emit_indent(out, indent + 1);
             fprintf(out, "int64_t %s = ", match_name);
-            emit_expr_to_file(out, stmt->as.match_stmt.value);
+            emit_expr_to_file(out, stmt->as.match_stmt.value, ctx);
             fputs(";\n", out);
             for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++) {
                 MatchArm *arm = stmt->as.match_stmt.arms[i];
@@ -1406,13 +1406,13 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
                 fputs(i == 0 ? "if (" : "else if (", out);
                 fprintf(out, "%s == INT64_C(%lld))\n", match_name,
                         (long long)(arm->variant ? arm->variant->value : 0));
-                emit_stmt(c, out, arm->body, indent + 1);
+                emit_stmt(c, ctx, out, arm->body, indent + 1);
             }
             emit_indent(out, indent); fputs("}\n", out);
             break;
         }
         case STMT_EXPR:
-            emit_indent(out, indent); emit_expr_to_file(out, stmt->as.expression); fputs(";\n", out); break;
+            emit_indent(out, indent); emit_expr_to_file(out, stmt->as.expression, ctx); fputs(";\n", out); break;
     }
 }
 
@@ -1520,11 +1520,11 @@ bool generate_c(Compiler *c, const char *path)
         if (fn->body && fn->body->kind == STMT_BLOCK) {
             emit_temp_declarations_stmt(c, out, fn->body, 1U);
             for (size_t j = 0; j < fn->body->as.block.count; j++) {
-                emit_stmt(c, out, fn->body->as.block.items[j], 1U);
+                emit_stmt(c, ctx, out, fn->body->as.block.items[j], 1U);
             }
         } else {
             emit_temp_declarations_stmt(c, out, fn->body, 1U);
-            emit_stmt(c, out, fn->body, 1U);
+            emit_stmt(c, ctx, out, fn->body, 1U);
         }
         fputs("}\n\n", out);
     }
