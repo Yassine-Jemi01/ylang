@@ -290,38 +290,6 @@ static const StringBuiltin *find_string_builtin(const char *name)
     return NULL;
 }
 
-typedef struct {
-    const char *name;
-    size_t arity;
-    YType result;
-    YType args[7];
-} GuiBuiltin;
-
-static const GuiBuiltin gui_builtins[] = {
-    {"gui.init", 0, TYPE_BOOL, {TYPE_VOID}},
-    {"gui.create_window", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
-    {"gui.poll", 0, TYPE_BOOL, {TYPE_VOID}},
-    {"gui.key_down", 1, TYPE_BOOL, {TYPE_STRING}},
-    {"gui.mouse_x", 0, TYPE_INT, {TYPE_VOID}},
-    {"gui.mouse_y", 0, TYPE_INT, {TYPE_VOID}},
-    {"gui.mouse_button_down", 1, TYPE_BOOL, {TYPE_INT}},
-    {"gui.ticks_ms", 0, TYPE_INT, {TYPE_VOID}},
-    {"gui.clear", 3, TYPE_BOOL, {TYPE_INT, TYPE_INT, TYPE_INT}},
-    {"gui.draw_rect", 7, TYPE_BOOL, {TYPE_INT, TYPE_INT, TYPE_INT, TYPE_INT, TYPE_INT, TYPE_INT, TYPE_INT}},
-    {"gui.present", 0, TYPE_BOOL, {TYPE_VOID}},
-    {"gui.last_error", 0, TYPE_STRING, {TYPE_VOID}},
-    {"gui.close", 0, TYPE_VOID, {TYPE_VOID}},
-    {"gui.shutdown", 0, TYPE_VOID, {TYPE_VOID}}
-};
-
-static const GuiBuiltin *find_gui_builtin(const char *name)
-{
-    for (size_t i = 0; i < sizeof(gui_builtins) / sizeof(gui_builtins[0]); i++) {
-        if (strcmp(name, gui_builtins[i].name) == 0) return &gui_builtins[i];
-    }
-    return NULL;
-}
-
 static YType check_expr(Checker *checker, Expr *expr)
 {
     if (!expr) return TYPE_VOID;
@@ -702,7 +670,7 @@ static YType check_expr(Checker *checker, Expr *expr)
         case EXPR_CALL: {
             if (strncmp(expr->as.call.name, "gui.", 4) == 0) {
                 c->uses_gui = true;
-                const GuiBuiltin *builtin = find_gui_builtin(expr->as.call.name);
+                const GuiBuiltinInfo *builtin = find_gui_builtin_info(expr->as.call.name);
                 if (!builtin) {
                     diagnostic(c, expr->token, "error", "E2089",
                                "Unknown GUI function.",
