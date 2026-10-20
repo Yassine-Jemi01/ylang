@@ -2,8 +2,8 @@
 """Generate the C byte-array header used to embed YLang's generated-C runtime.
 
 Usage:
-  python3 tools/embed_text.py runtime/runtime_template.c src/runtime_template.h
-  python3 tools/embed_text.py runtime/runtime_template.c src/runtime_template.h --check
+  python3 tools/embed_text.py runtime/runtime_template.c build/runtime_template.h
+  python3 tools/embed_text.py runtime/runtime_template.c build/runtime_template.h --check
 """
 from __future__ import annotations
 
