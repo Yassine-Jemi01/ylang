@@ -906,6 +906,36 @@ static YType check_expr(Checker *checker, Expr *expr)
     return expr->type;
 }
 
+static bool stmt_contains_loop_break(Stmt *stmt)
+{
+    if (!stmt) return false;
+    switch (stmt->kind) {
+        case STMT_BREAK:
+            return true;
+        case STMT_BLOCK:
+            for (size_t i = 0; i < stmt->as.block.count; i++) {
+                if (stmt_contains_loop_break(stmt->as.block.items[i])) return true;
+            }
+            return false;
+        case STMT_IF:
+            return stmt_contains_loop_break(stmt->as.if_stmt.then_branch) ||
+                   stmt_contains_loop_break(stmt->as.if_stmt.else_branch);
+        case STMT_MATCH:
+            for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++) {
+                if (stmt_contains_loop_break(stmt->as.match_stmt.arms[i]->body)) return true;
+            }
+            return false;
+        /* A break inside a nested loop belongs to that loop, not this one. */
+        default:
+            return false;
+    }
+}
+
+static bool expr_is_true_literal(Expr *expr)
+{
+    return expr && expr->kind == EXPR_BOOL && expr->token.type == TOKEN_TRUE;
+}
+
 static bool stmt_guarantees_return(Stmt *stmt)
 {
     if (!stmt) return false;
@@ -926,6 +956,15 @@ static bool stmt_guarantees_return(Stmt *stmt)
             if (!stmt_guarantees_return(stmt->as.match_stmt.arms[i]->body)) return false;
         }
         return true;
+    }
+    if (stmt->kind == STMT_LOOP) {
+        return !stmt_contains_loop_break(stmt->as.loop_body);
+    }
+    if (stmt->kind == STMT_WHILE && expr_is_true_literal(stmt->as.while_stmt.condition)) {
+        return !stmt_contains_loop_break(stmt->as.while_stmt.body);
+    }
+    if (stmt->kind == STMT_FOR && !stmt->as.for_stmt.condition) {
+        return !stmt_contains_loop_break(stmt->as.for_stmt.body);
     }
     return false;
 }
