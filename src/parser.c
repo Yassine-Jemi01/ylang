@@ -116,6 +116,98 @@ void *arena_vector_append(Arena *arena, void *items, size_t count,
     return items;
 }
 
+uint64_t ylang_hash_name(const char *name)
+{
+    uint64_t hash = UINT64_C(14695981039346656037);
+    const unsigned char *cursor = (const unsigned char *)name;
+    while (*cursor) {
+        hash ^= (uint64_t)*cursor++;
+        hash *= UINT64_C(1099511628211);
+    }
+    return hash;
+}
+
+static size_t symbol_index_capacity(size_t count)
+{
+    if (count == 0U) return 0U;
+    if (count > SIZE_MAX / 2U) {
+        fputs("ylang: fatal: symbol index is too large\\n", stderr);
+        exit(70);
+    }
+    size_t needed = count * 2U;
+    size_t capacity = 8U;
+    while (capacity < needed) {
+        if (capacity > SIZE_MAX / 2U) {
+            fputs("ylang: fatal: symbol index capacity overflow\\n", stderr);
+            exit(70);
+        }
+        capacity *= 2U;
+    }
+    return capacity;
+}
+
+static void index_program_symbols(Compiler *c, Program *program)
+{
+    program->global_index_capacity = symbol_index_capacity(program->global_count);
+    if (program->global_index_capacity) {
+        program->global_index = arena_alloc(&c->arena,
+            program->global_index_capacity * sizeof(*program->global_index));
+        for (size_t i = 0; i < program->global_count; i++) {
+            VarDecl *variable = program->globals[i];
+            size_t slot = (size_t)(ylang_hash_name(variable->name) &
+                (uint64_t)(program->global_index_capacity - 1U));
+            while (program->global_index[slot]) {
+                if (strcmp(program->global_index[slot]->name, variable->name) == 0) break;
+                slot = (slot + 1U) & (program->global_index_capacity - 1U);
+            }
+            if (!program->global_index[slot]) program->global_index[slot] = variable;
+        }
+    }
+
+    program->function_index_capacity = symbol_index_capacity(program->function_count);
+    if (program->function_index_capacity) {
+        program->function_index = arena_alloc(&c->arena,
+            program->function_index_capacity * sizeof(*program->function_index));
+        for (size_t i = 0; i < program->function_count; i++) {
+            Function *function = program->functions[i];
+            size_t slot = (size_t)(ylang_hash_name(function->name) &
+                (uint64_t)(program->function_index_capacity - 1U));
+            while (program->function_index[slot]) {
+                if (strcmp(program->function_index[slot]->name, function->name) == 0) break;
+                slot = (slot + 1U) & (program->function_index_capacity - 1U);
+            }
+            if (!program->function_index[slot]) program->function_index[slot] = function;
+        }
+    }
+
+    size_t import_count = 0U;
+    for (size_t i = 0; i < program->import_count; i++) {
+        if (program->imports[i]->name_count > SIZE_MAX - import_count) {
+            fputs("ylang: fatal: import symbol count overflow\\n", stderr);
+            exit(70);
+        }
+        import_count += program->imports[i]->name_count;
+    }
+    program->import_index_capacity = symbol_index_capacity(import_count);
+    if (program->import_index_capacity) {
+        program->import_index = arena_alloc(&c->arena,
+            program->import_index_capacity * sizeof(*program->import_index));
+        for (size_t i = 0; i < program->import_count; i++) {
+            ImportDecl *import = program->imports[i];
+            for (size_t j = 0; j < import->name_count; j++) {
+                ImportName *name = import->names[j];
+                size_t slot = (size_t)(ylang_hash_name(name->name) &
+                    (uint64_t)(program->import_index_capacity - 1U));
+                while (program->import_index[slot]) {
+                    if (strcmp(program->import_index[slot]->name, name->name) == 0) break;
+                    slot = (slot + 1U) & (program->import_index_capacity - 1U);
+                }
+                if (!program->import_index[slot]) program->import_index[slot] = name;
+            }
+        }
+    }
+}
+
 static void append_ptr(Compiler *c, void ***items, size_t *count, void *item)
 {
     *items = arena_vector_append(&c->arena, *items, *count, sizeof(**items), &item);
@@ -1481,6 +1573,7 @@ Program *parse_program(Compiler *c)
         if (p.current.start == before.start && p.current.type == before.type &&
             p.current.type != TOKEN_EOF) advance_parser(&p);
     }
+    index_program_symbols(c, program);
     c->program = program;
     return program;
 }
