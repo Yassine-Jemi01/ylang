@@ -51,21 +51,14 @@ static void yl_cleanup(void) {
         free(yl_tracked);
         yl_tracked = next;
     }
-}
-    while (yl_tracked) { YLTracked *next = yl_tracked->next; free(yl_tracked->ptr); free(yl_tracked); yl_tracked = next; }
-}
-static void *yl_track(void *ptr) {
+
     YLTracked *node = malloc(sizeof(*node));
     if (!node) yl_runtime_error("out of memory");
     node->ptr = ptr;
     node->next = yl_tracked;
     yl_tracked = node;
     return ptr;
-}
-    YLTracked *node = malloc(sizeof(*node)); if (!node) yl_runtime_error("out of memory");
-    node->ptr = ptr; node->next = yl_tracked; yl_tracked = node; return ptr;
-}
-static const char *yl_boolstr(bool value) { return value ? "true" : "false"; }
+(bool value) { return value ? "true" : "false"; }
 static const char *yl_format(const char *format, ...);
 static const char *yl_to_string_int(int64_t value) { return yl_format("%lld", (long long)value); }
 static const char *yl_to_string_float(double value) { return yl_format("%.17g", value); }
@@ -113,15 +106,7 @@ static const char *yl_format(const char *format, ...) {
     (void)vsnprintf(buffer, (size_t)needed + 1, format, args);
     va_end(args);
     return (const char *)yl_track(buffer);
-}
-    va_list args; va_start(args, format); va_list copy; va_copy(copy, args);
-    int needed = vsnprintf(NULL, 0, format, copy); va_end(copy);
-    if (needed < 0) { va_end(args); yl_runtime_error("formatting failed"); }
-    char *buffer = malloc((size_t)needed + 1); if (!buffer) { va_end(args); yl_runtime_error("out of memory"); }
-    (void)vsnprintf(buffer, (size_t)needed + 1, format, args); va_end(args);
-    return (const char *)yl_track(buffer);
-}
-static int64_t yl_add_i64(int64_t a, int64_t b) {
+(int64_t a, int64_t b) {
     int64_t result;
     if (__builtin_add_overflow(a, b, &result)) {
         yl_runtime_error("integer overflow in addition");
@@ -390,11 +375,3 @@ static bool yl_image_open(const char *path) {
         return false;
     }
     return WIFEXITED(status) && WEXITSTATUS(status) == 0;
-}
-#if defined(__APPLE__)
-        execlp("open", "open", path, (char *)NULL);
-#else
-        execlp("xdg-open", "xdg-open", path, (char *)NULL);
-#endif
-        _exit(127); } int status = 0; while (waitpid(child, &status, 0) < 0) { if (errno == EINTR) continue; return false; } return WIFEXITED(status) && WEXITSTATUS(status) == 0; }
-#endif
