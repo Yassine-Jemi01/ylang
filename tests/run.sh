@@ -120,6 +120,41 @@ diff -u tests/expected-int-min.txt build/int-min.out
 diff -u tests/expected-conditions.txt build/test-conditions.out
 
 ./build/ylang check tests/branch-init.yl >/dev/null
+
+# Definite initialization merges nested if/else paths, but not a one-sided assignment.
+cat > build/branch-init-nested.yl <<'EOF'
+function main() -> int {
+    let int score;
+    if (true) {
+        if (false) {
+            score = 10;
+        } else {
+            score = 20;
+        }
+    } else {
+        score = 30;
+    }
+    print(score);
+    return 0;
+}
+EOF
+./build/ylang check build/branch-init-nested.yl >/dev/null
+
+cat > build/branch-init-missing-else.yl <<'EOF'
+function main() -> int {
+    let int score;
+    if (true) {
+        score = 10;
+    }
+    print(score);
+    return 0;
+}
+EOF
+if ./build/ylang check build/branch-init-missing-else.yl > build/branch-init-missing-else.out 2>&1; then
+    echo "FAIL: a variable assigned on only one if path was accepted" >&2
+    exit 1
+fi
+grep -q 'E2021' build/branch-init-missing-else.out
 if ./build/ylang check tests/type-error.yl > build/type-error.out 2>&1; then
     echo "FAIL: type-error.yl was accepted" >&2
     exit 1
