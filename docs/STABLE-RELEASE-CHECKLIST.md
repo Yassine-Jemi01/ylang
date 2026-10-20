@@ -1,6 +1,6 @@
 # YLang 2.0.1 Stable Release Acceptance Checklist
 
-This checklist applies only to the stable `v2.0.1` candidate, not the previously published `v2.0.1-beta.2`. The default C backend and documented core language are the stable contract. Experimental extensions remain explicitly excluded as described in [the stable release notes](CHANGELOG-2.0.1.md).
+This checklist applies only to the stable `v2.0.1` candidate. The earlier `v2.0.0` stable release and `v2.0.0-beta.2` prerelease remain historical releases; this candidate requires fresh acceptance because compiler and runtime source has changed. The default C backend and documented core language are the stable contract. Experimental extensions remain explicitly excluded as described in [the stable release notes](CHANGELOG-2.0.1.md).
 
 The stable publication workflow runs from `main`, tests that exact commit, and refuses to create a stable release while any acceptance gate below remains unchecked. Do not check a gate until its corresponding result has been observed and recorded.
 
@@ -25,9 +25,9 @@ The stable publication workflow runs from `main`, tests that exact commit, and r
 
 ## Required manual acceptance checks for the stable candidate
 
-- [ ] The Dodge example was run interactively against the 2.0 compiler/Game2D source baseline; this stable-candidate change does not modify compiler or Game2D source files.
-- [ ] The exact stable package's install/use/remove path is covered by `packaging/yspm/smoke-install.sh`, which the required CI job runs inside a disposable `YSPM_ROOT`.
-- [ ] A clean clone, clean build, full regression test suite, CLI/version checks, and a compiled demo were exercised on the unchanged 2.0 compiler source baseline; the candidate version is rebuilt and tested by CI.
+- [ ] The Dodge example has been run interactively against the exact 2.0.1 compiler/Game2D candidate.
+- [ ] The exact 2.0.1 package's install/use/remove path is covered by `packaging/yspm/smoke-install.sh`, which the required CI job runs inside a disposable `YSPM_ROOT`.
+- [ ] A clean clone, clean build, full regression test suite, CLI/version checks, and a compiled demo have been exercised on this exact 2.0.1 candidate.
 - [ ] The book's stable/experimental labels and PDF-edition note were reviewed; CI rebuilds mdBook, checks the new release chapters, and validates the website's links and anchors.
 - [ ] Stable release notes were reviewed to keep the core guarantee separate from imports, structs/enums, GUI/Game2D, NASM, Windows, and YSPM experimental status.
 
