@@ -847,7 +847,15 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             Expr *left = expr->as.binary.left;
             Expr *right = expr->as.binary.right;
             TokenType op = expr->as.binary.op.type;
-            if (expr->type == TYPE_INT && op == TOKEN_PLUS) {
+            if (binary_needs_sequence(expr)) {
+                sb_append(sb, "(");
+                emit_temp_assignment(sb, expr, "left", left);
+                sb_append(sb, ", ");
+                emit_temp_assignment(sb, expr, "right", right);
+                sb_append(sb, ", ");
+                emit_binary_operation_with_temps(sb, expr);
+                sb_append(sb, ")");
+            } else if (expr->type == TYPE_INT && op == TOKEN_PLUS) {
                 sb_append(sb, "yl_add_i64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
             } else if (expr->type == TYPE_INT && op == TOKEN_MINUS) {
                 sb_append(sb, "yl_sub_i64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
