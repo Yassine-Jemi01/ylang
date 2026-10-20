@@ -114,7 +114,7 @@ static bool expr_has_side_effects(Expr *expr)
  * assignment. __extension__ suppresses -Wpedantic for the GCC/Clang statement
  * expression used only in this fallback path.
  */
-static void emit_expr_raw(StringBuilder *sb, Expr *expr)
+static void emit_expr(StringBuilder *sb, Expr *expr)
 {
     if (!expr) {
         sb_append(sb, "0");
@@ -343,7 +343,7 @@ static const char *builtin_c_name(const char *name)
     return NULL;
 }
 
-static void emit_expr(StringBuilder *sb, Expr *expr)
+static void emit_expr_raw(StringBuilder *sb, Expr *expr)
 {
     if (!expr) { sb_append(sb, "0"); return; }
     switch (expr->kind) {
