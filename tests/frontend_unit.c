@@ -6,13 +6,13 @@
 
 static int fail(const char *message)
 {
-    fprintf(stderr, "frontend unit test failed: %s\\n", message);
+    fprintf(stderr, "frontend unit test failed: %s\n", message);
     return 1;
 }
 
 static int test_lexer(void)
 {
-    const char *source = "let count = 12 + 3;\\n// ignored comment\\ncount++ += count -> count == 3\\n";
+    const char *source = "let count = 12 + 3;\n// ignored comment\ncount++ += count -> count == 3\n";
     const TokenType expected[] = {
         TOKEN_LET, TOKEN_IDENTIFIER, TOKEN_EQUAL, TOKEN_NUMBER,
         TOKEN_PLUS, TOKEN_NUMBER, TOKEN_SEMICOLON, TOKEN_NEWLINE,
@@ -24,14 +24,14 @@ static int test_lexer(void)
     for (size_t i = 0; i < sizeof(expected) / sizeof(expected[0]); i++) {
         Token token = lexer_next(&lexer);
         if (token.type != expected[i]) {
-            fprintf(stderr, "lexer token %zu: expected %s, got %s at %zu:%zu\\n",
+            fprintf(stderr, "lexer token %zu: expected %s, got %s at %zu:%zu\n",
                     i, token_type_name(expected[i]), token_type_name(token.type),
                     token.line, token.column);
             return 1;
         }
     }
 
-    Lexer hex_character = lexer_init("'\\\\x42'");
+    Lexer hex_character = lexer_init("'\\x42'");
     Token character = lexer_next(&hex_character);
     if (character.type != TOKEN_CHAR || character.length != 6U) {
         return fail("lexer must consume two hexadecimal digits in a character escape");
@@ -143,7 +143,7 @@ static int test_escape_decoding(void)
         return fail("unknown escape sequences must be reported to the caller");
     }
 
-    const char *literal = "\"A\\\\x4142\\\\q\\\\0Z\"";
+    const char *literal = "\"A\\x4142\\q\\0Z\"";
     Token string_token = {
         .type = TOKEN_STRING,
         .start = literal,
@@ -165,11 +165,11 @@ static int test_escape_decoding(void)
         return fail("quoted string decoding must preserve exact bytes and embedded NULs");
     }
 
-    const char *character_literal = "'\\\\n'";
+    const char *character = "'\\n'";
     Token char_token = {
         .type = TOKEN_CHAR,
-        .start = character_literal,
-        .length = strlen(character_literal),
+        .start = character,
+        .length = strlen(character),
         .line = 1,
         .column = 1,
         .message = NULL
@@ -179,7 +179,7 @@ static int test_escape_decoding(void)
     if (!decode_quoted_literal(char_token, &bytes, &length)) {
         return fail("quoted character escapes must decode successfully");
     }
-    const int bad_char = length != 1U || bytes[0] != (unsigned char)'\\n';
+    const int bad_char = length != 1U || bytes[0] != (unsigned char)'\n';
     free(bytes);
     if (bad_char) {
         return fail("character escape decoding must match string escape decoding");
@@ -190,13 +190,13 @@ static int test_escape_decoding(void)
 static int test_parser(void)
 {
     const char *source =
-        "let int base = 2;\\n"
-        "enum Direction { North, East }\\n"
-        "struct Point { int x; int y; }\\n"
-        "function main() -> int {\\n"
-        "    let Point p = Point(base, 3);\\n"
-        "    return p.x;\\n"
-        "}\\n";
+        "let int base = 2;\n"
+        "enum Direction { North, East }\n"
+        "struct Point { int x; int y; }\n"
+        "function main() -> int {\n"
+        "    let Point p = Point(base, 3);\n"
+        "    return p.x;\n"
+        "}\n";
     Compiler compiler = {0};
     compiler.filename = "frontend-unit.yl";
     compiler.source = (char *)source;
