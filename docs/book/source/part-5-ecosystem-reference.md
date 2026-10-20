@@ -102,17 +102,17 @@ Native Windows support targets 64-bit Windows with MinGW-w64 in an MSYS2 MINGW64
 
 YSPM is a Linux system package manager. YLang provides an optional `.yspkg` package for compatible YSPM systems on Linux x86-64. This package installs the compiler and related library files; it does not manage dependencies for source-level imports.
 
-Download `ylang-2.0.0-x86_64.yspkg` from the official release and install it on a compatible system:
+Download `ylang-2.0.1-x86_64.yspkg` from the official release and install it on a compatible system:
 
 ```sh
-sudo yspm install ./ylang-2.0.0-x86_64.yspkg
+sudo yspm install ./ylang-2.0.1-x86_64.yspkg
 ```
 
 The package does not automatically install GCC/Clang, GNU Make, SDL2 development files, or `pkg-config`. The host still needs GCC or Clang to compile generated C, and GUI builds need SDL2 development dependencies. The package is not a Windows or macOS installer.
 
 ---
 
-# Chapter 24. What YLang 2.0.0 Does Not Have
+# Chapter 24. What YLang 2.0.1 Does Not Have
 
 Being clear about the limitations prevents a tutorial from promising features that do not exist.
 
