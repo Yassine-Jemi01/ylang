@@ -77,11 +77,11 @@ jobs:
             make
             python
       - name: Verify generated runtime template
-        run: make check-runtime-template
+        run: make check-runtime-template PYTHON=python
       - name: Build compiler
-        run: make clean all CC=gcc
+        run: make clean all CC=gcc PYTHON=python
       - name: Build optional SDL2 GUI runtime
-        run: make gui gui-example game2d-example CC=gcc
+        run: make gui gui-example game2d-example CC=gcc PYTHON=python
       - name: Check, compile, and run a native Windows program
         run: |
           mkdir -p build/windows-smoke
