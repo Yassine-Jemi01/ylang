@@ -1021,6 +1021,16 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
             break;
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
+            if (var->is_array && array_init_needs_sequence(var->initializer)) {
+                Expr *array = var->initializer;
+                for (size_t i = 0; i < array->as.array.count; i++) {
+                    emit_indent(out, indent);
+                    fprintf(out, "yl_codegen_tmp_%zu_element%zu = ",
+                            array->codegen_id, i);
+                    emit_expr_to_file(out, array->as.array.items[i]);
+                    fputs(";\n", out);
+                }
+            }
             emit_indent(out, indent); emit_var_type(c, out, var, false);
             fprintf(out, " %s", var->c_name);
             if (var->is_array) fprintf(out, "[%zu]", var->array_length);
