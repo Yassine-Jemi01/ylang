@@ -45,6 +45,7 @@ static void append_c_quoted(StringBuilder *sb, const char *text)
             case '\n': sb_append(sb, "\\n"); break;
             case '\r': sb_append(sb, "\\r"); break;
             case '\t': sb_append(sb, "\\t"); break;
+            case '?': sb_append(sb, "\\?"); break;
             default:
                 if (*p < 32 || *p == 127) sb_appendf(sb, "\\%03o", (unsigned)*p);
                 else sb_append_n(sb, (const char *)p, 1);
@@ -57,7 +58,7 @@ static const char *format_for_type(YType type)
 {
     switch (type) {
         case TYPE_INT: return "%lld";
-        case TYPE_FLOAT: return "%.17g";
+        case TYPE_FLOAT: return "%.15g";
         case TYPE_BOOL: return "%s";
         case TYPE_CHAR: return "%c";
         case TYPE_STRING: return "%s";
@@ -67,6 +68,178 @@ static const char *format_for_type(YType type)
 }
 
 static void emit_expr(StringBuilder *sb, Expr *expr);
+
+static void emit_expr_raw(StringBuilder *sb, Expr *expr);
+
+static bool expr_has_side_effects(Expr *expr)
+{
+    if (!expr) return false;
+    switch (expr->kind) {
+        case EXPR_CALL:
+        case EXPR_ASSIGN:
+            return true;
+        case EXPR_UNARY:
+            return expr_has_side_effects(expr->as.unary.right);
+        case EXPR_BINARY:
+            return expr_has_side_effects(expr->as.binary.left) ||
+                   expr_has_side_effects(expr->as.binary.right);
+        case EXPR_MEMBER:
+            return expr_has_side_effects(expr->as.member.target);
+        case EXPR_INDEX:
+            return expr_has_side_effects(expr->as.index.target) ||
+                   expr_has_side_effects(expr->as.index.index);
+        case EXPR_STRUCT_INIT:
+            for (size_t i = 0; i < expr->as.struct_init.count; i++) {
+                if (expr_has_side_effects(expr->as.struct_init.args[i])) return true;
+            }
+            return false;
+        case EXPR_ARRAY:
+            for (size_t i = 0; i < expr->as.array.count; i++) {
+                if (expr_has_side_effects(expr->as.array.items[i])) return true;
+            }
+            return false;
+        case EXPR_FSTRING:
+            for (size_t i = 0; i < expr->as.fstring.count; i++) {
+                if (expr_has_side_effects(expr->as.fstring.parts[i].expression)) return true;
+            }
+            return false;
+        default:
+            return false;
+    }
+}
+
+/*
+ * C leaves function-argument evaluation order unspecified. Keep YLang's
+ * left-to-right rule explicit whenever an expression contains a call or an
+ * assignment. __extension__ suppresses -Wpedantic for the GCC/Clang statement
+ * expression used only in this fallback path.
+ */
+static void emit_expr_raw(StringBuilder *sb, Expr *expr)
+{
+    if (!expr) {
+        sb_append(sb, "0");
+        return;
+    }
+
+    if (expr->kind == EXPR_CALL && expr->as.call.count > 1) {
+        bool needs_sequence = false;
+        for (size_t i = 0; i < expr->as.call.count; i++) {
+            bool array_param = expr->as.call.function &&
+                i < expr->as.call.function->param_count &&
+                expr->as.call.function->params[i]->is_array;
+            if (!array_param && expr_has_side_effects(expr->as.call.args[i])) {
+                needs_sequence = true;
+                break;
+            }
+        }
+        if (needs_sequence) {
+            size_t count = expr->as.call.count;
+            Expr **rewritten = calloc(count, sizeof(*rewritten));
+            Expr *temporary_exprs = calloc(count, sizeof(*temporary_exprs));
+            VarDecl *temporary_vars = calloc(count, sizeof(*temporary_vars));
+            char (*temporary_names)[96] = calloc(count, sizeof(*temporary_names));
+            if (!rewritten || !temporary_exprs || !temporary_vars || !temporary_names) {
+                free(rewritten);
+                free(temporary_exprs);
+                free(temporary_vars);
+                free(temporary_names);
+                emit_expr_raw(sb, expr);
+                return;
+            }
+
+            sb_append(sb, "(__extension__ ({ ");
+            for (size_t i = 0; i < count; i++) {
+                Expr *argument = expr->as.call.args[i];
+                bool array_param = expr->as.call.function &&
+                    i < expr->as.call.function->param_count &&
+                    expr->as.call.function->params[i]->is_array;
+                if (array_param) {
+                    rewritten[i] = argument;
+                    continue;
+                }
+
+                (void)snprintf(temporary_names[i], sizeof(temporary_names[i]),
+                               "yl_seq_%zu_%zu_%zu", expr->token.line,
+                               expr->token.column, i);
+                temporary_vars[i].type = argument->type;
+                temporary_vars[i].c_name = temporary_names[i];
+                temporary_exprs[i].kind = EXPR_NAME;
+                temporary_exprs[i].type = argument->type;
+                temporary_exprs[i].as.name.variable = &temporary_vars[i];
+                rewritten[i] = &temporary_exprs[i];
+
+                sb_appendf(sb, "__auto_type %s = ", temporary_names[i]);
+                emit_expr(sb, argument);
+                sb_append(sb, "; ");
+            }
+
+            Expr rewritten_call = *expr;
+            rewritten_call.as.call.args = rewritten;
+            emit_expr_raw(sb, &rewritten_call);
+            sb_append(sb, "; }))");
+            free(rewritten);
+            free(temporary_exprs);
+            free(temporary_vars);
+            free(temporary_names);
+            return;
+        }
+    }
+
+    if (expr->kind == EXPR_BINARY &&
+        expr->as.binary.op.type != TOKEN_AND &&
+        expr->as.binary.op.type != TOKEN_OR &&
+        (expr_has_side_effects(expr->as.binary.left) ||
+         expr_has_side_effects(expr->as.binary.right))) {
+        Expr *left = expr->as.binary.left;
+        Expr *right = expr->as.binary.right;
+        char left_name[96];
+        char right_name[96];
+        (void)snprintf(left_name, sizeof(left_name), "yl_seq_%zu_%zu_lhs",
+                       expr->token.line, expr->token.column);
+        (void)snprintf(right_name, sizeof(right_name), "yl_seq_%zu_%zu_rhs",
+                       expr->token.line, expr->token.column);
+        VarDecl left_var = { .type = left->type, .c_name = left_name };
+        VarDecl right_var = { .type = right->type, .c_name = right_name };
+        Expr left_expr = { .kind = EXPR_NAME, .type = left->type };
+        Expr right_expr = { .kind = EXPR_NAME, .type = right->type };
+        left_expr.as.name.variable = &left_var;
+        right_expr.as.name.variable = &right_var;
+
+        sb_appendf(sb, "(__extension__ ({ __auto_type %s = ", left_name);
+        emit_expr(sb, left);
+        sb_appendf(sb, "; __auto_type %s = ", right_name);
+        emit_expr(sb, right);
+        sb_append(sb, "; ");
+
+        Expr rewritten_binary = *expr;
+        rewritten_binary.as.binary.left = &left_expr;
+        rewritten_binary.as.binary.right = &right_expr;
+        emit_expr_raw(sb, &rewritten_binary);
+        sb_append(sb, "; }))");
+        return;
+    }
+
+    emit_expr_raw(sb, expr);
+}
+
+static void append_c_string_token(StringBuilder *sb, Token token)
+{
+    if (token.length < 2U) {
+        sb_append_n(sb, token.start, token.length);
+        return;
+    }
+    sb_append(sb, "\"");
+    bool escaped = false;
+    for (size_t i = 1; i + 1U < token.length; i++) {
+        char ch = token.start[i];
+        if (ch == '?' && !escaped) sb_append(sb, "\\?");
+        else sb_append_n(sb, &ch, 1);
+        if (ch == '\\') escaped = !escaped;
+        else escaped = false;
+    }
+    sb_append(sb, "\"");
+}
+
 
 static void append_fstring_format_text(StringBuilder *format, const char *text)
 {
@@ -221,8 +394,10 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             sb_append(sb, expr->token.type == TOKEN_TRUE ? "true" : "false");
             break;
         case EXPR_CHAR:
-        case EXPR_STRING:
             sb_append_n(sb, expr->token.start, expr->token.length);
+            break;
+        case EXPR_STRING:
+            append_c_string_token(sb, expr->token);
             break;
         case EXPR_FSTRING:
             emit_fstring_expr(sb, expr);
@@ -474,7 +649,7 @@ static void emit_print_value(FILE *out, Expr *expr, unsigned indent)
             fputs("printf(\"%c\", (int)(", out); emit_expr_to_file(out, expr);
             fputs("));\n", out); break;
         case TYPE_FLOAT:
-            fputs("printf(\"%.17g\", (double)(", out); emit_expr_to_file(out, expr);
+            fputs("printf(\"%.15g\", (double)(", out); emit_expr_to_file(out, expr);
             fputs("));\n", out); break;
         case TYPE_INT:
             fputs("printf(\"%lld\", (long long)(", out); emit_expr_to_file(out, expr);
@@ -692,7 +867,18 @@ bool generate_c(Compiler *c, const char *path)
             first_param = false;
         }
         fputs(") ", out); fputc('\n', out);
-        emit_stmt(c, out, fn->body, 0);
+        if (fn->body && fn->body->kind == STMT_BLOCK) {
+            fputs("{\n", out);
+            for (size_t j = 0; j < fn->body->as.block.count; j++)
+                emit_stmt(c, out, fn->body->as.block.items[j], 1);
+            /* The semantic checker rejects reachable fallthrough; this keeps
+               exhaustive enum-match lowering warning-free for C compilers. */
+            if (fn->return_type != TYPE_VOID) fputs("    return 0;\n", out);
+            fputs("}\n", out);
+        } else {
+            emit_stmt(c, out, fn->body, 0);
+            if (fn->return_type != TYPE_VOID) fputs("return 0;\n", out);
+        }
         fputc('\n', out);
     }
 
