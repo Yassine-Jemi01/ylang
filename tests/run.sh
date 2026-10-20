@@ -1204,6 +1204,7 @@ function main() -> int {
     print("what??/");
     print("tri??/graph ??= ??)");
     print('\x41');
+    print(f"escaped \{brace\}");
     print(0.1);
     print(string.is_int(" 5"));
     print(string.is_int("5 "));
@@ -1222,6 +1223,7 @@ true
 what??/
 tri??/graph ??= ??)
 A
+escaped {brace}
 0.1
 false
 false
