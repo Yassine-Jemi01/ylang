@@ -718,7 +718,7 @@ static void emit_temp_assignment(StringBuilder *sb, CodegenContext *ctx,
     sb_append(sb, "(");
     emit_temp_name(sb, id);
     sb_append(sb, " = ");
-    emit_expr(sb, expr, ctx, ctx);
+    emit_expr(sb, expr, ctx);
     sb_append(sb, ")");
 }
 
@@ -740,7 +740,7 @@ static void emit_binary_operand(StringBuilder *sb, Expr *expr,
                                 CodegenContext *ctx, size_t temp_id)
 {
     if (temp_id != SIZE_MAX) emit_temp_name(sb, temp_id);
-    else emit_expr(sb, expr, ctx, ctx);
+    else emit_expr(sb, expr, ctx);
 }
 
 
@@ -1250,7 +1250,7 @@ static void emit_constant_initializer(StringBuilder *sb, Expr *expr)
         sb_append(sb, "}");
         return;
     }
-    emit_expr(sb, expr, ctx);
+    emit_expr(sb, expr, NULL);
 }
 
 static void emit_global_initializer_to_file(FILE *out, Expr *expr)
@@ -1517,6 +1517,9 @@ bool generate_c(Compiler *c, const char *path)
             first_param = false;
         }
         fputs(") {\n", out);
+        CodegenContext ctx = { .compiler = c };
+        prepare_stmt(&ctx, fn->body);
+        emit_temp_declarations(out, &ctx, 1U);
         if (fn->body && fn->body->kind == STMT_BLOCK) {
             emit_temp_declarations_stmt(c, out, fn->body, 1U);
             for (size_t j = 0; j < fn->body->as.block.count; j++) {
@@ -1526,6 +1529,7 @@ bool generate_c(Compiler *c, const char *path)
             emit_temp_declarations_stmt(c, out, fn->body, 1U);
             emit_stmt(c, ctx, out, fn->body, 1U);
         }
+        codegen_context_destroy(&ctx);
         fputs("}\n\n", out);
     }
 
