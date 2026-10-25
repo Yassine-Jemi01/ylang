@@ -1,0 +1,11 @@
+function transfer(string value) -> string {
+    let string next = move(value);
+    return next;
+}
+
+function main() -> int {
+    let string source = string.concat("Y", "Lang");
+    let string result = transfer(source);
+    print(source, result);
+    return 0;
+}
