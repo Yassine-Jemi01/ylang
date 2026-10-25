@@ -1372,6 +1372,9 @@ static bool emit_runtime(FILE *out)
 bool generate_c(Compiler *c, const char *path)
 {
     size_t next_codegen_id = 1U;
+    yl_codegen_scope = NULL;
+    yl_codegen_loop = NULL;
+    yl_codegen_return_boundary = "NULL";
     for (size_t i = 0; i < c->program->global_count; i++)
         assign_expr_codegen_ids(c->program->globals[i]->initializer, &next_codegen_id);
     for (size_t i = 0; i < c->program->function_count; i++)
@@ -1458,9 +1461,45 @@ bool generate_c(Compiler *c, const char *path)
             first_param = false;
         }
         fputs(") {\n", out);
+
+        GenScope function_scope = { .parent = NULL };
+        char function_parent_name[80];
+        (void)snprintf(function_scope.frame_name, sizeof(function_scope.frame_name),
+                       "yl_function_scope_%zu", i);
+        (void)snprintf(function_scope.slot_name, sizeof(function_scope.slot_name),
+                       "yl_function_scope_ptr_%zu", i);
+        (void)snprintf(function_parent_name, sizeof(function_parent_name),
+                       "yl_function_parent_%zu", i);
+        emit_indent(out, 1U);
+        fprintf(out, "YLScope *%s = yl_scope_current();\n", function_parent_name);
+        emit_scope_enter(out, 1U, function_scope.frame_name, function_scope.slot_name);
+        yl_codegen_scope = &function_scope;
+        yl_codegen_return_boundary = function_parent_name;
+
+        /* String parameters are copied into local owned values. Array parameters
+           remain borrowed views of the caller's fixed-size storage. */
+        for (size_t j = 0; j < fn->param_count; j++) {
+            VarDecl *param = fn->params[j];
+            if (param->type == TYPE_STRING && !param->is_array) {
+                emit_indent(out, 1U);
+                fprintf(out, "%s = yl_clone_string(%s);\n",
+                        param->c_name, param->c_name);
+                emit_indent(out, 1U);
+                fprintf(out, "YLSlot yl_parameter_owner_slot_%zu_%zu;\n", i, j);
+                emit_indent(out, 1U);
+                fprintf(out,
+                        "yl_scope_register(%s, &yl_parameter_owner_slot_%zu_%zu, (const char **)&%s);\n",
+                        function_scope.slot_name, i, j, param->c_name);
+            }
+        }
+
         emit_temp_declarations_stmt(c, out, fn->body, 1U);
-        /* Keep the source function body's block scope, including parameter shadowing rules. */
+        /* The source function body has its own lexical frame. */
         emit_stmt(c, out, fn->body, 1U);
+        emit_scope_leave(out, 1U, function_scope.slot_name);
+        yl_codegen_scope = NULL;
+        yl_codegen_loop = NULL;
+        yl_codegen_return_boundary = "NULL";
         fputs("}\n\n", out);
     }
 
