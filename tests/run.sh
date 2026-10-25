@@ -1353,6 +1353,13 @@ grep -q 'E2114' build/move-self-assignment.out
 printf 'YLang YLang\n' > build/move-parameter-return.expected
 diff -u build/move-parameter-return.expected build/move-parameter-return.out
 
+# Moving a binding twice is rejected at the second transfer.
+if ./build/ylang check tests/move-double.yl > build/move-double.out 2>&1; then
+    echo "FAIL: YLang accepted a double move" >&2
+    exit 1
+fi
+grep -q 'E2110' build/move-double.out
+
 # Invalid move operations must have targeted diagnostics.
 if ./build/ylang check tests/move-rejections.yl > build/move-rejections.out 2>&1; then
     echo "FAIL: YLang accepted unsupported move operations" >&2
