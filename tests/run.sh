@@ -1294,6 +1294,19 @@ else
 fi
 
 
+# Explicit string moves transfer the binding statically and permit reinitialization.
+./build/ylang build tests/move-string.yl -o build/test-move-string >/dev/null
+./build/test-move-string > build/move-string.out
+printf 'YLang newvalue\n' > build/move-string.expected
+diff -u build/move-string.expected build/move-string.out
+
+# A moved binding must be rejected on later use, before code generation.
+if ./build/ylang check tests/move-after-use.yl > build/move-after-use.out 2>&1; then
+    echo "FAIL: YLang accepted use after move" >&2
+    exit 1
+fi
+grep -q 'E2110' build/move-after-use.out
+
 # Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
 ./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-memory-stats > build/memory-stats.stdout 2> build/memory-stats.stderr
