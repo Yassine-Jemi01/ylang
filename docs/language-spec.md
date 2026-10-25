@@ -183,6 +183,42 @@ print(string.ends_with(name, "n"));
 - `path.basename(path)` returns the final path component, and `path.extension(path)` returns the suffix after the final dot (without the dot); a leading dot alone is not treated as an extension. These helpers use POSIX path separators.
 - `image.open(path)` launches the platform default opener (`xdg-open` on Linux, `open` on macOS) without invoking a shell and returns whether the launcher exits successfully. It requires a desktop session and a registered handler; it opens the file in an external application and does not decode or draw the image in a YLang window.
 
+## Experimental owned strings
+
+The C backend has an experimental `owned_string` type. Unlike legacy `string`, an `owned_string` local owns its tracked heap allocation and is released automatically when its scope ends. This feature is not part of the stable 2.0.0 core compatibility contract and does not provide full Rust-style borrowing or lifetime checking.
+
+```yl
+let string text = "YLang";
+let owned_string owner = string.own(text); // clones text into owned storage
+let owned_string next = owned_string.concat(owner, "!");
+let owned_string transferred = move(next); // next is unavailable until reinitialized
+print(owner, transferred);
+```
+
+Use `string.own(value)` to clone borrowed text into owned storage. `owned_string.concat`, `owned_string.replace`, `owned_string.upper`, `owned_string.lower`, `io.read_line_owned()`, and `io.read_file_owned(path)` produce owned strings. Use `move(name)` to transfer one owner into another local, an owned-string function parameter, or an owned return value. A function that returns an owned value should return `move(name)` for a local binding. Implicit copying of an owned binding is rejected; use `string.own(value)` when a separate owned copy is required.
+
+The compiler emits releases on normal scope exit and before `return`, `break`, and `continue`. Reassigning an owned variable releases its previous value. For allocation diagnostics, run the resulting program with `YLANG_MEMORY_STATS=1`; if all owned values have been released and the program created no other retained legacy strings, live tracked allocations and bytes should be zero at process exit.
+
+The experimental `borrowed_string` type can be used for function parameters that read text without taking ownership:
+
+```yl
+function report(borrowed_string text) -> int {
+    print(text);
+    print(string.length(text));
+    return 0;
+}
+
+function main() -> int {
+    let owned_string message = string.own("hello");
+    report(message); // message remains owned by main
+    return 0;
+}
+```
+
+A `borrowed_string` parameter is read-only. The type is rejected for local/global variables, struct fields, array parameters, and function return values. It does not free the passed value; the caller must keep the owner alive for the duration of the call. Passing an unbound `owned_string` temporary to a borrowed parameter is rejected. This is a limited immutable call-parameter view, not full lifetime inference or a general borrow checker.
+
+Current limits: owned strings require the C backend. Global owned strings, arrays of owned strings, and owned-string struct fields are rejected until cleanup for those storage forms exists. Mutable borrows (`&mut T`), lifetime annotations, escaping borrows, and general alias checking are not implemented. Legacy `string` remains a borrowed C-string representation, and allocations produced by legacy string helpers may live until process exit. Do not treat this experimental feature as a security boundary or a claim of complete Rust-level memory safety.
+
 ## Path and desktop integration
 
 ```ylang

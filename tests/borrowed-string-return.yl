@@ -1,0 +1,7 @@
+function invalid(borrowed_string text) -> borrowed_string {
+    return text;
+}
+
+function main() -> int {
+    return 0;
+}

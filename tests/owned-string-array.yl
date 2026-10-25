@@ -1,0 +1,4 @@
+function main() -> int {
+    let owned_string values[] = [string.own("value")];
+    return 0;
+}

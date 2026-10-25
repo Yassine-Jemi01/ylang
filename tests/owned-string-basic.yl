@@ -1,0 +1,49 @@
+function return_owner(owned_string value) -> owned_string {
+    return move(value);
+}
+
+function make_local_owner() -> owned_string {
+    let owned_string abandoned = string.own("discard-me");
+    let owned_string result = string.own("local");
+    return move(result);
+}
+
+function consume_owned(owned_string value) -> int {
+    print(value);
+    return 0;
+}
+
+function main() -> int {
+    let owned_string source = string.own("alpha");
+    let owned_string combined = owned_string.concat(source, "beta");
+    print(source, combined);
+
+    combined = owned_string.upper(combined);
+    print(combined);
+
+    let owned_string returned = return_owner(move(source));
+    print(returned);
+    print(owned_string.upper(returned));
+
+    let owned_string local_return = make_local_owner();
+    print(local_return);
+    consume_owned(string.own("temporary argument"));
+
+    let int count = 0;
+    while (count < 20) {
+        let owned_string temporary = owned_string.concat(returned, "x");
+        count += 1;
+    }
+
+    let int loops = 0;
+    loop() {
+        let owned_string iteration = owned_string.concat(returned, "loop");
+        loops += 1;
+        if (loops >= 3) {
+            break;
+        }
+        continue;
+    }
+
+    return 0;
+}

@@ -211,6 +211,30 @@ static bool same_numeric_type(YType a, YType b)
            (a == TYPE_FLOAT && b == TYPE_FLOAT);
 }
 
+static bool is_string_type(YType type)
+{
+    return type == TYPE_STRING || type == TYPE_BORROWED_STRING ||
+           type == TYPE_OWNED_STRING;
+}
+
+static bool is_movable_string_type(YType type)
+{
+    return type == TYPE_STRING || type == TYPE_OWNED_STRING;
+}
+
+static bool is_owned_temporary_expression(Expr *expr)
+{
+    return expr && expr->type == TYPE_OWNED_STRING &&
+           expr->kind != EXPR_NAME;
+}
+
+static void diagnose_lost_owned_temporary(Compiler *compiler, Expr *expr)
+{
+    diagnostic(compiler, expr->token, "error", "E2119",
+               "This owned_string temporary would lose its owner.",
+               "Store it in an owned_string variable, pass it to an owned_string parameter, return it, or use it directly in print.");
+}
+
 static bool expr_contains_call_or_assignment(Expr *expr)
 {
     if (!expr) return false;
@@ -263,6 +287,13 @@ typedef struct {
 
 static const StringBuiltin string_builtins[] = {
     {"string.length", 1, TYPE_INT},
+    {"string.own", 1, TYPE_OWNED_STRING},
+    {"owned_string.concat", 2, TYPE_OWNED_STRING},
+    {"owned_string.replace", 3, TYPE_OWNED_STRING},
+    {"owned_string.upper", 1, TYPE_OWNED_STRING},
+    {"owned_string.lower", 1, TYPE_OWNED_STRING},
+    {"io.read_line_owned", 0, TYPE_OWNED_STRING},
+    {"io.read_file_owned", 1, TYPE_OWNED_STRING},
     {"string.contains", 2, TYPE_BOOL},
     {"string.starts_with", 2, TYPE_BOOL},
     {"string.ends_with", 2, TYPE_BOOL},
@@ -566,6 +597,12 @@ static YType check_expr(Checker *checker, Expr *expr)
                            "Cannot assign to a const variable.",
                            "Keep 'const' and remove this assignment, or remove 'const' if the variable should be mutable.");
             }
+            if (target_type == TYPE_OWNED_STRING && right == TYPE_OWNED_STRING &&
+                right_expr && right_expr->kind == EXPR_NAME) {
+                diagnostic(c, right_expr->token, "error", "E2115",
+                           "Assigning an owned_string variable would copy ownership.",
+                           "Use move(name) to transfer ownership, or string.own(value) to clone a string.");
+            }
             if (right != TYPE_ERROR && target_type != TYPE_ERROR && right != target_type) {
                 char suggestion[256];
                 (void)snprintf(suggestion, sizeof(suggestion),
@@ -623,6 +660,16 @@ static YType check_expr(Checker *checker, Expr *expr)
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
+            if (is_owned_temporary_expression(expr->as.binary.left)) {
+                diagnose_lost_owned_temporary(c, expr->as.binary.left);
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            if (is_owned_temporary_expression(expr->as.binary.right)) {
+                diagnose_lost_owned_temporary(c, expr->as.binary.right);
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
             if (op == TOKEN_AND || op == TOKEN_OR) {
                 if (left != TYPE_BOOL || right != TYPE_BOOL) {
                     diagnostic(c, expr->token, "error", "E2032",
@@ -653,7 +700,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL) {
                 if (!(same_numeric_type(left, right) ||
                       (left == TYPE_CHAR && right == TYPE_CHAR) ||
-                      (left == TYPE_STRING && right == TYPE_STRING))) {
+                      (is_string_type(left) && is_string_type(right)))) {
                     diagnostic(c, expr->token, "error", "E2035",
                                "Ordered comparisons require matching numeric types, two chars, or two strings.",
                                "Make both operands the same compatible type.");
@@ -662,7 +709,9 @@ static YType check_expr(Checker *checker, Expr *expr)
                 return expr->type;
             }
             if (op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL) {
-                if (left != right || left == TYPE_VOID || left >= TYPE_STRUCT_BASE) {
+                bool comparable_string_pair = is_string_type(left) && is_string_type(right);
+                if ((!comparable_string_pair && left != right) ||
+                    left == TYPE_VOID || left >= TYPE_STRUCT_BASE) {
                     diagnostic(c, expr->token, "error", "E2036",
                                left >= TYPE_STRUCT_BASE && right >= TYPE_STRUCT_BASE && left == right
                                    ? "Struct values do not support equality comparisons yet."
@@ -758,10 +807,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
-                if (argument_type != TYPE_STRING || source->is_array) {
+                if (!is_movable_string_type(argument_type) || source->is_array) {
                     diagnostic(c, argument->token, "error", "E2112",
-                               "Only scalar string variables can be moved in this milestone.",
-                               "Use move(name) with a local variable whose type is string.");
+                               "Only scalar string or owned_string variables can be moved.",
+                               "Use move(name) with a local variable whose type is string or owned_string.");
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
@@ -774,10 +823,11 @@ static YType check_expr(Checker *checker, Expr *expr)
                         }
                     }
                 }
-                if (source->is_global || is_parameter) {
+                if (source->is_global ||
+                    (argument_type != TYPE_OWNED_STRING && is_parameter)) {
                     diagnostic(c, argument->token, "error", "E2113",
-                               "move() can only transfer a local variable in this milestone.",
-                               "Create a local owned value first; globals and function parameters remain borrowed.");
+                               "move() cannot transfer a global or a borrowed string parameter.",
+                               "Use move() on a local string, or on an owned_string parameter that the function owns.");
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
@@ -787,7 +837,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 }
                 source->moved = true;
                 source->initialized = false;
-                expr->type = TYPE_STRING;
+                expr->type = argument_type;
                 return expr->type;
             }
             if (strncmp(expr->as.call.name, "gui.", 4) == 0) {
@@ -812,8 +862,14 @@ static YType check_expr(Checker *checker, Expr *expr)
                 }
                 for (size_t i = 0; i < expr->as.call.count; i++) {
                     YType actual = check_expr(checker, expr->as.call.args[i]);
+                    if (actual == TYPE_OWNED_STRING &&
+                        is_owned_temporary_expression(expr->as.call.args[i]) &&
+                        i < builtin->arity && builtin->args[i] == TYPE_STRING) {
+                        diagnose_lost_owned_temporary(c, expr->as.call.args[i]);
+                    }
                     if (i < builtin->arity && actual != TYPE_ERROR &&
-                        actual != builtin->args[i]) {
+                        actual != builtin->args[i] &&
+                        !(builtin->args[i] == TYPE_STRING && is_string_type(actual))) {
                         char suggestion[256];
                         (void)snprintf(suggestion, sizeof(suggestion),
                             "Argument %zu of %s expects %s, but received %s.",
@@ -837,6 +893,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                 }
                 YType arg_type = expr->as.call.count ? check_expr(checker, expr->as.call.args[0]) : TYPE_ERROR;
                 for (size_t i = 1; i < expr->as.call.count; i++) (void)check_expr(checker, expr->as.call.args[i]);
+                if (arg_type == TYPE_OWNED_STRING && expr->as.call.count > 0U &&
+                    is_owned_temporary_expression(expr->as.call.args[0])) {
+                    diagnose_lost_owned_temporary(c, expr->as.call.args[0]);
+                }
                 if (strcmp(name, "to_float") == 0) {
                     if (arg_type != TYPE_INT && arg_type != TYPE_ERROR)
                         diagnostic(c, expr->token, "error", "E2045", "to_float expects an int argument.",
@@ -849,10 +909,11 @@ static YType check_expr(Checker *checker, Expr *expr)
                     expr->type = TYPE_INT;
                 } else {
                     if (arg_type != TYPE_INT && arg_type != TYPE_FLOAT && arg_type != TYPE_BOOL &&
-                        arg_type != TYPE_CHAR && arg_type != TYPE_STRING && arg_type != TYPE_ERROR)
+                        arg_type != TYPE_CHAR && !is_string_type(arg_type) && arg_type != TYPE_ERROR)
                         diagnostic(c, expr->token, "error", "E2045", "to_string cannot convert this type.",
-                                   "Supported types are int, float, bool, char, and string.");
-                    expr->type = TYPE_STRING;
+                                   "Supported types are int, float, bool, char, string, and owned_string.");
+                    expr->type = arg_type == TYPE_OWNED_STRING ?
+                        TYPE_OWNED_STRING : TYPE_STRING;
                 }
                 return expr->type;
             }
@@ -894,7 +955,11 @@ static YType check_expr(Checker *checker, Expr *expr)
                 }
                 for (size_t i = 0; i < expr->as.call.count; i++) {
                     YType arg_type = check_expr(checker, expr->as.call.args[i]);
-                    if (arg_type != TYPE_ERROR && arg_type != TYPE_STRING) {
+                    if (arg_type == TYPE_OWNED_STRING &&
+                        is_owned_temporary_expression(expr->as.call.args[i])) {
+                        diagnose_lost_owned_temporary(c, expr->as.call.args[i]);
+                    }
+                    if (arg_type != TYPE_ERROR && !is_string_type(arg_type)) {
                         diagnostic(c, expr->as.call.args[i]->token, "error", "E2044",
                                    "This standard-library function requires string arguments.",
                                    "Pass string values or string literals.");
@@ -978,6 +1043,32 @@ static YType check_expr(Checker *checker, Expr *expr)
                                    "Function array element type mismatch.",
                                    "Pass an array whose element type matches the parameter declaration.");
                     }
+                } else if (param->type == TYPE_OWNED_STRING &&
+                           arg_type == TYPE_OWNED_STRING && arg->kind == EXPR_NAME) {
+                    diagnostic(c, arg->token, "error", "E2115",
+                               "Passing an owned_string variable copies ownership.",
+                               "Transfer it explicitly with move(name), or create a new owned string with string.own(...).");
+                } else if (param->type == TYPE_BORROWED_STRING) {
+                    if (!is_string_type(arg_type)) {
+                        char suggestion[256];
+                        (void)snprintf(suggestion, sizeof(suggestion),
+                            "Argument %zu of '%s' expects a string view, but received %s.",
+                            i + 1, function->name, semantic_type_name(c, arg_type));
+                        diagnostic(c, arg->token, "error", "E2042",
+                                   "Function argument type mismatch.", suggestion);
+                    } else if (arg_type == TYPE_OWNED_STRING &&
+                               is_owned_temporary_expression(arg)) {
+                        diagnose_lost_owned_temporary(c, arg);
+                    }
+                } else if (param->type == TYPE_STRING) {
+                    if (arg_type != TYPE_STRING) {
+                        char suggestion[256];
+                        (void)snprintf(suggestion, sizeof(suggestion),
+                            "Argument %zu of '%s' expects legacy string, but received %s.",
+                            i + 1, function->name, semantic_type_name(c, arg_type));
+                        diagnostic(c, arg->token, "error", "E2042",
+                                   "Function argument type mismatch.", suggestion);
+                    }
                 } else if (arg_type != param->type) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
@@ -1054,6 +1145,11 @@ static void check_stmt(Checker *checker, Stmt *stmt)
         }
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
+            if (var->type == TYPE_OWNED_STRING && var->is_array) {
+                diagnostic(c, var->token, "error", "E2118",
+                           "Arrays of owned_string are not supported yet.",
+                           "Use individual owned_string locals until element cleanup is implemented.");
+            }
             if (var->is_array &&
                 (!var->initializer || var->initializer->kind != EXPR_ARRAY)) {
                 diagnostic(c, var->token, "error", "E2038",
@@ -1074,6 +1170,12 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                         var->name, semantic_type_name(c, var->type), semantic_type_name(c, init_type));
                     diagnostic(c, var->initializer->token, "error", "E2001",
                                "Variable initializer type mismatch.", suggestion);
+                }
+                if (var->type == TYPE_OWNED_STRING &&
+                    var->initializer->kind == EXPR_NAME) {
+                    diagnostic(c, var->initializer->token, "error", "E2115",
+                               "Initializing an owned_string from another variable copies ownership.",
+                               "Use move(name) to transfer ownership, or string.own(value) to clone a string.");
                 }
                 var->initialized = true;
             }
@@ -1235,10 +1337,14 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             size_t variable_count = c->all_var_count;
             bool *before = arena_alloc(&c->arena, variable_count * sizeof(bool));
             bool *before_moved = arena_alloc(&c->arena, variable_count * sizeof(bool));
-            bool *moved_in_any_arm = arena_alloc(&c->arena, variable_count * sizeof(bool));
+            bool *initialized_in_all_arms =
+                arena_alloc(&c->arena, variable_count * sizeof(bool));
+            bool *moved_in_any_arm =
+                arena_alloc(&c->arena, variable_count * sizeof(bool));
             for (size_t i = 0; i < variable_count; i++) {
                 before[i] = c->all_vars[i]->initialized;
                 before_moved[i] = c->all_vars[i]->moved;
+                initialized_in_all_arms[i] = true;
                 moved_in_any_arm[i] = false;
             }
 
@@ -1262,8 +1368,12 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     c->all_vars[j]->moved = before_moved[j];
                 }
                 check_stmt(checker, arm->body);
-                for (size_t j = 0; j < variable_count; j++)
-                    moved_in_any_arm[j] = moved_in_any_arm[j] || c->all_vars[j]->moved;
+                for (size_t j = 0; j < variable_count; j++) {
+                    initialized_in_all_arms[j] =
+                        initialized_in_all_arms[j] && c->all_vars[j]->initialized;
+                    moved_in_any_arm[j] =
+                        moved_in_any_arm[j] || c->all_vars[j]->moved;
+                }
             }
 
             if (enumeration) {
@@ -1285,11 +1395,11 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 }
             }
             for (size_t i = 0; i < variable_count; i++) {
-                /* Match is exhaustive when valid: every continuation comes from
-                   one arm, so the arm states already include the incoming state
-                   unless that arm reinitialized a moved binding. */
+                /* A value is definitely initialized only if every match arm
+                   leaves it initialized. A move in any arm is remembered only
+                   when no later assignment on that arm restored the binding. */
                 c->all_vars[i]->moved = moved_in_any_arm[i];
-                c->all_vars[i]->initialized = before[i] && !c->all_vars[i]->moved;
+                c->all_vars[i]->initialized = initialized_in_all_arms[i];
             }
             break;
         }
@@ -1318,6 +1428,11 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     diagnostic(c, stmt->token, "error", "E2054",
                                "A void function cannot return a value.",
                                "Use 'return;' or change the function return type.");
+                } else if (expected == TYPE_OWNED_STRING && actual == TYPE_OWNED_STRING &&
+                           stmt->as.return_value->kind == EXPR_NAME) {
+                    diagnostic(c, stmt->as.return_value->token, "error", "E2116",
+                               "Returning an owned_string variable copies ownership.",
+                               "Return move(name) to transfer it to the caller.");
                 } else if (actual != TYPE_ERROR && actual != expected) {
                     char suggestion[192];
                     (void)snprintf(suggestion, sizeof(suggestion),
@@ -1358,6 +1473,11 @@ bool check_program(Compiler *c)
 
         for (size_t i = 0; i < module->program->global_count; i++) {
             VarDecl *var = module->program->globals[i];
+            if (var->type == TYPE_OWNED_STRING) {
+                diagnostic(c, var->token, "error", "E2118",
+                           "Global owned_string values are not supported yet.",
+                           "Create owned strings inside a function so their lifetime is explicit.");
+            }
             if (var->type == TYPE_VOID) {
                 diagnostic(c, var->token, "error", "E2005",
                            "A variable cannot have type void.",
@@ -1452,6 +1572,18 @@ bool check_program(Compiler *c)
         checker.scope = scope_new(c, global_scope);
         for (size_t j = 0; j < function->param_count; j++) {
             function->params[j]->initialized = true;
+            if (function->params[j]->type == TYPE_OWNED_STRING &&
+                function->params[j]->is_array) {
+                diagnostic(c, function->params[j]->token, "error", "E2118",
+                           "Arrays of owned_string parameters are not supported yet.",
+                           "Use one owned_string parameter per owned value until array cleanup is implemented.");
+            }
+            if (function->params[j]->type == TYPE_BORROWED_STRING &&
+                function->params[j]->is_array) {
+                diagnostic(c, function->params[j]->token, "error", "E2120",
+                           "Arrays of borrowed_string parameters are not supported.",
+                           "Use one borrowed_string parameter per function argument.");
+            }
             if (function->params[j]->type == TYPE_VOID) {
                 diagnostic(c, function->params[j]->token, "error", "E2005",
                            "A function parameter cannot have type void.",

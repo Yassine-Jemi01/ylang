@@ -316,9 +316,13 @@ Explicit conversions include `to_float(int)`, range-checked `to_int(float)`, and
 - C code generation and native compilation using GCC or Clang
 - A deliberately narrow safe-fix command
 
+## Experimental owned strings
+
+The C backend has experimental `owned_string` values with explicit `move(name)` transfers and automatic cleanup at scope exits, plus a parameter-only `borrowed_string` type for immutable text views during function calls. Use `string.own(text)` to clone borrowed text into owned storage, and `owned_string.concat/replace/upper/lower` for owned results. Global owned strings, owned-string arrays, and owned-string struct fields are not supported yet. General borrow checking and lifetime analysis are still under development; this is not a complete Rust-style memory-safety guarantee. See [the memory-model RFC](docs/MEMORY-MODEL.md).
+
 ## Explicit limitations of the stable core
 
-The stable core does **not** implement classes/OOP, raw pointers/references, `try`/`catch`, generics, or a dedicated LLVM/native-code backend. Named file imports are available as an experimental extension, not as a stable package/module ecosystem. Arrays are fixed-size: functions may accept array parameters (with the length passed automatically), but arrays cannot be returned or nested, and `const` arrays are not supported. These are not silently approximated; programs using unsupported syntax are rejected. A final ownership/borrowing or garbage-collection model is not defined. `char` is one byte, not a Unicode scalar value.
+The stable core does **not** implement classes/OOP, raw pointers/references, `try`/`catch`, generics, or a dedicated LLVM/native-code backend. Named file imports are available as an experimental extension, not as a stable package/module ecosystem. Arrays are fixed-size: functions may accept array parameters (with the length passed automatically), but arrays cannot be returned or nested, and `const` arrays are not supported. These are not silently approximated; programs using unsupported syntax are rejected. The experimental `owned_string` extension is described separately and is not part of the stable core compatibility promise. `char` is one byte, not a Unicode scalar value.
 
 The C backend uses generated runtime helpers and process-lifetime storage for some formatted strings. Long-running programs that repeatedly create f-string values may grow in memory usage. Do not use this release for security-critical code or to process hostile source as a hardened sandbox. Generated programs are ordinary native programs with the permissions of the user who runs them.
 

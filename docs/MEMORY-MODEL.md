@@ -1,6 +1,6 @@
 # YLang Memory Model — RFC
 
-Status: partial implementation on `feature/ownership-memory-v2`. The compiler supports a deliberately narrow, explicit `move(name)` operation for local `string` bindings and rejects a later read of the moved binding. This is not yet a complete ownership/borrowing system: scoped destruction, borrow syntax/checking, and ownership-aware function signatures are still unimplemented.
+Status: partial implementation in the experimental C backend. In addition to compile-time `move(name)` checks, the compiler now has an explicit `owned_string` type with move-only binding transfers and generated cleanup at ordinary block exits, function returns, loop breaks, and loop continues. Borrow syntax/checking and full Rust-like lifetime analysis are still unimplemented.
 
 ## Goals
 
@@ -44,19 +44,24 @@ The precise surface syntax and which standard-library operations borrow or consu
 
 ## Current experimental progress
 
-### Implemented: explicit local string moves (initial slice)
+### Implemented: experimental `owned_string` and explicit moves
 
 The C backend and semantic checker support:
 
 ```yl
-let string source = string.concat("Y", "Lang");
-let string destination = move(source);
-print(destination);
+let owned_string source = string.own("YLang");
+let owned_string joined = owned_string.concat(source, "!");
+let owned_string destination = move(joined);
+print(source, destination);
 ```
 
-The checker marks `source` unavailable after the move and reports diagnostic `E2110` if a later read tries to use it. A moved local can be reinitialized with a fresh value. Move state is merged conservatively across `if` branches, loop exits, and exhaustive `match` arms. A self-move assignment is rejected with `E2114`. This initial operation is intentionally limited to named local `string` variables; globals, parameters, arrays, non-string values, and arbitrary expressions are rejected with `E2111`–`E2113` diagnostics.
+`owned_string` is a separate experimental type. `string.own(text)` clones text into tracked heap storage; `owned_string.concat/replace/upper/lower` and `io.read_line_owned` / `io.read_file_owned` return owned values. The source of `move(name)` becomes unavailable (diagnostic `E2110`) until reinitialized. Implicit copies of owned bindings are rejected (`E2115`); returning an owned local requires `return move(name)` (`E2116`). Moves are merged conservatively across branches, loops, and exhaustive `match` arms. Self-move assignment is rejected (`E2114`).
 
-**Important limitation:** `move(name)` currently transfers the binding at compile time and lowers to the same C pointer. It does **not** yet free allocations at scope exit, and the language does not yet prohibit every possible string alias. Do not treat this slice as a Rust-like memory-safety guarantee. Deterministic destruction must not be enabled until borrowing/alias rules and all control-flow exits are handled.
+Generated C keeps owned slots initialized to null and emits `yl_release` calls on ordinary scope exit and before `return`, `break`, or `continue`. Transferred values are nulled at the source, so cleanup is safe to run on every path. Assigning a new owned value releases the previous value. The runtime release helper only frees pointers registered by YLang's allocation tracker, so string literals and other untracked pointers are not freed accidentally.
+
+The existing `string` type remains a legacy C-string representation; runtime-created legacy strings can still be retained until process exit. `owned_string` is supported only by the C backend for now. Global owned strings, arrays of owned strings, and owned-string struct fields are rejected (`E2118`) until global, array-element, and field cleanup are implemented. User functions that accept `owned_string` take ownership of that argument; call them with `move(name)` or a fresh owned expression.
+
+The separate experimental `borrowed_string` type is permitted only for function parameters. Such parameters are immutable, are passed as non-owning pointers, and cannot be stored in a local/global variable, a struct field, or a return type. They may be forwarded to other borrowed/legacy string parameters or used immediately by string helpers. An `owned_string` temporary is rejected when passed into a borrowed parameter because the temporary would have no named owner to keep it alive for the call. This provides a narrow immutable parameter view, not a general lifetime checker: the language still has no `&mut T`, no returned borrows, and no general alias analysis.
 
 The first runtime instrumentation commit adds an opt-in diagnostic:
 
@@ -72,10 +77,10 @@ The test suite includes an opt-in fixture and checks that enabling the diagnosti
 
 Implement this in small, reviewable steps:
 
-1. **Compiler-side ownership facts (in progress)**: the first local-string move state and use-after-move diagnostic are implemented, with pass/fail regression fixtures. Branch-flow joins, loops, borrow states, and imported signatures remain to be implemented.
-2. **Borrow checker and explicit type surface**: settle a compatible way to express immutable and mutable borrows, then reject dangling/conflicting borrows and moves while borrowed.
-3. **A single fully owned type**: complete the rules for initialization, assignment, parameters, return values, globals, string builtins, and cloning before adding automatic destruction. Do not silently change current `string` behavior in a patch release.
-4. **Explicit cleanup lowering**: emit cleanup actions for every normal and early scope exit and for owned return values.
+1. **Flow-sensitive ownership facts (in progress)**: current checks model explicit moves and merge them conservatively, but complex control-flow should continue to gain regression cases.
+2. **Borrow checker**: design explicit immutable and mutable borrow syntax, then reject dangling/conflicting borrows, borrowed moves, and returned local references.
+3. **Signature and inter-module ownership contracts**: make ownership transfer vs borrow behavior explicit for all functions and imported signatures.
+4. **Cleanup coverage**: expand and verify cleanup for all control-flow edges, then add arrays, structs, globals, and nested owners only when their drop semantics are defined.
 5. **Runtime verification**: test allocations/frees under AddressSanitizer and LeakSanitizer where available, plus repeated-request stress tests.
 6. **Expand only after parity**: add arrays and structs with owned fields once strings pass the full test matrix.
 

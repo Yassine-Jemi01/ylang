@@ -90,6 +90,43 @@ static void *yl_track(void *ptr, size_t size) {
     }
     return ptr;
 }
+static void yl_release(const char *value) {
+    if (!value) return;
+    YLTracked **link = &yl_tracked;
+    while (*link) {
+        YLTracked *node = *link;
+        if (node->ptr == (const void *)value) {
+            *link = node->next;
+            if (yl_memory_stats_enabled()) {
+                if (yl_tracked_allocations > 0U) yl_tracked_allocations--;
+                if (yl_tracked_bytes >= node->size) yl_tracked_bytes -= node->size;
+                else yl_tracked_bytes = 0U;
+            }
+            free(node->ptr);
+            free(node);
+            return;
+        }
+        link = &node->next;
+    }
+}
+
+static const char *yl_move(const char **slot) {
+    if (!slot) yl_runtime_error("invalid owned string move");
+    const char *value = *slot;
+    *slot = NULL;
+    return value;
+}
+
+static const char *yl_string_own(const char *value) {
+    if (!value) yl_runtime_error("cannot clone a null string");
+    size_t length = strlen(value);
+    if (length == SIZE_MAX) yl_runtime_error("owned string is too large");
+    char *copy = malloc(length + 1U);
+    if (!copy) yl_runtime_error("out of memory");
+    memcpy(copy, value, length + 1U);
+    return (const char *)yl_track(copy, length + 1U);
+}
+
 static const char *yl_boolstr(bool value) { return value ? "true" : "false"; }
 static const char *yl_format(const char *format, ...);
 static const char *yl_to_string_int(int64_t value) { return yl_format("%lld", (long long)value); }

@@ -1,0 +1,10 @@
+function inspect(borrowed_string text) -> int {
+    print(text);
+    return 0;
+}
+
+function main() -> int {
+    let owned_string owner = string.own("safe");
+    inspect(owned_string.concat(owner, "!"));
+    return 0;
+}

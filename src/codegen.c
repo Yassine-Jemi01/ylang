@@ -13,6 +13,8 @@
 #define YLANG_VERSION "dev"
 #endif
 
+static void emit_indent(FILE *out, unsigned indent);
+
 /* --------------------------- C code generation -------------------------- */
 static const char *c_base_type(Compiler *compiler, YType type)
 {
@@ -28,7 +30,9 @@ static const char *c_base_type(Compiler *compiler, YType type)
         case TYPE_FLOAT: return "double";
         case TYPE_BOOL: return "bool";
         case TYPE_CHAR: return "char";
-        case TYPE_STRING: return "const char *";
+        case TYPE_STRING:
+        case TYPE_BORROWED_STRING:
+        case TYPE_OWNED_STRING: return "const char *";
         case TYPE_VOID: return "void";
         case TYPE_ERROR: return "int";
         default: return "int64_t";
@@ -66,6 +70,12 @@ static void append_c_quoted(StringBuilder *sb, const char *text)
     append_c_quoted_bytes(sb, (const unsigned char *)text, strlen(text));
 }
 
+static bool is_c_string_type(YType type)
+{
+    return type == TYPE_STRING || type == TYPE_BORROWED_STRING ||
+           type == TYPE_OWNED_STRING;
+}
+
 static const char *format_for_type(YType type)
 {
     switch (type) {
@@ -73,7 +83,9 @@ static const char *format_for_type(YType type)
         case TYPE_FLOAT: return "%.17g";
         case TYPE_BOOL: return "%s";
         case TYPE_CHAR: return "%c";
-        case TYPE_STRING: return "%s";
+        case TYPE_STRING:
+        case TYPE_BORROWED_STRING:
+        case TYPE_OWNED_STRING: return "%s";
         case TYPE_VOID: case TYPE_ERROR: return "%s";
     }
     return "%s";
@@ -382,9 +394,16 @@ static void emit_temp_declarations_stmt(Compiler *compiler, FILE *out,
             for (size_t i = 0; i < stmt->as.block.count; i++)
                 emit_temp_declarations_stmt(compiler, out, stmt->as.block.items[i], indent);
             break;
-        case STMT_VAR:
-            emit_temp_declarations_expr(compiler, out, stmt->as.variable->initializer, indent);
+        case STMT_VAR: {
+            VarDecl *var = stmt->as.variable;
+            if (var->type == TYPE_OWNED_STRING) {
+                emit_indent(out, indent);
+                fprintf(out, "%s %s = NULL;\n",
+                        c_base_type(compiler, var->type), var->c_name);
+            }
+            emit_temp_declarations_expr(compiler, out, var->initializer, indent);
             break;
+        }
         case STMT_PRINT:
             for (size_t i = 0; i < stmt->as.print.count; i++)
                 emit_temp_declarations_expr(compiler, out, stmt->as.print.args[i], indent);
@@ -464,7 +483,7 @@ static void emit_binary_operation_with_temps(StringBuilder *sb, Expr *expr)
         sb_append(sb, "yl_div_f64(");
         emit_temp_name(sb, expr, "left"); sb_append(sb, ", ");
         emit_temp_name(sb, expr, "right"); sb_append(sb, ")");
-    } else if (left->type == TYPE_STRING &&
+    } else if (is_c_string_type(left->type) && is_c_string_type(right->type) &&
                (op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
                 op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL ||
                 op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL)) {
@@ -542,6 +561,8 @@ static void emit_fstring_expr(StringBuilder *sb, Expr *expr)
                     sb_append(&args, "(int)("); emit_expr(&args, embedded); sb_append(&args, ")");
                     break;
                 case TYPE_STRING:
+                case TYPE_BORROWED_STRING:
+                case TYPE_OWNED_STRING:
                     sb_append(&args, "(const char *)("); emit_expr(&args, embedded); sb_append(&args, ")");
                     break;
                 case TYPE_VOID: case TYPE_ERROR: break;
@@ -574,6 +595,13 @@ static const char *builtin_c_name(const char *name)
     const char *math_name = math_c_name(name);
     if (math_name) return math_name;
     if (strcmp(name, "string.length") == 0) return "yl_string_length";
+    if (strcmp(name, "string.own") == 0) return "yl_string_own";
+    if (strcmp(name, "owned_string.concat") == 0) return "yl_string_concat";
+    if (strcmp(name, "owned_string.replace") == 0) return "yl_string_replace";
+    if (strcmp(name, "owned_string.upper") == 0) return "yl_string_upper";
+    if (strcmp(name, "owned_string.lower") == 0) return "yl_string_lower";
+    if (strcmp(name, "io.read_line_owned") == 0) return "yl_read_line";
+    if (strcmp(name, "io.read_file_owned") == 0) return "yl_read_file";
     if (strcmp(name, "string.contains") == 0) return "yl_string_contains";
     if (strcmp(name, "string.starts_with") == 0) return "yl_string_starts_with";
     if (strcmp(name, "string.ends_with") == 0) return "yl_string_ends_with";
@@ -744,6 +772,12 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 sb_append(sb, " = ");
                 emit_expr(sb, expr->as.assign.right);
                 sb_append(sb, ", ");
+                if (expr->as.assign.target &&
+                    expr->as.assign.target->type == TYPE_OWNED_STRING) {
+                    sb_append(sb, "yl_release(*");
+                    emit_temp_name(sb, expr, "target");
+                    sb_append(sb, "), ");
+                }
                 if (expr->as.assign.is_compound &&
                     expr->as.assign.variable &&
                     expr->as.assign.target->type == TYPE_INT) {
@@ -793,7 +827,14 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             if (!expr->as.call.function &&
                 strcmp(expr->as.call.name, "move") == 0 &&
                 expr->as.call.count == 1U) {
-                emit_expr(sb, expr->as.call.args[0]);
+                Expr *argument = expr->as.call.args[0];
+                VarDecl *source = argument && argument->kind == EXPR_NAME ?
+                    argument->as.name.variable : NULL;
+                if (source && source->type == TYPE_OWNED_STRING) {
+                    sb_appendf(sb, "yl_move(&%s)", source->c_name);
+                } else {
+                    emit_expr(sb, argument);
+                }
                 break;
             }
             if (strcmp(expr->as.call.name, "length") == 0 && expr->as.call.count == 1) {
@@ -809,6 +850,10 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 Expr *arg = expr->as.call.args[0];
                 switch (arg->type) {
                     case TYPE_STRING: emit_expr(sb, arg); break;
+                    case TYPE_BORROWED_STRING:
+                        sb_append(sb, "yl_string_own("); emit_expr(sb, arg); sb_append(sb, ")"); break;
+                    case TYPE_OWNED_STRING:
+                        sb_append(sb, "yl_string_own("); emit_expr(sb, arg); sb_append(sb, ")"); break;
                     case TYPE_INT: sb_append(sb, "yl_to_string_int("); emit_expr(sb, arg); sb_append(sb, ")"); break;
                     case TYPE_FLOAT: sb_append(sb, "yl_to_string_float("); emit_expr(sb, arg); sb_append(sb, ")"); break;
                     case TYPE_BOOL: sb_append(sb, "yl_boolstr("); emit_expr(sb, arg); sb_append(sb, ")"); break;
@@ -907,7 +952,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 sb_append(sb, "yl_mod_i64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
             } else if (left->type == TYPE_FLOAT && op == TOKEN_SLASH) {
                 sb_append(sb, "yl_div_f64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
-            } else if (left->type == TYPE_STRING &&
+            } else if (is_c_string_type(left->type) && is_c_string_type(right->type) &&
                        (op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
                         op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL)) {
                 sb_append(sb, "(strcmp("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right);
@@ -919,7 +964,8 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     case TOKEN_GREATER_EQUAL: sb_append(sb, ">= 0)"); break;
                     default: sb_append(sb, "0)"); break;
                 }
-            } else if ((op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL) && left->type == TYPE_STRING) {
+            } else if ((op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL) &&
+                       is_c_string_type(left->type) && is_c_string_type(right->type)) {
                 sb_append(sb, "(strcmp("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right);
                 sb_append(sb, ") "); sb_append(sb, op == TOKEN_EQUAL_EQUAL ? "== 0)" : "!= 0)");
             } else {
@@ -950,9 +996,9 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
 static void emit_var_type(Compiler *compiler, FILE *out, VarDecl *var, bool global)
 {
     if (global) fputs("static ", out);
-    if (var->is_const && var->type != TYPE_STRING) fputs("const ", out);
+    if (var->is_const && !is_c_string_type(var->type)) fputs("const ", out);
     fputs(c_base_type(compiler, var->type), out);
-    if (var->is_const && var->type == TYPE_STRING) fputs(" const", out);
+    if (var->is_const && is_c_string_type(var->type)) fputs(" const", out);
 }
 
 static void emit_expr_to_file(FILE *out, Expr *expr)
@@ -1013,6 +1059,8 @@ static void emit_print_value(FILE *out, Expr *expr, unsigned indent)
     emit_indent(out, indent);
     switch (expr->type) {
         case TYPE_STRING:
+        case TYPE_BORROWED_STRING:
+        case TYPE_OWNED_STRING:
             fputs("fputs((const char *)(", out); emit_expr_to_file(out, expr);
             fputs("), stdout);\n", out); break;
         case TYPE_BOOL:
@@ -1049,18 +1097,215 @@ static void emit_fstring_print(FILE *out, Expr *expr, unsigned indent)
     }
 }
 
-static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
+typedef struct {
+    VarDecl **vars;
+    size_t count;
+} OwnedScopeFrame;
+
+typedef struct {
+    Compiler *compiler;
+    Function *function;
+    FILE *out;
+    OwnedScopeFrame *scopes;
+    size_t scope_count;
+    size_t scope_capacity;
+    size_t *loop_marks;
+    size_t loop_count;
+    size_t loop_capacity;
+} CodegenContext;
+
+static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent);
+static void emit_control_body(CodegenContext *ctx, Stmt *body, unsigned indent);
+
+static void codegen_fatal_out_of_memory(void)
+{
+    fputs("ylang: out of memory while preparing owned-string cleanup\n", stderr);
+    exit(70);
+}
+
+static OwnedScopeFrame make_owned_scope_frame(Stmt *scope_stmt)
+{
+    OwnedScopeFrame frame = { .vars = NULL, .count = 0U };
+    if (!scope_stmt) return frame;
+    if (scope_stmt->kind == STMT_VAR) {
+        VarDecl *var = scope_stmt->as.variable;
+        if (var && var->type == TYPE_OWNED_STRING) frame.count = 1U;
+    } else if (scope_stmt->kind == STMT_BLOCK) {
+        for (size_t i = 0; i < scope_stmt->as.block.count; i++) {
+            Stmt *item = scope_stmt->as.block.items[i];
+            if (item && item->kind == STMT_VAR &&
+                item->as.variable->type == TYPE_OWNED_STRING) {
+                frame.count++;
+            }
+        }
+    }
+    if (frame.count == 0U) return frame;
+    if (frame.count > SIZE_MAX / sizeof(*frame.vars)) codegen_fatal_out_of_memory();
+    frame.vars = malloc(frame.count * sizeof(*frame.vars));
+    if (!frame.vars) codegen_fatal_out_of_memory();
+    size_t index = 0U;
+    if (scope_stmt->kind == STMT_VAR) {
+        frame.vars[index++] = scope_stmt->as.variable;
+    } else {
+        for (size_t i = 0; i < scope_stmt->as.block.count; i++) {
+            Stmt *item = scope_stmt->as.block.items[i];
+            if (item && item->kind == STMT_VAR &&
+                item->as.variable->type == TYPE_OWNED_STRING) {
+                frame.vars[index++] = item->as.variable;
+            }
+        }
+    }
+    return frame;
+}
+
+static void push_owned_scope(CodegenContext *ctx, Stmt *scope_stmt)
+{
+    if (ctx->scope_count == ctx->scope_capacity) {
+        size_t capacity = ctx->scope_capacity ? ctx->scope_capacity * 2U : 8U;
+        if (capacity < ctx->scope_capacity ||
+            capacity > SIZE_MAX / sizeof(*ctx->scopes)) codegen_fatal_out_of_memory();
+        OwnedScopeFrame *grown = realloc(ctx->scopes, capacity * sizeof(*grown));
+        if (!grown) codegen_fatal_out_of_memory();
+        ctx->scopes = grown;
+        ctx->scope_capacity = capacity;
+    }
+    ctx->scopes[ctx->scope_count++] = make_owned_scope_frame(scope_stmt);
+}
+
+static void emit_cleanup_scope_frame(CodegenContext *ctx,
+                                     const OwnedScopeFrame *frame,
+                                     unsigned indent)
+{
+    for (size_t i = frame->count; i > 0U; i--) {
+        VarDecl *var = frame->vars[i - 1U];
+        emit_indent(ctx->out, indent);
+        fprintf(ctx->out, "yl_release(%s);\n", var->c_name);
+        emit_indent(ctx->out, indent);
+        fprintf(ctx->out, "%s = NULL;\n", var->c_name);
+    }
+}
+
+static void pop_owned_scope(CodegenContext *ctx, unsigned indent, bool emit_cleanup)
+{
+    if (ctx->scope_count == 0U) return;
+    OwnedScopeFrame *frame = &ctx->scopes[ctx->scope_count - 1U];
+    if (emit_cleanup) emit_cleanup_scope_frame(ctx, frame, indent);
+    free(frame->vars);
+    frame->vars = NULL;
+    frame->count = 0U;
+    ctx->scope_count--;
+}
+
+static void push_loop_mark(CodegenContext *ctx)
+{
+    if (ctx->loop_count == ctx->loop_capacity) {
+        size_t capacity = ctx->loop_capacity ? ctx->loop_capacity * 2U : 8U;
+        if (capacity < ctx->loop_capacity ||
+            capacity > SIZE_MAX / sizeof(*ctx->loop_marks)) codegen_fatal_out_of_memory();
+        size_t *grown = realloc(ctx->loop_marks, capacity * sizeof(*grown));
+        if (!grown) codegen_fatal_out_of_memory();
+        ctx->loop_marks = grown;
+        ctx->loop_capacity = capacity;
+    }
+    ctx->loop_marks[ctx->loop_count++] = ctx->scope_count;
+}
+
+static void pop_loop_mark(CodegenContext *ctx)
+{
+    if (ctx->loop_count > 0U) ctx->loop_count--;
+}
+
+static void emit_cleanup_to_loop_mark(CodegenContext *ctx, unsigned indent)
+{
+    if (ctx->loop_count == 0U) return;
+    size_t mark = ctx->loop_marks[ctx->loop_count - 1U];
+    for (size_t i = ctx->scope_count; i > mark; i--) {
+        emit_cleanup_scope_frame(ctx, &ctx->scopes[i - 1U], indent);
+    }
+}
+
+static void emit_cleanup_owned_stmt(Compiler *compiler, FILE *out,
+                                    Stmt *stmt, unsigned indent)
 {
     if (!stmt) return;
     switch (stmt->kind) {
         case STMT_BLOCK:
+            for (size_t i = 0; i < stmt->as.block.count; i++)
+                emit_cleanup_owned_stmt(compiler, out, stmt->as.block.items[i], indent);
+            break;
+        case STMT_VAR:
+            if (stmt->as.variable->type == TYPE_OWNED_STRING) {
+                emit_indent(out, indent);
+                fprintf(out, "yl_release(%s);\n", stmt->as.variable->c_name);
+                emit_indent(out, indent);
+                fprintf(out, "%s = NULL;\n", stmt->as.variable->c_name);
+            }
+            break;
+        case STMT_IF:
+            emit_cleanup_owned_stmt(compiler, out, stmt->as.if_stmt.then_branch, indent);
+            emit_cleanup_owned_stmt(compiler, out, stmt->as.if_stmt.else_branch, indent);
+            break;
+        case STMT_LOOP:
+            emit_cleanup_owned_stmt(compiler, out, stmt->as.loop_body, indent);
+            break;
+        case STMT_WHILE:
+            emit_cleanup_owned_stmt(compiler, out, stmt->as.while_stmt.body, indent);
+            break;
+        case STMT_FOR:
+            emit_cleanup_owned_stmt(compiler, out, stmt->as.for_stmt.initializer, indent);
+            emit_cleanup_owned_stmt(compiler, out, stmt->as.for_stmt.body, indent);
+            break;
+        case STMT_MATCH:
+            for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++)
+                emit_cleanup_owned_stmt(compiler, out, stmt->as.match_stmt.arms[i]->body, indent);
+            break;
+        case STMT_PRINT:
+        case STMT_BREAK:
+        case STMT_CONTINUE:
+        case STMT_RETURN:
+        case STMT_EXPR:
+            break;
+    }
+}
+
+static void emit_cleanup_function_owned(CodegenContext *ctx, unsigned indent)
+{
+    for (size_t i = ctx->function->param_count; i > 0U; i--) {
+        VarDecl *param = ctx->function->params[i - 1U];
+        if (param->type != TYPE_OWNED_STRING) continue;
+        emit_indent(ctx->out, indent);
+        fprintf(ctx->out, "yl_release(%s);\n", param->c_name);
+        emit_indent(ctx->out, indent);
+        fprintf(ctx->out, "%s = NULL;\n", param->c_name);
+    }
+    emit_cleanup_owned_stmt(ctx->compiler, ctx->out, ctx->function->body, indent);
+}
+
+static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
+{
+    if (!stmt) return;
+    Compiler *c = ctx->compiler;
+    FILE *out = ctx->out;
+    switch (stmt->kind) {
+        case STMT_BLOCK:
+            push_owned_scope(ctx, stmt);
             emit_indent(out, indent); fputs("{\n", out);
             for (size_t i = 0; i < stmt->as.block.count; i++)
-                emit_stmt(c, out, stmt->as.block.items[i], indent + 1);
+                emit_stmt(ctx, stmt->as.block.items[i], indent + 1U);
+            pop_owned_scope(ctx, indent + 1U, true);
             emit_indent(out, indent); fputs("}\n", out);
             break;
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
+            if (var->type == TYPE_OWNED_STRING) {
+                if (var->initializer) {
+                    emit_indent(out, indent);
+                    fprintf(out, "%s = ", var->c_name);
+                    emit_expr_to_file(out, var->initializer);
+                    fputs(";\n", out);
+                }
+                break;
+            }
             if (var->is_array && array_init_needs_sequence(var->initializer)) {
                 Expr *array = var->initializer;
                 for (size_t i = 0; i < array->as.array.count; i++) {
@@ -1087,74 +1332,152 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
                     emit_indent(out, indent);
                     fputs("fputs(\" \", stdout);\n", out);
                 }
-                if (expr->kind == EXPR_FSTRING) emit_fstring_print(out, expr, indent);
-                else emit_print_value(out, expr, indent);
+                if (expr->type == TYPE_OWNED_STRING && expr->kind != EXPR_NAME) {
+                    char temporary[96];
+                    (void)snprintf(temporary, sizeof(temporary), "yl_print_owned_%zu_%zu_%zu",
+                                   stmt->token.line, stmt->token.column, i);
+                    emit_indent(out, indent);
+                    fprintf(out, "const char *%s = ", temporary);
+                    emit_expr_to_file(out, expr);
+                    fputs(";\n", out);
+                    emit_indent(out, indent);
+                    fprintf(out, "fputs((const char *)(%s), stdout);\n", temporary);
+                    emit_indent(out, indent);
+                    fprintf(out, "yl_release(%s);\n", temporary);
+                } else if (expr->kind == EXPR_FSTRING) {
+                    emit_fstring_print(out, expr, indent);
+                } else {
+                    emit_print_value(out, expr, indent);
+                }
             }
             emit_indent(out, indent); fputs("putchar('\\n');\n", out);
             break;
         case STMT_IF:
-            emit_indent(out, indent); fputs("if (", out); emit_expr_to_file(out, stmt->as.if_stmt.condition); fputs(") ", out);
-            fputs("\n", out); emit_stmt(c, out, stmt->as.if_stmt.then_branch, indent);
+            emit_indent(out, indent); fputs("if (", out);
+            emit_expr_to_file(out, stmt->as.if_stmt.condition);
+            fputs(")\n", out);
+            emit_control_body(ctx, stmt->as.if_stmt.then_branch, indent);
             if (stmt->as.if_stmt.else_branch) {
-                emit_indent(out, indent); fputs("else ", out); fputs("\n", out);
-                emit_stmt(c, out, stmt->as.if_stmt.else_branch, indent);
+                emit_indent(out, indent); fputs("else\n", out);
+                emit_control_body(ctx, stmt->as.if_stmt.else_branch, indent);
             }
             break;
         case STMT_LOOP:
-            emit_indent(out, indent); fputs("for (;;) ", out); fputs("\n", out);
-            emit_stmt(c, out, stmt->as.loop_body, indent);
+            emit_indent(out, indent); fputs("for (;;)\n", out);
+            push_loop_mark(ctx);
+            emit_control_body(ctx, stmt->as.loop_body, indent);
+            pop_loop_mark(ctx);
             break;
         case STMT_WHILE:
             emit_indent(out, indent); fputs("while (", out);
             emit_expr_to_file(out, stmt->as.while_stmt.condition);
             fputs(")\n", out);
-            emit_stmt(c, out, stmt->as.while_stmt.body, indent);
+            push_loop_mark(ctx);
+            emit_control_body(ctx, stmt->as.while_stmt.body, indent);
+            pop_loop_mark(ctx);
             break;
         case STMT_FOR:
             emit_indent(out, indent); fputs("{\n", out);
+            push_owned_scope(ctx, stmt->as.for_stmt.initializer);
             if (stmt->as.for_stmt.initializer)
-                emit_stmt(c, out, stmt->as.for_stmt.initializer, indent + 1);
-            emit_indent(out, indent + 1); fputs("for (; ", out);
+                emit_stmt(ctx, stmt->as.for_stmt.initializer, indent + 1U);
+            emit_indent(out, indent + 1U); fputs("for (; ", out);
             if (stmt->as.for_stmt.condition)
                 emit_expr_to_file(out, stmt->as.for_stmt.condition);
             fputs("; ", out);
             if (stmt->as.for_stmt.increment)
                 emit_expr_to_file(out, stmt->as.for_stmt.increment);
             fputs(")\n", out);
-            emit_stmt(c, out, stmt->as.for_stmt.body, indent + 1);
+            push_loop_mark(ctx);
+            emit_control_body(ctx, stmt->as.for_stmt.body, indent + 1U);
+            pop_loop_mark(ctx);
+            pop_owned_scope(ctx, indent + 1U, true);
             emit_indent(out, indent); fputs("}\n", out);
             break;
         case STMT_BREAK:
-            emit_indent(out, indent); fputs("break;\n", out); break;
+            emit_cleanup_to_loop_mark(ctx, indent);
+            emit_indent(out, indent); fputs("break;\n", out);
+            break;
         case STMT_CONTINUE:
-            emit_indent(out, indent); fputs("continue;\n", out); break;
+            emit_cleanup_to_loop_mark(ctx, indent);
+            emit_indent(out, indent); fputs("continue;\n", out);
+            break;
         case STMT_RETURN:
-            emit_indent(out, indent); fputs("return", out);
-            if (stmt->as.return_value) { fputc(' ', out); emit_expr_to_file(out, stmt->as.return_value); }
-            fputs(";\n", out); break;
+            if (stmt->as.return_value && ctx->function->return_type != TYPE_VOID) {
+                char temporary[96];
+                (void)snprintf(temporary, sizeof(temporary), "yl_return_%zu_%zu",
+                               stmt->token.line, stmt->token.column);
+                emit_indent(out, indent);
+                fprintf(out, "%s %s = ", c_base_type(c, ctx->function->return_type),
+                        temporary);
+                emit_expr_to_file(out, stmt->as.return_value);
+                fputs(";\n", out);
+                emit_cleanup_function_owned(ctx, indent);
+                emit_indent(out, indent);
+                fprintf(out, "return %s;\n", temporary);
+            } else {
+                emit_cleanup_function_owned(ctx, indent);
+                emit_indent(out, indent);
+                fputs("return;\n", out);
+            }
+            break;
         case STMT_MATCH: {
             char match_name[96];
             (void)snprintf(match_name, sizeof(match_name), "yl_match_%zu_%zu",
                            stmt->token.line, stmt->token.column);
             emit_indent(out, indent); fputs("{\n", out);
-            emit_indent(out, indent + 1);
+            emit_indent(out, indent + 1U);
             fprintf(out, "int64_t %s = ", match_name);
             emit_expr_to_file(out, stmt->as.match_stmt.value);
             fputs(";\n", out);
             for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++) {
                 MatchArm *arm = stmt->as.match_stmt.arms[i];
-                emit_indent(out, indent + 1);
+                emit_indent(out, indent + 1U);
                 fputs(i == 0 ? "if (" : "else if (", out);
                 fprintf(out, "%s == INT64_C(%lld))\n", match_name,
                         (long long)(arm->variant ? arm->variant->value : 0));
-                emit_stmt(c, out, arm->body, indent + 1);
+                emit_control_body(ctx, arm->body, indent + 1U);
             }
             emit_indent(out, indent); fputs("}\n", out);
             break;
         }
         case STMT_EXPR:
-            emit_indent(out, indent); emit_expr_to_file(out, stmt->as.expression); fputs(";\n", out); break;
+            if (stmt->as.expression &&
+                stmt->as.expression->type == TYPE_OWNED_STRING &&
+                stmt->as.expression->kind != EXPR_ASSIGN) {
+                char temporary[96];
+                (void)snprintf(temporary, sizeof(temporary), "yl_discard_owned_%zu_%zu",
+                               stmt->token.line, stmt->token.column);
+                emit_indent(out, indent);
+                fprintf(out, "const char *%s = ", temporary);
+                emit_expr_to_file(out, stmt->as.expression);
+                fputs(";\n", out);
+                emit_indent(out, indent);
+                fprintf(out, "yl_release(%s);\n", temporary);
+            } else {
+                emit_indent(out, indent);
+                emit_expr_to_file(out, stmt->as.expression);
+                fputs(";\n", out);
+            }
+            break;
     }
+}
+
+static void emit_control_body(CodegenContext *ctx, Stmt *body, unsigned indent)
+{
+    if (!body) {
+        emit_indent(ctx->out, indent); fputs("{}\n", ctx->out);
+        return;
+    }
+    if (body->kind == STMT_BLOCK) {
+        emit_stmt(ctx, body, indent);
+        return;
+    }
+    emit_indent(ctx->out, indent); fputs("{\n", ctx->out);
+    push_owned_scope(ctx, body);
+    emit_stmt(ctx, body, indent + 1U);
+    pop_owned_scope(ctx, indent + 1U, true);
+    emit_indent(ctx->out, indent); fputs("}\n", ctx->out);
 }
 
 static bool emit_runtime(FILE *out)
@@ -1257,8 +1580,22 @@ bool generate_c(Compiler *c, const char *path)
         }
         fputs(") {\n", out);
         emit_temp_declarations_stmt(c, out, fn->body, 1U);
+        CodegenContext context = {
+            .compiler = c,
+            .function = fn,
+            .out = out,
+            .scopes = NULL,
+            .scope_count = 0U,
+            .scope_capacity = 0U,
+            .loop_marks = NULL,
+            .loop_count = 0U,
+            .loop_capacity = 0U
+        };
         /* Keep the source function body's block scope, including parameter shadowing rules. */
-        emit_stmt(c, out, fn->body, 1U);
+        emit_stmt(&context, fn->body, 1U);
+        emit_cleanup_function_owned(&context, 1U);
+        free(context.scopes);
+        free(context.loop_marks);
         fputs("}\n\n", out);
     }
 

@@ -1,0 +1,5 @@
+function main() -> int {
+    let borrowed_string text = "not allowed";
+    print(text);
+    return 0;
+}
