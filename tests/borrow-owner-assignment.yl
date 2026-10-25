@@ -1,0 +1,7 @@
+function main() -> int {
+    let owned string owner = string.own("YLang");
+    let &string view = borrow(owner);
+    owner = string.own("replacement");
+    print(view);
+    return 0;
+}
