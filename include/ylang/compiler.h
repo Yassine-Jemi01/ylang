@@ -68,6 +68,8 @@ struct Expr {
     YType type;
     bool is_min_int;
     size_t codegen_id;
+    /* Non-null when this expression is a non-owning view of a local string. */
+    VarDecl *borrowed_from;
     union {
         struct { Expr *right; Token op; } unary;
         struct { Expr *left; Expr *right; Token op; } binary;
@@ -106,6 +108,8 @@ struct VarDecl {
     bool is_const;
     bool initialized;
     bool moved; /* True after ownership is explicitly transferred with move(name). */
+    Scope *decl_scope;
+    VarDecl *borrowed_from; /* Non-owning immutable view; source must outlive this binding. */
     bool is_global;
     bool is_array;
     size_t array_length;
