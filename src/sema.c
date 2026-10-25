@@ -544,7 +544,23 @@ static YType check_expr(Checker *checker, Expr *expr)
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
-            YType right = check_expr(checker, expr->as.assign.right);
+            Expr *right_expr = expr->as.assign.right;
+            bool self_move = target && target->kind == EXPR_NAME &&
+                right_expr && right_expr->kind == EXPR_CALL &&
+                strcmp(right_expr->as.call.name, "move") == 0 &&
+                !resolve_function(checker, "move") &&
+                right_expr->as.call.count == 1U &&
+                right_expr->as.call.args[0]->kind == EXPR_NAME &&
+                strcmp(target->as.name.name,
+                       right_expr->as.call.args[0]->as.name.name) == 0;
+            YType right = check_expr(checker, right_expr);
+            if (self_move) {
+                diagnostic(c, expr->token, "error", "E2114",
+                           "A binding cannot be moved into itself.",
+                           "Move into a different destination variable.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
             if (var->is_const) {
                 diagnostic(c, expr->token, "error", "E2022",
                            "Cannot assign to a const variable.",
