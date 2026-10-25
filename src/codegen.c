@@ -1244,6 +1244,34 @@ static void emit_string_copy_or_value_to_file(FILE *out, Expr *expr)
     }
 }
 
+static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent);
+
+static void emit_control_body(Compiler *c, FILE *out, Stmt *stmt,
+                              unsigned indent)
+{
+    if (!stmt) return;
+    if (stmt->kind == STMT_BLOCK) {
+        emit_stmt(c, out, stmt, indent);
+        return;
+    }
+
+    GenScope scope = { .parent = yl_codegen_scope };
+    (void)snprintf(scope.frame_name, sizeof(scope.frame_name),
+                   "yl_control_scope_%zu", stmt->codegen_id);
+    (void)snprintf(scope.slot_name, sizeof(scope.slot_name),
+                   "yl_control_scope_ptr_%zu", stmt->codegen_id);
+
+    emit_indent(out, indent);
+    fputs("{\n", out);
+    emit_scope_enter(out, indent + 1U, scope.frame_name, scope.slot_name);
+    yl_codegen_scope = &scope;
+    emit_stmt(c, out, stmt, indent + 1U);
+    emit_scope_leave(out, indent + 1U, scope.slot_name);
+    yl_codegen_scope = scope.parent;
+    emit_indent(out, indent);
+    fputs("}\n", out);
+}
+
 static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
 {
     if (!stmt) return;
@@ -1330,11 +1358,13 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); fputs("putchar('\\n');\n", out);
             break;
         case STMT_IF:
-            emit_indent(out, indent); fputs("if (", out); emit_expr_to_file(out, stmt->as.if_stmt.condition); fputs(") ", out);
-            fputs("\n", out); emit_stmt(c, out, stmt->as.if_stmt.then_branch, indent);
+            emit_indent(out, indent); fputs("if (", out);
+            emit_expr_to_file(out, stmt->as.if_stmt.condition);
+            fputs(")\n", out);
+            emit_control_body(c, out, stmt->as.if_stmt.then_branch, indent);
             if (stmt->as.if_stmt.else_branch) {
-                emit_indent(out, indent); fputs("else ", out); fputs("\n", out);
-                emit_stmt(c, out, stmt->as.if_stmt.else_branch, indent);
+                emit_indent(out, indent); fputs("else\n", out);
+                emit_control_body(c, out, stmt->as.if_stmt.else_branch, indent);
             }
             break;
         case STMT_LOOP: {
@@ -1344,8 +1374,8 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
                 .parent = yl_codegen_loop
             };
             yl_codegen_loop = &loop;
-            emit_indent(out, indent); fputs("for (;;) \n", out);
-            emit_stmt(c, out, stmt->as.loop_body, indent);
+            emit_indent(out, indent); fputs("for (;;)\n", out);
+            emit_control_body(c, out, stmt->as.loop_body, indent);
             yl_codegen_loop = loop.parent;
             break;
         }
@@ -1359,7 +1389,7 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); fputs("while (", out);
             emit_expr_to_file(out, stmt->as.while_stmt.condition);
             fputs(")\n", out);
-            emit_stmt(c, out, stmt->as.while_stmt.body, indent);
+            emit_control_body(c, out, stmt->as.while_stmt.body, indent);
             yl_codegen_loop = loop.parent;
             break;
         }
@@ -1387,7 +1417,7 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
             if (stmt->as.for_stmt.increment)
                 emit_expr_to_file(out, stmt->as.for_stmt.increment);
             fputs(")\n", out);
-            emit_stmt(c, out, stmt->as.for_stmt.body, indent + 1);
+            emit_control_body(c, out, stmt->as.for_stmt.body, indent + 1U);
             yl_codegen_loop = loop.parent;
             emit_scope_leave(out, indent + 1, scope.slot_name);
             yl_codegen_scope = scope.parent;
@@ -1459,7 +1489,7 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
                 fputs(i == 0 ? "if (" : "else if (", out);
                 fprintf(out, "%s == INT64_C(%lld))\n", match_name,
                         (long long)(arm->variant ? arm->variant->value : 0));
-                emit_stmt(c, out, arm->body, indent + 1);
+                emit_control_body(c, out, arm->body, indent + 1U);
             }
             emit_indent(out, indent); fputs("}\n", out);
             break;
