@@ -824,6 +824,60 @@ static YType check_expr(Checker *checker, Expr *expr)
             return expr->type;
         }
         case EXPR_CALL: {
+            if (is_builtin_call_name(checker, expr, "borrow_mut")) {
+                if (!checker->allow_borrow_initializer) {
+                    diagnostic(c, expr->token, "error", "E2117",
+                               "borrow_mut() is only valid as a local string initializer.",
+                               "Use 'let string view = borrow_mut(owner);' and keep the exclusive view within the owner's scope.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (expr->as.call.count != 1U ||
+                    expr->as.call.args[0]->kind != EXPR_NAME) {
+                    diagnostic(c, expr->token, "error", "E2122",
+                               "borrow_mut() expects exactly one owned string variable.",
+                               "Use borrow_mut(name) with one named local string binding.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                Expr *argument = expr->as.call.args[0];
+                YType source_type = check_expr(checker, argument);
+                VarDecl *source = argument->as.name.variable;
+                if (source_type == TYPE_ERROR || !source) {
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (source_type != TYPE_STRING || source->is_array ||
+                    source->borrowed_from != NULL || source->is_global) {
+                    diagnostic(c, argument->token, "error", "E2122",
+                               "borrow_mut() requires an owned, non-global string binding.",
+                               "Use a local string owner or an owned string parameter; arrays, views, and globals are not supported.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (!source->decl_scope ||
+                    !scope_outlives(source->decl_scope, checker->scope)) {
+                    diagnostic(c, argument->token, "error", "E2117",
+                               "The mutable borrow would outlive its owner.",
+                               "Declare the view in the same scope as the owner or a nested scope.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (has_active_borrow(checker, source)) {
+                    diagnostic(c, argument->token, "error", "E2122",
+                               "Cannot create a mutable borrow while another borrow is active.",
+                               "End all existing borrow scopes before creating a mutable borrow.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                expr->borrowed_from = source;
+                expr->type = TYPE_STRING;
+                return expr->type;
+            }
             if (is_builtin_call_name(checker, expr, "borrow")) {
                 if (!checker->allow_borrow_initializer) {
                     diagnostic(c, expr->token, "error", "E2117",
@@ -1237,9 +1291,12 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             if (var->initializer) {
                 bool is_borrow_initializer =
                     is_builtin_call_name(checker, var->initializer, "borrow");
+                bool is_borrow_mut_initializer =
+                    is_builtin_call_name(checker, var->initializer, "borrow_mut");
                 bool old_allow_borrow = checker->allow_borrow_initializer;
                 checker->allow_borrow_initializer =
-                    is_borrow_initializer && !var->is_global;
+                    (is_borrow_initializer || is_borrow_mut_initializer) &&
+                    !var->is_global;
                 bool old_allow_move = checker->allow_move_expression;
                 checker->allow_move_expression =
                     is_builtin_call_name(checker, var->initializer, "move") && !var->is_global;
@@ -1255,6 +1312,8 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                                "Variable initializer type mismatch.", suggestion);
                 }
                 var->borrowed_from = var->initializer->borrowed_from;
+                var->is_mut_borrow = is_borrow_mut_initializer &&
+                    var->borrowed_from != NULL;
                 if (var->borrowed_from != NULL &&
                     (var->is_global || var->type != TYPE_STRING)) {
                     diagnostic(c, var->token, "error", "E2117",
