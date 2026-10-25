@@ -1,6 +1,6 @@
 # YLang Memory Model — RFC
 
-Status: partial implementation on `feature/ownership-memory-v2`. The compiler supports a deliberately narrow, explicit `move(name)` operation for local `string` bindings and rejects a later read of the moved binding. This is not yet a complete ownership/borrowing system: scoped destruction, borrow syntax/checking, and ownership-aware function signatures are still unimplemented.
+Status: experimental, partial implementation on `feature/ownership-memory-v3`. The compiler retains static `move(name)` checks for legacy `string` values and adds a separate `owned string` type with explicit cloning, runtime moves, and generated scope cleanup. This is not a complete Rust-like ownership/borrowing system: borrow syntax/checking and ownership-aware function signatures are still unimplemented.
 
 ## Goals
 
@@ -44,7 +44,7 @@ The precise surface syntax and which standard-library operations borrow or consu
 
 ## Current experimental progress
 
-### Implemented: explicit local string moves (initial slice)
+### Implemented: explicit moves for legacy `string` bindings
 
 The C backend and semantic checker support:
 
@@ -56,7 +56,7 @@ print(destination);
 
 The checker marks `source` unavailable after the move and reports diagnostic `E2110` if a later read tries to use it. A moved local can be reinitialized with a fresh value. Move state is merged conservatively across `if` branches, loop exits, and exhaustive `match` arms. A self-move assignment is rejected with `E2114`. This initial operation is intentionally limited to named local `string` variables; globals, parameters, arrays, non-string values, and arbitrary expressions are rejected with `E2111`–`E2113` diagnostics.
 
-**Important limitation:** `move(name)` currently transfers the binding at compile time and lowers to the same C pointer. It does **not** yet free allocations at scope exit, and the language does not yet prohibit every possible string alias. Do not treat this slice as a Rust-like memory-safety guarantee. Deterministic destruction must not be enabled until borrowing/alias rules and all control-flow exits are handled.
+**Important limitation:** for legacy `string`, `move(name)` remains a static binding operation only; the underlying pointers may alias, so they still use the process-lifetime tracker and are not freed at local scope exit. It is not memory-safe to treat legacy strings as owned values.
 
 The first runtime instrumentation commit adds an opt-in diagnostic:
 
@@ -66,18 +66,33 @@ YLANG_MEMORY_STATS=1 ./your-program
 
 When the generated program exits normally, it writes a line to standard error with the number of currently tracked payload allocations and their requested payload bytes. The counters saturate rather than wrapping. This is diagnostic instrumentation only: it does not reclaim memory earlier, the byte count excludes tracker-node and allocator overhead, and it is not a measurement of resident RAM. Programs using the existing tracker still retain those allocations until `yl_cleanup()`.
 
-The test suite includes an opt-in fixture and checks that enabling the diagnostic does not alter normal program output. Ownership, borrowing, and scope-based release are not implemented by this instrumentation.
+The test suite includes an opt-in fixture and verifies that diagnostics do not alter normal program output. The tracked counters cover legacy runtime allocations and are not resident-memory measurements.
 
-## First implementation slice
+### Implemented: separate \`owned string\` locals
 
-Implement this in small, reviewable steps:
+This experimental type is distinct from legacy \`string\`:
 
-1. **Compiler-side ownership facts (in progress)**: the first local-string move state and use-after-move diagnostic are implemented, with pass/fail regression fixtures. Branch-flow joins, loops, borrow states, and imported signatures remain to be implemented.
-2. **Borrow checker and explicit type surface**: settle a compatible way to express immutable and mutable borrows, then reject dangling/conflicting borrows and moves while borrowed.
-3. **A single fully owned type**: complete the rules for initialization, assignment, parameters, return values, globals, string builtins, and cloning before adding automatic destruction. Do not silently change current `string` behavior in a patch release.
-4. **Explicit cleanup lowering**: emit cleanup actions for every normal and early scope exit and for owned return values.
-5. **Runtime verification**: test allocations/frees under AddressSanitizer and LeakSanitizer where available, plus repeated-request stress tests.
-6. **Expand only after parity**: add arrays and structs with owned fields once strings pass the full test matrix.
+\`\`\`yl
+let owned string source = string.own("hello");
+let owned string destination = move(source);
+print(destination);
+\`\`\`
+
+- \`string.own(value)\` creates an independent heap copy.
+- \`move(name)\` transfers an owned pointer and clears the source owner at runtime; static analysis rejects later source reads.
+- Owned locals are dropped in reverse declaration order at block exit and on \`return\`, \`break\`, and \`continue\` paths generated by the C backend.
+- Reassigning an owned local evaluates its replacement first, then drops the previous value.
+- The optional memory diagnostics report owned-string allocations, frees, live allocation count, and live payload bytes.
+
+This first owned type is intentionally local-only. Globals, struct fields, function parameters, and owned return types are rejected until their lifetime/transfer contracts are implemented. The experimental NASM backend rejects owned strings. Borrow syntax, borrow-conflict checking, and complete ownership-aware function signatures are not implemented yet; this is not a general Rust-level memory-safety guarantee.
+
+## Next implementation slices
+
+1. **Borrow checker**: introduce explicit immutable/exclusive borrows, reject conflicts, and prove borrowed values cannot outlive their owners.
+2. **Ownership-aware APIs**: define consuming/borrowing contracts for parameters, returns, imports, and standard-library functions.
+3. **Broaden owned containers**: support owned fields and containers only after constructors, assignment, cleanup and nested moves have complete rules.
+4. **Runtime verification**: run GCC/Clang and ASan/UBSan, plus repeated-allocation tests that assert live owned bytes return to zero.
+5. **Performance work**: benchmark equivalent workloads and preserve overflow/bounds checks unless the compiler proves they are redundant.
 
 ## Required compile-pass tests
 
