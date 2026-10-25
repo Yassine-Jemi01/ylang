@@ -55,7 +55,7 @@ The current string API is immutable, so `&mut string` provides exclusivity check
 
 ## Deliberate limits
 
-The first implementation accepts initialized local `owned string` variables, consuming `owned string` function parameters, and explicit owned-string return transfer. A consuming parameter must receive `move(owner)`, `string.own(value)`, or another function's owned result; a bare owner cannot be copied into it. An owned return must use `move(local_owner)`, `string.own(value)`, or another owned function result. Globals and struct fields remain unsupported. Borrow types are local-only. The experimental NASM backend rejects owned and borrowed strings.
+The implementation accepts initialized local `owned string` variables, consuming `owned string` function parameters, and explicit owned-string return transfer. A consuming parameter must receive `move(owner)`, `string.own(value)`, or another function's owned result; a bare owner cannot be copied into it. An owned return must use `move(local_owner)`, `string.own(value)`, or another owned function result. Globals and struct fields remain unsupported. Borrow types are local-only. The experimental NASM backend rejects owned and borrowed strings.
 
 This is not a complete Rust-like memory-safety guarantee. Avoid storing legacy strings derived from owned values in globals or longer-lived external state. Do not share an owned pointer with foreign C code that may retain it.
 
