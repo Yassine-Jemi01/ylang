@@ -142,9 +142,14 @@ static bool call_argument_is_array(const Expr *call, size_t index)
 
 static bool call_needs_sequence(Expr *expr)
 {
-    if (!expr || expr->kind != EXPR_CALL || expr->as.call.count < 2U) return false;
-    for (size_t i = 0; i < expr->as.call.count; i++)
-        if (expr_has_side_effects(expr->as.call.args[i])) return true;
+    if (!expr || expr->kind != EXPR_CALL || expr->as.call.count == 0U) return false;
+    for (size_t i = 0; i < expr->as.call.count; i++) {
+        Expr *arg = expr->as.call.args[i];
+        if (expr_has_side_effects(arg)) return true;
+        if (arg && arg->type == TYPE_STRING &&
+            arg->kind != EXPR_NAME && arg->kind != EXPR_STRING &&
+            arg->borrowed_from == NULL) return true;
+    }
     return false;
 }
 
