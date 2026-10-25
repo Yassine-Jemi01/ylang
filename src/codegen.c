@@ -801,7 +801,14 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             if (!expr->as.call.function &&
                 strcmp(expr->as.call.name, "move") == 0 &&
                 expr->as.call.count == 1U) {
-                emit_expr(sb, expr->as.call.args[0]);
+                Expr *argument = expr->as.call.args[0];
+                if (argument->kind == EXPR_NAME && argument->as.name.variable) {
+                    sb_append(sb, "yl_move_string(&");
+                    sb_append(sb, argument->as.name.variable->c_name);
+                    sb_append(sb, ")");
+                } else {
+                    emit_expr(sb, argument);
+                }
                 break;
             }
             if (strcmp(expr->as.call.name, "length") == 0 && expr->as.call.count == 1) {
