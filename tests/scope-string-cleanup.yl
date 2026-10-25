@@ -11,6 +11,10 @@ function join(string left, string right) -> string {
 }
 
 function main() -> int {
+    print(string.concat("ephemeral", "-print"));
+    print(string.length(string.concat("temporary", "-argument")));
+    string.concat("discarded", "-result");
+
     let int iteration = 0;
     while (iteration < 12) {
         let string temporary = string.concat("cycle", "-value");
