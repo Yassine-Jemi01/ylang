@@ -1129,6 +1129,19 @@ static void emit_indent(FILE *out, unsigned indent)
 
 static void emit_print_value(FILE *out, Expr *expr, unsigned indent)
 {
+    if (expr->type == TYPE_STRING && expr->kind != EXPR_NAME &&
+        expr->borrowed_from == NULL) {
+        emit_indent(out, indent);
+        fprintf(out, "const char *yl_print_string_%zu = ", expr->codegen_id);
+        emit_expr_to_file(out, expr);
+        fputs(";\n", out);
+        emit_indent(out, indent);
+        fprintf(out, "fputs((const char *)(yl_print_string_%zu), stdout);\n",
+                expr->codegen_id);
+        emit_indent(out, indent);
+        fprintf(out, "yl_release(yl_print_string_%zu);\n", expr->codegen_id);
+        return;
+    }
     emit_indent(out, indent);
     switch (expr->type) {
         case TYPE_STRING:
