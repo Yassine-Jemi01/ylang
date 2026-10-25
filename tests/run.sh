@@ -20,6 +20,14 @@ diff -u tests/expected-type-conversions.txt build/type-conversions.out
 ./build/test-escape-parity > build/escape-parity.out
 diff -u tests/expected-escape-parity.txt build/escape-parity.out
 
+# C trigraph sequences must survive unchanged in plain strings and f-string text.
+./build/ylang check tests/trigraph-parity.yl >/dev/null
+./build/ylang emit-c tests/trigraph-parity.yl -o build/trigraph-parity-generated.c >/dev/null
+grep -Fq '\?\?=' build/trigraph-parity-generated.c
+./build/ylang build tests/trigraph-parity.yl -o build/test-trigraph-parity >/dev/null
+./build/test-trigraph-parity > build/trigraph-parity.out
+diff -u tests/expected-trigraph-parity.txt build/trigraph-parity.out
+
 # F-strings use the same escape decoder and unknown-escape fallback.
 cat > build/fstring-escape.yl <<'EOF'
 function main() -> int {

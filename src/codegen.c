@@ -44,6 +44,8 @@ static void append_c_quoted_bytes(StringBuilder *sb,
         switch (ch) {
             case '\\': sb_append(sb, "\\\\"); break;
             case '"': sb_append(sb, "\\\""); break;
+            /* Avoid C trigraph translation in generated string literals. */
+            case '?': sb_append(sb, "\\?"); break;
             case '\n': sb_append(sb, "\\n"); break;
             case '\r': sb_append(sb, "\\r"); break;
             case '\t': sb_append(sb, "\\t"); break;
