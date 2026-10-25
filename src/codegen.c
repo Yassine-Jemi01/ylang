@@ -1464,8 +1464,24 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); fputs("}\n", out);
             break;
         }
-        case STMT_EXPR:
-            emit_indent(out, indent); emit_expr_to_file(out, stmt->as.expression); fputs(";\n", out); break;
+        case STMT_EXPR: {
+            Expr *value = stmt->as.expression;
+            if (value && value->type == TYPE_STRING &&
+                value->kind != EXPR_NAME && value->kind != EXPR_ASSIGN &&
+                value->borrowed_from == NULL) {
+                emit_indent(out, indent);
+                fprintf(out, "const char *yl_discard_string_%zu = ", value->codegen_id);
+                emit_expr_to_file(out, value);
+                fputs(";\n", out);
+                emit_indent(out, indent);
+                fprintf(out, "yl_release(yl_discard_string_%zu);\n", value->codegen_id);
+            } else {
+                emit_indent(out, indent);
+                emit_expr_to_file(out, value);
+                fputs(";\n", out);
+            }
+            break;
+        }
     }
 }
 
