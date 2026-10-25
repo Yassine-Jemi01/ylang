@@ -294,6 +294,8 @@ static void emit_temp_declarations_expr(Compiler *compiler, FILE *out,
                               expr->as.binary.left->type, false, indent);
         emit_temp_declaration(out, compiler, expr, "right",
                               expr->as.binary.right->type, false, indent);
+        if (expr->type != TYPE_VOID && expr->type != TYPE_ERROR)
+            emit_temp_declaration(out, compiler, expr, "result", expr->type, false, indent);
     }
     if (call_needs_sequence(expr)) {
         for (size_t i = 0; i < expr->as.call.count; i++) {
@@ -303,6 +305,8 @@ static void emit_temp_declarations_expr(Compiler *compiler, FILE *out,
             emit_temp_declaration(out, compiler, expr, suffix,
                                   expr->as.call.args[i]->type, false, indent);
         }
+        if (expr->type != TYPE_VOID && expr->type != TYPE_ERROR)
+            emit_temp_declaration(out, compiler, expr, "result", expr->type, false, indent);
     }
     if (struct_init_needs_sequence(expr)) {
         for (size_t i = 0; i < expr->as.struct_init.count; i++) {
@@ -432,7 +436,15 @@ static void emit_temp_assignment(StringBuilder *sb, Expr *owner,
     sb_append(sb, "(");
     emit_temp_name(sb, owner, suffix);
     sb_append(sb, " = ");
-    emit_expr(sb, expr);
+    if (expr && expr->type == TYPE_STRING &&
+        ((expr->kind == EXPR_NAME && !expr->borrowed_from) ||
+         expr->borrowed_from != NULL)) {
+        sb_append(sb, "yl_clone_string(");
+        emit_expr(sb, expr);
+        sb_append(sb, ")");
+    } else {
+        emit_expr(sb, expr);
+    }
     sb_append(sb, ")");
 }
 
