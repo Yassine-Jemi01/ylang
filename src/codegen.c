@@ -80,6 +80,7 @@ static const char *format_for_type(YType type)
 }
 
 static void emit_expr(StringBuilder *sb, Expr *expr);
+static void emit_string_copy_or_value(StringBuilder *sb, Expr *expr);
 
 static bool expr_has_side_effects(Expr *expr)
 {
