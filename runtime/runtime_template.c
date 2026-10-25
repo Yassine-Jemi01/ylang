@@ -64,11 +64,20 @@ static size_t yl_saturating_add_size(size_t left, size_t right) {
     return SIZE_MAX - left < right ? SIZE_MAX : left + right;
 }
 
+static size_t yl_owned_string_allocations = 0U;
+static size_t yl_owned_string_frees = 0U;
+static size_t yl_owned_string_live_allocations = 0U;
+static size_t yl_owned_string_live_bytes = 0U;
+
 static void yl_cleanup(void) {
     if (yl_memory_stats_enabled()) {
         fprintf(stderr,
                 "YLang memory stats: tracked_allocations=%zu tracked_bytes=%zu\n",
                 yl_tracked_allocations, yl_tracked_bytes);
+        fprintf(stderr,
+                "YLang owned-string stats: allocations=%zu frees=%zu live_allocations=%zu live_bytes=%zu\\n",
+                yl_owned_string_allocations, yl_owned_string_frees,
+                yl_owned_string_live_allocations, yl_owned_string_live_bytes);
         fprintf(stderr,
                 "YLang owned-string stats: allocations=%zu frees=%zu live_allocations=%zu live_bytes=%zu\\n",
                 yl_owned_string_allocations, yl_owned_string_frees,
@@ -96,11 +105,6 @@ static void *yl_track(void *ptr, size_t size) {
 }
 
 /* Owned strings are independent of the legacy process-lifetime tracker. */
-static size_t yl_owned_string_allocations = 0U;
-static size_t yl_owned_string_frees = 0U;
-static size_t yl_owned_string_live_allocations = 0U;
-static size_t yl_owned_string_live_bytes = 0U;
-
 static char *yl_owned_string_clone(const char *value) {
     if (!value) yl_runtime_error("cannot own a null string");
     size_t length = strlen(value);
