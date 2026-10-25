@@ -480,8 +480,13 @@ static const char *yl_path_basename(const char *path) {
 static const char *yl_path_extension(const char *path) {
     const char *base = yl_path_basename(path);
     const char *dot = strrchr(base, '.');
-    if (!dot || dot == base) return "";
-    return dot + 1;
+    if (!dot || dot == base) {
+        yl_release(base);
+        return "";
+    }
+    const char *extension = yl_clone_string(dot + 1);
+    yl_release(base);
+    return extension;
 }
 #ifdef _WIN32
 static bool yl_image_open(const char *path) {
