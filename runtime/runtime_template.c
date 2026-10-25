@@ -67,7 +67,7 @@ static size_t yl_saturating_add_size(size_t left, size_t right) {
 static void yl_cleanup(void) {
     if (yl_memory_stats_enabled()) {
         fprintf(stderr,
-                "YLang memory stats: tracked_allocations=%zu tracked_bytes=%zu\\n",
+                "YLang memory stats: tracked_allocations=%zu tracked_bytes=%zu\n",
                 yl_tracked_allocations, yl_tracked_bytes);
     }
     while (yl_tracked) {
