@@ -303,6 +303,12 @@ function main() -> int {
 Explicit conversions include `to_float(int)`, range-checked `to_int(float)`, and `to_string(value)` for int/float/bool/char/string. Use `string.is_int(text)` before `string.parse_int(text)` for untrusted input; invalid or out-of-range parsing raises a runtime error. `io.file_exists(path)` lets programs check a path before reading. String helpers and I/O are also available: `string.length`, `string.contains`, `string.starts_with`, `string.ends_with`, `string.concat`, `string.replace`, `io.read_line()`, `io.read_file(path)`, and `io.write_file(path, content)`. The new `path` namespace provides `path.exists(path)`, `path.basename(path)`, and `path.extension(path)`. On Linux/macOS, `image.open(path)` safely launches the system default viewer (using an argument vector rather than a shell command), returning whether the viewer launcher succeeded; it does not decode/render images inside YLang yet. File I/O is synchronous and text-only; read errors terminate with a runtime error, while writes return a boolean status. Run `make test` to test these APIs alongside math, arrays, and bounds protection. Arrays can be passed to functions with their length supplied automatically, but cannot yet be returned or nested; object-oriented classes are not implemented yet.
 
 
+## Experimental owned strings
+
+The compiler branch contains a separate \`owned string\` type with explicit cloning (\`string.own(value)\`), runtime move transfer (\`move(name)\`), and deterministic cleanup of local owners on block exit and early control-flow exits. This is experimental and **does not** add a borrow checker or make legacy \`string\` values move-only. Globals, struct fields, owned function parameters, and owned return values are rejected until their lifetime rules are implemented.
+
+See the [owned-string guide](docs/OWNED-STRINGS.md) and [memory-model RFC](docs/MEMORY-MODEL.md).
+
 ## Supported language features
 
 - Explicit declarations (`let type name`) and constants (`let const type name`)
