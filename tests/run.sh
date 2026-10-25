@@ -1376,6 +1376,26 @@ if ./build/ylang check tests/borrow-owner-assignment.yl > build/borrow-owner-ass
 fi
 grep -q 'E2142' build/borrow-owner-assignment.out
 
+# An exclusive borrow blocks reading its owner directly.
+if ./build/ylang check tests/borrow-mut-owner-access.yl > build/borrow-mut-owner-access.out 2>&1; then
+    echo "FAIL: YLang allowed owner access during an exclusive borrow" >&2
+    exit 1
+fi
+grep -q 'E2138' build/borrow-mut-owner-access.out
+
+# A second exclusive borrow and a move while exclusively borrowed are rejected.
+if ./build/ylang check tests/borrow-mut-overlap.yl > build/borrow-mut-overlap.out 2>&1; then
+    echo "FAIL: YLang accepted two overlapping exclusive borrows" >&2
+    exit 1
+fi
+grep -q 'E2134' build/borrow-mut-overlap.out
+
+if ./build/ylang check tests/borrow-mut-move.yl > build/borrow-mut-move.out 2>&1; then
+    echo "FAIL: YLang allowed a move during an exclusive borrow" >&2
+    exit 1
+fi
+grep -q 'E2136' build/borrow-mut-move.out
+
 # Borrow values cannot escape through globals, parameters, or return values yet.
 if ./build/ylang check tests/borrow-escape-rejections.yl > build/borrow-escape-rejections.out 2>&1; then
     echo "FAIL: YLang accepted a borrow escape" >&2
