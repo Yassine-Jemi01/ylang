@@ -1,0 +1,20 @@
+function create_label(string label) -> owned string {
+    return string.own(label);
+}
+
+function with_suffix(owned string value) -> owned string {
+    let owned string result = string.own(string.concat(value, "!"));
+    return move(result);
+}
+
+function identity(owned string value) -> owned string {
+    return move(value);
+}
+
+function main() -> int {
+    let owned string source = create_label("YLang");
+    let owned string result = with_suffix(move(source));
+    let owned string same = identity(string.own(result));
+    print(result, same);
+    return 0;
+}

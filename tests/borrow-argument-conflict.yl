@@ -1,0 +1,10 @@
+function mixed(&string shared, &mut string exclusive) -> int {
+    print(shared, exclusive);
+    return 0;
+}
+
+function main() -> int {
+    let owned string owner = string.own("YLang");
+    mixed(borrow(owner), borrow_mut(owner));
+    return 0;
+}

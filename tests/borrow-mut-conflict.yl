@@ -1,0 +1,7 @@
+function main() -> int {
+    let owned string owner = string.own("YLang");
+    let &string shared = borrow(owner);
+    let &mut string exclusive = borrow_mut(owner);
+    print(shared, exclusive);
+    return 0;
+}

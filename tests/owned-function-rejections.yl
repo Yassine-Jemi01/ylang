@@ -1,0 +1,19 @@
+function make_value() -> owned string {
+    return string.own("YLang");
+}
+
+function invalid_return(owned string value) -> owned string {
+    return value;
+}
+
+function consume(owned string value) -> int {
+    return 0;
+}
+
+function main() -> int {
+    let owned string owner = string.own("YLang");
+    let owned string nested = string.own(make_value());
+    consume(owner);
+    make_value();
+    return 0;
+}

@@ -1347,6 +1347,99 @@ if ./build/ylang check tests/move-self-assignment.yl > build/move-self-assignmen
 fi
 grep -q 'E2114' build/move-self-assignment.out
 
+# Shared borrows can coexist; an exclusive borrow blocks owner reads and can end at scope exit.
+./build/ylang build tests/borrow-string.yl -o build/test-borrow-string >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-borrow-string > build/borrow-string.stdout 2> build/borrow-string.stderr
+printf 'YLang 5\nYLang\nYLang\n' > build/borrow-string.expected
+diff -u build/borrow-string.expected build/borrow-string.stdout
+grep -Eq 'YLang owned-string stats: allocations=1 frees=1 live_allocations=0 live_bytes=0' build/borrow-string.stderr
+env -u YLANG_MEMORY_STATS ./build/test-borrow-string > build/borrow-string-default.stdout 2> build/borrow-string-default.stderr
+diff -u build/borrow-string.expected build/borrow-string-default.stdout
+[ ! -s build/borrow-string-default.stderr ]
+
+# A borrowed owner cannot be moved, exclusively borrowed while shared, or replaced.
+if ./build/ylang check tests/borrow-move-conflict.yl > build/borrow-move-conflict.out 2>&1; then
+    echo "FAIL: YLang allowed a move while a borrow was active" >&2
+    exit 1
+fi
+grep -q 'E2136' build/borrow-move-conflict.out
+
+if ./build/ylang check tests/borrow-mut-conflict.yl > build/borrow-mut-conflict.out 2>&1; then
+    echo "FAIL: YLang allowed overlapping shared and exclusive borrows" >&2
+    exit 1
+fi
+grep -q 'E2134' build/borrow-mut-conflict.out
+
+if ./build/ylang check tests/borrow-owner-assignment.yl > build/borrow-owner-assignment.out 2>&1; then
+    echo "FAIL: YLang allowed an owner to be replaced while borrowed" >&2
+    exit 1
+fi
+grep -q 'E2142' build/borrow-owner-assignment.out
+
+# An exclusive borrow blocks reading its owner directly.
+if ./build/ylang check tests/borrow-mut-owner-access.yl > build/borrow-mut-owner-access.out 2>&1; then
+    echo "FAIL: YLang allowed owner access during an exclusive borrow" >&2
+    exit 1
+fi
+grep -q 'E2138' build/borrow-mut-owner-access.out
+
+# A second exclusive borrow and a move while exclusively borrowed are rejected.
+if ./build/ylang check tests/borrow-mut-overlap.yl > build/borrow-mut-overlap.out 2>&1; then
+    echo "FAIL: YLang accepted two overlapping exclusive borrows" >&2
+    exit 1
+fi
+grep -q 'E2134' build/borrow-mut-overlap.out
+
+if ./build/ylang check tests/borrow-mut-move.yl > build/borrow-mut-move.out 2>&1; then
+    echo "FAIL: YLang allowed a move during an exclusive borrow" >&2
+    exit 1
+fi
+grep -q 'E2136' build/borrow-mut-move.out
+
+# Owned values transfer through consuming parameters and owned return values.
+./build/ylang build tests/owned-function-transfer.yl -o build/test-owned-function-transfer >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-function-transfer > build/owned-function-transfer.stdout 2> build/owned-function-transfer.stderr
+printf 'YLang! YLang!\n' > build/owned-function-transfer.expected
+diff -u build/owned-function-transfer.expected build/owned-function-transfer.stdout
+grep -Eq 'YLang owned-string stats: allocations=3 frees=3 live_allocations=0 live_bytes=0' build/owned-function-transfer.stderr
+
+# Owned values cannot be copied into consuming parameters or returned by alias.
+if ./build/ylang check tests/owned-function-rejections.yl > build/owned-function-rejections.out 2>&1; then
+    echo "FAIL: YLang accepted owned-string aliasing across function boundaries" >&2
+    exit 1
+fi
+grep -q 'E2120' build/owned-function-rejections.out
+grep -q 'E2124' build/owned-function-rejections.out
+grep -q 'E2144' build/owned-function-rejections.out
+
+# Owned parameters also participate in use-after-move checking.
+if ./build/ylang check tests/owned-parameter-use-after-move.yl > build/owned-parameter-use-after-move.out 2>&1; then
+    echo "FAIL: YLang accepted use after moving an owned parameter" >&2
+    exit 1
+fi
+grep -q 'E2110' build/owned-parameter-use-after-move.out
+
+# Borrowed function parameters accept temporary borrows for the duration of a call.
+./build/ylang build tests/borrow-parameters.yl -o build/test-borrow-parameters >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-borrow-parameters > build/borrow-parameters.stdout 2> build/borrow-parameters.stderr
+printf '5\nYLang YLang\nYLang\nYLang\n' > build/borrow-parameters.expected
+diff -u build/borrow-parameters.expected build/borrow-parameters.stdout
+grep -Eq 'YLang owned-string stats: allocations=1 frees=1 live_allocations=0 live_bytes=0' build/borrow-parameters.stderr
+
+# Conflicting borrows passed in the same call are rejected even though neither is a local binding.
+if ./build/ylang check tests/borrow-argument-conflict.yl > build/borrow-argument-conflict.out 2>&1; then
+    echo "FAIL: YLang allowed conflicting borrow arguments" >&2
+    exit 1
+fi
+grep -q 'E2134' build/borrow-argument-conflict.out
+
+# Borrow values cannot escape through globals, parameters, or return values yet.
+if ./build/ylang check tests/borrow-escape-rejections.yl > build/borrow-escape-rejections.out 2>&1; then
+    echo "FAIL: YLang accepted a borrow escape" >&2
+    exit 1
+fi
+grep -q 'E2140' build/borrow-escape-rejections.out
+
 # Invalid move operations must have targeted diagnostics.
 if ./build/ylang check tests/move-rejections.yl > build/move-rejections.out 2>&1; then
     echo "FAIL: YLang accepted unsupported move operations" >&2
@@ -1359,6 +1452,25 @@ grep -q 'E2113' build/move-rejections.out
 # The ownership primitive does not reserve the name of an existing user function.
 ./build/ylang build tests/move-name-collision.yl -o build/test-move-name-collision >/dev/null
 test "$(./build/test-move-name-collision)" = "42"
+
+# Owned strings clone independently, move without aliasing, and drop at scope exits.
+./build/ylang build tests/owned-string.yl -o build/test-owned-string >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string > build/owned-string.stdout 2> build/owned-string.stderr
+printf 'YLang\nYLang owned\nowned=YLang owned\nloop\n' > build/owned-string.expected
+diff -u build/owned-string.expected build/owned-string.stdout
+grep -Eq 'YLang owned-string stats: allocations=4 frees=4 live_allocations=0 live_bytes=0' build/owned-string.stderr
+env -u YLANG_MEMORY_STATS ./build/test-owned-string > build/owned-string-default.stdout 2> build/owned-string-default.stderr
+diff -u build/owned-string.expected build/owned-string-default.stdout
+[ ! -s build/owned-string-default.stderr ]
+
+# Owned strings cannot be implicitly copied or escape into unsupported lifetimes.
+if ./build/ylang check tests/owned-string-rejections.yl > build/owned-string-rejections.out 2>&1; then
+    echo "FAIL: YLang accepted an invalid owned-string program" >&2
+    exit 1
+fi
+grep -q 'E2118' build/owned-string-rejections.out
+grep -q 'E2120' build/owned-string-rejections.out
+grep -q 'E2121' build/owned-string-rejections.out
 
 # Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
 ./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null

@@ -1,0 +1,12 @@
+function invalid(owned string value) -> owned string {
+    let owned string next = move(value);
+    print(value);
+    return move(next);
+}
+
+function main() -> int {
+    let owned string source = string.own("YLang");
+    let owned string result = invalid(move(source));
+    print(result);
+    return 0;
+}

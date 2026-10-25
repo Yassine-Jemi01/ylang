@@ -14,6 +14,12 @@
 #endif
 
 /* --------------------------- C code generation -------------------------- */
+static bool c_string_like_type(YType type)
+{
+    return type == TYPE_STRING || type == TYPE_OWNED_STRING ||
+           type == TYPE_BORROW_STRING || type == TYPE_MUT_BORROW_STRING;
+}
+
 static const char *c_base_type(Compiler *compiler, YType type)
 {
     if (type >= TYPE_STRUCT_BASE) {
@@ -29,6 +35,9 @@ static const char *c_base_type(Compiler *compiler, YType type)
         case TYPE_BOOL: return "bool";
         case TYPE_CHAR: return "char";
         case TYPE_STRING: return "const char *";
+        case TYPE_OWNED_STRING: return "char *";
+        case TYPE_BORROW_STRING: return "const char *";
+        case TYPE_MUT_BORROW_STRING: return "char *";
         case TYPE_VOID: return "void";
         case TYPE_ERROR: return "int";
         default: return "int64_t";
@@ -73,7 +82,8 @@ static const char *format_for_type(YType type)
         case TYPE_FLOAT: return "%.17g";
         case TYPE_BOOL: return "%s";
         case TYPE_CHAR: return "%c";
-        case TYPE_STRING: return "%s";
+        case TYPE_STRING: case TYPE_OWNED_STRING:
+        case TYPE_BORROW_STRING: case TYPE_MUT_BORROW_STRING: return "%s";
         case TYPE_VOID: case TYPE_ERROR: return "%s";
     }
     return "%s";
@@ -464,7 +474,7 @@ static void emit_binary_operation_with_temps(StringBuilder *sb, Expr *expr)
         sb_append(sb, "yl_div_f64(");
         emit_temp_name(sb, expr, "left"); sb_append(sb, ", ");
         emit_temp_name(sb, expr, "right"); sb_append(sb, ")");
-    } else if (left->type == TYPE_STRING &&
+    } else if (c_string_like_type(left->type) &&
                (op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
                 op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL ||
                 op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL)) {
@@ -542,6 +552,9 @@ static void emit_fstring_expr(StringBuilder *sb, Expr *expr)
                     sb_append(&args, "(int)("); emit_expr(&args, embedded); sb_append(&args, ")");
                     break;
                 case TYPE_STRING:
+                case TYPE_OWNED_STRING:
+                case TYPE_BORROW_STRING:
+                case TYPE_MUT_BORROW_STRING:
                     sb_append(&args, "(const char *)("); emit_expr(&args, embedded); sb_append(&args, ")");
                     break;
                 case TYPE_VOID: case TYPE_ERROR: break;
@@ -757,6 +770,12 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     emit_temp_name(sb, expr, "target"); sb_append(sb, ", ");
                     emit_temp_name(sb, expr, "value"); sb_append(sb, ")");
                 } else {
+                    if (expr->as.assign.variable &&
+                        expr->as.assign.variable->type == TYPE_OWNED_STRING) {
+                        sb_append(sb, "yl_drop_owned_string(");
+                        emit_temp_name(sb, expr, "target");
+                        sb_append(sb, "), ");
+                    }
                     sb_append(sb, "(*");
                     emit_temp_name(sb, expr, "target"); sb_append(sb, " = ");
                     emit_temp_name(sb, expr, "value"); sb_append(sb, ")");
@@ -788,12 +807,36 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             break;
         }
         case EXPR_CALL: {
-            /* move(name) is a compile-time ownership transfer; its runtime
-               representation is still the same string pointer. */
+            if (!expr->as.call.function &&
+                (strcmp(expr->as.call.name, "borrow") == 0 ||
+                 strcmp(expr->as.call.name, "borrow_mut") == 0) &&
+                expr->as.call.count == 1U) {
+                /* A borrow is a non-owning pointer view; lifetime safety is
+                   enforced by semantic analysis, so there is no runtime call. */
+                emit_expr(sb, expr->as.call.args[0]);
+                break;
+            }
+            if (strcmp(expr->as.call.name, "string.own") == 0 &&
+                expr->as.call.count == 1U) {
+                sb_append(sb, "yl_owned_string_clone(");
+                emit_expr(sb, expr->as.call.args[0]);
+                sb_append(sb, ")");
+                break;
+            }
+            /* An owned move clears its source; legacy string move remains
+               a static binding check and retains the legacy pointer runtime. */
             if (!expr->as.call.function &&
                 strcmp(expr->as.call.name, "move") == 0 &&
                 expr->as.call.count == 1U) {
-                emit_expr(sb, expr->as.call.args[0]);
+                Expr *arg = expr->as.call.args[0];
+                if (expr->type == TYPE_OWNED_STRING &&
+                    arg && arg->kind == EXPR_NAME && arg->as.name.variable) {
+                    sb_append(sb, "yl_move_owned_string(&");
+                    sb_append(sb, arg->as.name.variable->c_name);
+                    sb_append(sb, ")");
+                } else {
+                    emit_expr(sb, arg);
+                }
                 break;
             }
             if (strcmp(expr->as.call.name, "length") == 0 && expr->as.call.count == 1) {
@@ -809,6 +852,13 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 Expr *arg = expr->as.call.args[0];
                 switch (arg->type) {
                     case TYPE_STRING: emit_expr(sb, arg); break;
+                    case TYPE_OWNED_STRING:
+                    case TYPE_BORROW_STRING:
+                    case TYPE_MUT_BORROW_STRING:
+                        sb_append(sb, "yl_format(\"%s\", ");
+                        emit_expr(sb, arg);
+                        sb_append(sb, ")");
+                        break;
                     case TYPE_INT: sb_append(sb, "yl_to_string_int("); emit_expr(sb, arg); sb_append(sb, ")"); break;
                     case TYPE_FLOAT: sb_append(sb, "yl_to_string_float("); emit_expr(sb, arg); sb_append(sb, ")"); break;
                     case TYPE_BOOL: sb_append(sb, "yl_boolstr("); emit_expr(sb, arg); sb_append(sb, ")"); break;
@@ -907,7 +957,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 sb_append(sb, "yl_mod_i64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
             } else if (left->type == TYPE_FLOAT && op == TOKEN_SLASH) {
                 sb_append(sb, "yl_div_f64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
-            } else if (left->type == TYPE_STRING &&
+            } else if (c_string_like_type(left->type) &&
                        (op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
                         op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL)) {
                 sb_append(sb, "(strcmp("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right);
@@ -919,7 +969,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     case TOKEN_GREATER_EQUAL: sb_append(sb, ">= 0)"); break;
                     default: sb_append(sb, "0)"); break;
                 }
-            } else if ((op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL) && left->type == TYPE_STRING) {
+            } else if ((op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL) && c_string_like_type(left->type)) {
                 sb_append(sb, "(strcmp("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right);
                 sb_append(sb, ") "); sb_append(sb, op == TOKEN_EQUAL_EQUAL ? "== 0)" : "!= 0)");
             } else {
@@ -950,9 +1000,15 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
 static void emit_var_type(Compiler *compiler, FILE *out, VarDecl *var, bool global)
 {
     if (global) fputs("static ", out);
-    if (var->is_const && var->type != TYPE_STRING) fputs("const ", out);
+    if (var->is_const &&
+        var->type != TYPE_STRING &&
+        var->type != TYPE_OWNED_STRING &&
+        var->type != TYPE_BORROW_STRING &&
+        var->type != TYPE_MUT_BORROW_STRING) fputs("const ", out);
     fputs(c_base_type(compiler, var->type), out);
-    if (var->is_const && var->type == TYPE_STRING) fputs(" const", out);
+    if (var->is_const &&
+        (var->type == TYPE_STRING || var->type == TYPE_BORROW_STRING ||
+         var->type == TYPE_MUT_BORROW_STRING)) fputs(" const", out);
 }
 
 static void emit_expr_to_file(FILE *out, Expr *expr)
@@ -1013,6 +1069,9 @@ static void emit_print_value(FILE *out, Expr *expr, unsigned indent)
     emit_indent(out, indent);
     switch (expr->type) {
         case TYPE_STRING:
+        case TYPE_OWNED_STRING:
+        case TYPE_BORROW_STRING:
+        case TYPE_MUT_BORROW_STRING:
             fputs("fputs((const char *)(", out); emit_expr_to_file(out, expr);
             fputs("), stdout);\n", out); break;
         case TYPE_BOOL:
@@ -1049,16 +1108,78 @@ static void emit_fstring_print(FILE *out, Expr *expr, unsigned indent)
     }
 }
 
+typedef struct CgScope {
+    struct CgScope *parent;
+    VarDecl **owned_vars;
+    size_t owned_count;
+    size_t owned_capacity;
+} CgScope;
+
+typedef struct CgLoopFrame {
+    struct CgLoopFrame *parent;
+    CgScope *scope_boundary;
+} CgLoopFrame;
+
+/* Code generation is single-threaded; reset these stacks for every function. */
+static CgScope *cg_active_scope = NULL;
+static CgLoopFrame *cg_active_loop = NULL;
+
+static void cg_scope_add_owned(VarDecl *var)
+{
+    CgScope *scope = cg_active_scope;
+    if (!scope || !var || var->type != TYPE_OWNED_STRING) return;
+    if (scope->owned_count == scope->owned_capacity) {
+        size_t next = scope->owned_capacity ? scope->owned_capacity * 2U : 4U;
+        if (next < scope->owned_capacity ||
+            next > SIZE_MAX / sizeof(*scope->owned_vars)) {
+            fputs("ylang: codegen owned-scope capacity overflow\n", stderr);
+            exit(70);
+        }
+        VarDecl **grown = realloc(scope->owned_vars, next * sizeof(*grown));
+        if (!grown) {
+            fputs("ylang: codegen out of memory tracking owned scope\n", stderr);
+            exit(70);
+        }
+        scope->owned_vars = grown;
+        scope->owned_capacity = next;
+    }
+    scope->owned_vars[scope->owned_count++] = var;
+}
+
+static void cg_emit_scope_drops(FILE *out, CgScope *scope, unsigned indent)
+{
+    for (size_t i = scope->owned_count; i > 0U; i--) {
+        emit_indent(out, indent);
+        fprintf(out, "yl_drop_owned_string(&%s);\n",
+                scope->owned_vars[i - 1U]->c_name);
+    }
+}
+
+static void cg_emit_drops_until(FILE *out, CgScope *scope,
+                                CgScope *exclusive_stop, unsigned indent)
+{
+    for (CgScope *at = scope; at && at != exclusive_stop; at = at->parent)
+        cg_emit_scope_drops(out, at, indent);
+}
+
 static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
 {
     if (!stmt) return;
     switch (stmt->kind) {
-        case STMT_BLOCK:
+        case STMT_BLOCK: {
+            CgScope frame = { .parent = cg_active_scope, .owned_vars = NULL,
+                              .owned_count = 0U, .owned_capacity = 0U };
+            CgScope *saved_scope = cg_active_scope;
+            cg_active_scope = &frame;
             emit_indent(out, indent); fputs("{\n", out);
             for (size_t i = 0; i < stmt->as.block.count; i++)
-                emit_stmt(c, out, stmt->as.block.items[i], indent + 1);
+                emit_stmt(c, out, stmt->as.block.items[i], indent + 1U);
+            cg_emit_scope_drops(out, &frame, indent + 1U);
             emit_indent(out, indent); fputs("}\n", out);
+            cg_active_scope = saved_scope;
+            free(frame.owned_vars);
             break;
+        }
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
             if (var->is_array && array_init_needs_sequence(var->initializer)) {
@@ -1078,6 +1199,7 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
                 fputs(" = ", out); emit_expr_to_file(out, var->initializer);
             }
             fputs(";\n", out);
+            cg_scope_add_owned(var);
             break;
         }
         case STMT_PRINT:
@@ -1100,38 +1222,80 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
                 emit_stmt(c, out, stmt->as.if_stmt.else_branch, indent);
             }
             break;
-        case STMT_LOOP:
-            emit_indent(out, indent); fputs("for (;;) ", out); fputs("\n", out);
+        case STMT_LOOP: {
+            CgLoopFrame loop = { .parent = cg_active_loop,
+                                 .scope_boundary = cg_active_scope };
+            CgLoopFrame *saved_loop = cg_active_loop;
+            cg_active_loop = &loop;
+            emit_indent(out, indent); fputs("for (;;) \n", out);
             emit_stmt(c, out, stmt->as.loop_body, indent);
+            cg_active_loop = saved_loop;
             break;
-        case STMT_WHILE:
+        }
+        case STMT_WHILE: {
+            CgLoopFrame loop = { .parent = cg_active_loop,
+                                 .scope_boundary = cg_active_scope };
+            CgLoopFrame *saved_loop = cg_active_loop;
+            cg_active_loop = &loop;
             emit_indent(out, indent); fputs("while (", out);
             emit_expr_to_file(out, stmt->as.while_stmt.condition);
             fputs(")\n", out);
             emit_stmt(c, out, stmt->as.while_stmt.body, indent);
+            cg_active_loop = saved_loop;
             break;
-        case STMT_FOR:
+        }
+        case STMT_FOR: {
+            CgScope frame = { .parent = cg_active_scope, .owned_vars = NULL,
+                              .owned_count = 0U, .owned_capacity = 0U };
+            CgScope *saved_scope = cg_active_scope;
+            cg_active_scope = &frame;
             emit_indent(out, indent); fputs("{\n", out);
             if (stmt->as.for_stmt.initializer)
-                emit_stmt(c, out, stmt->as.for_stmt.initializer, indent + 1);
-            emit_indent(out, indent + 1); fputs("for (; ", out);
+                emit_stmt(c, out, stmt->as.for_stmt.initializer, indent + 1U);
+            CgLoopFrame loop = { .parent = cg_active_loop,
+                                 .scope_boundary = cg_active_scope };
+            CgLoopFrame *saved_loop = cg_active_loop;
+            cg_active_loop = &loop;
+            emit_indent(out, indent + 1U); fputs("for (; ", out);
             if (stmt->as.for_stmt.condition)
                 emit_expr_to_file(out, stmt->as.for_stmt.condition);
             fputs("; ", out);
             if (stmt->as.for_stmt.increment)
                 emit_expr_to_file(out, stmt->as.for_stmt.increment);
             fputs(")\n", out);
-            emit_stmt(c, out, stmt->as.for_stmt.body, indent + 1);
+            emit_stmt(c, out, stmt->as.for_stmt.body, indent + 1U);
+            cg_active_loop = saved_loop;
+            cg_emit_scope_drops(out, &frame, indent + 1U);
             emit_indent(out, indent); fputs("}\n", out);
+            cg_active_scope = saved_scope;
+            free(frame.owned_vars);
             break;
+        }
         case STMT_BREAK:
+            cg_emit_drops_until(out, cg_active_scope,
+                                cg_active_loop ? cg_active_loop->scope_boundary : NULL,
+                                indent);
             emit_indent(out, indent); fputs("break;\n", out); break;
         case STMT_CONTINUE:
+            cg_emit_drops_until(out, cg_active_scope,
+                                cg_active_loop ? cg_active_loop->scope_boundary : NULL,
+                                indent);
             emit_indent(out, indent); fputs("continue;\n", out); break;
         case STMT_RETURN:
-            emit_indent(out, indent); fputs("return", out);
-            if (stmt->as.return_value) { fputc(' ', out); emit_expr_to_file(out, stmt->as.return_value); }
-            fputs(";\n", out); break;
+            if (stmt->as.return_value) {
+                size_t return_id = stmt->as.return_value->codegen_id;
+                fprintf(out, "%s yl_return_value_%zu = ",
+                        c_base_type(c, stmt->as.return_value->type), return_id);
+                emit_expr_to_file(out, stmt->as.return_value);
+                fputs(";\n", out);
+                cg_emit_drops_until(out, cg_active_scope, NULL, indent);
+                emit_indent(out, indent);
+                fprintf(out, "return yl_return_value_%zu;\n", return_id);
+            } else {
+                cg_emit_drops_until(out, cg_active_scope, NULL, indent);
+                emit_indent(out, indent); fputs("return;\n", out);
+            }
+            break;
         case STMT_MATCH: {
             char match_name[96];
             (void)snprintf(match_name, sizeof(match_name), "yl_match_%zu_%zu",
@@ -1257,8 +1421,19 @@ bool generate_c(Compiler *c, const char *path)
         }
         fputs(") {\n", out);
         emit_temp_declarations_stmt(c, out, fn->body, 1U);
-        /* Keep the source function body's block scope, including parameter shadowing rules. */
+        /* Owned parameters transfer into the callee and are released after
+           all locals whose scope is nested within the function body. */
+        CgScope parameter_scope = { .parent = NULL, .owned_vars = NULL,
+                                    .owned_count = 0U, .owned_capacity = 0U };
+        cg_active_scope = &parameter_scope;
+        cg_active_loop = NULL;
+        for (size_t j = 0; j < fn->param_count; j++)
+            cg_scope_add_owned(fn->params[j]);
         emit_stmt(c, out, fn->body, 1U);
+        cg_emit_scope_drops(out, &parameter_scope, 1U);
+        cg_active_scope = NULL;
+        cg_active_loop = NULL;
+        free(parameter_scope.owned_vars);
         fputs("}\n\n", out);
     }
 

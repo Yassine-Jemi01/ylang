@@ -64,11 +64,20 @@ static size_t yl_saturating_add_size(size_t left, size_t right) {
     return SIZE_MAX - left < right ? SIZE_MAX : left + right;
 }
 
+static size_t yl_owned_string_allocations = 0U;
+static size_t yl_owned_string_frees = 0U;
+static size_t yl_owned_string_live_allocations = 0U;
+static size_t yl_owned_string_live_bytes = 0U;
+
 static void yl_cleanup(void) {
     if (yl_memory_stats_enabled()) {
         fprintf(stderr,
                 "YLang memory stats: tracked_allocations=%zu tracked_bytes=%zu\n",
                 yl_tracked_allocations, yl_tracked_bytes);
+        fprintf(stderr,
+                "YLang owned-string stats: allocations=%zu frees=%zu live_allocations=%zu live_bytes=%zu\n",
+                yl_owned_string_allocations, yl_owned_string_frees,
+                yl_owned_string_live_allocations, yl_owned_string_live_bytes);
     }
     while (yl_tracked) {
         YLTracked *next = yl_tracked->next;
@@ -89,6 +98,43 @@ static void *yl_track(void *ptr, size_t size) {
         yl_tracked_bytes = yl_saturating_add_size(yl_tracked_bytes, size);
     }
     return ptr;
+}
+
+/* Owned strings are independent of the legacy process-lifetime tracker. */
+static char *yl_owned_string_clone(const char *value) {
+    if (!value) yl_runtime_error("cannot own a null string");
+    size_t length = strlen(value);
+    if (length == SIZE_MAX) yl_runtime_error("owned string is too large");
+    char *copy = malloc(length + 1U);
+    if (!copy) yl_runtime_error("out of memory");
+    memcpy(copy, value, length + 1U);
+    if (yl_memory_stats_enabled()) {
+        yl_owned_string_allocations = yl_saturating_add_size(yl_owned_string_allocations, 1U);
+        yl_owned_string_live_allocations = yl_saturating_add_size(yl_owned_string_live_allocations, 1U);
+        yl_owned_string_live_bytes = yl_saturating_add_size(yl_owned_string_live_bytes, length + 1U);
+    }
+    return copy;
+}
+
+static char *yl_move_owned_string(char **owner) {
+    if (!owner) yl_runtime_error("invalid owned string move");
+    char *value = *owner;
+    if (!value) yl_runtime_error("attempted to move an empty owned string");
+    *owner = NULL;
+    return value;
+}
+
+static void yl_drop_owned_string(char **owner) {
+    if (!owner || !*owner) return;
+    if (yl_memory_stats_enabled()) {
+        size_t bytes = strlen(*owner) + 1U;
+        yl_owned_string_frees = yl_saturating_add_size(yl_owned_string_frees, 1U);
+        if (yl_owned_string_live_allocations > 0U) yl_owned_string_live_allocations--;
+        yl_owned_string_live_bytes = bytes <= yl_owned_string_live_bytes ?
+            yl_owned_string_live_bytes - bytes : 0U;
+    }
+    free(*owner);
+    *owner = NULL;
 }
 static const char *yl_boolstr(bool value) { return value ? "true" : "false"; }
 static const char *yl_format(const char *format, ...);

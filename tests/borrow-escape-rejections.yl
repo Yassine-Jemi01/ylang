@@ -1,0 +1,16 @@
+let string global_source = "global";
+let &string global_view = borrow(global_source);
+
+function consume(&string value) -> int {
+    return string.length(value);
+}
+
+function return_borrow() -> &string {
+    let string local = "local";
+    let &string view = borrow(local);
+    return view;
+}
+
+function main() -> int {
+    return 0;
+}

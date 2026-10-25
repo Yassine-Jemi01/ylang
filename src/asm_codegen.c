@@ -76,6 +76,11 @@ static bool asm_type_supported(AsmContext *ctx, YType type, Token token,
             return asm_reject(ctx, token, "void values");
         case TYPE_FLOAT:
             return asm_reject(ctx, token, "float values");
+        case TYPE_OWNED_STRING:
+            return asm_reject(ctx, token, "owned strings (use the C backend for ownership cleanup)");
+        case TYPE_BORROW_STRING:
+        case TYPE_MUT_BORROW_STRING:
+            return asm_reject(ctx, token, "borrowed strings (use the C backend for borrow checking)");
         case TYPE_ERROR:
             return asm_reject(ctx, token, "expressions with unresolved types");
     }
@@ -733,6 +738,10 @@ static bool emit_print_value(AsmContext *ctx, Expr *expr)
         case TYPE_STRING:
             fputs("    mov rdi, rax\n    call yl_print_cstr\n", ctx->out);
             break;
+        case TYPE_OWNED_STRING:
+        case TYPE_BORROW_STRING:
+        case TYPE_MUT_BORROW_STRING:
+            return asm_reject(ctx, expr->token, "owned or borrowed strings");
         case TYPE_FLOAT:
         case TYPE_VOID:
         case TYPE_ERROR:
