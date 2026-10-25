@@ -1493,8 +1493,14 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     !stmt->as.return_value->as.name.variable->is_global &&
                     !stmt->as.return_value->as.name.variable->borrowed_from) {
                     VarDecl *returned_owner = stmt->as.return_value->as.name.variable;
-                    returned_owner->moved = true;
-                    returned_owner->initialized = false;
+                    if (has_active_immutable_borrow(checker, returned_owner)) {
+                        diagnostic(c, stmt->as.return_value->token, "error", "E2115",
+                                   "Cannot return ownership while an immutable borrow is active.",
+                                   "End the borrow's lexical scope before returning the owner.");
+                    } else {
+                        returned_owner->moved = true;
+                        returned_owner->initialized = false;
+                    }
                 }
                 if (expected == TYPE_VOID) {
                     diagnostic(c, stmt->token, "error", "E2054",
