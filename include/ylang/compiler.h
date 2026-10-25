@@ -31,7 +31,9 @@ typedef enum {
     TYPE_CHAR,
     TYPE_STRING,
     TYPE_VOID,
-    TYPE_OWNED_STRING
+    TYPE_OWNED_STRING,
+    TYPE_BORROW_STRING,
+    TYPE_MUT_BORROW_STRING
 } YType;
 
 /* User-defined enum and struct types occupy disjoint identity ranges. */
@@ -107,6 +109,7 @@ struct VarDecl {
     bool is_const;
     bool initialized;
     bool moved; /* True after ownership is explicitly transferred with move(name). */
+    VarDecl *borrowed_from; /* Non-owning local reference; NULL for non-borrow bindings. */
     bool is_global;
     bool is_array;
     size_t array_length;
