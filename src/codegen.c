@@ -16,7 +16,8 @@
 /* --------------------------- C code generation -------------------------- */
 static bool c_string_like_type(YType type)
 {
-    return type == TYPE_STRING || type == TYPE_OWNED_STRING;
+    return type == TYPE_STRING || type == TYPE_OWNED_STRING ||
+           type == TYPE_BORROW_STRING || type == TYPE_MUT_BORROW_STRING;
 }
 
 static const char *c_base_type(Compiler *compiler, YType type)
@@ -35,6 +36,8 @@ static const char *c_base_type(Compiler *compiler, YType type)
         case TYPE_CHAR: return "char";
         case TYPE_STRING: return "const char *";
         case TYPE_OWNED_STRING: return "char *";
+        case TYPE_BORROW_STRING: return "const char *";
+        case TYPE_MUT_BORROW_STRING: return "char *";
         case TYPE_VOID: return "void";
         case TYPE_ERROR: return "int";
         default: return "int64_t";
@@ -79,7 +82,8 @@ static const char *format_for_type(YType type)
         case TYPE_FLOAT: return "%.17g";
         case TYPE_BOOL: return "%s";
         case TYPE_CHAR: return "%c";
-        case TYPE_STRING: case TYPE_OWNED_STRING: return "%s";
+        case TYPE_STRING: case TYPE_OWNED_STRING:
+        case TYPE_BORROW_STRING: case TYPE_MUT_BORROW_STRING: return "%s";
         case TYPE_VOID: case TYPE_ERROR: return "%s";
     }
     return "%s";
@@ -549,6 +553,8 @@ static void emit_fstring_expr(StringBuilder *sb, Expr *expr)
                     break;
                 case TYPE_STRING:
                 case TYPE_OWNED_STRING:
+                case TYPE_BORROW_STRING:
+                case TYPE_MUT_BORROW_STRING:
                     sb_append(&args, "(const char *)("); emit_expr(&args, embedded); sb_append(&args, ")");
                     break;
                 case TYPE_VOID: case TYPE_ERROR: break;
@@ -801,6 +807,15 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             break;
         }
         case EXPR_CALL: {
+            if (!expr->as.call.function &&
+                (strcmp(expr->as.call.name, "borrow") == 0 ||
+                 strcmp(expr->as.call.name, "borrow_mut") == 0) &&
+                expr->as.call.count == 1U) {
+                /* A borrow is a non-owning pointer view; lifetime safety is
+                   enforced by semantic analysis, so there is no runtime call. */
+                emit_expr(sb, expr->as.call.args[0]);
+                break;
+            }
             if (strcmp(expr->as.call.name, "string.own") == 0 &&
                 expr->as.call.count == 1U) {
                 sb_append(sb, "yl_owned_string_clone(");
@@ -983,10 +998,15 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
 static void emit_var_type(Compiler *compiler, FILE *out, VarDecl *var, bool global)
 {
     if (global) fputs("static ", out);
-    if (var->is_const && var->type != TYPE_STRING &&
-        var->type != TYPE_OWNED_STRING) fputs("const ", out);
+    if (var->is_const &&
+        var->type != TYPE_STRING &&
+        var->type != TYPE_OWNED_STRING &&
+        var->type != TYPE_BORROW_STRING &&
+        var->type != TYPE_MUT_BORROW_STRING) fputs("const ", out);
     fputs(c_base_type(compiler, var->type), out);
-    if (var->is_const && var->type == TYPE_STRING) fputs(" const", out);
+    if (var->is_const &&
+        (var->type == TYPE_STRING || var->type == TYPE_BORROW_STRING ||
+         var->type == TYPE_MUT_BORROW_STRING)) fputs(" const", out);
 }
 
 static void emit_expr_to_file(FILE *out, Expr *expr)
@@ -1048,6 +1068,8 @@ static void emit_print_value(FILE *out, Expr *expr, unsigned indent)
     switch (expr->type) {
         case TYPE_STRING:
         case TYPE_OWNED_STRING:
+        case TYPE_BORROW_STRING:
+        case TYPE_MUT_BORROW_STRING:
             fputs("fputs((const char *)(", out); emit_expr_to_file(out, expr);
             fputs("), stdout);\n", out); break;
         case TYPE_BOOL:
