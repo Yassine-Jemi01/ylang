@@ -983,7 +983,8 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
 static void emit_var_type(Compiler *compiler, FILE *out, VarDecl *var, bool global)
 {
     if (global) fputs("static ", out);
-    if (var->is_const && var->type != TYPE_STRING) fputs("const ", out);
+    if (var->is_const && var->type != TYPE_STRING &&
+        var->type != TYPE_OWNED_STRING) fputs("const ", out);
     fputs(c_base_type(compiler, var->type), out);
     if (var->is_const && var->type == TYPE_STRING) fputs(" const", out);
 }
