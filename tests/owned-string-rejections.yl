@@ -1,0 +1,17 @@
+let owned string global_value = string.own("global");
+
+function takes_owned(owned string value) -> int {
+    return 0;
+}
+
+function returns_owned() -> owned string {
+    let owned string value = string.own("local");
+    return move(value);
+}
+
+function main() -> int {
+    let owned string value = string.own("local");
+    let owned string copied = value;
+    print(copied);
+    return 0;
+}
