@@ -1396,6 +1396,13 @@ if ./build/ylang check tests/borrow-call-reject.yl > build/borrow-call-reject.ou
 fi
 grep -q 'E2118' build/borrow-call-reject.out
 
+# Returning an owner is rejected while a lexical immutable borrow is still active.
+if ./build/ylang check tests/borrow-return-owner-conflict.yl > build/borrow-return-owner-conflict.out 2>&1; then
+    echo "FAIL: YLang returned an owner with an active immutable borrow" >&2
+    exit 1
+fi
+grep -q 'E2115' build/borrow-return-owner-conflict.out
+
 # The borrow primitive name remains available to user-defined functions.
 ./build/ylang build tests/borrow-name-collision.yl -o build/test-borrow-name-collision >/dev/null
 test "$(./build/test-borrow-name-collision)" = "42"
