@@ -227,10 +227,20 @@ static void assign_stmt_codegen_ids(Stmt *stmt, size_t *next_id)
 {
     if (!stmt) return;
     switch (stmt->kind) {
-        case STMT_BLOCK:
+        case STMT_BLOCK: {
+            CgScope frame = { .parent = cg_active_scope, .owned_vars = NULL,
+                              .owned_count = 0U, .owned_capacity = 0U };
+            CgScope *saved_scope = cg_active_scope;
+            cg_active_scope = &frame;
+            emit_indent(out, indent); fputs("{\n", out);
             for (size_t i = 0; i < stmt->as.block.count; i++)
-                assign_stmt_codegen_ids(stmt->as.block.items[i], next_id);
+                emit_stmt(c, out, stmt->as.block.items[i], indent + 1U);
+            cg_emit_scope_drops(out, &frame, indent + 1U);
+            emit_indent(out, indent); fputs("}\n", out);
+            cg_active_scope = saved_scope;
+            free(frame.owned_vars);
             break;
+        }
         case STMT_VAR:
             assign_expr_codegen_ids(stmt->as.variable->initializer, next_id);
             break;
@@ -243,178 +253,79 @@ static void assign_stmt_codegen_ids(Stmt *stmt, size_t *next_id)
             assign_stmt_codegen_ids(stmt->as.if_stmt.then_branch, next_id);
             assign_stmt_codegen_ids(stmt->as.if_stmt.else_branch, next_id);
             break;
-        case STMT_LOOP:
-            assign_stmt_codegen_ids(stmt->as.loop_body, next_id);
+        case STMT_LOOP: {
+            CgLoopFrame loop = { .parent = cg_active_loop,
+                                 .scope_boundary = cg_active_scope };
+            CgLoopFrame *saved_loop = cg_active_loop;
+            cg_active_loop = &loop;
+            emit_indent(out, indent); fputs("for (;;) \n", out);
+            emit_stmt(c, out, stmt->as.loop_body, indent);
+            cg_active_loop = saved_loop;
             break;
-        case STMT_WHILE:
-            assign_expr_codegen_ids(stmt->as.while_stmt.condition, next_id);
-            assign_stmt_codegen_ids(stmt->as.while_stmt.body, next_id);
+        }
+        case STMT_WHILE: {
+            CgLoopFrame loop = { .parent = cg_active_loop,
+                                 .scope_boundary = cg_active_scope };
+            CgLoopFrame *saved_loop = cg_active_loop;
+            cg_active_loop = &loop;
+            emit_indent(out, indent); fputs("while (", out);
+            emit_expr_to_file(out, stmt->as.while_stmt.condition);
+            fputs(")\n", out);
+            emit_stmt(c, out, stmt->as.while_stmt.body, indent);
+            cg_active_loop = saved_loop;
             break;
-        case STMT_FOR:
-            assign_stmt_codegen_ids(stmt->as.for_stmt.initializer, next_id);
-            assign_expr_codegen_ids(stmt->as.for_stmt.condition, next_id);
-            assign_expr_codegen_ids(stmt->as.for_stmt.increment, next_id);
-            assign_stmt_codegen_ids(stmt->as.for_stmt.body, next_id);
+        }
+        case STMT_FOR: {
+            CgScope frame = { .parent = cg_active_scope, .owned_vars = NULL,
+                              .owned_count = 0U, .owned_capacity = 0U };
+            CgScope *saved_scope = cg_active_scope;
+            cg_active_scope = &frame;
+            emit_indent(out, indent); fputs("{\n", out);
+            if (stmt->as.for_stmt.initializer)
+                emit_stmt(c, out, stmt->as.for_stmt.initializer, indent + 1U);
+            CgLoopFrame loop = { .parent = cg_active_loop,
+                                 .scope_boundary = cg_active_scope };
+            CgLoopFrame *saved_loop = cg_active_loop;
+            cg_active_loop = &loop;
+            emit_indent(out, indent + 1U); fputs("for (; ", out);
+            if (stmt->as.for_stmt.condition)
+                emit_expr_to_file(out, stmt->as.for_stmt.condition);
+            fputs("; ", out);
+            if (stmt->as.for_stmt.increment)
+                emit_expr_to_file(out, stmt->as.for_stmt.increment);
+            fputs(")\n", out);
+            emit_stmt(c, out, stmt->as.for_stmt.body, indent + 1U);
+            cg_active_loop = saved_loop;
+            cg_emit_scope_drops(out, &frame, indent + 1U);
+            emit_indent(out, indent); fputs("}\n", out);
+            cg_active_scope = saved_scope;
+            free(frame.owned_vars);
             break;
-        case STMT_RETURN:
-            assign_expr_codegen_ids(stmt->as.return_value, next_id);
-            break;
-        case STMT_MATCH:
-            assign_expr_codegen_ids(stmt->as.match_stmt.value, next_id);
-            for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++)
-                assign_stmt_codegen_ids(stmt->as.match_stmt.arms[i]->body, next_id);
-            break;
-        case STMT_EXPR:
-            assign_expr_codegen_ids(stmt->as.expression, next_id);
-            break;
+        }
         case STMT_BREAK:
+            cg_emit_drops_until(out, cg_active_scope,
+                                cg_active_loop ? cg_active_loop->scope_boundary : NULL,
+                                indent);
+            emit_indent(out, indent); fputs("break;\n", out); break;
         case STMT_CONTINUE:
-            break;
-    }
-}
-
-static void emit_temp_name(StringBuilder *sb, Expr *owner, const char *suffix)
-{
-    sb_appendf(sb, "yl_codegen_tmp_%zu_%s", owner->codegen_id, suffix);
-}
-
-static void emit_temp_declaration(FILE *out, Compiler *compiler, Expr *owner,
-                                  const char *suffix, YType type,
-                                  bool pointer, unsigned indent)
-{
-    if (type == TYPE_ERROR || type == TYPE_VOID) return;
-    for (unsigned i = 0; i < indent; i++) fputs("    ", out);
-    fprintf(out, "%s%s yl_codegen_tmp_%zu_%s;\n",
-            c_base_type(compiler, type), pointer ? " *" : "",
-            owner->codegen_id, suffix);
-}
-
-static void emit_temp_declarations_expr(Compiler *compiler, FILE *out,
-                                        Expr *expr, unsigned indent)
-{
-    if (!expr) return;
-    if (binary_needs_sequence(expr)) {
-        emit_temp_declaration(out, compiler, expr, "left",
-                              expr->as.binary.left->type, false, indent);
-        emit_temp_declaration(out, compiler, expr, "right",
-                              expr->as.binary.right->type, false, indent);
-    }
-    if (call_needs_sequence(expr)) {
-        for (size_t i = 0; i < expr->as.call.count; i++) {
-            if (call_argument_is_array(expr, i)) continue;
-            char suffix[32];
-            (void)snprintf(suffix, sizeof(suffix), "arg%zu", i);
-            emit_temp_declaration(out, compiler, expr, suffix,
-                                  expr->as.call.args[i]->type, false, indent);
-        }
-    }
-    if (struct_init_needs_sequence(expr)) {
-        for (size_t i = 0; i < expr->as.struct_init.count; i++) {
-            char suffix[32];
-            (void)snprintf(suffix, sizeof(suffix), "field%zu", i);
-            emit_temp_declaration(out, compiler, expr, suffix,
-                                  expr->as.struct_init.args[i]->type, false, indent);
-        }
-    }
-    if (array_init_needs_sequence(expr)) {
-        for (size_t i = 0; i < expr->as.array.count; i++) {
-            char suffix[32];
-            (void)snprintf(suffix, sizeof(suffix), "element%zu", i);
-            emit_temp_declaration(out, compiler, expr, suffix,
-                                  expr->as.array.items[i]->type, false, indent);
-        }
-    }
-    if (assignment_needs_sequence(expr)) {
-        emit_temp_declaration(out, compiler, expr, "target",
-                              expr->as.assign.target->type, true, indent);
-        emit_temp_declaration(out, compiler, expr, "value",
-                              expr->as.assign.right->type, false, indent);
-    }
-
-    switch (expr->kind) {
-        case EXPR_UNARY:
-            emit_temp_declarations_expr(compiler, out, expr->as.unary.right, indent);
-            break;
-        case EXPR_BINARY:
-            emit_temp_declarations_expr(compiler, out, expr->as.binary.left, indent);
-            emit_temp_declarations_expr(compiler, out, expr->as.binary.right, indent);
-            break;
-        case EXPR_ASSIGN:
-            emit_temp_declarations_expr(compiler, out, expr->as.assign.target, indent);
-            emit_temp_declarations_expr(compiler, out, expr->as.assign.right, indent);
-            break;
-        case EXPR_CALL:
-            for (size_t i = 0; i < expr->as.call.count; i++)
-                emit_temp_declarations_expr(compiler, out, expr->as.call.args[i], indent);
-            break;
-        case EXPR_STRUCT_INIT:
-            for (size_t i = 0; i < expr->as.struct_init.count; i++)
-                emit_temp_declarations_expr(compiler, out, expr->as.struct_init.args[i], indent);
-            break;
-        case EXPR_MEMBER:
-            emit_temp_declarations_expr(compiler, out, expr->as.member.target, indent);
-            break;
-        case EXPR_ARRAY:
-            for (size_t i = 0; i < expr->as.array.count; i++)
-                emit_temp_declarations_expr(compiler, out, expr->as.array.items[i], indent);
-            break;
-        case EXPR_INDEX:
-            emit_temp_declarations_expr(compiler, out, expr->as.index.target, indent);
-            emit_temp_declarations_expr(compiler, out, expr->as.index.index, indent);
-            break;
-        case EXPR_FSTRING:
-            for (size_t i = 0; i < expr->as.fstring.count; i++)
-                emit_temp_declarations_expr(compiler, out,
-                    expr->as.fstring.parts[i].expression, indent);
-            break;
-        case EXPR_ERROR:
-        case EXPR_ENUM_VALUE:
-        case EXPR_INT:
-        case EXPR_FLOAT:
-        case EXPR_BOOL:
-        case EXPR_CHAR:
-        case EXPR_STRING:
-        case EXPR_NAME:
-            break;
-    }
-}
-
-static void emit_temp_declarations_stmt(Compiler *compiler, FILE *out,
-                                        Stmt *stmt, unsigned indent)
-{
-    if (!stmt) return;
-    switch (stmt->kind) {
-        case STMT_BLOCK:
-            for (size_t i = 0; i < stmt->as.block.count; i++)
-                emit_temp_declarations_stmt(compiler, out, stmt->as.block.items[i], indent);
-            break;
-        case STMT_VAR:
-            emit_temp_declarations_expr(compiler, out, stmt->as.variable->initializer, indent);
-            break;
-        case STMT_PRINT:
-            for (size_t i = 0; i < stmt->as.print.count; i++)
-                emit_temp_declarations_expr(compiler, out, stmt->as.print.args[i], indent);
-            break;
-        case STMT_IF:
-            emit_temp_declarations_expr(compiler, out, stmt->as.if_stmt.condition, indent);
-            emit_temp_declarations_stmt(compiler, out, stmt->as.if_stmt.then_branch, indent);
-            emit_temp_declarations_stmt(compiler, out, stmt->as.if_stmt.else_branch, indent);
-            break;
-        case STMT_LOOP:
-            emit_temp_declarations_stmt(compiler, out, stmt->as.loop_body, indent);
-            break;
-        case STMT_WHILE:
-            emit_temp_declarations_expr(compiler, out, stmt->as.while_stmt.condition, indent);
-            emit_temp_declarations_stmt(compiler, out, stmt->as.while_stmt.body, indent);
-            break;
-        case STMT_FOR:
-            emit_temp_declarations_stmt(compiler, out, stmt->as.for_stmt.initializer, indent);
-            emit_temp_declarations_expr(compiler, out, stmt->as.for_stmt.condition, indent);
-            emit_temp_declarations_expr(compiler, out, stmt->as.for_stmt.increment, indent);
-            emit_temp_declarations_stmt(compiler, out, stmt->as.for_stmt.body, indent);
-            break;
+            cg_emit_drops_until(out, cg_active_scope,
+                                cg_active_loop ? cg_active_loop->scope_boundary : NULL,
+                                indent);
+            emit_indent(out, indent); fputs("continue;\n", out); break;
         case STMT_RETURN:
-            emit_temp_declarations_expr(compiler, out, stmt->as.return_value, indent);
+            if (stmt->as.return_value) {
+                size_t return_id = stmt->as.return_value->codegen_id;
+                fprintf(out, "%s yl_return_value_%zu = ",
+                        c_base_type(c, stmt->as.return_value->type), return_id);
+                emit_expr_to_file(out, stmt->as.return_value);
+                fputs(";\n", out);
+                cg_emit_drops_until(out, cg_active_scope, NULL, indent);
+                emit_indent(out, indent);
+                fprintf(out, "return yl_return_value_%zu;\n", return_id);
+            } else {
+                cg_emit_drops_until(out, cg_active_scope, NULL, indent);
+                emit_indent(out, indent); fputs("return;\n", out);
+            }
             break;
         case STMT_MATCH:
             emit_temp_declarations_expr(compiler, out, stmt->as.match_stmt.value, indent);
@@ -763,6 +674,12 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     emit_temp_name(sb, expr, "target"); sb_append(sb, ", ");
                     emit_temp_name(sb, expr, "value"); sb_append(sb, ")");
                 } else {
+                    if (expr->as.assign.variable &&
+                        expr->as.assign.variable->type == TYPE_OWNED_STRING) {
+                        sb_append(sb, "yl_drop_owned_string(");
+                        emit_temp_name(sb, expr, "target");
+                        sb_append(sb, "), ");
+                    }
                     sb_append(sb, "(*");
                     emit_temp_name(sb, expr, "target"); sb_append(sb, " = ");
                     emit_temp_name(sb, expr, "value"); sb_append(sb, ")");
@@ -1076,6 +993,60 @@ static void emit_fstring_print(FILE *out, Expr *expr, unsigned indent)
     }
 }
 
+typedef struct CgScope {
+    struct CgScope *parent;
+    VarDecl **owned_vars;
+    size_t owned_count;
+    size_t owned_capacity;
+} CgScope;
+
+typedef struct CgLoopFrame {
+    struct CgLoopFrame *parent;
+    CgScope *scope_boundary;
+} CgLoopFrame;
+
+/* Code generation is single-threaded; reset these stacks for every function. */
+static CgScope *cg_active_scope = NULL;
+static CgLoopFrame *cg_active_loop = NULL;
+
+static void cg_scope_add_owned(VarDecl *var)
+{
+    CgScope *scope = cg_active_scope;
+    if (!scope || !var || var->type != TYPE_OWNED_STRING) return;
+    if (scope->owned_count == scope->owned_capacity) {
+        size_t next = scope->owned_capacity ? scope->owned_capacity * 2U : 4U;
+        if (next < scope->owned_capacity ||
+            next > SIZE_MAX / sizeof(*scope->owned_vars)) {
+            fputs("ylang: codegen owned-scope capacity overflow\n", stderr);
+            exit(70);
+        }
+        VarDecl **grown = realloc(scope->owned_vars, next * sizeof(*grown));
+        if (!grown) {
+            fputs("ylang: codegen out of memory tracking owned scope\n", stderr);
+            exit(70);
+        }
+        scope->owned_vars = grown;
+        scope->owned_capacity = next;
+    }
+    scope->owned_vars[scope->owned_count++] = var;
+}
+
+static void cg_emit_scope_drops(FILE *out, CgScope *scope, unsigned indent)
+{
+    for (size_t i = scope->owned_count; i > 0U; i--) {
+        emit_indent(out, indent);
+        fprintf(out, "yl_drop_owned_string(&%s);\n",
+                scope->owned_vars[i - 1U]->c_name);
+    }
+}
+
+static void cg_emit_drops_until(FILE *out, CgScope *scope,
+                                CgScope *exclusive_stop, unsigned indent)
+{
+    for (CgScope *at = scope; at && at != exclusive_stop; at = at->parent)
+        cg_emit_scope_drops(out, at, indent);
+}
+
 static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
 {
     if (!stmt) return;
@@ -1105,6 +1076,7 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
                 fputs(" = ", out); emit_expr_to_file(out, var->initializer);
             }
             fputs(";\n", out);
+            cg_scope_add_owned(var);
             break;
         }
         case STMT_PRINT:
@@ -1284,8 +1256,12 @@ bool generate_c(Compiler *c, const char *path)
         }
         fputs(") {\n", out);
         emit_temp_declarations_stmt(c, out, fn->body, 1U);
-        /* Keep the source function body's block scope, including parameter shadowing rules. */
+        /* Ownership cleanup is tracked per function. */
+        cg_active_scope = NULL;
+        cg_active_loop = NULL;
         emit_stmt(c, out, fn->body, 1U);
+        cg_active_scope = NULL;
+        cg_active_loop = NULL;
         fputs("}\n\n", out);
     }
 
