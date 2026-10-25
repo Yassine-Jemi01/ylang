@@ -305,7 +305,7 @@ Explicit conversions include `to_float(int)`, range-checked `to_int(float)`, and
 
 ## Experimental owned strings
 
-The compiler branch contains a separate `owned string` type with explicit cloning (`string.own(value)`), runtime move transfer (`move(name)`), deterministic cleanup, and local `&string` / `&mut string` borrow checks. This is experimental and **does not** make legacy `string` values move-only or provide a complete Rust-like borrow checker. Globals, struct fields, borrowed/owned function parameters, and borrowed/owned return values are rejected until their lifetime rules are implemented.
+The compiler branch contains an experimental `owned string` type with explicit cloning (`string.own(value)`), runtime moves (`move(name)`), deterministic cleanup, consuming `owned string` parameters and owned return values, plus local `&string` / `&mut string` borrow checks. This does not make legacy `string` values move-only or provide a complete Rust-like borrow checker. Owned globals/struct fields and borrowed function parameters/returns remain unsupported.
 
 See the [owned-string guide](docs/OWNED-STRINGS.md) and [memory-model RFC](docs/MEMORY-MODEL.md).
 
