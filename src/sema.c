@@ -1317,6 +1317,13 @@ static void check_stmt(Checker *checker, Stmt *stmt)
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
             if (var->is_array &&
+                (var->type == TYPE_OWNED_STRING || is_borrow_type(var->type))) {
+                diagnostic(c, var->token, "error",
+                           var->type == TYPE_OWNED_STRING ? "E2118" : "E2140",
+                           "Arrays of owned or borrowed string values are not supported yet.",
+                           "Keep owned strings and borrows in scalar local bindings until array lifetimes are implemented.");
+            }
+            if (var->is_array &&
                 (!var->initializer || var->initializer->kind != EXPR_ARRAY)) {
                 diagnostic(c, var->token, "error", "E2038",
                            "Array declarations require an array literal initializer.",
@@ -1625,7 +1632,24 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                                "Missing return value.", suggestion);
                 }
             } else {
-                YType actual = check_expr(checker, stmt->as.return_value);
+                Expr *return_expr = stmt->as.return_value;
+                bool previous_owned_context = checker->allow_owned_value;
+                bool previous_move_context = checker->allow_owned_move;
+                checker->allow_owned_value = expected == TYPE_OWNED_STRING;
+                checker->allow_owned_move = expected == TYPE_OWNED_STRING &&
+                    return_expr->kind == EXPR_CALL &&
+                    strcmp(return_expr->as.call.name, "move") == 0 &&
+                    !resolve_function(checker, "move") &&
+                    return_expr->as.call.count == 1U;
+                YType actual = check_expr(checker, return_expr);
+                checker->allow_owned_value = previous_owned_context;
+                checker->allow_owned_move = previous_move_context;
+                if (expected == TYPE_OWNED_STRING && actual != TYPE_ERROR &&
+                    !owned_string_initializer_shape(checker, return_expr)) {
+                    diagnostic(c, return_expr->token, "error", "E2124",
+                               "Returning an owned string must transfer or create ownership.",
+                               "Use return move(local_owner);, return string.own(value);, or return a function's owned-string result.");
+                }
                 if (expected == TYPE_VOID) {
                     diagnostic(c, stmt->token, "error", "E2054",
                                "A void function cannot return a value.",
@@ -1786,11 +1810,7 @@ bool check_program(Compiler *c)
         checker.module = function->module;
         checker.function = function;
         checker.loop_depth = 0;
-        if (function->return_type == TYPE_OWNED_STRING) {
-            diagnostic(c, function->token, "error", "E2121",
-                       "Owned string return values are not supported yet.",
-                       "Return a regular string, or keep ownership local until owned return transfer is implemented.");
-        } else if (is_borrow_type(function->return_type)) {
+        if (is_borrow_type(function->return_type)) {
             diagnostic(c, function->token, "error", "E2140",
                        "Borrow return values are not supported yet.",
                        "Return an owned value or a regular string; borrowed return lifetimes are not implemented.");
@@ -1800,11 +1820,7 @@ bool check_program(Compiler *c)
         checker.scope = scope_new(c, global_scope);
         for (size_t j = 0; j < function->param_count; j++) {
             function->params[j]->initialized = true;
-            if (function->params[j]->type == TYPE_OWNED_STRING) {
-                diagnostic(c, function->params[j]->token, "error", "E2121",
-                           "Owned string parameters are not supported yet.",
-                           "Accept a regular string parameter or construct an owned local string inside the function.");
-            } else if (is_borrow_type(function->params[j]->type)) {
+            if (is_borrow_type(function->params[j]->type)) {
                 diagnostic(c, function->params[j]->token, "error", "E2140",
                            "Borrow parameters are not supported yet.",
                            "Borrowed function parameters need explicit signature and lifetime rules.");
