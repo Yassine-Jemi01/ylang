@@ -1,6 +1,6 @@
 # YLang Memory Model — RFC
 
-Status: partial implementation on `feature/ownership-borrow-checker`. The compiler supports explicit `move(name)`, a limited lexical immutable `borrow(name)` view, and generated cleanup for owned local string bindings and local string-array elements. It is not yet a complete Rust-like memory-safety guarantee: mutable borrows, precise non-lexical lifetimes, signature-level borrow annotations, recursive struct destruction, and automatic cleanup for every possible temporary/string-producing expression remain out of scope.
+Status: partial implementation on `feature/ownership-borrow-checker`. The compiler supports explicit `move(name)`, limited lexical immutable `borrow(name)` and exclusive string-slot `borrow_mut(name)` views, and generated cleanup for owned local string bindings and local string-array elements. It is not yet a complete Rust-like memory-safety guarantee: general `&T`/`&mut T` types, precise non-lexical lifetimes, signature-level borrow annotations, recursive struct destruction, and automatic cleanup for every possible temporary/string-producing expression remain out of scope.
 
 ## Goals
 
@@ -26,10 +26,10 @@ The compiler must classify values rather than relying on the C type alone:
 1. **Scalar values**: `int`, `float`, `bool`, `char`, and unit-enum values. These are copied by value.
 2. **Owned values**: currently, local string bindings and local string-array elements can own tracked allocations. Ordinary string assignment/binding clones an owner to keep compatibility; explicit `move(name)` transfers its pointer and makes the source unavailable. Structs with string fields are not recursively destroyed yet.
 3. **Shared immutable borrows**: `&T`. Multiple immutable borrows may coexist while the owner remains alive.
-4. **Exclusive mutable borrows**: `&mut T`. Only one exclusive mutable borrow may be active, and no immutable borrow may overlap it.
+4. **Exclusive mutable borrows**: `borrow_mut(name)` supports one exclusive mutable view of an owned local string slot. It prevents direct owner access while live and disallows overlapping borrows. General `&mut T` types, field/array borrows, and reborrowing remain unimplemented.
 5. **Non-owning views**: any future slice/string-view type must carry a checked lifetime and may never outlive its backing owner.
 
-The proposed `&T` and `&mut T` surface syntax remains a design direction, not currently compilable syntax. The implemented `borrow(name)` operation only creates a lexical immutable string view.
+The proposed `&T` and `&mut T` type syntax remains a design direction, not currently compilable syntax. The implemented `borrow(name)` and `borrow_mut(name)` operations only create lexical views of string bindings.
 
 ## Lifetime and cleanup rules
 
@@ -60,6 +60,23 @@ let string next_owner = move(owner);
 The view is valid only while its owner is in an enclosing lexical scope. An owner cannot be moved or reassigned while a view is active. Views may be read and copied into another local view; they cannot be reassigned, returned from a function, or passed to a user-defined function because function signatures do not yet express borrowing. The current implementation reports `E2115` for move conflicts, `E2116` for assignment to a view, `E2117` for attempted escape, `E2118` for owner mutation/call-boundary conflicts, and `E2119` for unsupported borrow forms.
 
 This initial view type is immutable and only supports strings. Reborrowing, mutable borrows, field/array views, and non-lexical lifetimes are not implemented. A borrowed view is not separately registered for cleanup and never frees its owner.
+
+### Implemented: limited exclusive mutable string borrows
+
+An owned local string can be mutably borrowed for a lexical scope:
+
+```yl
+let string owner = string.concat("hello", " world");
+{
+    let string view = borrow_mut(owner);
+    view = string.concat(view, "!");
+}
+print(owner);
+```
+
+The mutable view aliases the owner's string-pointer slot, so assigning through the view replaces the owner's value. The owner cannot be read directly while the view is live, and mutable borrows cannot overlap immutable borrows or another active mutable borrow. Error `E2121` identifies direct owner access during a mutable borrow; `E2122` identifies unsupported/conflicting mutable-borrow forms.
+
+This is deliberately narrower than Rust's `&mut T`: it only supports replacing a named local string slot or owned string parameter. It does not provide in-place character mutation, mutable borrows of arrays/fields/globals, reborrowing, or function signatures that accept borrowed views. The view itself is non-owning; the owner slot remains registered for scope cleanup.
 
 ### Implemented: explicit local string moves (initial slice)
 
