@@ -1360,6 +1360,22 @@ grep -q 'E2113' build/move-rejections.out
 ./build/ylang build tests/move-name-collision.yl -o build/test-move-name-collision >/dev/null
 test "$(./build/test-move-name-collision)" = "42"
 
+# Owned strings clone independently, move without aliasing, and drop at scope exits.
+./build/ylang build tests/owned-string.yl -o build/test-owned-string >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string > build/owned-string.stdout 2> build/owned-string.stderr
+printf 'YLang\nYLang owned\nloop\n' > build/owned-string.expected
+diff -u build/owned-string.expected build/owned-string.stdout
+grep -Eq 'YLang owned-string stats: allocations=4 frees=4 live_allocations=0 live_bytes=0' build/owned-string.stderr
+
+# Owned strings cannot be implicitly copied or escape into unsupported lifetimes.
+if ./build/ylang check tests/owned-string-rejections.yl > build/owned-string-rejections.out 2>&1; then
+    echo "FAIL: YLang accepted an invalid owned-string program" >&2
+    exit 1
+fi
+grep -q 'E2118' build/owned-string-rejections.out
+grep -q 'E2120' build/owned-string-rejections.out
+grep -q 'E2121' build/owned-string-rejections.out
+
 # Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
 ./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-memory-stats > build/memory-stats.stdout 2> build/memory-stats.stderr
