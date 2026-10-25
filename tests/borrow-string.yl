@@ -1,0 +1,17 @@
+function main() -> int {
+    let owned string owner = string.own("YLang");
+    {
+        let &string first = borrow(owner);
+        let &string second = borrow(owner);
+        print(first, string.length(second));
+    }
+
+    {
+        let &mut string exclusive = borrow_mut(owner);
+        print(exclusive);
+    }
+
+    let owned string destination = move(owner);
+    print(destination);
+    return 0;
+}
