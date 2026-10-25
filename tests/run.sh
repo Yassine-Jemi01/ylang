@@ -1394,6 +1394,13 @@ grep -q 'E2118' build/borrow-call-reject.out
 ./build/ylang build tests/borrow-name-collision.yl -o build/test-borrow-name-collision >/dev/null
 test "$(./build/test-borrow-name-collision)" = "42"
 
+# Owned local strings are released at lexical scope exit, including loop iterations.
+./build/ylang build tests/scope-string-cleanup.yl -o build/test-scope-string-cleanup >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-scope-string-cleanup > build/scope-string-cleanup.stdout 2> build/scope-string-cleanup.stderr
+printf 'YLang\nYLang\n' > build/scope-string-cleanup.expected
+diff -u build/scope-string-cleanup.expected build/scope-string-cleanup.stdout
+grep -Eq 'released_allocations=[1-9][0-9]* released_bytes=[1-9][0-9]* live_allocations=0 live_bytes=0' build/scope-string-cleanup.stderr
+
 # Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
 ./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-memory-stats > build/memory-stats.stdout 2> build/memory-stats.stderr
