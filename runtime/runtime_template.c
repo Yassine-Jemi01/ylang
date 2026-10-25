@@ -50,6 +50,8 @@ typedef struct YLTracked {
 static YLTracked *yl_tracked = NULL;
 static size_t yl_tracked_allocations = 0U;
 static size_t yl_tracked_bytes = 0U;
+static size_t yl_released_allocations = 0U;
+static size_t yl_released_bytes = 0U;
 static int yl_memory_stats_state = -1;
 
 typedef struct YLSlot {
@@ -72,6 +74,12 @@ static void yl_release(const char *ptr) {
         YLTracked *node = *link;
         if (node->ptr == (const void *)ptr) {
             *link = node->next;
+            yl_released_allocations =
+                SIZE_MAX - yl_released_allocations < 1U ?
+                SIZE_MAX : yl_released_allocations + 1U;
+            yl_released_bytes =
+                SIZE_MAX - yl_released_bytes < node->size ?
+                SIZE_MAX : yl_released_bytes + node->size;
             free(node->ptr);
             free(node);
             return;
@@ -137,9 +145,17 @@ static size_t yl_saturating_add_size(size_t left, size_t right) {
 
 static void yl_cleanup(void) {
     if (yl_memory_stats_enabled()) {
+        size_t live_allocations = 0U;
+        size_t live_bytes = 0U;
+        for (YLTracked *node = yl_tracked; node; node = node->next) {
+            live_allocations = yl_saturating_add_size(live_allocations, 1U);
+            live_bytes = yl_saturating_add_size(live_bytes, node->size);
+        }
         fprintf(stderr,
-                "YLang memory stats: tracked_allocations=%zu tracked_bytes=%zu\n",
-                yl_tracked_allocations, yl_tracked_bytes);
+                "YLang memory stats: tracked_allocations=%zu tracked_bytes=%zu released_allocations=%zu released_bytes=%zu live_allocations=%zu live_bytes=%zu\\n",
+                yl_tracked_allocations, yl_tracked_bytes,
+                yl_released_allocations, yl_released_bytes,
+                live_allocations, live_bytes);
     }
     while (yl_tracked) {
         YLTracked *next = yl_tracked->next;
