@@ -203,8 +203,25 @@ static StructField *find_struct_field(StructDecl *structure, const char *name)
 
 static YType parse_type(Parser *p)
 {
+    if (match(p, TOKEN_AMPERSAND)) {
+        bool mutable_borrow = false;
+        if (p->current.type == TOKEN_IDENTIFIER && token_is(&p->current, "mut")) {
+            advance_parser(p);
+            mutable_borrow = true;
+        }
+        Token borrowed_type = consume(p, TOKEN_IDENTIFIER,
+            "Expected 'string' after '&' or '&mut'.",
+            "Use '&string' for a shared borrow or '&mut string' for an exclusive borrow.");
+        if (token_is(&borrowed_type, "string")) {
+            return mutable_borrow ? TYPE_MUT_BORROW_STRING : TYPE_BORROW_STRING;
+        }
+        diagnostic(p->compiler, borrowed_type, "error", "E2123",
+                   "Only string borrows are supported in this milestone.",
+                   "Use '&string' or '&mut string'.");
+        return TYPE_ERROR;
+    }
     Token token = consume(p, TOKEN_IDENTIFIER,
-        "Expected a type name such as 'int', 'float', 'bool', 'char', 'string', or 'void'.",
+        "Expected a type name such as 'int', 'float', 'bool', 'char', 'string', 'owned string', or 'void'.",
         "Write the type before the variable or parameter name.");
     if (token_is(&token, "int")) return TYPE_INT;
     if (token_is(&token, "float")) return TYPE_FLOAT;
@@ -243,6 +260,8 @@ const char *type_name(YType type)
         case TYPE_STRING: return "string";
         case TYPE_VOID: return "void";
         case TYPE_OWNED_STRING: return "owned string";
+        case TYPE_BORROW_STRING: return "&string";
+        case TYPE_MUT_BORROW_STRING: return "&mut string";
         case TYPE_ERROR: return "<error>";
     }
     return "<unknown>";
