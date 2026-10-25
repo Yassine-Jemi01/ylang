@@ -8,6 +8,7 @@ function main() -> int {
     let owned string transferred = move(source);
     transferred = string.own(string.concat(transferred, " owned"));
     print(transferred);
+    print(f"owned={transferred}");
 
     loop() {
         let owned string temporary = string.own("loop");
