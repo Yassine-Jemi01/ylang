@@ -1065,16 +1065,89 @@ static void emit_fstring_print(FILE *out, Expr *expr, unsigned indent)
     }
 }
 
+typedef struct GenScope {
+    char frame_name[80];
+    char slot_name[80];
+    struct GenScope *parent;
+} GenScope;
+
+typedef struct GenLoop {
+    const char *break_boundary;
+    const char *continue_boundary;
+    struct GenLoop *parent;
+} GenLoop;
+
+static GenScope *yl_codegen_scope = NULL;
+static GenLoop *yl_codegen_loop = NULL;
+static const char *yl_codegen_return_boundary = "NULL";
+
+static const char *current_scope_slot_name(void)
+{
+    return yl_codegen_scope ? yl_codegen_scope->slot_name : "NULL";
+}
+
+static void emit_scope_enter(FILE *out, unsigned indent,
+                             const char *frame_name, const char *slot_name)
+{
+    emit_indent(out, indent);
+    fprintf(out, "YLScope %s = {0}; YLScope *%s = NULL;\n",
+            frame_name, slot_name);
+    emit_indent(out, indent);
+    fprintf(out, "yl_scope_enter(&%s, &%s);\n", frame_name, slot_name);
+}
+
+static void emit_scope_leave(FILE *out, unsigned indent, const char *slot_name)
+{
+    emit_indent(out, indent);
+    fprintf(out, "yl_scope_leave(&%s);\n", slot_name);
+}
+
+static void emit_string_copy_or_value(StringBuilder *sb, Expr *expr)
+{
+    if (expr && expr->type == TYPE_STRING &&
+        ((expr->kind == EXPR_NAME && !expr->borrowed_from) ||
+         expr->borrowed_from != NULL)) {
+        sb_append(sb, "yl_clone_string(");
+        emit_expr(sb, expr);
+        sb_append(sb, ")");
+    } else {
+        emit_expr(sb, expr);
+    }
+}
+
+static void emit_string_copy_or_value_to_file(FILE *out, Expr *expr)
+{
+    if (expr && expr->type == TYPE_STRING &&
+        ((expr->kind == EXPR_NAME && !expr->borrowed_from) ||
+         expr->borrowed_from != NULL)) {
+        fputs("yl_clone_string(", out);
+        emit_expr_to_file(out, expr);
+        fputc(')', out);
+    } else {
+        emit_expr_to_file(out, expr);
+    }
+}
+
 static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
 {
     if (!stmt) return;
     switch (stmt->kind) {
-        case STMT_BLOCK:
+        case STMT_BLOCK: {
+            GenScope scope = { .parent = yl_codegen_scope };
+            (void)snprintf(scope.frame_name, sizeof(scope.frame_name),
+                           "yl_scope_%zu", stmt->codegen_id);
+            (void)snprintf(scope.slot_name, sizeof(scope.slot_name),
+                           "yl_scope_ptr_%zu", stmt->codegen_id);
             emit_indent(out, indent); fputs("{\n", out);
+            emit_scope_enter(out, indent + 1, scope.frame_name, scope.slot_name);
+            yl_codegen_scope = &scope;
             for (size_t i = 0; i < stmt->as.block.count; i++)
                 emit_stmt(c, out, stmt->as.block.items[i], indent + 1);
+            emit_scope_leave(out, indent + 1, scope.slot_name);
+            yl_codegen_scope = scope.parent;
             emit_indent(out, indent); fputs("}\n", out);
             break;
+        }
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
             if (var->is_array && array_init_needs_sequence(var->initializer)) {
@@ -1091,9 +1164,47 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
             fprintf(out, " %s", var->c_name);
             if (var->is_array) fprintf(out, "[%zu]", var->array_length);
             if (var->initializer) {
-                fputs(" = ", out); emit_expr_to_file(out, var->initializer);
+                fputs(" = ", out);
+                if (var->type == TYPE_STRING && !var->is_array &&
+                    !var->borrowed_from) {
+                    emit_string_copy_or_value_to_file(out, var->initializer);
+                } else if (var->is_array && var->type == TYPE_STRING &&
+                           var->initializer->kind == EXPR_ARRAY) {
+                    fputs("{", out);
+                    for (size_t i = 0; i < var->initializer->as.array.count; i++) {
+                        if (i) fputs(", ", out);
+                        emit_string_copy_or_value_to_file(
+                            out, var->initializer->as.array.items[i]);
+                    }
+                    fputs("}", out);
+                } else {
+                    emit_expr_to_file(out, var->initializer);
+                }
+            } else if (var->type == TYPE_STRING && !var->is_array) {
+                fputs(" = NULL", out);
             }
             fputs(";\n", out);
+            if (!var->is_global && yl_codegen_scope &&
+                var->type == TYPE_STRING && !var->borrowed_from) {
+                if (!var->is_array) {
+                    emit_indent(out, indent);
+                    fprintf(out, "YLSlot yl_owner_slot_%s;\n", var->c_name);
+                    emit_indent(out, indent);
+                    fprintf(out,
+                            "yl_scope_register(%s, &yl_owner_slot_%s, (const char **)&%s);\n",
+                            yl_codegen_scope->slot_name, var->c_name, var->c_name);
+                } else {
+                    for (size_t i = 0; i < var->array_length; i++) {
+                        emit_indent(out, indent);
+                        fprintf(out, "YLSlot yl_owner_slot_%s_%zu;\n", var->c_name, i);
+                        emit_indent(out, indent);
+                        fprintf(out,
+                                "yl_scope_register(%s, &yl_owner_slot_%s_%zu, (const char **)&%s[%zu]);\n",
+                                yl_codegen_scope->slot_name, var->c_name, i,
+                                var->c_name, i);
+                    }
+                }
+            }
             break;
         }
         case STMT_PRINT:
@@ -1116,20 +1227,49 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
                 emit_stmt(c, out, stmt->as.if_stmt.else_branch, indent);
             }
             break;
-        case STMT_LOOP:
-            emit_indent(out, indent); fputs("for (;;) ", out); fputs("\n", out);
+        case STMT_LOOP: {
+            GenLoop loop = {
+                .break_boundary = current_scope_slot_name(),
+                .continue_boundary = current_scope_slot_name(),
+                .parent = yl_codegen_loop
+            };
+            yl_codegen_loop = &loop;
+            emit_indent(out, indent); fputs("for (;;) \n", out);
             emit_stmt(c, out, stmt->as.loop_body, indent);
+            yl_codegen_loop = loop.parent;
             break;
-        case STMT_WHILE:
+        }
+        case STMT_WHILE: {
+            GenLoop loop = {
+                .break_boundary = current_scope_slot_name(),
+                .continue_boundary = current_scope_slot_name(),
+                .parent = yl_codegen_loop
+            };
+            yl_codegen_loop = &loop;
             emit_indent(out, indent); fputs("while (", out);
             emit_expr_to_file(out, stmt->as.while_stmt.condition);
             fputs(")\n", out);
             emit_stmt(c, out, stmt->as.while_stmt.body, indent);
+            yl_codegen_loop = loop.parent;
             break;
-        case STMT_FOR:
+        }
+        case STMT_FOR: {
+            GenScope scope = { .parent = yl_codegen_scope };
+            (void)snprintf(scope.frame_name, sizeof(scope.frame_name),
+                           "yl_for_scope_%zu", stmt->codegen_id);
+            (void)snprintf(scope.slot_name, sizeof(scope.slot_name),
+                           "yl_for_scope_ptr_%zu", stmt->codegen_id);
             emit_indent(out, indent); fputs("{\n", out);
+            emit_scope_enter(out, indent + 1, scope.frame_name, scope.slot_name);
+            yl_codegen_scope = &scope;
             if (stmt->as.for_stmt.initializer)
                 emit_stmt(c, out, stmt->as.for_stmt.initializer, indent + 1);
+            GenLoop loop = {
+                .break_boundary = scope.parent ? scope.parent->slot_name : "NULL",
+                .continue_boundary = scope.slot_name,
+                .parent = yl_codegen_loop
+            };
+            yl_codegen_loop = &loop;
             emit_indent(out, indent + 1); fputs("for (; ", out);
             if (stmt->as.for_stmt.condition)
                 emit_expr_to_file(out, stmt->as.for_stmt.condition);
@@ -1138,16 +1278,62 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
                 emit_expr_to_file(out, stmt->as.for_stmt.increment);
             fputs(")\n", out);
             emit_stmt(c, out, stmt->as.for_stmt.body, indent + 1);
+            yl_codegen_loop = loop.parent;
+            emit_scope_leave(out, indent + 1, scope.slot_name);
+            yl_codegen_scope = scope.parent;
             emit_indent(out, indent); fputs("}\n", out);
             break;
+        }
         case STMT_BREAK:
-            emit_indent(out, indent); fputs("break;\n", out); break;
+            if (yl_codegen_loop) {
+                emit_indent(out, indent);
+                fprintf(out, "yl_scope_leave_to(%s);\n",
+                        yl_codegen_loop->break_boundary);
+            }
+            emit_indent(out, indent); fputs("break;\n", out);
+            break;
         case STMT_CONTINUE:
-            emit_indent(out, indent); fputs("continue;\n", out); break;
-        case STMT_RETURN:
-            emit_indent(out, indent); fputs("return", out);
-            if (stmt->as.return_value) { fputc(' ', out); emit_expr_to_file(out, stmt->as.return_value); }
-            fputs(";\n", out); break;
+            if (yl_codegen_loop) {
+                emit_indent(out, indent);
+                fprintf(out, "yl_scope_leave_to(%s);\n",
+                        yl_codegen_loop->continue_boundary);
+            }
+            emit_indent(out, indent); fputs("continue;\n", out);
+            break;
+        case STMT_RETURN: {
+            Expr *value = stmt->as.return_value;
+            if (value) {
+                emit_indent(out, indent);
+                if (value->type == TYPE_STRING) {
+                    fprintf(out, "const char *yl_return_%zu = ", stmt->codegen_id);
+                    if (value->kind == EXPR_NAME && value->as.name.variable &&
+                        !value->as.name.variable->is_global &&
+                        !value->as.name.variable->borrowed_from) {
+                        fprintf(out, "yl_move_string(&%s)",
+                                value->as.name.variable->c_name);
+                    } else if (value->kind == EXPR_NAME &&
+                               value->as.name.variable &&
+                               value->as.name.variable->is_global) {
+                        fputs("yl_clone_string(", out);
+                        emit_expr_to_file(out, value);
+                        fputc(')', out);
+                    } else {
+                        emit_expr_to_file(out, value);
+                    }
+                } else {
+                    fprintf(out, "%s yl_return_%zu = ", c_base_type(c, value->type),
+                            stmt->codegen_id);
+                    emit_expr_to_file(out, value);
+                }
+                fputs(";\n", out);
+            }
+            emit_indent(out, indent);
+            fprintf(out, "yl_scope_leave_to(%s);\n", yl_codegen_return_boundary);
+            emit_indent(out, indent);
+            if (value) fprintf(out, "return yl_return_%zu;\n", stmt->codegen_id);
+            else fputs("return;\n", out);
+            break;
+        }
         case STMT_MATCH: {
             char match_name[96];
             (void)snprintf(match_name, sizeof(match_name), "yl_match_%zu_%zu",
