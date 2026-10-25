@@ -1,0 +1,7 @@
+function main() -> int {
+    if (true)
+        let string branch_local = string.concat("single", "-branch");
+
+    print(branch_local);
+    return 0;
+}
