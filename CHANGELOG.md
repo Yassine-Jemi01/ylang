@@ -2,6 +2,19 @@
 
 All notable changes to YLang are documented here. This project follows semantic versioning for future releases.
 
+## [2.1.0] — release candidate (not yet published)
+
+This candidate promotes the experimental ownership work for evaluation; it does not claim a complete Rust-like memory model.
+
+- Added experimental move-only `owned_string` values and explicit `move(name)` transfers in the C backend.
+- Added deterministic generated cleanup for owned locals on normal scope exit, `return`, `break`, and `continue`.
+- Added restricted immutable `borrowed_string` function parameters.
+- Added diagnostics and regression coverage for invalid moves, use-after-move, unsupported storage locations, and ownership/control-flow cases.
+- Existing `string` behavior remains unchanged; legacy allocations are not automatically reclaimed by this feature.
+- Limitations: `owned_string` currently requires the C backend. Owned globals, arrays, and struct fields remain unsupported. General `&T`/`&mut T`, lifetime inference, and complete Rust-like memory safety are not implemented.
+
+This is a release-preparation entry, not a publication announcement. Publish `v2.1.0` only after the release acceptance checks and CI pass on the exact candidate commit.
+
 ## [2.0.1] — patch release
 
 - Fixed mutable assignment to chained nested struct fields, for example `hero.pos.x = 9;`.
