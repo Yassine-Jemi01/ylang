@@ -874,6 +874,11 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 } else sb_append(sb, "INT64_C(0)");
                 break;
             }
+            if (strcmp(expr->as.call.name, "gui.last_error") == 0 &&
+                expr->as.call.count == 0U) {
+                sb_append(sb, "yl_clone_string(ylgui_api_last_error())");
+                break;
+            }
             if (strcmp(expr->as.call.name, "to_string") == 0 && expr->as.call.count == 1) {
                 Expr *arg = expr->as.call.args[0];
                 switch (arg->type) {
