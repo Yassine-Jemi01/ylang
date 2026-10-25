@@ -1,7 +1,24 @@
+function duplicate(string value) -> string {
+    return value;
+}
+
+function make_label(int value) -> string {
+    return string.concat("n=", to_string(value));
+}
+
+function join(string left, string right) -> string {
+    return string.concat(left, right);
+}
+
 function main() -> int {
     let int iteration = 0;
     while (iteration < 12) {
         let string temporary = string.concat("cycle", "-value");
+        let string copy = duplicate(temporary);
+        let string output = join(copy, make_label(iteration));
+        if (iteration == 0) {
+            print(output);
+        }
         iteration += 1;
     }
 
