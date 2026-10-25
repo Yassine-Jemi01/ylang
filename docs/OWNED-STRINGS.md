@@ -51,7 +51,7 @@ function main() -> int {
 - Borrow bindings cannot be reassigned. Their lexical scope must be nested within the owner's lifetime.
 - Borrowed views can be read by `print`, f-strings, comparisons, and built-in string helpers. `string.own(view)` creates an independent owned copy.
 
-The current string API is immutable, so `&mut string` provides exclusivity checking but no operation to mutate bytes yet. Borrowed parameters/returns, globals, struct fields, reborrowing, and escape analysis across user-defined APIs remain unsupported and are rejected.
+The current string API is immutable, so `&mut string` provides exclusivity checking but no operation to mutate bytes yet. Borrowed parameters can be used for the duration of a call. Borrowed return values, globals, struct fields, reborrowing, and escape analysis across user-defined APIs remain unsupported and are rejected.
 
 ## Deliberate limits
 
