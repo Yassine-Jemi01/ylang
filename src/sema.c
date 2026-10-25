@@ -22,6 +22,7 @@ typedef struct {
     Expr *allowed_assignment;
     bool allow_array_name;
     bool allow_borrow_initializer;
+    bool allow_move_expression;
     Module *module;
 } Checker;
 
@@ -585,7 +586,11 @@ static YType check_expr(Checker *checker, Expr *expr)
                 right_expr->as.call.args[0]->kind == EXPR_NAME &&
                 strcmp(target->as.name.name,
                        right_expr->as.call.args[0]->as.name.name) == 0;
+            bool old_allow_move = checker->allow_move_expression;
+            checker->allow_move_expression =
+                is_builtin_call_name(checker, right_expr, "move");
             YType right = check_expr(checker, right_expr);
+            checker->allow_move_expression = old_allow_move;
             if (right_expr && right_expr->borrowed_from != NULL) {
                 diagnostic(c, right_expr->token, "error", "E2117",
                            "A borrowed string view cannot be assigned into another binding.",
@@ -841,8 +846,16 @@ static YType check_expr(Checker *checker, Expr *expr)
                 expr->type = TYPE_STRING;
                 return expr->type;
             }
-            if (strcmp(expr->as.call.name, "move") == 0 &&
-                !resolve_function(checker, "move")) {
+            if (is_builtin_call_name(checker, expr, "move")) {
+                if (!checker->allow_move_expression) {
+                    diagnostic(c, expr->token, "error", "E2120",
+                               "move() must be the complete initializer or assignment value.",
+                               "Use 'let string next = move(current);' or 'next = move(current);' rather than nesting move() in another expression.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
                 if (expr->as.call.count != 1U) {
                     diagnostic(c, expr->token, "error", "E2111",
                                "move() expects exactly one local string variable.",
@@ -1204,8 +1217,12 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 bool old_allow_borrow = checker->allow_borrow_initializer;
                 checker->allow_borrow_initializer =
                     is_borrow_initializer && !var->is_global;
+                bool old_allow_move = checker->allow_move_expression;
+                checker->allow_move_expression =
+                    is_builtin_call_name(checker, var->initializer, "move") && !var->is_global;
                 YType init_type = check_expr(checker, var->initializer);
                 checker->allow_borrow_initializer = old_allow_borrow;
+                checker->allow_move_expression = old_allow_move;
                 if (init_type != TYPE_ERROR && init_type != var->type) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
@@ -1506,7 +1523,8 @@ bool check_program(Compiler *c)
     Checker checker = {
         .compiler = c, .scope = NULL, .function = NULL, .loop_depth = 0,
         .allowed_assignment = NULL, .allow_array_name = false,
-        .allow_borrow_initializer = false, .module = NULL
+        .allow_borrow_initializer = false, .allow_move_expression = false,
+        .module = NULL
     };
 
     /* Each source module gets its own global scope. Imported variables are
