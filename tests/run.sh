@@ -1320,6 +1320,26 @@ if ./build/ylang check tests/move-branch-join.yl > build/move-branch-join.out 2>
 fi
 grep -q 'E2110' build/move-branch-join.out
 
+# A move in a loop may execute, so the source is unavailable after the loop.
+if ./build/ylang check tests/move-loop-join.yl > build/move-loop-join.out 2>&1; then
+    echo "FAIL: YLang accepted use after a possible loop move" >&2
+    exit 1
+fi
+grep -q 'E2110' build/move-loop-join.out
+
+# Exhaustive match arms must each start from the same incoming ownership state.
+./build/ylang build tests/move-match-alternatives.yl -o build/test-move-match-alternatives >/dev/null
+./build/test-move-match-alternatives > build/move-match-alternatives.out
+printf 'YLang\n' > build/move-match-alternatives.expected
+diff -u build/move-match-alternatives.expected build/move-match-alternatives.out
+
+# A move in any exhaustive match arm makes the source unavailable after the join.
+if ./build/ylang check tests/move-match-join.yl > build/move-match-join.out 2>&1; then
+    echo "FAIL: YLang accepted use after a possible match-arm move" >&2
+    exit 1
+fi
+grep -q 'E2110' build/move-match-join.out
+
 # Invalid move operations must have targeted diagnostics.
 if ./build/ylang check tests/move-rejections.yl > build/move-rejections.out 2>&1; then
     echo "FAIL: YLang accepted unsupported move operations" >&2
