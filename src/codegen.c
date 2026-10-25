@@ -758,7 +758,13 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             }
             break;
         case EXPR_NAME:
-            sb_append(sb, expr->as.name.variable ? expr->as.name.variable->c_name : "yl_missing_variable");
+            if (expr->as.name.variable && expr->as.name.variable->is_mut_borrow) {
+                sb_append(sb, "(*");
+                sb_append(sb, expr->as.name.variable->c_name);
+                sb_append(sb, ")");
+            } else {
+                sb_append(sb, expr->as.name.variable ? expr->as.name.variable->c_name : "yl_missing_variable");
+            }
             break;
         case EXPR_ASSIGN: {
             Expr *target = expr->as.assign.target;
@@ -847,6 +853,14 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             break;
         }
         case EXPR_CALL: {
+            /* borrow_mut(name) is a pointer to the owner's string slot. */
+            if (!expr->as.call.function &&
+                strcmp(expr->as.call.name, "borrow_mut") == 0 &&
+                expr->as.call.count == 1U) {
+                sb_append(sb, "&");
+                emit_expr(sb, expr->as.call.args[0]);
+                break;
+            }
             /* borrow(name) is a compile-time view; the runtime value is the
                owner's existing string pointer. */
             if (!expr->as.call.function &&
@@ -1307,13 +1321,19 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
                     fputs(";\n", out);
                 }
             }
-            emit_indent(out, indent); emit_var_type(c, out, var, false);
-            fprintf(out, " %s", var->c_name);
+            emit_indent(out, indent);
+            if (var->is_mut_borrow)
+                fprintf(out, "const char ** %s", var->c_name);
+            else
+                emit_var_type(c, out, var, false);
+            if (!var->is_mut_borrow) fprintf(out, " %s", var->c_name);
             if (var->is_array) fprintf(out, "[%zu]", var->array_length);
             if (var->initializer) {
                 fputs(" = ", out);
-                if (var->type == TYPE_STRING && !var->is_array &&
-                    !var->borrowed_from) {
+                if (var->is_mut_borrow) {
+                    emit_expr_to_file(out, var->initializer);
+                } else if (var->type == TYPE_STRING && !var->is_array &&
+                           !var->borrowed_from) {
                     emit_string_copy_or_value_to_file(out, var->initializer);
                 } else {
                     emit_expr_to_file(out, var->initializer);
