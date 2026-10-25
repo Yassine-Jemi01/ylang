@@ -31,8 +31,12 @@ function main() -> int {
             print(output);
         }
         iteration += 1;
-        if (iteration == 4) continue;
-        if (iteration == 9) break;
+        if (iteration == 4) {
+            continue;
+        }
+        if (iteration == 9) {
+            break;
+        }
     }
 
     {
