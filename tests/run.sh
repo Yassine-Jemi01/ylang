@@ -1396,6 +1396,22 @@ if ./build/ylang check tests/borrow-mut-move.yl > build/borrow-mut-move.out 2>&1
 fi
 grep -q 'E2136' build/borrow-mut-move.out
 
+# Owned values transfer through consuming parameters and owned return values.
+./build/ylang build tests/owned-function-transfer.yl -o build/test-owned-function-transfer >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-function-transfer > build/owned-function-transfer.stdout 2> build/owned-function-transfer.stderr
+printf 'YLang! YLang!\n' > build/owned-function-transfer.expected
+diff -u build/owned-function-transfer.expected build/owned-function-transfer.stdout
+grep -Eq 'YLang owned-string stats: allocations=3 frees=3 live_allocations=0 live_bytes=0' build/owned-function-transfer.stderr
+
+# Owned values cannot be copied into consuming parameters or returned by alias.
+if ./build/ylang check tests/owned-function-rejections.yl > build/owned-function-rejections.out 2>&1; then
+    echo "FAIL: YLang accepted owned-string aliasing across function boundaries" >&2
+    exit 1
+fi
+grep -q 'E2120' build/owned-function-rejections.out
+grep -q 'E2124' build/owned-function-rejections.out
+grep -q 'E2144' build/owned-function-rejections.out
+
 # Borrow values cannot escape through globals, parameters, or return values yet.
 if ./build/ylang check tests/borrow-escape-rejections.yl > build/borrow-escape-rejections.out 2>&1; then
     echo "FAIL: YLang accepted a borrow escape" >&2
