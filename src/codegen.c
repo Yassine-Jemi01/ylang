@@ -14,6 +14,11 @@
 #endif
 
 /* --------------------------- C code generation -------------------------- */
+static bool c_string_like_type(YType type)
+{
+    return type == TYPE_STRING || type == TYPE_OWNED_STRING;
+}
+
 static const char *c_base_type(Compiler *compiler, YType type)
 {
     if (type >= TYPE_STRUCT_BASE) {
@@ -29,6 +34,7 @@ static const char *c_base_type(Compiler *compiler, YType type)
         case TYPE_BOOL: return "bool";
         case TYPE_CHAR: return "char";
         case TYPE_STRING: return "const char *";
+        case TYPE_OWNED_STRING: return "char *";
         case TYPE_VOID: return "void";
         case TYPE_ERROR: return "int";
         default: return "int64_t";
@@ -73,7 +79,7 @@ static const char *format_for_type(YType type)
         case TYPE_FLOAT: return "%.17g";
         case TYPE_BOOL: return "%s";
         case TYPE_CHAR: return "%c";
-        case TYPE_STRING: return "%s";
+        case TYPE_STRING: case TYPE_OWNED_STRING: return "%s";
         case TYPE_VOID: case TYPE_ERROR: return "%s";
     }
     return "%s";
@@ -464,7 +470,7 @@ static void emit_binary_operation_with_temps(StringBuilder *sb, Expr *expr)
         sb_append(sb, "yl_div_f64(");
         emit_temp_name(sb, expr, "left"); sb_append(sb, ", ");
         emit_temp_name(sb, expr, "right"); sb_append(sb, ")");
-    } else if (left->type == TYPE_STRING &&
+    } else if (c_string_like_type(left->type) &&
                (op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
                 op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL ||
                 op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL)) {
@@ -788,12 +794,27 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             break;
         }
         case EXPR_CALL: {
-            /* move(name) is a compile-time ownership transfer; its runtime
-               representation is still the same string pointer. */
+            if (strcmp(expr->as.call.name, "string.own") == 0 &&
+                expr->as.call.count == 1U) {
+                sb_append(sb, "yl_owned_string_clone(");
+                emit_expr(sb, expr->as.call.args[0]);
+                sb_append(sb, ")");
+                break;
+            }
+            /* An owned move clears its source; legacy string move remains
+               a static binding check and retains the legacy pointer runtime. */
             if (!expr->as.call.function &&
                 strcmp(expr->as.call.name, "move") == 0 &&
                 expr->as.call.count == 1U) {
-                emit_expr(sb, expr->as.call.args[0]);
+                Expr *arg = expr->as.call.args[0];
+                if (expr->type == TYPE_OWNED_STRING &&
+                    arg && arg->kind == EXPR_NAME && arg->as.name.variable) {
+                    sb_append(sb, "yl_move_owned_string(&");
+                    sb_append(sb, arg->as.name.variable->c_name);
+                    sb_append(sb, ")");
+                } else {
+                    emit_expr(sb, arg);
+                }
                 break;
             }
             if (strcmp(expr->as.call.name, "length") == 0 && expr->as.call.count == 1) {
@@ -809,6 +830,11 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 Expr *arg = expr->as.call.args[0];
                 switch (arg->type) {
                     case TYPE_STRING: emit_expr(sb, arg); break;
+                    case TYPE_OWNED_STRING:
+                        sb_append(sb, "yl_format(\"%s\", ");
+                        emit_expr(sb, arg);
+                        sb_append(sb, ")");
+                        break;
                     case TYPE_INT: sb_append(sb, "yl_to_string_int("); emit_expr(sb, arg); sb_append(sb, ")"); break;
                     case TYPE_FLOAT: sb_append(sb, "yl_to_string_float("); emit_expr(sb, arg); sb_append(sb, ")"); break;
                     case TYPE_BOOL: sb_append(sb, "yl_boolstr("); emit_expr(sb, arg); sb_append(sb, ")"); break;
@@ -907,7 +933,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 sb_append(sb, "yl_mod_i64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
             } else if (left->type == TYPE_FLOAT && op == TOKEN_SLASH) {
                 sb_append(sb, "yl_div_f64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
-            } else if (left->type == TYPE_STRING &&
+            } else if (c_string_like_type(left->type) &&
                        (op == TOKEN_LESS || op == TOKEN_LESS_EQUAL ||
                         op == TOKEN_GREATER || op == TOKEN_GREATER_EQUAL)) {
                 sb_append(sb, "(strcmp("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right);
@@ -919,7 +945,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     case TOKEN_GREATER_EQUAL: sb_append(sb, ">= 0)"); break;
                     default: sb_append(sb, "0)"); break;
                 }
-            } else if ((op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL) && left->type == TYPE_STRING) {
+            } else if ((op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL) && c_string_like_type(left->type)) {
                 sb_append(sb, "(strcmp("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right);
                 sb_append(sb, ") "); sb_append(sb, op == TOKEN_EQUAL_EQUAL ? "== 0)" : "!= 0)");
             } else {
@@ -1013,6 +1039,7 @@ static void emit_print_value(FILE *out, Expr *expr, unsigned indent)
     emit_indent(out, indent);
     switch (expr->type) {
         case TYPE_STRING:
+        case TYPE_OWNED_STRING:
             fputs("fputs((const char *)(", out); emit_expr_to_file(out, expr);
             fputs("), stdout);\n", out); break;
         case TYPE_BOOL:
