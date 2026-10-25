@@ -853,6 +853,8 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 switch (arg->type) {
                     case TYPE_STRING: emit_expr(sb, arg); break;
                     case TYPE_OWNED_STRING:
+                    case TYPE_BORROW_STRING:
+                    case TYPE_MUT_BORROW_STRING:
                         sb_append(sb, "yl_format(\"%s\", ");
                         emit_expr(sb, arg);
                         sb_append(sb, ")");
