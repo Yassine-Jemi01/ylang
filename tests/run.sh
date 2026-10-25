@@ -1419,6 +1419,20 @@ if ./build/ylang check tests/owned-parameter-use-after-move.yl > build/owned-par
 fi
 grep -q 'E2110' build/owned-parameter-use-after-move.out
 
+# Borrowed function parameters accept temporary borrows for the duration of a call.
+./build/ylang build tests/borrow-parameters.yl -o build/test-borrow-parameters >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-borrow-parameters > build/borrow-parameters.stdout 2> build/borrow-parameters.stderr
+printf '5\nYLang YLang\nYLang\nYLang\n' > build/borrow-parameters.expected
+diff -u build/borrow-parameters.expected build/borrow-parameters.stdout
+grep -Eq 'YLang owned-string stats: allocations=1 frees=1 live_allocations=0 live_bytes=0' build/borrow-parameters.stderr
+
+# Conflicting borrows passed in the same call are rejected even though neither is a local binding.
+if ./build/ylang check tests/borrow-argument-conflict.yl > build/borrow-argument-conflict.out 2>&1; then
+    echo "FAIL: YLang allowed conflicting borrow arguments" >&2
+    exit 1
+fi
+grep -q 'E2134' build/borrow-argument-conflict.out
+
 # Borrow values cannot escape through globals, parameters, or return values yet.
 if ./build/ylang check tests/borrow-escape-rejections.yl > build/borrow-escape-rejections.out 2>&1; then
     echo "FAIL: YLang accepted a borrow escape" >&2
