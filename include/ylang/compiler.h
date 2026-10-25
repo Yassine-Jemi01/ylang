@@ -30,7 +30,8 @@ typedef enum {
     TYPE_BOOL,
     TYPE_CHAR,
     TYPE_STRING,
-    TYPE_VOID
+    TYPE_VOID,
+    TYPE_OWNED_STRING
 } YType;
 
 /* User-defined enum and struct types occupy disjoint identity ranges. */
