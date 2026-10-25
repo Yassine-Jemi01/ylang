@@ -21,6 +21,7 @@ typedef struct {
     unsigned loop_depth;
     Expr *allowed_assignment;
     bool allow_array_name;
+    bool allow_owned_move;
     Module *module;
 } Checker;
 
@@ -39,6 +40,41 @@ static VarDecl *scope_lookup(Scope *scope, const char *name)
         }
     }
     return NULL;
+}
+
+static bool is_borrow_type(YType type)
+{
+    return type == TYPE_BORROW_STRING || type == TYPE_MUT_BORROW_STRING;
+}
+
+static void checker_active_borrows(Checker *checker, VarDecl *owner,
+                                   size_t *shared_count, bool *exclusive)
+{
+    if (shared_count) *shared_count = 0U;
+    if (exclusive) *exclusive = false;
+    if (!checker || !owner) return;
+    for (Scope *scope = checker->scope; scope; scope = scope->parent) {
+        for (size_t i = 0; i < scope->count; i++) {
+            VarDecl *candidate = scope->vars[i];
+            if (candidate->borrowed_from != owner || !candidate->initialized) continue;
+            if (candidate->type == TYPE_MUT_BORROW_STRING) {
+                if (exclusive) *exclusive = true;
+            } else if (candidate->type == TYPE_BORROW_STRING) {
+                if (shared_count && *shared_count < SIZE_MAX) (*shared_count)++;
+            }
+        }
+    }
+}
+
+static bool borrow_initializer_shape(const Expr *expr, YType target_type)
+{
+    if (!expr || expr->kind != EXPR_CALL || expr->as.call.count != 1U ||
+        !expr->as.call.args[0] || expr->as.call.args[0]->kind != EXPR_NAME) return false;
+    if (target_type == TYPE_BORROW_STRING)
+        return strcmp(expr->as.call.name, "borrow") == 0;
+    if (target_type == TYPE_MUT_BORROW_STRING)
+        return strcmp(expr->as.call.name, "borrow_mut") == 0;
+    return false;
 }
 
 static bool scope_add(Checker *checker, Scope *scope, VarDecl *var)
@@ -213,7 +249,8 @@ static bool same_numeric_type(YType a, YType b)
 
 static bool string_like_type(YType type)
 {
-    return type == TYPE_STRING || type == TYPE_OWNED_STRING;
+    return type == TYPE_STRING || type == TYPE_OWNED_STRING ||
+           type == TYPE_BORROW_STRING || type == TYPE_MUT_BORROW_STRING;
 }
 
 static bool owned_string_initializer_shape(const Expr *expr)
