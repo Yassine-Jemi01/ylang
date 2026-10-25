@@ -1,0 +1,22 @@
+function length_of(&string value) -> int {
+    return string.length(value);
+}
+
+function pair(&string left, &string right) -> int {
+    print(left, right);
+    return 0;
+}
+
+function show_exclusive(&mut string value) -> int {
+    print(value);
+    return 0;
+}
+
+function main() -> int {
+    let owned string owner = string.own("YLang");
+    print(length_of(borrow(owner)));
+    pair(borrow(owner), borrow(owner));
+    show_exclusive(borrow_mut(owner));
+    print(owner);
+    return 0;
+}
