@@ -627,7 +627,13 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     if (i) sb_append(sb, ", ");
                     char suffix[32];
                     (void)snprintf(suffix, sizeof(suffix), "field%zu", i);
-                    emit_temp_assignment(sb, expr, suffix, expr->as.struct_init.args[i]);
+                    sb_appendf(sb, "yl_codegen_tmp_%zu_%s = ", expr->codegen_id, suffix);
+                    bool string_field = structure && i < structure->field_count &&
+                        structure->fields[i]->type == TYPE_STRING;
+                    if (string_field)
+                        emit_string_copy_or_value(sb, expr->as.struct_init.args[i]);
+                    else
+                        emit_expr(sb, expr->as.struct_init.args[i]);
                 }
                 sb_append(sb, ", ");
             }
@@ -646,6 +652,8 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                         char suffix[32];
                         (void)snprintf(suffix, sizeof(suffix), "field%zu", i);
                         emit_temp_name(sb, expr, suffix);
+                    } else if (structure->fields[i]->type == TYPE_STRING) {
+                        emit_string_copy_or_value(sb, expr->as.struct_init.args[i]);
                     } else {
                         emit_expr(sb, expr->as.struct_init.args[i]);
                     }
@@ -735,6 +743,38 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             sb_append(sb, expr->as.name.variable ? expr->as.name.variable->c_name : "yl_missing_variable");
             break;
         case EXPR_ASSIGN: {
+            Expr *target = expr->as.assign.target;
+            Expr *right = expr->as.assign.right;
+            if (!expr->as.assign.is_compound && target &&
+                target->type == TYPE_STRING && right &&
+                right->type == TYPE_STRING) {
+                bool direct_owner = target->kind == EXPR_NAME &&
+                    target->as.name.variable &&
+                    !target->as.name.variable->is_array;
+                bool array_element = target->kind == EXPR_INDEX &&
+                    target->as.index.variable &&
+                    target->as.index.variable->is_array;
+                if (direct_owner || array_element) {
+                    sb_append(sb, "yl_replace_string(&(");
+                    emit_expr(sb, target);
+                    sb_append(sb, "), ");
+                    if (right->kind == EXPR_NAME && !right->borrowed_from) {
+                        sb_append(sb, "yl_clone_string(");
+                        emit_expr(sb, right);
+                        sb_append(sb, ")");
+                    } else {
+                        emit_expr(sb, right);
+                    }
+                    sb_append(sb, ")");
+                } else {
+                    sb_append(sb, "(");
+                    emit_expr(sb, target);
+                    sb_append(sb, " = ");
+                    emit_string_copy_or_value(sb, right);
+                    sb_append(sb, ")");
+                }
+                break;
+            }
             if (assignment_needs_sequence(expr)) {
                 sb_append(sb, "(");
                 emit_temp_name(sb, expr, "target");
