@@ -1410,6 +1410,26 @@ if ./build/ylang check tests/borrow-return-owner-conflict.yl > build/borrow-retu
 fi
 grep -q 'E2115' build/borrow-return-owner-conflict.out
 
+# Exclusive mutable string borrows may replace the owner's string value.
+./build/ylang build tests/borrow-mut-string.yl -o build/test-borrow-mut-string >/dev/null
+./build/test-borrow-mut-string > build/borrow-mut-string.out
+printf 'hello world!\nhello world!\n' > build/borrow-mut-string.expected
+diff -u build/borrow-mut-string.expected build/borrow-mut-string.out
+
+# The owner cannot be accessed directly while an exclusive mutable view is active.
+if ./build/ylang check tests/borrow-mut-owner-access.yl > build/borrow-mut-owner-access.out 2>&1; then
+    echo "FAIL: YLang allowed direct owner access during mutable borrow" >&2
+    exit 1
+fi
+grep -q 'E2121' build/borrow-mut-owner-access.out
+
+# An immutable and a mutable borrow cannot overlap.
+if ./build/ylang check tests/borrow-mut-overlap.yl > build/borrow-mut-overlap.out 2>&1; then
+    echo "FAIL: YLang allowed overlapping immutable and mutable borrows" >&2
+    exit 1
+fi
+grep -q 'E2122' build/borrow-mut-overlap.out
+
 # The borrow primitive name remains available to user-defined functions.
 ./build/ylang build tests/borrow-name-collision.yl -o build/test-borrow-name-collision >/dev/null
 test "$(./build/test-borrow-name-collision)" = "42"
