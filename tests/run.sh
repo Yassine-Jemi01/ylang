@@ -1347,6 +1347,42 @@ if ./build/ylang check tests/move-self-assignment.yl > build/move-self-assignmen
 fi
 grep -q 'E2114' build/move-self-assignment.out
 
+# Shared borrows can coexist; an exclusive borrow blocks owner reads and can end at scope exit.
+./build/ylang build tests/borrow-string.yl -o build/test-borrow-string >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-borrow-string > build/borrow-string.stdout 2> build/borrow-string.stderr
+printf 'YLang 5\nYLang\nYLang\n' > build/borrow-string.expected
+diff -u build/borrow-string.expected build/borrow-string.stdout
+grep -Eq 'YLang owned-string stats: allocations=1 frees=1 live_allocations=0 live_bytes=0' build/borrow-string.stderr
+env -u YLANG_MEMORY_STATS ./build/test-borrow-string > build/borrow-string-default.stdout 2> build/borrow-string-default.stderr
+diff -u build/borrow-string.expected build/borrow-string-default.stdout
+[ ! -s build/borrow-string-default.stderr ]
+
+# A borrowed owner cannot be moved, exclusively borrowed while shared, or replaced.
+if ./build/ylang check tests/borrow-move-conflict.yl > build/borrow-move-conflict.out 2>&1; then
+    echo "FAIL: YLang allowed a move while a borrow was active" >&2
+    exit 1
+fi
+grep -q 'E2136' build/borrow-move-conflict.out
+
+if ./build/ylang check tests/borrow-mut-conflict.yl > build/borrow-mut-conflict.out 2>&1; then
+    echo "FAIL: YLang allowed overlapping shared and exclusive borrows" >&2
+    exit 1
+fi
+grep -q 'E2134' build/borrow-mut-conflict.out
+
+if ./build/ylang check tests/borrow-owner-assignment.yl > build/borrow-owner-assignment.out 2>&1; then
+    echo "FAIL: YLang allowed an owner to be replaced while borrowed" >&2
+    exit 1
+fi
+grep -q 'E2142' build/borrow-owner-assignment.out
+
+# Borrow values cannot escape through globals, parameters, or return values yet.
+if ./build/ylang check tests/borrow-escape-rejections.yl > build/borrow-escape-rejections.out 2>&1; then
+    echo "FAIL: YLang accepted a borrow escape" >&2
+    exit 1
+fi
+grep -q 'E2140' build/borrow-escape-rejections.out
+
 # Invalid move operations must have targeted diagnostics.
 if ./build/ylang check tests/move-rejections.yl > build/move-rejections.out 2>&1; then
     echo "FAIL: YLang accepted unsupported move operations" >&2
