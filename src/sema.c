@@ -193,12 +193,24 @@ static bool scope_outlives(Scope *candidate_owner, Scope *borrow_scope)
     return false;
 }
 
-static bool has_active_immutable_borrow(Checker *checker, VarDecl *owner)
+static bool has_active_borrow(Checker *checker, VarDecl *owner)
 {
     for (Scope *scope = checker->scope; scope; scope = scope->parent) {
         for (size_t i = 0; i < scope->count; i++) {
             VarDecl *candidate = scope->vars[i];
             if (candidate->borrowed_from == owner &&
+                candidate->initialized && !candidate->moved) return true;
+        }
+    }
+    return false;
+}
+
+static bool has_active_mutable_borrow(Checker *checker, VarDecl *owner)
+{
+    for (Scope *scope = checker->scope; scope; scope = scope->parent) {
+        for (size_t i = 0; i < scope->count; i++) {
+            VarDecl *candidate = scope->vars[i];
+            if (candidate->borrowed_from == owner && candidate->is_mut_borrow &&
                 candidate->initialized && !candidate->moved) return true;
         }
     }
@@ -513,6 +525,13 @@ static YType check_expr(Checker *checker, Expr *expr)
             expr->as.name.name = var->name;
             expr->as.name.variable = var;
             expr->borrowed_from = var->borrowed_from;
+            if (!var->is_mut_borrow && has_active_mutable_borrow(checker, var)) {
+                diagnostic(c, expr->token, "error", "E2121",
+                           "Cannot access an owner directly while its mutable borrow is active.",
+                           "Use the mutable view, or end its lexical scope before accessing the owner.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
             if (var->moved) {
                 diagnostic(c, expr->token, "error", "E2110",
                            "This value was already moved and cannot be used again.",
@@ -611,17 +630,17 @@ static YType check_expr(Checker *checker, Expr *expr)
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
-            if (var->borrowed_from != NULL) {
+            if (var->borrowed_from != NULL && !var->is_mut_borrow) {
                 diagnostic(c, expr->token, "error", "E2116",
                            "An immutable borrowed binding cannot be reassigned.",
                            "Create a new borrow binding instead of assigning to the view.");
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
-            if (has_active_immutable_borrow(checker, var)) {
+            if (has_active_borrow(checker, var)) {
                 diagnostic(c, expr->token, "error", "E2118",
-                           "Cannot reassign a string owner while an immutable borrow is active.",
-                           "End all borrow scopes before replacing the owner.");
+                           "Cannot reassign a string owner while a borrow is active.",
+                           "End all active borrow scopes before replacing the owner.");
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
@@ -912,10 +931,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
-                if (has_active_immutable_borrow(checker, source)) {
+                if (has_active_borrow(checker, source)) {
                     diagnostic(c, argument->token, "error", "E2115",
-                               "Cannot move a string while an immutable borrow is active.",
-                               "End the borrow's lexical scope before moving the owner.");
+                               "Cannot move a string while a borrow is active.",
+                               "End all active borrow scopes before moving the owner.");
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
@@ -1493,7 +1512,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     !stmt->as.return_value->as.name.variable->is_global &&
                     !stmt->as.return_value->as.name.variable->borrowed_from) {
                     VarDecl *returned_owner = stmt->as.return_value->as.name.variable;
-                    if (has_active_immutable_borrow(checker, returned_owner)) {
+                    if (has_active_borrow(checker, returned_owner)) {
                         diagnostic(c, stmt->as.return_value->token, "error", "E2115",
                                    "Cannot return ownership while an immutable borrow is active.",
                                    "End the borrow's lexical scope before returning the owner.");
