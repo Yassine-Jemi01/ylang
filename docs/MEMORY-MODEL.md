@@ -1,6 +1,6 @@
 # YLang Memory Model — RFC
 
-Status: partial implementation on `feature/ownership-memory-v2`. The compiler supports a deliberately narrow, explicit `move(name)` operation for local `string` bindings and rejects a later read of the moved binding. This is not yet a complete ownership/borrowing system: scoped destruction, borrow syntax/checking, and ownership-aware function signatures are still unimplemented.
+Status: partial implementation on `feature/ownership-borrow-checker`. The compiler supports explicit `move(name)` for local string bindings and a limited immutable `borrow(name)` view. Reads after move, moves or reassignment while a borrow is active, returning a borrow, and passing a borrow to an unannotated user function are rejected. This is not yet a complete ownership/borrowing system: automatic scope destruction, mutable borrowing, complete lifetime/dataflow analysis, and ownership-aware function signatures remain unimplemented.
 
 ## Goals
 
@@ -44,6 +44,23 @@ The precise surface syntax and which standard-library operations borrow or consu
 
 ## Current experimental progress
 
+### Implemented: limited immutable string borrows
+
+The compiler accepts an immutable view in a local declaration:
+
+```yl
+let string owner = string.concat("Y", "Lang");
+{
+    let string view = borrow(owner);
+    print(view);
+}
+let string next_owner = move(owner);
+```
+
+The view is valid only while its owner is in an enclosing lexical scope. An owner cannot be moved or reassigned while a view is active. Views may be read and copied into another local view; they cannot be reassigned, returned from a function, or passed to a user-defined function because function signatures do not yet express borrowing. The current implementation reports `E2115` for move conflicts, `E2116` for assignment to a view, `E2117` for attempted escape, `E2118` for owner mutation/call-boundary conflicts, and `E2119` for unsupported borrow forms.
+
+This initial view type is immutable and only supports strings. Reborrowing, mutable borrows, field/array views, and non-lexical lifetimes are not implemented. Runtime string storage is still process-lifetime tracked storage; `borrow(name)` is a compile-time view, not an allocation or a request to free memory.
+
 ### Implemented: explicit local string moves (initial slice)
 
 The C backend and semantic checker support:
@@ -72,8 +89,8 @@ The test suite includes an opt-in fixture and checks that enabling the diagnosti
 
 Implement this in small, reviewable steps:
 
-1. **Compiler-side ownership facts (in progress)**: the first local-string move state and use-after-move diagnostic are implemented, with pass/fail regression fixtures. Branch-flow joins, loops, borrow states, and imported signatures remain to be implemented.
-2. **Borrow checker and explicit type surface**: settle a compatible way to express immutable and mutable borrows, then reject dangling/conflicting borrows and moves while borrowed.
+1. **Compiler-side ownership facts (in progress)**: local-string move state and a limited lexical immutable-string borrow are implemented with pass/fail tests. Full branch-sensitive borrow dataflow and imported signatures remain to be implemented.
+2. **Complete borrow checker and explicit type surface**: add `&T` / `&mut T` type rules, mutable exclusivity, reborrowing, accurate lifetime joins, and signature-level ownership annotations.
 3. **A single fully owned type**: complete the rules for initialization, assignment, parameters, return values, globals, string builtins, and cloning before adding automatic destruction. Do not silently change current `string` behavior in a patch release.
 4. **Explicit cleanup lowering**: emit cleanup actions for every normal and early scope exit and for owned return values.
 5. **Runtime verification**: test allocations/frees under AddressSanitizer and LeakSanitizer where available, plus repeated-request stress tests.
