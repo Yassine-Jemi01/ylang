@@ -120,6 +120,7 @@ struct VarDecl {
 struct Stmt {
     StmtKind kind;
     Token token;
+    size_t codegen_id;
     union {
         struct { Stmt **items; size_t count; } block;
         VarDecl *variable;
