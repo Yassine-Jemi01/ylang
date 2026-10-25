@@ -21,6 +21,7 @@ typedef struct {
     unsigned loop_depth;
     Expr *allowed_assignment;
     bool allow_array_name;
+    bool allow_borrow_initializer;
     Module *module;
 } Checker;
 
@@ -51,6 +52,7 @@ static bool scope_add(Checker *checker, Scope *scope, VarDecl *var)
             return false;
         }
     }
+    var->decl_scope = scope;
     scope->vars = arena_vector_append(&checker->compiler->arena,
                                       scope->vars, scope->count,
                                       sizeof(*scope->vars), &var);
@@ -180,6 +182,26 @@ static Function *resolve_function(Checker *checker, const char *name)
     if (local) return local;
     ImportName *symbol = module_imported_name(checker->module, name);
     return symbol ? symbol->function : NULL;
+}
+
+static bool scope_outlives(Scope *candidate_owner, Scope *borrow_scope)
+{
+    for (Scope *at = borrow_scope; at; at = at->parent) {
+        if (at == candidate_owner) return true;
+    }
+    return false;
+}
+
+static bool has_active_immutable_borrow(Checker *checker, VarDecl *owner)
+{
+    for (Scope *scope = checker->scope; scope; scope = scope->parent) {
+        for (size_t i = 0; i < scope->count; i++) {
+            VarDecl *candidate = scope->vars[i];
+            if (candidate->borrowed_from == owner &&
+                candidate->initialized && !candidate->moved) return true;
+        }
+    }
+    return false;
 }
 
 static const char *nearest_function(Checker *checker, const char *name)
@@ -1344,7 +1366,8 @@ bool check_program(Compiler *c)
 {
     Checker checker = {
         .compiler = c, .scope = NULL, .function = NULL, .loop_depth = 0,
-        .allowed_assignment = NULL, .allow_array_name = false, .module = NULL
+        .allowed_assignment = NULL, .allow_array_name = false,
+        .allow_borrow_initializer = false, .module = NULL
     };
 
     /* Each source module gets its own global scope. Imported variables are
