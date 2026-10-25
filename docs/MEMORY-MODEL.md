@@ -1,6 +1,6 @@
 # YLang Memory Model — RFC
 
-Status: implementation proposal for the `feature/ownership-memory-model` branch. This document does not claim that ownership or borrowing is implemented.
+Status: partial implementation on `feature/ownership-memory-v2`. The compiler supports a deliberately narrow, explicit `move(name)` operation for local `string` bindings and rejects a later read of the moved binding. This is not yet a complete ownership/borrowing system: scoped destruction, borrow syntax/checking, and ownership-aware function signatures are still unimplemented.
 
 ## Goals
 
@@ -44,6 +44,20 @@ The precise surface syntax and which standard-library operations borrow or consu
 
 ## Current experimental progress
 
+### Implemented: explicit local string moves (initial slice)
+
+The C backend and semantic checker support:
+
+```yl
+let string source = string.concat("Y", "Lang");
+let string destination = move(source);
+print(destination);
+```
+
+The checker marks `source` unavailable after the move and reports diagnostic `E2110` if a later read tries to use it. A moved local can be reinitialized with a fresh value. This initial operation is intentionally limited to named local `string` variables; globals, parameters, arrays, non-string values, and arbitrary expressions are rejected with `E2111`–`E2113` diagnostics.
+
+**Important limitation:** `move(name)` currently transfers the binding at compile time and lowers to the same C pointer. It does **not** yet free allocations at scope exit, and the language does not yet prohibit every possible string alias. Do not treat this slice as a Rust-like memory-safety guarantee. Deterministic destruction must not be enabled until borrowing/alias rules and all control-flow exits are handled.
+
 The first runtime instrumentation commit adds an opt-in diagnostic:
 
 ```sh
@@ -58,9 +72,9 @@ The test suite includes an opt-in fixture and checks that enabling the diagnosti
 
 Implement this in small, reviewable steps:
 
-1. **Specification and regression suite**: codify ownership states, borrowing rules, and rejection tests before changing runtime semantics.
-2. **Compiler-side ownership facts**: track declarations, moves, borrow states, and scope exits in semantic analysis. Keep this separate from type checking initially.
-3. **A single owned type**: introduce explicit ownership semantics for a new owned string/buffer type, or a deliberately gated string mode. Do not silently make current `string` move-only in a patch release.
+1. **Compiler-side ownership facts (in progress)**: the first local-string move state and use-after-move diagnostic are implemented, with pass/fail regression fixtures. Branch-flow joins, loops, borrow states, and imported signatures remain to be implemented.
+2. **Borrow checker and explicit type surface**: settle a compatible way to express immutable and mutable borrows, then reject dangling/conflicting borrows and moves while borrowed.
+3. **A single fully owned type**: complete the rules for initialization, assignment, parameters, return values, globals, string builtins, and cloning before adding automatic destruction. Do not silently change current `string` behavior in a patch release.
 4. **Explicit cleanup lowering**: emit cleanup actions for every normal and early scope exit and for owned return values.
 5. **Runtime verification**: test allocations/frees under AddressSanitizer and LeakSanitizer where available, plus repeated-request stress tests.
 6. **Expand only after parity**: add arrays and structs with owned fields once strings pass the full test matrix.
