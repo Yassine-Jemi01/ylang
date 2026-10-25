@@ -1,6 +1,6 @@
 # YLang Memory Model — RFC
 
-Status: partial implementation on `feature/ownership-borrow-checker`. The compiler supports explicit `move(name)` for local string bindings and a limited immutable `borrow(name)` view. Reads after move, moves or reassignment while a borrow is active, returning a borrow, and passing a borrow to an unannotated user function are rejected. This is not yet a complete ownership/borrowing system: automatic scope destruction, mutable borrowing, complete lifetime/dataflow analysis, and ownership-aware function signatures remain unimplemented.
+Status: partial implementation on `feature/ownership-borrow-checker`. The compiler supports explicit `move(name)`, a limited lexical immutable `borrow(name)` view, and generated cleanup for owned local string bindings and local string-array elements. It is not yet a complete Rust-like memory-safety guarantee: mutable borrows, precise non-lexical lifetimes, signature-level borrow annotations, recursive struct destruction, and automatic cleanup for every possible temporary/string-producing expression remain out of scope.
 
 ## Goals
 
@@ -24,12 +24,12 @@ Status: partial implementation on `feature/ownership-borrow-checker`. The compil
 The compiler must classify values rather than relying on the C type alone:
 
 1. **Scalar values**: `int`, `float`, `bool`, `char`, and unit-enum values. These are copied by value.
-2. **Owned values**: initially dynamic strings, and later owning structs/containers. Every owned value has exactly one owner at a time. Assignment or pass-by-value moves ownership; the old binding becomes unavailable.
+2. **Owned values**: currently, local string bindings and local string-array elements can own tracked allocations. Ordinary string assignment/binding clones an owner to keep compatibility; explicit `move(name)` transfers its pointer and makes the source unavailable. Structs with string fields are not recursively destroyed yet.
 3. **Shared immutable borrows**: `&T`. Multiple immutable borrows may coexist while the owner remains alive.
 4. **Exclusive mutable borrows**: `&mut T`. Only one exclusive mutable borrow may be active, and no immutable borrow may overlap it.
 5. **Non-owning views**: any future slice/string-view type must carry a checked lifetime and may never outlive its backing owner.
 
-The precise surface syntax and which standard-library operations borrow or consume a value must be finalized before implementation. The notation above is a design direction, not currently compilable syntax.
+The proposed `&T` and `&mut T` surface syntax remains a design direction, not currently compilable syntax. The implemented `borrow(name)` operation only creates a lexical immutable string view.
 
 ## Lifetime and cleanup rules
 
@@ -59,7 +59,7 @@ let string next_owner = move(owner);
 
 The view is valid only while its owner is in an enclosing lexical scope. An owner cannot be moved or reassigned while a view is active. Views may be read and copied into another local view; they cannot be reassigned, returned from a function, or passed to a user-defined function because function signatures do not yet express borrowing. The current implementation reports `E2115` for move conflicts, `E2116` for assignment to a view, `E2117` for attempted escape, `E2118` for owner mutation/call-boundary conflicts, and `E2119` for unsupported borrow forms.
 
-This initial view type is immutable and only supports strings. Reborrowing, mutable borrows, field/array views, and non-lexical lifetimes are not implemented. Runtime string storage is still process-lifetime tracked storage; `borrow(name)` is a compile-time view, not an allocation or a request to free memory.
+This initial view type is immutable and only supports strings. Reborrowing, mutable borrows, field/array views, and non-lexical lifetimes are not implemented. A borrowed view is not separately registered for cleanup and never frees its owner.
 
 ### Implemented: explicit local string moves (initial slice)
 
@@ -71,9 +71,11 @@ let string destination = move(source);
 print(destination);
 ```
 
-The checker marks `source` unavailable after the move and reports diagnostic `E2110` if a later read tries to use it. A moved local can be reinitialized with a fresh value. Move state is merged conservatively across `if` branches, loop exits, and exhaustive `match` arms. A self-move assignment is rejected with `E2114`. This initial operation is intentionally limited to named local `string` variables; globals, parameters, arrays, non-string values, and arbitrary expressions are rejected with `E2111`–`E2113` diagnostics.
+The checker marks `source` unavailable after the move and reports diagnostic `E2110` if a later read tries to use it. A moved local can be reinitialized with a fresh value. Move state is merged conservatively across `if` branches, loop exits, and exhaustive `match` arms. A self-move assignment is rejected with `E2114`, and using `move()` as a nested expression is rejected with `E2120`. This operation is limited to named local `string` variables; globals, parameters, arrays, non-string values, and arbitrary expressions are rejected with `E2111`–`E2113` diagnostics.
 
-**Important limitation:** `move(name)` currently transfers the binding at compile time and lowers to the same C pointer. It does **not** yet free allocations at scope exit, and the language does not yet prohibit every possible string alias. Do not treat this slice as a Rust-like memory-safety guarantee. Deterministic destruction must not be enabled until borrowing/alias rules and all control-flow exits are handled.
+**Runtime behavior:** `move(name)` nulls the source pointer and transfers the allocation to the destination. The C backend emits scope frames for blocks and functions, registers owned local strings and local string-array elements, and releases those slots on normal block exit, `return`, `break`, and `continue`. String parameters are cloned into callee-owned bindings; returning a named local owner transfers it to the caller. Ordinary string binding/assignment clones named owners so two slots do not own the same allocation. The tests include a loop/call stress case that checks `live_allocations=0` and `live_bytes=0` after its owners leave scope.
+
+**Remaining limitations:** this is not yet a Rust-level memory-safety guarantee. Strings held inside struct fields are not recursively destroyed, globals live until process shutdown, and some string temporaries that are never bound to an owner slot may remain tracked until program exit. Borrow checking is lexical and limited; it does not support mutable borrows or all lifetime/control-flow cases. Do not use this branch as a hardened safety boundary.
 
 The first runtime instrumentation commit adds an opt-in diagnostic:
 
@@ -81,20 +83,20 @@ The first runtime instrumentation commit adds an opt-in diagnostic:
 YLANG_MEMORY_STATS=1 ./your-program
 ```
 
-When the generated program exits normally, it writes a line to standard error with the number of currently tracked payload allocations and their requested payload bytes. The counters saturate rather than wrapping. This is diagnostic instrumentation only: it does not reclaim memory earlier, the byte count excludes tracker-node and allocator overhead, and it is not a measurement of resident RAM. Programs using the existing tracker still retain those allocations until `yl_cleanup()`.
+When the generated program exits normally, it writes cumulative tracked allocations/bytes, explicitly released allocations/bytes, and the live allocations/bytes still in the tracker. Counters saturate rather than wrapping. Byte counts cover requested payload sizes, not tracker-node or allocator overhead, and they are not a measurement of resident RAM. Explicit scope cleanup now reclaims the local-owned values described above; anything left in the tracker is released by the final process cleanup.
 
-The test suite includes an opt-in fixture and checks that enabling the diagnostic does not alter normal program output. Ownership, borrowing, and scope-based release are not implemented by this instrumentation.
+The test suite checks that enabling the diagnostic does not change normal program output, and includes a scope/call/loop stress case for owned string cleanup. The instrumentation reports allocator bookkeeping; it does not itself enforce ownership.
 
 ## First implementation slice
 
 Implement this in small, reviewable steps:
 
-1. **Compiler-side ownership facts (in progress)**: local-string move state and a limited lexical immutable-string borrow are implemented with pass/fail tests. Full branch-sensitive borrow dataflow and imported signatures remain to be implemented.
-2. **Complete borrow checker and explicit type surface**: add `&T` / `&mut T` type rules, mutable exclusivity, reborrowing, accurate lifetime joins, and signature-level ownership annotations.
-3. **A single fully owned type**: complete the rules for initialization, assignment, parameters, return values, globals, string builtins, and cloning before adding automatic destruction. Do not silently change current `string` behavior in a patch release.
-4. **Explicit cleanup lowering**: emit cleanup actions for every normal and early scope exit and for owned return values.
-5. **Runtime verification**: test allocations/frees under AddressSanitizer and LeakSanitizer where available, plus repeated-request stress tests.
-6. **Expand only after parity**: add arrays and structs with owned fields once strings pass the full test matrix.
+1. **Ownership-state analysis (in progress)**: local-string moves, basic branch/loop joins, and lexical immutable string borrows are checked. Full path-sensitive borrow dataflow and imported ownership signatures remain to be implemented.
+2. **Complete borrow checker**: add `&T` / `&mut T` type rules, mutable exclusivity, reborrowing, precise lifetime joins, and signature-level ownership annotations.
+3. **Complete string/temporary coverage**: identify every string-producing built-in and temporary expression, and ensure it is either moved, cloned, borrowed, or released exactly once. Current string binding/assignment behavior remains compatible by cloning named owners.
+4. **Recursive destruction**: implement ownership-aware drop routines for structs with string fields and specify global lifetime behavior.
+5. **Runtime verification**: run AddressSanitizer/LeakSanitizer and repeated-request stress tests, including early return/break/continue and all supported platforms.
+6. **Expand only after parity**: add broader owned containers after strings and structs pass the full test matrix.
 
 ## Required compile-pass tests
 
