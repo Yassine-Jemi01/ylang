@@ -1421,12 +1421,19 @@ bool generate_c(Compiler *c, const char *path)
         }
         fputs(") {\n", out);
         emit_temp_declarations_stmt(c, out, fn->body, 1U);
-        /* Ownership cleanup is tracked per function. */
-        cg_active_scope = NULL;
+        /* Owned parameters transfer into the callee and are released after
+           all locals whose scope is nested within the function body. */
+        CgScope parameter_scope = { .parent = NULL, .owned_vars = NULL,
+                                    .owned_count = 0U, .owned_capacity = 0U };
+        cg_active_scope = &parameter_scope;
         cg_active_loop = NULL;
+        for (size_t j = 0; j < fn->param_count; j++)
+            cg_scope_add_owned(fn->params[j]);
         emit_stmt(c, out, fn->body, 1U);
+        cg_emit_scope_drops(out, &parameter_scope, 1U);
         cg_active_scope = NULL;
         cg_active_loop = NULL;
+        free(parameter_scope.owned_vars);
         fputs("}\n\n", out);
     }
 
