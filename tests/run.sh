@@ -1307,6 +1307,19 @@ if ./build/ylang check tests/move-after-use.yl > build/move-after-use.out 2>&1; 
 fi
 grep -q 'E2110' build/move-after-use.out
 
+# Invalid move operations must have targeted diagnostics.
+if ./build/ylang check tests/move-rejections.yl > build/move-rejections.out 2>&1; then
+    echo "FAIL: YLang accepted unsupported move operations" >&2
+    exit 1
+fi
+grep -q 'E2111' build/move-rejections.out
+grep -q 'E2112' build/move-rejections.out
+grep -q 'E2113' build/move-rejections.out
+
+# The ownership primitive does not reserve the name of an existing user function.
+./build/ylang build tests/move-name-collision.yl -o build/test-move-name-collision >/dev/null
+test "$(./build/test-move-name-collision)" = "42"
+
 # Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
 ./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-memory-stats > build/memory-stats.stdout 2> build/memory-stats.stderr
