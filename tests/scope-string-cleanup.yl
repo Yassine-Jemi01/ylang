@@ -1,0 +1,17 @@
+function main() -> int {
+    let int iteration = 0;
+    while (iteration < 12) {
+        let string temporary = string.concat("cycle", "-value");
+        iteration += 1;
+    }
+
+    {
+        let string original = string.concat("Y", "Lang");
+        let string copy = original;
+        print(copy);
+        let string moved = move(original);
+        print(moved);
+    }
+
+    return 0;
+}
