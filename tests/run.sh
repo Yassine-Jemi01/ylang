@@ -1360,6 +1360,40 @@ grep -q 'E2113' build/move-rejections.out
 ./build/ylang build tests/move-name-collision.yl -o build/test-move-name-collision >/dev/null
 test "$(./build/test-move-name-collision)" = "42"
 
+# Explicit immutable borrows are valid only while their owner is in lexical scope.
+./build/ylang build tests/borrow-string.yl -o build/test-borrow-string >/dev/null
+./build/test-borrow-string > build/borrow-string.out
+printf 'YLang YLang\nYLang\n' > build/borrow-string.expected
+diff -u build/borrow-string.expected build/borrow-string.out
+
+# An owner cannot be moved or reassigned while a lexical immutable borrow is active.
+if ./build/ylang check tests/borrow-move-conflict.yl > build/borrow-move-conflict.out 2>&1; then
+    echo "FAIL: YLang moved an owner with an active immutable borrow" >&2
+    exit 1
+fi
+grep -q 'E2115' build/borrow-move-conflict.out
+if ./build/ylang check tests/borrow-reassign-conflict.yl > build/borrow-reassign-conflict.out 2>&1; then
+    echo "FAIL: YLang reassigned an owner with an active immutable borrow" >&2
+    exit 1
+fi
+grep -q 'E2118' build/borrow-reassign-conflict.out
+
+# Borrowed views cannot escape by returning them or passing them to unannotated functions.
+if ./build/ylang check tests/borrow-return-reject.yl > build/borrow-return-reject.out 2>&1; then
+    echo "FAIL: YLang returned a borrowed local view" >&2
+    exit 1
+fi
+grep -q 'E2117' build/borrow-return-reject.out
+if ./build/ylang check tests/borrow-call-reject.yl > build/borrow-call-reject.out 2>&1; then
+    echo "FAIL: YLang passed a borrow to a user function" >&2
+    exit 1
+fi
+grep -q 'E2118' build/borrow-call-reject.out
+
+# The borrow primitive name remains available to user-defined functions.
+./build/ylang build tests/borrow-name-collision.yl -o build/test-borrow-name-collision >/dev/null
+test "$(./build/test-borrow-name-collision)" = "42"
+
 # Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
 ./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-memory-stats > build/memory-stats.stdout 2> build/memory-stats.stderr
