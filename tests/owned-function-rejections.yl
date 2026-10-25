@@ -12,6 +12,7 @@ function consume(owned string value) -> int {
 
 function main() -> int {
     let owned string owner = string.own("YLang");
+    let owned string nested = string.own(make_value());
     consume(owner);
     make_value();
     return 0;
