@@ -76,6 +76,8 @@ static bool asm_type_supported(AsmContext *ctx, YType type, Token token,
             return asm_reject(ctx, token, "void values");
         case TYPE_FLOAT:
             return asm_reject(ctx, token, "float values");
+        case TYPE_OWNED_STRING:
+            return asm_reject(ctx, token, "owned strings (use the C backend for ownership cleanup)");
         case TYPE_ERROR:
             return asm_reject(ctx, token, "expressions with unresolved types");
     }
