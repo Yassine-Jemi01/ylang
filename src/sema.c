@@ -1269,7 +1269,10 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 }
             }
             for (size_t i = 0; i < variable_count; i++) {
-                c->all_vars[i]->moved = before_moved[i] || moved_in_any_arm[i];
+                /* Match is exhaustive when valid: every continuation comes from
+                   one arm, so the arm states already include the incoming state
+                   unless that arm reinitialized a moved binding. */
+                c->all_vars[i]->moved = moved_in_any_arm[i];
                 c->all_vars[i]->initialized = before[i] && !c->all_vars[i]->moved;
             }
             break;
