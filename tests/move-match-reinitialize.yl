@@ -1,0 +1,19 @@
+enum Choice { First, Second }
+
+function main() -> int {
+    let Choice choice = Choice.First;
+    let string source = string.concat("old", "value");
+    let string old_owner = move(source);
+
+    match (choice) {
+        Choice.First -> {
+            source = string.concat("new", "value");
+        }
+        Choice.Second -> {
+            source = string.concat("fresh", "value");
+        }
+    }
+
+    print(old_owner, source);
+    return 0;
+}

@@ -211,6 +211,8 @@ static YType parse_type(Parser *p)
     if (token_is(&token, "bool")) return TYPE_BOOL;
     if (token_is(&token, "char")) return TYPE_CHAR;
     if (token_is(&token, "string")) return TYPE_STRING;
+    if (token_is(&token, "borrowed_string")) return TYPE_BORROWED_STRING;
+    if (token_is(&token, "owned_string")) return TYPE_OWNED_STRING;
     if (token_is(&token, "void")) return TYPE_VOID;
     EnumDecl *enumeration = find_enum(p->compiler, token_copy(p->compiler, token));
     if (enumeration) return enumeration->type;
@@ -231,6 +233,8 @@ const char *type_name(YType type)
         case TYPE_BOOL: return "bool";
         case TYPE_CHAR: return "char";
         case TYPE_STRING: return "string";
+        case TYPE_BORROWED_STRING: return "borrowed_string";
+        case TYPE_OWNED_STRING: return "owned_string";
         case TYPE_VOID: return "void";
         case TYPE_ERROR: return "<error>";
     }
@@ -397,8 +401,9 @@ static Expr *parse_primary(Parser *p)
                 "Expected a member name after '.'.",
                 "For example: math.sqrt(value), string.length(value), or io.read_line().");
             if (token_is(&token, "math") || token_is(&token, "string") ||
-                token_is(&token, "io") || token_is(&token, "path") ||
-                token_is(&token, "image") || token_is(&token, "gui")) {
+                token_is(&token, "owned_string") || token_is(&token, "io") ||
+                token_is(&token, "path") || token_is(&token, "image") ||
+                token_is(&token, "gui")) {
                 StringBuilder qualified;
                 sb_init(&qualified);
                 sb_append_n(&qualified, token.start, token.length);
@@ -649,6 +654,11 @@ static Stmt *parse_variable(Parser *p, bool global)
     Token start = p->previous;
     bool is_const = match(p, TOKEN_CONST);
     YType type = parse_type(p);
+    if (type == TYPE_BORROWED_STRING) {
+        diagnostic(p->compiler, p->previous, "error", "E2120",
+                   "borrowed_string can only be used as a function parameter type.",
+                   "Use borrowed_string in a parameter list, or use string / owned_string for stored values.");
+    }
     Token name_token = consume(p, TOKEN_IDENTIFIER,
         "Expected a variable name after the type.",
         "For example: let int count = 0;");
@@ -894,6 +904,7 @@ static Function *parse_function(Parser *p)
                         "Use syntax such as function sum(int values[]) -> int.");
             }
             param->initialized = true;
+            if (type == TYPE_BORROWED_STRING) param->is_const = true;
             (void)param_type_token;
             append_ptr(p->compiler, (void ***)&function->params,
                        &function->param_count, param);
@@ -904,6 +915,12 @@ static Function *parse_function(Parser *p)
     consume(p, TOKEN_ARROW, "Expected '->' before function return type.",
             "For example: function main() -> int { ... }");
     function->return_type = parse_type(p);
+    if (function->return_type == TYPE_BORROWED_STRING) {
+        diagnostic(p->compiler, function->token, "error", "E2120",
+                   "A borrowed_string cannot be returned.",
+                   "Return an owned_string with move(name), or return a regular string copy.");
+        function->return_type = TYPE_VOID;
+    }
     if (function->return_type == TYPE_ERROR) function->return_type = TYPE_VOID;
     consume(p, TOKEN_LEFT_BRACE, "Expected '{' before function body.",
             "Start the function body with '{'.");
@@ -1022,10 +1039,17 @@ static StructDecl *parse_struct(Parser *p, Token struct_token)
                        "Every field name must be unique within its struct.");
         }
         if (field_type == TYPE_VOID || field_type == TYPE_ERROR ||
-            field_type == structure->type) {
-            diagnostic(p->compiler, field_type_token, "error", "E2072",
+            field_type == TYPE_BORROWED_STRING ||
+            field_type == TYPE_OWNED_STRING || field_type == structure->type) {
+            diagnostic(p->compiler, field_type_token, "error",
+                       (field_type == TYPE_OWNED_STRING ||
+                        field_type == TYPE_BORROWED_STRING) ? "E2118" : "E2072",
                        "This field type is not supported in a struct.",
-                       "Fields must use a valid non-void type; recursive by-value struct fields are not supported.");
+                       field_type == TYPE_OWNED_STRING
+                           ? "Struct fields cannot own strings until field drop glue is implemented."
+                           : field_type == TYPE_BORROWED_STRING
+                               ? "Borrowed strings cannot be stored in struct fields."
+                               : "Fields must use a valid non-void type; recursive by-value struct fields are not supported.");
         } else if (!duplicate) {
             StructField *field = arena_alloc(&p->compiler->arena, sizeof(*field));
             field->token = field_name_token;

@@ -70,7 +70,10 @@ static bool asm_type_supported(AsmContext *ctx, YType type, Token token,
         case TYPE_BOOL:
         case TYPE_CHAR:
         case TYPE_STRING:
+        case TYPE_BORROWED_STRING:
             return true;
+        case TYPE_OWNED_STRING:
+            return asm_reject(ctx, token, "owned strings (use the C backend)");
         case TYPE_VOID:
             if (allow_void) return true;
             return asm_reject(ctx, token, "void values");
@@ -126,7 +129,9 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
                 return asm_reject(ctx, expr->token,
                                   "and/or expressions (short-circuit lowering is not implemented)");
             }
-            if (expr->as.binary.left && expr->as.binary.left->type == TYPE_STRING) {
+            if (expr->as.binary.left &&
+                (expr->as.binary.left->type == TYPE_STRING ||
+                 expr->as.binary.left->type == TYPE_BORROWED_STRING)) {
                 return asm_reject(ctx, expr->token, "string comparisons");
             }
             if (op != TOKEN_PLUS && op != TOKEN_MINUS && op != TOKEN_STAR &&
@@ -515,7 +520,9 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
 
             /* Use memory operands for simple local integer arithmetic/comparisons. */
             if (is_local_scalar_name(left) && is_local_scalar_name(right) &&
-                left->type != TYPE_STRING && right->type != TYPE_STRING) {
+                left->type != TYPE_STRING && right->type != TYPE_STRING &&
+                left->type != TYPE_BORROWED_STRING &&
+                right->type != TYPE_BORROWED_STRING) {
                 bool int_arithmetic = left->type == TYPE_INT && right->type == TYPE_INT;
                 bool arithmetic_op = op == TOKEN_PLUS || op == TOKEN_MINUS || op == TOKEN_STAR;
                 bool comparison_op = op == TOKEN_EQUAL_EQUAL || op == TOKEN_BANG_EQUAL ||
@@ -731,8 +738,11 @@ static bool emit_print_value(AsmContext *ctx, Expr *expr)
             fputs("    mov rdi, rax\n    call yl_print_char\n", ctx->out);
             break;
         case TYPE_STRING:
+        case TYPE_BORROWED_STRING:
             fputs("    mov rdi, rax\n    call yl_print_cstr\n", ctx->out);
             break;
+        case TYPE_OWNED_STRING:
+            return asm_reject(ctx, expr->token, "owned strings (use the C backend)");
         case TYPE_FLOAT:
         case TYPE_VOID:
         case TYPE_ERROR:
@@ -755,7 +765,8 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
             size_t offset = slot_offset(ctx, var);
             if (var->initializer) {
                 if (!emit_expr(ctx, var->initializer)) return false;
-            } else if (var->type == TYPE_STRING) {
+            } else if (var->type == TYPE_STRING ||
+                       var->type == TYPE_BORROWED_STRING) {
                 fputs("    lea rax, [rel yl_empty]\n", ctx->out);
             } else {
                 fputs("    xor eax, eax\n", ctx->out);

@@ -1,0 +1,7 @@
+function invalid(borrowed_string value) -> owned_string {
+    return move(value);
+}
+
+function main() -> int {
+    return 0;
+}

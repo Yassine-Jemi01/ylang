@@ -30,6 +30,8 @@ typedef enum {
     TYPE_BOOL,
     TYPE_CHAR,
     TYPE_STRING,
+    TYPE_BORROWED_STRING,
+    TYPE_OWNED_STRING,
     TYPE_VOID
 } YType;
 

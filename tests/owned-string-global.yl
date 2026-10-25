@@ -1,0 +1,5 @@
+let owned_string GLOBAL = "not supported";
+
+function main() -> int {
+    return 0;
+}

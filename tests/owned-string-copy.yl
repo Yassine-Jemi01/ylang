@@ -1,0 +1,6 @@
+function main() -> int {
+    let owned_string first = string.own("value");
+    let owned_string second = first;
+    print(second);
+    return 0;
+}

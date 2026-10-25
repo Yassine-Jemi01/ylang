@@ -1,0 +1,7 @@
+function invalid(borrowed_string values[]) -> int {
+    return 0;
+}
+
+function main() -> int {
+    return 0;
+}

@@ -1333,6 +1333,12 @@ grep -q 'E2110' build/move-loop-join.out
 printf 'YLang\n' > build/move-match-alternatives.expected
 diff -u build/move-match-alternatives.expected build/move-match-alternatives.out
 
+# A binding moved before match is initialized again when every arm reassigns it.
+./build/ylang build tests/move-match-reinitialize.yl -o build/test-move-match-reinitialize >/dev/null
+./build/test-move-match-reinitialize > build/move-match-reinitialize.out
+printf 'oldvalue newvalue\n' > build/move-match-reinitialize.expected
+diff -u build/move-match-reinitialize.expected build/move-match-reinitialize.out
+
 # A move in any exhaustive match arm makes the source unavailable after the join.
 if ./build/ylang check tests/move-match-join.yl > build/move-match-join.out 2>&1; then
     echo "FAIL: YLang accepted use after a possible match-arm move" >&2
@@ -1359,6 +1365,107 @@ grep -q 'E2113' build/move-rejections.out
 # The ownership primitive does not reserve the name of an existing user function.
 ./build/ylang build tests/move-name-collision.yl -o build/test-move-name-collision >/dev/null
 test "$(./build/test-move-name-collision)" = "42"
+
+# borrowed_string is a read-only, parameter-only view and does not steal its owner.
+./build/ylang build tests/borrowed-string.yl -o build/test-borrowed-string >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-borrowed-string > build/borrowed-string.stdout 2> build/borrowed-string.stderr
+printf 'Borrowed\n8\nBorrowed Borrowed\n' > build/borrowed-string.expected
+diff -u build/borrowed-string.expected build/borrowed-string.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/borrowed-string.stderr
+
+if ./build/ylang check tests/borrowed-string-move.yl > build/borrowed-string-move.out 2>&1; then
+    echo "FAIL: YLang allowed move() on a borrowed_string parameter" >&2
+    exit 1
+fi
+grep -q 'E2112' build/borrowed-string-move.out
+
+if ./build/ylang check tests/borrowed-string-array.yl > build/borrowed-string-array.out 2>&1; then
+    echo "FAIL: YLang accepted an array of borrowed_string parameters" >&2
+    exit 1
+fi
+grep -q 'E2120' build/borrowed-string-array.out
+
+# A borrowed value cannot be forwarded to a legacy parameter that may retain it.
+if ./build/ylang check tests/borrowed-string-escape.yl > build/borrowed-string-escape.out 2>&1; then
+    echo "FAIL: YLang allowed borrowed_string to escape through a legacy string parameter" >&2
+    exit 1
+fi
+grep -q 'E2042' build/borrowed-string-escape.out
+
+# Owned values require an explicit borrowed_string parameter when passing a non-owning view.
+if ./build/ylang check tests/owned-string-legacy-parameter.yl > build/owned-string-legacy-parameter.out 2>&1; then
+    echo "FAIL: YLang accepted owned_string for a legacy string parameter" >&2
+    exit 1
+fi
+grep -q 'E2042' build/owned-string-legacy-parameter.out
+
+if ./build/ylang check tests/borrowed-string-mutate.yl > build/borrowed-string-mutate.out 2>&1; then
+    echo "FAIL: YLang allowed mutation of a borrowed_string parameter" >&2
+    exit 1
+fi
+grep -q 'E2022' build/borrowed-string-mutate.out
+
+for fixture in borrowed-string-local borrowed-string-return; do
+    if ./build/ylang check "tests/$fixture.yl" > "build/$fixture.out" 2>&1; then
+        echo "FAIL: YLang accepted unsupported borrowed_string form in $fixture" >&2
+        exit 1
+    fi
+    grep -q 'E2120' "build/$fixture.out"
+done
+
+if ./build/ylang check tests/borrowed-string-temporary.yl > build/borrowed-string-temporary.out 2>&1; then
+    echo "FAIL: YLang accepted a temporary owned string as a borrowed argument" >&2
+    exit 1
+fi
+grep -q 'E2119' build/borrowed-string-temporary.out
+
+# Owned strings transfer ownership explicitly and are released at scope exit.
+./build/ylang build tests/owned-string-basic.yl -o build/test-owned-string >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string > build/owned-string.stdout 2> build/owned-string.stderr
+printf 'alpha alphabeta\nALPHABETA\nalpha\nALPHA\nlocal\ntemporary argument\n' > build/owned-string.expected
+diff -u build/owned-string.expected build/owned-string.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string.stderr
+
+if ./build/ylang check tests/owned-string-after-move.yl > build/owned-string-after-move.out 2>&1; then
+    echo "FAIL: YLang accepted use after move for owned_string" >&2
+    exit 1
+fi
+grep -q 'E2110' build/owned-string-after-move.out
+
+if ./build/ylang check tests/owned-string-lost-temporary.yl > build/owned-string-lost-temporary.out 2>&1; then
+    echo "FAIL: YLang accepted a dropped owned_string temporary inside a comparison" >&2
+    exit 1
+fi
+grep -q 'E2119' build/owned-string-lost-temporary.out
+
+# Copying an owned string requires an explicit clone or move.
+if ./build/ylang check tests/owned-string-copy.yl > build/owned-string-copy.out 2>&1; then
+    echo "FAIL: YLang accepted an implicit owned_string copy" >&2
+    exit 1
+fi
+grep -q 'E2115' build/owned-string-copy.out
+
+if ./build/ylang check tests/owned-string-return-copy.yl > build/owned-string-return-copy.out 2>&1; then
+    echo "FAIL: YLang accepted returning an owned_string without move" >&2
+    exit 1
+fi
+grep -q 'E2116' build/owned-string-return-copy.out
+
+# Ownership in structs, globals and arrays is rejected until their cleanup rules exist.
+for fixture in owned-string-struct-field owned-string-global owned-string-array; do
+    if ./build/ylang check "tests/$fixture.yl" > "build/$fixture.out" 2>&1; then
+        echo "FAIL: YLang accepted unsupported owned_string storage in $fixture" >&2
+        exit 1
+    fi
+    grep -q 'E2118' "build/$fixture.out"
+done
+
+# Early returns clean only active lexical scopes, and transfer the return owner.
+./build/ylang build tests/owned-string-early-return.yl -o build/test-owned-string-early-return >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string-early-return > build/owned-string-early-return.stdout 2> build/owned-string-early-return.stderr
+printf 'returned\n' > build/owned-string-early-return.expected
+diff -u build/owned-string-early-return.expected build/owned-string-early-return.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-early-return.stderr
 
 # Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
 ./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null

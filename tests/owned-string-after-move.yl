@@ -1,0 +1,7 @@
+function main() -> int {
+    let owned_string source = string.own("value");
+    let owned_string destination = move(source);
+    print(source);
+    print(destination);
+    return 0;
+}
