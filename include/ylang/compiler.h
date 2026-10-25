@@ -105,6 +105,7 @@ struct VarDecl {
     YType type;
     bool is_const;
     bool initialized;
+    bool moved; /* True after ownership is explicitly transferred with move(name). */
     bool is_global;
     bool is_array;
     size_t array_length;

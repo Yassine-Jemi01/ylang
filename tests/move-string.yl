@@ -1,0 +1,8 @@
+function main() -> int {
+    let string source = string.concat("Y", "Lang");
+    let string destination = move(source);
+
+    source = string.concat("new", "value");
+    print(destination, source);
+    return 0;
+}

@@ -1,0 +1,10 @@
+function main() -> int {
+    let string source = string.concat("Y", "Lang");
+    if (true) {
+        let string destination = move(source);
+        print(destination);
+    } else {
+        print(source);
+    }
+    return 0;
+}

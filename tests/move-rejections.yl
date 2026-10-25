@@ -1,0 +1,13 @@
+function transfer_parameter(string value) -> string {
+    let string invalid = move(value);
+    return value;
+}
+
+function main() -> int {
+    let string source = string.concat("some", "thing");
+    let string no_argument = move();
+    let string expression_argument = move(string.concat("a", "b"));
+    let int number = 7;
+    let int invalid_type = move(number);
+    return 0;
+}

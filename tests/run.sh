@@ -1294,6 +1294,72 @@ else
 fi
 
 
+# Explicit string moves transfer the binding statically and permit reinitialization.
+./build/ylang build tests/move-string.yl -o build/test-move-string >/dev/null
+./build/test-move-string > build/move-string.out
+printf 'YLang newvalue\n' > build/move-string.expected
+diff -u build/move-string.expected build/move-string.out
+
+# A moved binding must be rejected on later use, before code generation.
+if ./build/ylang check tests/move-after-use.yl > build/move-after-use.out 2>&1; then
+    echo "FAIL: YLang accepted use after move" >&2
+    exit 1
+fi
+grep -q 'E2110' build/move-after-use.out
+
+# Move state is path-sensitive within mutually exclusive branches.
+./build/ylang build tests/move-branch-alternatives.yl -o build/test-move-branch-alternatives >/dev/null
+./build/test-move-branch-alternatives > build/move-branch-alternatives.out
+printf 'YLang\n' > build/move-branch-alternatives.expected
+diff -u build/move-branch-alternatives.expected build/move-branch-alternatives.out
+
+# A move on only one path makes the source unavailable after the control-flow join.
+if ./build/ylang check tests/move-branch-join.yl > build/move-branch-join.out 2>&1; then
+    echo "FAIL: YLang accepted use after move at a branch join" >&2
+    exit 1
+fi
+grep -q 'E2110' build/move-branch-join.out
+
+# A move in a loop may execute, so the source is unavailable after the loop.
+if ./build/ylang check tests/move-loop-join.yl > build/move-loop-join.out 2>&1; then
+    echo "FAIL: YLang accepted use after a possible loop move" >&2
+    exit 1
+fi
+grep -q 'E2110' build/move-loop-join.out
+
+# Exhaustive match arms must each start from the same incoming ownership state.
+./build/ylang build tests/move-match-alternatives.yl -o build/test-move-match-alternatives >/dev/null
+./build/test-move-match-alternatives > build/move-match-alternatives.out
+printf 'YLang\n' > build/move-match-alternatives.expected
+diff -u build/move-match-alternatives.expected build/move-match-alternatives.out
+
+# A move in any exhaustive match arm makes the source unavailable after the join.
+if ./build/ylang check tests/move-match-join.yl > build/move-match-join.out 2>&1; then
+    echo "FAIL: YLang accepted use after a possible match-arm move" >&2
+    exit 1
+fi
+grep -q 'E2110' build/move-match-join.out
+
+# A self-move assignment would invalidate its target and is rejected.
+if ./build/ylang check tests/move-self-assignment.yl > build/move-self-assignment.out 2>&1; then
+    echo "FAIL: YLang accepted self-move assignment" >&2
+    exit 1
+fi
+grep -q 'E2114' build/move-self-assignment.out
+
+# Invalid move operations must have targeted diagnostics.
+if ./build/ylang check tests/move-rejections.yl > build/move-rejections.out 2>&1; then
+    echo "FAIL: YLang accepted unsupported move operations" >&2
+    exit 1
+fi
+grep -q 'E2111' build/move-rejections.out
+grep -q 'E2112' build/move-rejections.out
+grep -q 'E2113' build/move-rejections.out
+
+# The ownership primitive does not reserve the name of an existing user function.
+./build/ylang build tests/move-name-collision.yl -o build/test-move-name-collision >/dev/null
+test "$(./build/test-move-name-collision)" = "42"
+
 # Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
 ./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-memory-stats > build/memory-stats.stdout 2> build/memory-stats.stderr

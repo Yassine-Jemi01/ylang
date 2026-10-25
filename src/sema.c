@@ -467,6 +467,13 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             expr->as.name.name = var->name;
             expr->as.name.variable = var;
+            if (var->moved) {
+                diagnostic(c, expr->token, "error", "E2110",
+                           "This value was already moved and cannot be used again.",
+                           "Use the new owner, or assign a fresh value before reading this variable.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
             if (var->is_array && !checker->allow_array_name) {
                 diagnostic(c, expr->token, "error", "E2029",
                            "An array must be indexed before it can be used as a value.",
@@ -537,7 +544,23 @@ static YType check_expr(Checker *checker, Expr *expr)
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
-            YType right = check_expr(checker, expr->as.assign.right);
+            Expr *right_expr = expr->as.assign.right;
+            bool self_move = target && target->kind == EXPR_NAME &&
+                right_expr && right_expr->kind == EXPR_CALL &&
+                strcmp(right_expr->as.call.name, "move") == 0 &&
+                !resolve_function(checker, "move") &&
+                right_expr->as.call.count == 1U &&
+                right_expr->as.call.args[0]->kind == EXPR_NAME &&
+                strcmp(target->as.name.name,
+                       right_expr->as.call.args[0]->as.name.name) == 0;
+            YType right = check_expr(checker, right_expr);
+            if (self_move) {
+                diagnostic(c, expr->token, "error", "E2114",
+                           "A binding cannot be moved into itself.",
+                           "Move into a different destination variable.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
             if (var->is_const) {
                 diagnostic(c, expr->token, "error", "E2022",
                            "Cannot assign to a const variable.",
@@ -552,6 +575,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                            "Assignment type mismatch.", suggestion);
             }
             var->initialized = true;
+            var->moved = false;
             expr->type = target_type;
             return expr->type;
         }
@@ -708,6 +732,64 @@ static YType check_expr(Checker *checker, Expr *expr)
             return expr->type;
         }
         case EXPR_CALL: {
+            if (strcmp(expr->as.call.name, "move") == 0 &&
+                !resolve_function(checker, "move")) {
+                if (expr->as.call.count != 1U) {
+                    diagnostic(c, expr->token, "error", "E2111",
+                               "move() expects exactly one local string variable.",
+                               "Use move(name) to transfer a string value to a new owner.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                Expr *argument = expr->as.call.args[0];
+                if (argument->kind != EXPR_NAME) {
+                    (void)check_expr(checker, argument);
+                    diagnostic(c, argument->token, "error", "E2112",
+                               "move() currently requires a named string variable.",
+                               "Move a local binding directly, for example move(message).");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                YType argument_type = check_expr(checker, argument);
+                VarDecl *source = argument->as.name.variable;
+                if (argument_type == TYPE_ERROR || !source) {
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (argument_type != TYPE_STRING || source->is_array) {
+                    diagnostic(c, argument->token, "error", "E2112",
+                               "Only scalar string variables can be moved in this milestone.",
+                               "Use move(name) with a local variable whose type is string.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                bool is_parameter = false;
+                if (checker->function) {
+                    for (size_t i = 0; i < checker->function->param_count; i++) {
+                        if (checker->function->params[i] == source) {
+                            is_parameter = true;
+                            break;
+                        }
+                    }
+                }
+                if (source->is_global || is_parameter) {
+                    diagnostic(c, argument->token, "error", "E2113",
+                               "move() can only transfer a local variable in this milestone.",
+                               "Create a local owned value first; globals and function parameters remain borrowed.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (!source->initialized) {
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                source->moved = true;
+                source->initialized = false;
+                expr->type = TYPE_STRING;
+                return expr->type;
+            }
             if (strncmp(expr->as.call.name, "gui.", 4) == 0) {
                 c->uses_gui = true;
                 const GuiBuiltin *builtin = find_gui_builtin(expr->as.call.name);
@@ -1025,28 +1107,54 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             }
             size_t n = c->all_var_count;
             bool *before = arena_alloc(&c->arena, n * sizeof(bool));
+            bool *before_moved = arena_alloc(&c->arena, n * sizeof(bool));
             bool *after_then = arena_alloc(&c->arena, n * sizeof(bool));
-            for (size_t i = 0; i < n; i++) before[i] = c->all_vars[i]->initialized;
+            bool *after_then_moved = arena_alloc(&c->arena, n * sizeof(bool));
+            for (size_t i = 0; i < n; i++) {
+                before[i] = c->all_vars[i]->initialized;
+                before_moved[i] = c->all_vars[i]->moved;
+            }
             check_stmt(checker, stmt->as.if_stmt.then_branch);
-            for (size_t i = 0; i < n; i++) after_then[i] = c->all_vars[i]->initialized;
-            for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
+            for (size_t i = 0; i < n; i++) {
+                after_then[i] = c->all_vars[i]->initialized;
+                after_then_moved[i] = c->all_vars[i]->moved;
+            }
+            for (size_t i = 0; i < n; i++) {
+                c->all_vars[i]->initialized = before[i];
+                c->all_vars[i]->moved = before_moved[i];
+            }
             if (stmt->as.if_stmt.else_branch) {
                 check_stmt(checker, stmt->as.if_stmt.else_branch);
-                for (size_t i = 0; i < n; i++)
-                    c->all_vars[i]->initialized = after_then[i] && c->all_vars[i]->initialized;
+                for (size_t i = 0; i < n; i++) {
+                    c->all_vars[i]->initialized =
+                        after_then[i] && c->all_vars[i]->initialized;
+                    c->all_vars[i]->moved =
+                        after_then_moved[i] || c->all_vars[i]->moved;
+                }
             } else {
-                for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
+                for (size_t i = 0; i < n; i++) {
+                    c->all_vars[i]->initialized = before[i];
+                    c->all_vars[i]->moved =
+                        before_moved[i] || after_then_moved[i];
+                }
             }
             break;
         }
         case STMT_LOOP: {
             size_t n = c->all_var_count;
             bool *before = arena_alloc(&c->arena, n * sizeof(bool));
-            for (size_t i = 0; i < n; i++) before[i] = c->all_vars[i]->initialized;
+            bool *before_moved = arena_alloc(&c->arena, n * sizeof(bool));
+            for (size_t i = 0; i < n; i++) {
+                before[i] = c->all_vars[i]->initialized;
+                before_moved[i] = c->all_vars[i]->moved;
+            }
             checker->loop_depth++;
             check_stmt(checker, stmt->as.loop_body);
             checker->loop_depth--;
-            for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
+            for (size_t i = 0; i < n; i++) {
+                c->all_vars[i]->moved = before_moved[i] || c->all_vars[i]->moved;
+                c->all_vars[i]->initialized = before[i] && !c->all_vars[i]->moved;
+            }
             break;
         }
         case STMT_WHILE: {
@@ -1058,11 +1166,18 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             }
             size_t n = c->all_var_count;
             bool *before = arena_alloc(&c->arena, n * sizeof(bool));
-            for (size_t i = 0; i < n; i++) before[i] = c->all_vars[i]->initialized;
+            bool *before_moved = arena_alloc(&c->arena, n * sizeof(bool));
+            for (size_t i = 0; i < n; i++) {
+                before[i] = c->all_vars[i]->initialized;
+                before_moved[i] = c->all_vars[i]->moved;
+            }
             checker->loop_depth++;
             check_stmt(checker, stmt->as.while_stmt.body);
             checker->loop_depth--;
-            for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
+            for (size_t i = 0; i < n; i++) {
+                c->all_vars[i]->moved = before_moved[i] || c->all_vars[i]->moved;
+                c->all_vars[i]->initialized = before[i] && !c->all_vars[i]->moved;
+            }
             break;
         }
         case STMT_FOR: {
@@ -1070,7 +1185,11 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             checker->scope = scope_new(c, outer_scope);
             size_t n_before_init = c->all_var_count;
             bool *before = arena_alloc(&c->arena, n_before_init * sizeof(bool));
-            for (size_t i = 0; i < n_before_init; i++) before[i] = c->all_vars[i]->initialized;
+            bool *before_moved = arena_alloc(&c->arena, n_before_init * sizeof(bool));
+            for (size_t i = 0; i < n_before_init; i++) {
+                before[i] = c->all_vars[i]->initialized;
+                before_moved[i] = c->all_vars[i]->moved;
+            }
             if (stmt->as.for_stmt.initializer)
                 check_stmt(checker, stmt->as.for_stmt.initializer);
             if (stmt->as.for_stmt.condition) {
@@ -1092,7 +1211,10 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 checker->allowed_assignment = previous_assignment;
             }
             checker->loop_depth--;
-            for (size_t i = 0; i < n_before_init; i++) c->all_vars[i]->initialized = before[i];
+            for (size_t i = 0; i < n_before_init; i++) {
+                c->all_vars[i]->moved = before_moved[i] || c->all_vars[i]->moved;
+                c->all_vars[i]->initialized = before[i] && !c->all_vars[i]->moved;
+            }
             checker->scope = outer_scope;
             break;
         }
@@ -1112,8 +1234,13 @@ static void check_stmt(Checker *checker, Stmt *stmt)
 
             size_t variable_count = c->all_var_count;
             bool *before = arena_alloc(&c->arena, variable_count * sizeof(bool));
-            for (size_t i = 0; i < variable_count; i++)
+            bool *before_moved = arena_alloc(&c->arena, variable_count * sizeof(bool));
+            bool *moved_in_any_arm = arena_alloc(&c->arena, variable_count * sizeof(bool));
+            for (size_t i = 0; i < variable_count; i++) {
                 before[i] = c->all_vars[i]->initialized;
+                before_moved[i] = c->all_vars[i]->moved;
+                moved_in_any_arm[i] = false;
+            }
 
             for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++) {
                 MatchArm *arm = stmt->as.match_stmt.arms[i];
@@ -1130,9 +1257,13 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                                    "Keep exactly one arm for each enum variant.");
                     }
                 }
-                for (size_t j = 0; j < variable_count; j++)
+                for (size_t j = 0; j < variable_count; j++) {
                     c->all_vars[j]->initialized = before[j];
+                    c->all_vars[j]->moved = before_moved[j];
+                }
                 check_stmt(checker, arm->body);
+                for (size_t j = 0; j < variable_count; j++)
+                    moved_in_any_arm[j] = moved_in_any_arm[j] || c->all_vars[j]->moved;
             }
 
             if (enumeration) {
@@ -1153,8 +1284,13 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     }
                 }
             }
-            for (size_t i = 0; i < variable_count; i++)
-                c->all_vars[i]->initialized = before[i];
+            for (size_t i = 0; i < variable_count; i++) {
+                /* Match is exhaustive when valid: every continuation comes from
+                   one arm, so the arm states already include the incoming state
+                   unless that arm reinitialized a moved binding. */
+                c->all_vars[i]->moved = moved_in_any_arm[i];
+                c->all_vars[i]->initialized = before[i] && !c->all_vars[i]->moved;
+            }
             break;
         }
         case STMT_BREAK:

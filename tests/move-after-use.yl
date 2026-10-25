@@ -1,0 +1,7 @@
+function main() -> int {
+    let string source = string.concat("not", " available");
+    let string destination = move(source);
+    print(source);
+    print(destination);
+    return 0;
+}
