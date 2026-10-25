@@ -910,6 +910,10 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             }
 
             const char *builtin_name = builtin_c_name(expr->as.call.name);
+            if (sequence && expr->type != TYPE_VOID && expr->type != TYPE_ERROR) {
+                emit_temp_name(sb, expr, "result");
+                sb_append(sb, " = ");
+            }
             sb_append(sb, expr->as.call.function ? expr->as.call.function->c_name :
                          (builtin_name ? builtin_name : "yl_missing_function"));
             sb_append(sb, "(");
@@ -936,7 +940,25 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 }
             }
             sb_append(sb, ")");
-            if (sequence) sb_append(sb, ")");
+            if (sequence) {
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    Expr *arg = expr->as.call.args[i];
+                    if (call_argument_is_array(expr, i) || arg->type != TYPE_STRING)
+                        continue;
+                    sb_append(sb, ", yl_release(");
+                    char suffix[32];
+                    (void)snprintf(suffix, sizeof(suffix), "arg%zu", i);
+                    emit_temp_name(sb, expr, suffix);
+                    sb_append(sb, ")");
+                }
+                if (expr->type != TYPE_VOID && expr->type != TYPE_ERROR) {
+                    sb_append(sb, ", ");
+                    emit_temp_name(sb, expr, "result");
+                } else {
+                    sb_append(sb, ", (void)0");
+                }
+                sb_append(sb, ")");
+            }
             break;
         }
         case EXPR_UNARY: {
