@@ -26,11 +26,38 @@ function main() -> int {
 - Reassigning an owned variable evaluates the new value before freeing the old allocation.
 - Owned strings can be printed and passed to the built-in string helpers, which read the bytes or return an ordinary legacy string. Use \`string.own(...)\` when an independent owner is required.
 
+## Borrowed views
+
+\`\`\`yl
+function main() -> int {
+    let owned string owner = string.own("YLang");
+    {
+        let &string left = borrow(owner);
+        let &string right = borrow(owner);
+        print(left, string.length(right));
+    }
+    {
+        let &mut string exclusive = borrow_mut(owner);
+        print(exclusive);
+    }
+    let owned string transferred = move(owner);
+    print(transferred);
+    return 0;
+}
+\`\`\`
+
+- Multiple \`&string\` shared views may coexist.
+- \`&mut string\` reserves an exclusive borrow of a non-const \`owned string\`; while it is active, the owner cannot be read directly, moved, or replaced.
+- Borrows are local bindings, cannot be reassigned, and must be initialized with \`borrow(owner)\` or \`borrow_mut(owner)\`. Nested scopes determine when a binding is no longer active.
+- Borrowed views can be read by \`print\`, f-strings, comparisons, and built-in string helpers. \`to_string(view)\` makes a copy so a legacy string value cannot outlive an owned owner accidentally.
+
+The language's current string API is immutable, so \`&mut string\` currently provides exclusivity checking but no byte-mutation operation. Borrowed function parameters/returns, globals, struct fields, reborrowing, and escape analysis across user-defined APIs remain unsupported and are rejected.
+
 ## Deliberate limits
 
 The first implementation accepts only initialized local \`owned string\` variables. Globals and struct fields, owned function parameters, and owned return types are rejected because their lifetime/transfer contracts are not implemented yet. Owned strings are supported by the C backend; the experimental NASM backend rejects them.
 
-Borrow syntax and a borrow checker have not been implemented. Avoid storing legacy strings derived from owned values in globals or in longer-lived external state. Do not share the owned pointer with foreign C code that may retain it. This experiment does not make the whole language memory-safe.
+This is not yet a complete borrow checker for arbitrary program APIs. Avoid storing legacy strings derived from owned values in globals or in longer-lived external state. Do not share the owned pointer with foreign C code that may retain it. This experiment does not make the whole language memory-safe.
 
 ## Check the cleanup path
 
