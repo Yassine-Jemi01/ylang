@@ -81,6 +81,24 @@ static bool borrow_initializer_shape(const Expr *expr, YType target_type)
     return false;
 }
 
+static VarDecl *borrow_source_from_expr(Expr *expr)
+{
+    if (!expr || !is_borrow_type(expr->type)) return NULL;
+    if (expr->kind == EXPR_CALL &&
+        (strcmp(expr->as.call.name, "borrow") == 0 ||
+         strcmp(expr->as.call.name, "borrow_mut") == 0) &&
+        expr->as.call.count == 1U &&
+        expr->as.call.args[0] &&
+        expr->as.call.args[0]->kind == EXPR_NAME) {
+        return expr->as.call.args[0]->as.name.variable;
+    }
+    if (expr->kind == EXPR_NAME && expr->as.name.variable) {
+        VarDecl *view = expr->as.name.variable;
+        return view->borrowed_from ? view->borrowed_from : view;
+    }
+    return NULL;
+}
+
 static bool scope_add(Checker *checker, Scope *scope, VarDecl *var)
 {
     for (size_t i = 0; i < scope->count; i++) {
@@ -1212,6 +1230,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 bool previous_allow_array = checker->allow_array_name;
                 bool previous_owned_context = checker->allow_owned_value;
                 bool previous_move_context = checker->allow_owned_move;
+                bool previous_mut_borrow_context = checker->allow_mut_borrow;
                 checker->allow_array_name = array_parameter;
                 checker->allow_owned_value = param && param->type == TYPE_OWNED_STRING;
                 checker->allow_owned_move = param && param->type == TYPE_OWNED_STRING &&
@@ -1219,10 +1238,34 @@ static YType check_expr(Checker *checker, Expr *expr)
                     strcmp(arg->as.call.name, "move") == 0 &&
                     !resolve_function(checker, "move") &&
                     arg->as.call.count == 1U;
+                checker->allow_mut_borrow = param && param->type == TYPE_MUT_BORROW_STRING &&
+                    arg && arg->kind == EXPR_CALL &&
+                    strcmp(arg->as.call.name, "borrow_mut") == 0 &&
+                    !resolve_function(checker, "borrow_mut") &&
+                    arg->as.call.count == 1U;
                 YType arg_type = check_expr(checker, arg);
                 checker->allow_array_name = previous_allow_array;
                 checker->allow_owned_value = previous_owned_context;
                 checker->allow_owned_move = previous_move_context;
+                checker->allow_mut_borrow = previous_mut_borrow_context;
+                if (i < shared && is_borrow_type(arg_type)) {
+                    VarDecl *borrow_source = borrow_source_from_expr(arg);
+                    if (borrow_source) {
+                        for (size_t j = 0; j < i; j++) {
+                            Expr *previous_arg = expr->as.call.args[j];
+                            YType previous_type = previous_arg->type;
+                            if (!is_borrow_type(previous_type)) continue;
+                            if (borrow_source_from_expr(previous_arg) != borrow_source) continue;
+                            if (arg_type == TYPE_MUT_BORROW_STRING ||
+                                previous_type == TYPE_MUT_BORROW_STRING) {
+                                diagnostic(c, arg->token, "error", "E2134",
+                                           "Function arguments create conflicting borrows of the same owner.",
+                                           "Pass only shared borrows together; an exclusive borrow must be the only active borrow of that owner.");
+                                break;
+                            }
+                        }
+                    }
+                }
                 if (i >= shared || arg_type == TYPE_ERROR) continue;
                 if (param->is_array) {
                     if (arg->kind != EXPR_NAME || !arg->as.name.variable ||
@@ -1828,11 +1871,6 @@ bool check_program(Compiler *c)
         checker.scope = scope_new(c, global_scope);
         for (size_t j = 0; j < function->param_count; j++) {
             function->params[j]->initialized = true;
-            if (is_borrow_type(function->params[j]->type)) {
-                diagnostic(c, function->params[j]->token, "error", "E2140",
-                           "Borrow parameters are not supported yet.",
-                           "Borrowed function parameters need explicit signature and lifetime rules.");
-            }
             if (function->params[j]->type == TYPE_VOID) {
                 diagnostic(c, function->params[j]->token, "error", "E2005",
                            "A function parameter cannot have type void.",
