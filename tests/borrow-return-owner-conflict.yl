@@ -1,0 +1,11 @@
+function expose() -> string {
+    let string owner = string.concat("Y", "Lang");
+    let string view = borrow(owner);
+    return owner;
+}
+
+function main() -> int {
+    let string value = expose();
+    print(value);
+    return 0;
+}

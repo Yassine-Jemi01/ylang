@@ -21,6 +21,8 @@ typedef struct {
     unsigned loop_depth;
     Expr *allowed_assignment;
     bool allow_array_name;
+    bool allow_borrow_initializer;
+    bool allow_move_expression;
     Module *module;
 } Checker;
 
@@ -51,6 +53,7 @@ static bool scope_add(Checker *checker, Scope *scope, VarDecl *var)
             return false;
         }
     }
+    var->decl_scope = scope;
     scope->vars = arena_vector_append(&checker->compiler->arena,
                                       scope->vars, scope->count,
                                       sizeof(*scope->vars), &var);
@@ -182,6 +185,45 @@ static Function *resolve_function(Checker *checker, const char *name)
     return symbol ? symbol->function : NULL;
 }
 
+static bool scope_outlives(Scope *candidate_owner, Scope *borrow_scope)
+{
+    for (Scope *at = borrow_scope; at; at = at->parent) {
+        if (at == candidate_owner) return true;
+    }
+    return false;
+}
+
+static bool has_active_borrow(Checker *checker, VarDecl *owner)
+{
+    for (Scope *scope = checker->scope; scope; scope = scope->parent) {
+        for (size_t i = 0; i < scope->count; i++) {
+            VarDecl *candidate = scope->vars[i];
+            if (candidate->borrowed_from == owner &&
+                candidate->initialized && !candidate->moved) return true;
+        }
+    }
+    return false;
+}
+
+static bool has_active_mutable_borrow(Checker *checker, VarDecl *owner)
+{
+    for (Scope *scope = checker->scope; scope; scope = scope->parent) {
+        for (size_t i = 0; i < scope->count; i++) {
+            VarDecl *candidate = scope->vars[i];
+            if (candidate->borrowed_from == owner && candidate->is_mut_borrow &&
+                candidate->initialized && !candidate->moved) return true;
+        }
+    }
+    return false;
+}
+
+static bool is_builtin_call_name(Checker *checker, Expr *expr, const char *name)
+{
+    return expr && expr->kind == EXPR_CALL &&
+           strcmp(expr->as.call.name, name) == 0 &&
+           resolve_function(checker, name) == NULL;
+}
+
 static const char *nearest_function(Checker *checker, const char *name)
 {
     const char *best_name = NULL;
@@ -232,6 +274,19 @@ static bool expr_contains_call_or_assignment(Expr *expr)
 
 static YType check_expr(Checker *checker, Expr *expr);
 static void check_stmt(Checker *checker, Stmt *stmt);
+
+static void check_control_body(Checker *checker, Stmt *stmt)
+{
+    if (!stmt) return;
+    if (stmt->kind == STMT_BLOCK) {
+        check_stmt(checker, stmt);
+        return;
+    }
+    Scope *outer = checker->scope;
+    checker->scope = scope_new(checker->compiler, outer);
+    check_stmt(checker, stmt);
+    checker->scope = outer;
+}
 
 typedef struct {
     const char *name;
@@ -381,6 +436,8 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             expr->as.member.field = field;
             expr->type = field->type;
+            if (expr->type == TYPE_STRING)
+                expr->borrowed_from = sema_member_root_variable(expr);
             return expr->type;
         }
         case EXPR_INT: {
@@ -467,6 +524,14 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             expr->as.name.name = var->name;
             expr->as.name.variable = var;
+            expr->borrowed_from = var->borrowed_from;
+            if (!var->is_mut_borrow && has_active_mutable_borrow(checker, var)) {
+                diagnostic(c, expr->token, "error", "E2121",
+                           "Cannot access an owner directly while its mutable borrow is active.",
+                           "Use the mutable view, or end its lexical scope before accessing the owner.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
             if (var->moved) {
                 diagnostic(c, expr->token, "error", "E2110",
                            "This value was already moved and cannot be used again.",
@@ -553,7 +618,32 @@ static YType check_expr(Checker *checker, Expr *expr)
                 right_expr->as.call.args[0]->kind == EXPR_NAME &&
                 strcmp(target->as.name.name,
                        right_expr->as.call.args[0]->as.name.name) == 0;
+            bool old_allow_move = checker->allow_move_expression;
+            checker->allow_move_expression =
+                is_builtin_call_name(checker, right_expr, "move");
             YType right = check_expr(checker, right_expr);
+            checker->allow_move_expression = old_allow_move;
+            if (right_expr && right_expr->borrowed_from != NULL) {
+                diagnostic(c, right_expr->token, "error", "E2117",
+                           "A borrowed string view cannot be assigned into another binding.",
+                           "Create the view with a local declaration so its lifetime is checked lexically.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            if (var->borrowed_from != NULL && !var->is_mut_borrow) {
+                diagnostic(c, expr->token, "error", "E2116",
+                           "An immutable borrowed binding cannot be reassigned.",
+                           "Create a new borrow binding instead of assigning to the view.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            if (has_active_borrow(checker, var)) {
+                diagnostic(c, expr->token, "error", "E2118",
+                           "Cannot reassign a string owner while a borrow is active.",
+                           "End all active borrow scopes before replacing the owner.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
             if (self_move) {
                 diagnostic(c, expr->token, "error", "E2114",
                            "A binding cannot be moved into itself.",
@@ -728,12 +818,130 @@ static YType check_expr(Checker *checker, Expr *expr)
                 expr->type = TYPE_ERROR;
             } else {
                 expr->type = var->type;
+                if (expr->type == TYPE_STRING)
+                    expr->borrowed_from = var;
             }
             return expr->type;
         }
         case EXPR_CALL: {
-            if (strcmp(expr->as.call.name, "move") == 0 &&
-                !resolve_function(checker, "move")) {
+            if (is_builtin_call_name(checker, expr, "borrow_mut")) {
+                if (!checker->allow_borrow_initializer) {
+                    diagnostic(c, expr->token, "error", "E2117",
+                               "borrow_mut() is only valid as a local string initializer.",
+                               "Use 'let string view = borrow_mut(owner);' and keep the exclusive view within the owner's scope.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (expr->as.call.count != 1U ||
+                    expr->as.call.args[0]->kind != EXPR_NAME) {
+                    diagnostic(c, expr->token, "error", "E2122",
+                               "borrow_mut() expects exactly one owned string variable.",
+                               "Use borrow_mut(name) with one named local string binding.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                Expr *argument = expr->as.call.args[0];
+                YType source_type = check_expr(checker, argument);
+                VarDecl *source = argument->as.name.variable;
+                if (source_type == TYPE_ERROR || !source) {
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (source_type != TYPE_STRING || source->is_array ||
+                    source->borrowed_from != NULL || source->is_global) {
+                    diagnostic(c, argument->token, "error", "E2122",
+                               "borrow_mut() requires an owned, non-global string binding.",
+                               "Use a local string owner or an owned string parameter; arrays, views, and globals are not supported.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (!source->decl_scope ||
+                    !scope_outlives(source->decl_scope, checker->scope)) {
+                    diagnostic(c, argument->token, "error", "E2117",
+                               "The mutable borrow would outlive its owner.",
+                               "Declare the view in the same scope as the owner or a nested scope.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (has_active_borrow(checker, source)) {
+                    diagnostic(c, argument->token, "error", "E2122",
+                               "Cannot create a mutable borrow while another borrow is active.",
+                               "End all existing borrow scopes before creating a mutable borrow.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                expr->borrowed_from = source;
+                expr->type = TYPE_STRING;
+                return expr->type;
+            }
+            if (is_builtin_call_name(checker, expr, "borrow")) {
+                if (!checker->allow_borrow_initializer) {
+                    diagnostic(c, expr->token, "error", "E2117",
+                               "borrow() is only valid as a local string initializer.",
+                               "Use 'let string view = borrow(owner);' and keep the view within the owner's scope.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (expr->as.call.count != 1U) {
+                    diagnostic(c, expr->token, "error", "E2119",
+                               "borrow() expects exactly one string variable.",
+                               "Use borrow(name) with one named local string variable.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                Expr *argument = expr->as.call.args[0];
+                if (argument->kind != EXPR_NAME) {
+                    (void)check_expr(checker, argument);
+                    diagnostic(c, argument->token, "error", "E2119",
+                               "borrow() requires a named string variable.",
+                               "Bind the string to a local name, then borrow that name.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                YType source_type = check_expr(checker, argument);
+                VarDecl *source = argument->as.name.variable;
+                if (source_type == TYPE_ERROR || !source) {
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (source_type != TYPE_STRING || source->is_array ||
+                    source->borrowed_from != NULL) {
+                    diagnostic(c, argument->token, "error", "E2119",
+                               "borrow() currently accepts an owned string, not arrays or another view.",
+                               "Use borrow(owner) on an initialized string owner; nested/reborrowed views are not supported yet.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (!source->decl_scope ||
+                    !scope_outlives(source->decl_scope, checker->scope)) {
+                    diagnostic(c, argument->token, "error", "E2117",
+                               "The borrowed string would outlive its owner.",
+                               "Declare the view in the same scope as the owner or a nested scope.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                expr->borrowed_from = source;
+                expr->type = TYPE_STRING;
+                return expr->type;
+            }
+            if (is_builtin_call_name(checker, expr, "move")) {
+                if (!checker->allow_move_expression) {
+                    diagnostic(c, expr->token, "error", "E2120",
+                               "move() must be the complete initializer or assignment value.",
+                               "Use 'let string next = move(current);' or 'next = move(current);' rather than nesting move() in another expression.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
                 if (expr->as.call.count != 1U) {
                     diagnostic(c, expr->token, "error", "E2111",
                                "move() expects exactly one local string variable.",
@@ -758,30 +966,29 @@ static YType check_expr(Checker *checker, Expr *expr)
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
-                if (argument_type != TYPE_STRING || source->is_array) {
+                if (argument_type != TYPE_STRING || source->is_array ||
+                    source->borrowed_from != NULL) {
                     diagnostic(c, argument->token, "error", "E2112",
-                               "Only scalar string variables can be moved in this milestone.",
-                               "Use move(name) with a local variable whose type is string.");
+                               "Only owned scalar string variables can be moved in this milestone.",
+                               "Use move(name) with an owned local string, not an immutable borrow.");
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
-                bool is_parameter = false;
-                if (checker->function) {
-                    for (size_t i = 0; i < checker->function->param_count; i++) {
-                        if (checker->function->params[i] == source) {
-                            is_parameter = true;
-                            break;
-                        }
-                    }
-                }
-                if (source->is_global || is_parameter) {
+                if (source->is_global) {
                     diagnostic(c, argument->token, "error", "E2113",
-                               "move() can only transfer a local variable in this milestone.",
-                               "Create a local owned value first; globals and function parameters remain borrowed.");
+                               "move() cannot transfer a global string binding.",
+                               "Globals remain process-owned in this milestone; move a local string or an owned function parameter.");
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
                 if (!source->initialized) {
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (has_active_borrow(checker, source)) {
+                    diagnostic(c, argument->token, "error", "E2115",
+                               "Cannot move a string while a borrow is active.",
+                               "End all active borrow scopes before moving the owner.");
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
@@ -812,6 +1019,11 @@ static YType check_expr(Checker *checker, Expr *expr)
                 }
                 for (size_t i = 0; i < expr->as.call.count; i++) {
                     YType actual = check_expr(checker, expr->as.call.args[i]);
+                    if (expr->as.call.args[i]->borrowed_from != NULL) {
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2118",
+                                   "Borrowed string views cannot be passed to GUI APIs yet.",
+                                   "Use the view locally or end its scope before calling GUI functions.");
+                    }
                     if (i < builtin->arity && actual != TYPE_ERROR &&
                         actual != builtin->args[i]) {
                         char suggestion[256];
@@ -853,6 +1065,12 @@ static YType check_expr(Checker *checker, Expr *expr)
                         diagnostic(c, expr->token, "error", "E2045", "to_string cannot convert this type.",
                                    "Supported types are int, float, bool, char, and string.");
                     expr->type = TYPE_STRING;
+                    if (arg_type == TYPE_STRING && expr->as.call.count > 0U) {
+                        Expr *source_expr = expr->as.call.args[0];
+                        expr->borrowed_from = source_expr->borrowed_from;
+                        if (!expr->borrowed_from && source_expr->kind == EXPR_NAME)
+                            expr->borrowed_from = source_expr->as.name.variable;
+                    }
                 }
                 return expr->type;
             }
@@ -965,6 +1183,11 @@ static YType check_expr(Checker *checker, Expr *expr)
                 checker->allow_array_name = array_parameter;
                 YType arg_type = check_expr(checker, arg);
                 checker->allow_array_name = previous_allow_array;
+                if (arg->borrowed_from != NULL) {
+                    diagnostic(c, arg->token, "error", "E2118",
+                               "Borrowed views cannot be passed to user-defined functions yet.",
+                               "Use the view locally or pass the owned string after ending the borrow scope.");
+                }
                 if (i >= shared || arg_type == TYPE_ERROR) continue;
                 VarDecl *param = function->params[i];
                 if (param->is_array) {
@@ -1066,7 +1289,20 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                            "Use a value type such as int, float, bool, char, or string.");
             }
             if (var->initializer) {
+                bool is_borrow_initializer =
+                    is_builtin_call_name(checker, var->initializer, "borrow");
+                bool is_borrow_mut_initializer =
+                    is_builtin_call_name(checker, var->initializer, "borrow_mut");
+                bool old_allow_borrow = checker->allow_borrow_initializer;
+                checker->allow_borrow_initializer =
+                    (is_borrow_initializer || is_borrow_mut_initializer) &&
+                    !var->is_global;
+                bool old_allow_move = checker->allow_move_expression;
+                checker->allow_move_expression =
+                    is_builtin_call_name(checker, var->initializer, "move") && !var->is_global;
                 YType init_type = check_expr(checker, var->initializer);
+                checker->allow_borrow_initializer = old_allow_borrow;
+                checker->allow_move_expression = old_allow_move;
                 if (init_type != TYPE_ERROR && init_type != var->type) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
@@ -1074,6 +1310,16 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                         var->name, semantic_type_name(c, var->type), semantic_type_name(c, init_type));
                     diagnostic(c, var->initializer->token, "error", "E2001",
                                "Variable initializer type mismatch.", suggestion);
+                }
+                var->borrowed_from = var->initializer->borrowed_from;
+                var->is_mut_borrow = is_borrow_mut_initializer &&
+                    var->borrowed_from != NULL;
+                if (var->borrowed_from != NULL &&
+                    (var->is_global || var->type != TYPE_STRING)) {
+                    diagnostic(c, var->token, "error", "E2117",
+                               "A borrowed string view must be a local string binding.",
+                               "Keep borrowed views local and declare them with type string.");
+                    var->borrowed_from = NULL;
                 }
                 var->initialized = true;
             }
@@ -1114,7 +1360,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 before[i] = c->all_vars[i]->initialized;
                 before_moved[i] = c->all_vars[i]->moved;
             }
-            check_stmt(checker, stmt->as.if_stmt.then_branch);
+            check_control_body(checker, stmt->as.if_stmt.then_branch);
             for (size_t i = 0; i < n; i++) {
                 after_then[i] = c->all_vars[i]->initialized;
                 after_then_moved[i] = c->all_vars[i]->moved;
@@ -1124,7 +1370,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 c->all_vars[i]->moved = before_moved[i];
             }
             if (stmt->as.if_stmt.else_branch) {
-                check_stmt(checker, stmt->as.if_stmt.else_branch);
+                check_control_body(checker, stmt->as.if_stmt.else_branch);
                 for (size_t i = 0; i < n; i++) {
                     c->all_vars[i]->initialized =
                         after_then[i] && c->all_vars[i]->initialized;
@@ -1149,7 +1395,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 before_moved[i] = c->all_vars[i]->moved;
             }
             checker->loop_depth++;
-            check_stmt(checker, stmt->as.loop_body);
+            check_control_body(checker, stmt->as.loop_body);
             checker->loop_depth--;
             for (size_t i = 0; i < n; i++) {
                 c->all_vars[i]->moved = before_moved[i] || c->all_vars[i]->moved;
@@ -1172,7 +1418,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 before_moved[i] = c->all_vars[i]->moved;
             }
             checker->loop_depth++;
-            check_stmt(checker, stmt->as.while_stmt.body);
+            check_control_body(checker, stmt->as.while_stmt.body);
             checker->loop_depth--;
             for (size_t i = 0; i < n; i++) {
                 c->all_vars[i]->moved = before_moved[i] || c->all_vars[i]->moved;
@@ -1201,7 +1447,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 }
             }
             checker->loop_depth++;
-            check_stmt(checker, stmt->as.for_stmt.body);
+            check_control_body(checker, stmt->as.for_stmt.body);
             if (stmt->as.for_stmt.increment) {
                 Expr *previous_assignment = checker->allowed_assignment;
                 checker->allowed_assignment =
@@ -1261,7 +1507,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     c->all_vars[j]->initialized = before[j];
                     c->all_vars[j]->moved = before_moved[j];
                 }
-                check_stmt(checker, arm->body);
+                check_control_body(checker, arm->body);
                 for (size_t j = 0; j < variable_count; j++)
                     moved_in_any_arm[j] = moved_in_any_arm[j] || c->all_vars[j]->moved;
             }
@@ -1314,6 +1560,26 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 }
             } else {
                 YType actual = check_expr(checker, stmt->as.return_value);
+                if (stmt->as.return_value->borrowed_from != NULL) {
+                    diagnostic(c, stmt->as.return_value->token, "error", "E2117",
+                               "A borrowed string view cannot be returned from its function.",
+                               "Return an owned string value or keep the borrow entirely within this function.");
+                }
+                if (actual == TYPE_STRING &&
+                    stmt->as.return_value->kind == EXPR_NAME &&
+                    stmt->as.return_value->as.name.variable &&
+                    !stmt->as.return_value->as.name.variable->is_global &&
+                    !stmt->as.return_value->as.name.variable->borrowed_from) {
+                    VarDecl *returned_owner = stmt->as.return_value->as.name.variable;
+                    if (has_active_borrow(checker, returned_owner)) {
+                        diagnostic(c, stmt->as.return_value->token, "error", "E2115",
+                                   "Cannot return ownership while an immutable borrow is active.",
+                                   "End the borrow's lexical scope before returning the owner.");
+                    } else {
+                        returned_owner->moved = true;
+                        returned_owner->initialized = false;
+                    }
+                }
                 if (expected == TYPE_VOID) {
                     diagnostic(c, stmt->token, "error", "E2054",
                                "A void function cannot return a value.",
@@ -1344,7 +1610,9 @@ bool check_program(Compiler *c)
 {
     Checker checker = {
         .compiler = c, .scope = NULL, .function = NULL, .loop_depth = 0,
-        .allowed_assignment = NULL, .allow_array_name = false, .module = NULL
+        .allowed_assignment = NULL, .allow_array_name = false,
+        .allow_borrow_initializer = false, .allow_move_expression = false,
+        .module = NULL
     };
 
     /* Each source module gets its own global scope. Imported variables are

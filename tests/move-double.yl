@@ -1,0 +1,7 @@
+function main() -> int {
+    let string source = string.concat("Y", "Lang");
+    let string first = move(source);
+    let string second = move(source);
+    print(first, second);
+    return 0;
+}

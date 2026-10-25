@@ -1,0 +1,10 @@
+function expose(string owner) -> string {
+    let string view = borrow(owner);
+    return view;
+}
+
+function main() -> int {
+    let string value = expose("YLang");
+    print(value);
+    return 0;
+}

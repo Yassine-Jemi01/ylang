@@ -68,6 +68,8 @@ struct Expr {
     YType type;
     bool is_min_int;
     size_t codegen_id;
+    /* Non-null when this expression is a non-owning view of a local string. */
+    VarDecl *borrowed_from;
     union {
         struct { Expr *right; Token op; } unary;
         struct { Expr *left; Expr *right; Token op; } binary;
@@ -106,6 +108,9 @@ struct VarDecl {
     bool is_const;
     bool initialized;
     bool moved; /* True after ownership is explicitly transferred with move(name). */
+    Scope *decl_scope;
+    VarDecl *borrowed_from; /* Non-owning view; source must outlive this binding. */
+    bool is_mut_borrow; /* Binding aliases the owner's string slot through const char **. */
     bool is_global;
     bool is_array;
     size_t array_length;
@@ -116,6 +121,7 @@ struct VarDecl {
 struct Stmt {
     StmtKind kind;
     Token token;
+    size_t codegen_id;
     union {
         struct { Stmt **items; size_t count; } block;
         VarDecl *variable;

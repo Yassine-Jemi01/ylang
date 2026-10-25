@@ -1,0 +1,11 @@
+function show(string value) -> int {
+    print(value);
+    return 0;
+}
+
+function main() -> int {
+    let string owner = string.concat("Y", "Lang");
+    let string view = borrow(owner);
+    show(view);
+    return 0;
+}

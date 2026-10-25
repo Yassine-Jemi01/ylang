@@ -1,0 +1,51 @@
+function duplicate(string value) -> string {
+    return value;
+}
+
+function make_label(int value) -> string {
+    return string.concat("n=", to_string(value));
+}
+
+function return_owned() -> string {
+    let string local = string.concat("owned", "-return");
+    return local;
+}
+
+function join(string left, string right) -> string {
+    return string.concat(left, right);
+}
+
+function main() -> int {
+    print(string.concat("ephemeral", "-print"));
+    print(string.length(string.concat("temporary", "-argument")));
+    string.concat("discarded", "-result");
+
+    let int iteration = 0;
+    while (iteration < 12) {
+        let string temporary = string.concat("cycle", "-value");
+        let string copy = duplicate(temporary);
+        let string moved_return = return_owned();
+        let string output = join(copy, make_label(iteration));
+        if (iteration == 0) {
+            print(moved_return);
+            print(output);
+        }
+        iteration += 1;
+        if (iteration == 4) {
+            continue;
+        }
+        if (iteration == 9) {
+            break;
+        }
+    }
+
+    {
+        let string original = string.concat("Y", "Lang");
+        let string copy = original;
+        print(copy);
+        let string moved = move(original);
+        print(moved);
+    }
+
+    return 0;
+}

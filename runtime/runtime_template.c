@@ -50,7 +50,86 @@ typedef struct YLTracked {
 static YLTracked *yl_tracked = NULL;
 static size_t yl_tracked_allocations = 0U;
 static size_t yl_tracked_bytes = 0U;
+static size_t yl_released_allocations = 0U;
+static size_t yl_released_bytes = 0U;
 static int yl_memory_stats_state = -1;
+
+typedef struct YLSlot {
+    const char **value_slot;
+    struct YLSlot *next;
+} YLSlot;
+
+typedef struct YLScope {
+    struct YLScope *parent;
+    YLSlot *owned_slots;
+    struct YLScope **slot_pointer;
+} YLScope;
+
+static YLScope *yl_active_scope = NULL;
+
+static void yl_release(const char *ptr) {
+    if (!ptr) return;
+    YLTracked **link = &yl_tracked;
+    while (*link) {
+        YLTracked *node = *link;
+        if (node->ptr == (const void *)ptr) {
+            *link = node->next;
+            yl_released_allocations =
+                SIZE_MAX - yl_released_allocations < 1U ?
+                SIZE_MAX : yl_released_allocations + 1U;
+            yl_released_bytes =
+                SIZE_MAX - yl_released_bytes < node->size ?
+                SIZE_MAX : yl_released_bytes + node->size;
+            free(node->ptr);
+            free(node);
+            return;
+        }
+        link = &node->next;
+    }
+}
+
+static YLScope *yl_scope_current(void) {
+    return yl_active_scope;
+}
+
+static void yl_scope_enter(YLScope *scope, YLScope **scope_pointer) {
+    if (!scope || !scope_pointer) yl_runtime_error("invalid lexical scope state");
+    scope->parent = yl_active_scope;
+    scope->owned_slots = NULL;
+    scope->slot_pointer = scope_pointer;
+    *scope_pointer = scope;
+    yl_active_scope = scope;
+}
+
+static void yl_scope_register(YLScope *scope, YLSlot *slot,
+                              const char **value_slot) {
+    if (!scope || !slot || !value_slot) yl_runtime_error("invalid owned string slot");
+    slot->value_slot = value_slot;
+    slot->next = scope->owned_slots;
+    scope->owned_slots = slot;
+}
+
+static void yl_scope_leave_to(YLScope *boundary) {
+    while (yl_active_scope != boundary) {
+        YLScope *scope = yl_active_scope;
+        if (!scope) yl_runtime_error("invalid lexical scope unwind");
+        YLSlot *slot = scope->owned_slots;
+        while (slot) {
+            if (slot->value_slot) {
+                yl_release(*slot->value_slot);
+                *slot->value_slot = NULL;
+            }
+            slot = slot->next;
+        }
+        yl_active_scope = scope->parent;
+        if (scope->slot_pointer) *scope->slot_pointer = NULL;
+    }
+}
+
+static void yl_scope_leave(YLScope **scope_pointer) {
+    if (!scope_pointer || !*scope_pointer) return;
+    yl_scope_leave_to((*scope_pointer)->parent);
+}
 
 static bool yl_memory_stats_enabled(void) {
     if (yl_memory_stats_state < 0) {
@@ -66,9 +145,17 @@ static size_t yl_saturating_add_size(size_t left, size_t right) {
 
 static void yl_cleanup(void) {
     if (yl_memory_stats_enabled()) {
+        size_t live_allocations = 0U;
+        size_t live_bytes = 0U;
+        for (YLTracked *node = yl_tracked; node; node = node->next) {
+            live_allocations = yl_saturating_add_size(live_allocations, 1U);
+            live_bytes = yl_saturating_add_size(live_bytes, node->size);
+        }
         fprintf(stderr,
-                "YLang memory stats: tracked_allocations=%zu tracked_bytes=%zu\n",
-                yl_tracked_allocations, yl_tracked_bytes);
+                "YLang memory stats: tracked_allocations=%zu tracked_bytes=%zu released_allocations=%zu released_bytes=%zu live_allocations=%zu live_bytes=%zu\\n",
+                yl_tracked_allocations, yl_tracked_bytes,
+                yl_released_allocations, yl_released_bytes,
+                live_allocations, live_bytes);
     }
     while (yl_tracked) {
         YLTracked *next = yl_tracked->next;
@@ -90,6 +177,34 @@ static void *yl_track(void *ptr, size_t size) {
     }
     return ptr;
 }
+
+static const char *yl_clone_string(const char *value) {
+    if (!value) return "";
+    size_t length = strlen(value);
+    if (length == SIZE_MAX) yl_runtime_error("string is too large to clone");
+    char *copy = malloc(length + 1U);
+    if (!copy) yl_runtime_error("out of memory");
+    memcpy(copy, value, length + 1U);
+    return (const char *)yl_track(copy, length + 1U);
+}
+
+static const char *yl_replace_string(const char **target, const char *value) {
+    if (!target) yl_runtime_error("invalid string assignment target");
+    const char *old = *target;
+    if (old != value) yl_release(old);
+    *target = value;
+    return value;
+}
+
+/* Runtime half of move semantics: transfer the pointer and leave a null
+   source slot so a scope cleanup cannot release the transferred value. */
+static const char *yl_move_string(const char **source) {
+    if (!source) yl_runtime_error("invalid string move");
+    const char *value = *source;
+    *source = NULL;
+    return value;
+}
+
 static const char *yl_boolstr(bool value) { return value ? "true" : "false"; }
 static const char *yl_format(const char *format, ...);
 static const char *yl_to_string_int(int64_t value) { return yl_format("%lld", (long long)value); }
@@ -365,8 +480,13 @@ static const char *yl_path_basename(const char *path) {
 static const char *yl_path_extension(const char *path) {
     const char *base = yl_path_basename(path);
     const char *dot = strrchr(base, '.');
-    if (!dot || dot == base) return "";
-    return dot + 1;
+    if (!dot || dot == base) {
+        yl_release(base);
+        return "";
+    }
+    const char *extension = yl_clone_string(dot + 1);
+    yl_release(base);
+    return extension;
 }
 #ifdef _WIN32
 static bool yl_image_open(const char *path) {

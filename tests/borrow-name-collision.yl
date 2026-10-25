@@ -1,0 +1,8 @@
+function borrow(int value) -> int {
+    return value + 1;
+}
+
+function main() -> int {
+    print(borrow(41));
+    return 0;
+}

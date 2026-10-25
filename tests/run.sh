@@ -1347,6 +1347,19 @@ if ./build/ylang check tests/move-self-assignment.yl > build/move-self-assignmen
 fi
 grep -q 'E2114' build/move-self-assignment.out
 
+# String parameters are cloned into the callee and can then be moved/returned safely.
+./build/ylang build tests/move-parameter-return.yl -o build/test-move-parameter-return >/dev/null
+./build/test-move-parameter-return > build/move-parameter-return.out
+printf 'YLang YLang\n' > build/move-parameter-return.expected
+diff -u build/move-parameter-return.expected build/move-parameter-return.out
+
+# Moving a binding twice is rejected at the second transfer.
+if ./build/ylang check tests/move-double.yl > build/move-double.out 2>&1; then
+    echo "FAIL: YLang accepted a double move" >&2
+    exit 1
+fi
+grep -q 'E2110' build/move-double.out
+
 # Invalid move operations must have targeted diagnostics.
 if ./build/ylang check tests/move-rejections.yl > build/move-rejections.out 2>&1; then
     echo "FAIL: YLang accepted unsupported move operations" >&2
@@ -1359,6 +1372,74 @@ grep -q 'E2113' build/move-rejections.out
 # The ownership primitive does not reserve the name of an existing user function.
 ./build/ylang build tests/move-name-collision.yl -o build/test-move-name-collision >/dev/null
 test "$(./build/test-move-name-collision)" = "42"
+
+# Explicit immutable borrows are valid only while their owner is in lexical scope.
+./build/ylang build tests/borrow-string.yl -o build/test-borrow-string >/dev/null
+./build/test-borrow-string > build/borrow-string.out
+printf 'YLang YLang\nYLang\n' > build/borrow-string.expected
+diff -u build/borrow-string.expected build/borrow-string.out
+
+# An owner cannot be moved or reassigned while a lexical immutable borrow is active.
+if ./build/ylang check tests/borrow-move-conflict.yl > build/borrow-move-conflict.out 2>&1; then
+    echo "FAIL: YLang moved an owner with an active immutable borrow" >&2
+    exit 1
+fi
+grep -q 'E2115' build/borrow-move-conflict.out
+if ./build/ylang check tests/borrow-reassign-conflict.yl > build/borrow-reassign-conflict.out 2>&1; then
+    echo "FAIL: YLang reassigned an owner with an active immutable borrow" >&2
+    exit 1
+fi
+grep -q 'E2118' build/borrow-reassign-conflict.out
+
+# Borrowed views cannot escape by returning them or passing them to unannotated functions.
+if ./build/ylang check tests/borrow-return-reject.yl > build/borrow-return-reject.out 2>&1; then
+    echo "FAIL: YLang returned a borrowed local view" >&2
+    exit 1
+fi
+grep -q 'E2117' build/borrow-return-reject.out
+if ./build/ylang check tests/borrow-call-reject.yl > build/borrow-call-reject.out 2>&1; then
+    echo "FAIL: YLang passed a borrow to a user function" >&2
+    exit 1
+fi
+grep -q 'E2118' build/borrow-call-reject.out
+
+# Returning an owner is rejected while a lexical immutable borrow is still active.
+if ./build/ylang check tests/borrow-return-owner-conflict.yl > build/borrow-return-owner-conflict.out 2>&1; then
+    echo "FAIL: YLang returned an owner with an active immutable borrow" >&2
+    exit 1
+fi
+grep -q 'E2115' build/borrow-return-owner-conflict.out
+
+# Exclusive mutable string borrows may replace the owner's string value.
+./build/ylang build tests/borrow-mut-string.yl -o build/test-borrow-mut-string >/dev/null
+./build/test-borrow-mut-string > build/borrow-mut-string.out
+printf 'hello world!\nhello world!\n' > build/borrow-mut-string.expected
+diff -u build/borrow-mut-string.expected build/borrow-mut-string.out
+
+# The owner cannot be accessed directly while an exclusive mutable view is active.
+if ./build/ylang check tests/borrow-mut-owner-access.yl > build/borrow-mut-owner-access.out 2>&1; then
+    echo "FAIL: YLang allowed direct owner access during mutable borrow" >&2
+    exit 1
+fi
+grep -q 'E2121' build/borrow-mut-owner-access.out
+
+# An immutable and a mutable borrow cannot overlap.
+if ./build/ylang check tests/borrow-mut-overlap.yl > build/borrow-mut-overlap.out 2>&1; then
+    echo "FAIL: YLang allowed overlapping immutable and mutable borrows" >&2
+    exit 1
+fi
+grep -q 'E2122' build/borrow-mut-overlap.out
+
+# The borrow primitive name remains available to user-defined functions.
+./build/ylang build tests/borrow-name-collision.yl -o build/test-borrow-name-collision >/dev/null
+test "$(./build/test-borrow-name-collision)" = "42"
+
+# Owned local strings are released at lexical scope exit, including loop iterations.
+./build/ylang build tests/scope-string-cleanup.yl -o build/test-scope-string-cleanup >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-scope-string-cleanup > build/scope-string-cleanup.stdout 2> build/scope-string-cleanup.stderr
+printf 'ephemeral-print\n18\nowned-return\ncycle-valuen=0\nYLang\nYLang\n' > build/scope-string-cleanup.expected
+diff -u build/scope-string-cleanup.expected build/scope-string-cleanup.stdout
+grep -Eq 'released_allocations=[1-9][0-9]* released_bytes=[1-9][0-9]* live_allocations=0 live_bytes=0' build/scope-string-cleanup.stderr
 
 # Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
 ./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null

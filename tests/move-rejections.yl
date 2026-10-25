@@ -1,7 +1,4 @@
-function transfer_parameter(string value) -> string {
-    let string invalid = move(value);
-    return value;
-}
+let string shared_global = "global";
 
 function main() -> int {
     let string source = string.concat("some", "thing");
@@ -9,5 +6,6 @@ function main() -> int {
     let string expression_argument = move(string.concat("a", "b"));
     let int number = 7;
     let int invalid_type = move(number);
+    let string invalid_global = move(shared_global);
     return 0;
 }
