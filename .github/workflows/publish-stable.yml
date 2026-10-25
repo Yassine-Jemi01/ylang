@@ -273,6 +273,7 @@ jobs:
           test "$(tr -d '\r\n' < VERSION)" = "$EXPECTED_VERSION"
       - name: Ensure version-specific release checklist has no open gates
         run: |
+          EXPECTED_VERSION="$(tr -d '\r\n' < .github/PUBLISH_STABLE)"
           CHECKLIST="docs/RELEASE-CHECKLIST-${EXPECTED_VERSION}.md"
           test -s "$CHECKLIST" || { echo "Release blocked: missing $CHECKLIST." >&2; exit 1; }
           if grep -nF -- '- [ ]' "$CHECKLIST"; then
