@@ -220,6 +220,7 @@ static void assign_expr_codegen_ids(Expr *expr, size_t *next_id)
 static void assign_stmt_codegen_ids(Stmt *stmt, size_t *next_id)
 {
     if (!stmt) return;
+    if (stmt->codegen_id == 0U) stmt->codegen_id = (*next_id)++;
     switch (stmt->kind) {
         case STMT_BLOCK:
             for (size_t i = 0; i < stmt->as.block.count; i++)
