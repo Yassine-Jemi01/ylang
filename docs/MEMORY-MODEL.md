@@ -50,7 +50,7 @@ let owned string transferred = move(owner);
 - `&mut string` is an exclusive borrow of a non-const `owned string`; a second borrow conflicts while it is active.
 - The owner cannot be moved or replaced while any tracked borrow is active. Direct owner reads are rejected while an exclusive borrow is active.
 - Borrow variables must be initialized with `borrow(owner)` or `borrow_mut(owner)`, cannot be reassigned, and are scoped lexically. Nested scopes allow a borrow to end before moving its owner.
-- Borrow types are not allowed in globals, struct fields, function parameters, or function return types in this milestone.
+- Borrow types are not allowed in globals, struct fields, or function return types in this milestone. Borrowed parameters are supported for call-duration use.
 - The language's current string API is immutable, so `&mut string` currently reserves exclusive access but does not expose byte mutation. It can be read through `print`, f-strings, comparisons, and built-in string helpers.
 
 ## Safety limits
@@ -63,7 +63,7 @@ The regression suite covers successful owned string cloning/moving, scope and ea
 
 ## Future work
 
-1. Add borrow-annotated function parameters/returns and ownership contracts for imported APIs.
+1. Add explicit lifetime ties for borrowed returns, reborrowing, and ownership contracts for imported APIs.
 2. Add mutation operations before claiming that `&mut string` provides useful mutation semantics.
 3. Expand to owned structs/containers after nested destruction and exception/error paths are covered.
 4. Keep measuring throughput and live/peak memory with equivalent safety checks.
