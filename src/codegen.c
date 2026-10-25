@@ -790,7 +790,8 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
         case EXPR_CALL: {
             /* move(name) is a compile-time ownership transfer; its runtime
                representation is still the same string pointer. */
-            if (strcmp(expr->as.call.name, "move") == 0 &&
+            if (!expr->as.call.function &&
+                strcmp(expr->as.call.name, "move") == 0 &&
                 expr->as.call.count == 1U) {
                 emit_expr(sb, expr->as.call.args[0]);
                 break;
