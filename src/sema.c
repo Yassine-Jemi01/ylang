@@ -23,6 +23,8 @@ typedef struct {
     bool allow_array_name;
     bool allow_owned_move;
     bool allow_mut_borrow;
+    bool checking_borrow_owner;
+    bool checking_move_owner;
     Module *module;
 } Checker;
 
@@ -526,7 +528,9 @@ static YType check_expr(Checker *checker, Expr *expr)
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
-            if (!is_borrow_type(var->type)) {
+            if (!is_borrow_type(var->type) &&
+                !checker->checking_borrow_owner &&
+                !checker->checking_move_owner) {
                 size_t shared_count = 0U;
                 bool exclusive_active = false;
                 checker_active_borrows(checker, var, &shared_count, &exclusive_active);
@@ -859,7 +863,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
+                bool previous_owner_context = checker->checking_borrow_owner;
+                checker->checking_borrow_owner = true;
                 YType actual = check_expr(checker, argument);
+                checker->checking_borrow_owner = previous_owner_context;
                 VarDecl *owner = argument->as.name.variable;
                 if (actual == TYPE_ERROR || !owner) {
                     expr->type = TYPE_ERROR;
@@ -945,7 +952,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
+                bool previous_owner_context = checker->checking_move_owner;
+                checker->checking_move_owner = true;
                 YType argument_type = check_expr(checker, argument);
+                checker->checking_move_owner = previous_owner_context;
                 VarDecl *source = argument->as.name.variable;
                 if (argument_type == TYPE_ERROR || !source) {
                     expr->type = TYPE_ERROR;
@@ -1604,7 +1614,8 @@ bool check_program(Compiler *c)
     Checker checker = {
         .compiler = c, .scope = NULL, .function = NULL, .loop_depth = 0,
         .allowed_assignment = NULL, .allow_array_name = false,
-        .allow_owned_move = false, .allow_mut_borrow = false, .module = NULL
+        .allow_owned_move = false, .allow_mut_borrow = false,
+        .checking_borrow_owner = false, .checking_move_owner = false, .module = NULL
     };
 
     for (size_t i = 0; i < c->struct_count; i++) {
