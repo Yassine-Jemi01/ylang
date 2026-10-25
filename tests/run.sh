@@ -1340,6 +1340,13 @@ if ./build/ylang check tests/move-match-join.yl > build/move-match-join.out 2>&1
 fi
 grep -q 'E2110' build/move-match-join.out
 
+# A self-move assignment would invalidate its target and is rejected.
+if ./build/ylang check tests/move-self-assignment.yl > build/move-self-assignment.out 2>&1; then
+    echo "FAIL: YLang accepted self-move assignment" >&2
+    exit 1
+fi
+grep -q 'E2114' build/move-self-assignment.out
+
 # Invalid move operations must have targeted diagnostics.
 if ./build/ylang check tests/move-rejections.yl > build/move-rejections.out 2>&1; then
     echo "FAIL: YLang accepted unsupported move operations" >&2
