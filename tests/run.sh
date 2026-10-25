@@ -1299,8 +1299,7 @@ fi
 YLANG_MEMORY_STATS=1 ./build/test-memory-stats > build/memory-stats.stdout 2> build/memory-stats.stderr
 printf 'value=42\n' > build/memory-stats.expected
 diff -u build/memory-stats.expected build/memory-stats.stdout
-grep -Eq '^YLang memory stats: tracked_allocations=[1-9][0-9]* tracked_bytes=[1-9][0-9]*
- build/memory-stats.stderr
+grep -Eq 'YLang memory stats: tracked_allocations=[1-9][0-9]* tracked_bytes=[1-9][0-9]*' build/memory-stats.stderr
 env -u YLANG_MEMORY_STATS ./build/test-memory-stats > build/memory-stats-default.stdout 2> build/memory-stats-default.stderr
 diff -u build/memory-stats.expected build/memory-stats-default.stdout
 [ ! -s build/memory-stats-default.stderr ]
