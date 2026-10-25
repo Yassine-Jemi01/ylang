@@ -1412,6 +1412,13 @@ grep -q 'E2120' build/owned-function-rejections.out
 grep -q 'E2124' build/owned-function-rejections.out
 grep -q 'E2144' build/owned-function-rejections.out
 
+# Owned parameters also participate in use-after-move checking.
+if ./build/ylang check tests/owned-parameter-use-after-move.yl > build/owned-parameter-use-after-move.out 2>&1; then
+    echo "FAIL: YLang accepted use after moving an owned parameter" >&2
+    exit 1
+fi
+grep -q 'E2110' build/owned-parameter-use-after-move.out
+
 # Borrow values cannot escape through globals, parameters, or return values yet.
 if ./build/ylang check tests/borrow-escape-rejections.yl > build/borrow-escape-rejections.out 2>&1; then
     echo "FAIL: YLang accepted a borrow escape" >&2
