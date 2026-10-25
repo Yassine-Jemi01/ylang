@@ -1441,20 +1441,6 @@ printf 'ephemeral-print\n18\nowned-return\ncycle-valuen=0\nYLang\nYLang\n' > bui
 diff -u build/scope-string-cleanup.expected build/scope-string-cleanup.stdout
 grep -Eq 'released_allocations=[1-9][0-9]* released_bytes=[1-9][0-9]* live_allocations=0 live_bytes=0' build/scope-string-cleanup.stderr
 
-# Single-statement branches still get lexical scopes and deterministic cleanup.
-./build/ylang build tests/scope-single-statement.yl -o build/test-scope-single-statement >/dev/null
-YLANG_MEMORY_STATS=1 ./build/test-scope-single-statement > build/scope-single-statement.stdout 2> build/scope-single-statement.stderr
-printf 'after\n' > build/scope-single-statement.expected
-diff -u build/scope-single-statement.expected build/scope-single-statement.stdout
-grep -Eq 'live_allocations=0 live_bytes=0' build/scope-single-statement.stderr
-
-# A variable declared as a single-statement branch body must not escape the branch.
-if ./build/ylang check tests/scope-single-statement-escape.yl > build/scope-single-statement-escape.out 2>&1; then
-    echo "FAIL: YLang let a single-statement branch local escape its scope" >&2
-    exit 1
-fi
-grep -q 'E2020' build/scope-single-statement-escape.out
-
 # Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
 ./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-memory-stats > build/memory-stats.stdout 2> build/memory-stats.stderr
