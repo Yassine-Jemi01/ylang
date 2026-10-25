@@ -54,7 +54,7 @@ let string destination = move(source);
 print(destination);
 ```
 
-The checker marks `source` unavailable after the move and reports diagnostic `E2110` if a later read tries to use it. A moved local can be reinitialized with a fresh value. This initial operation is intentionally limited to named local `string` variables; globals, parameters, arrays, non-string values, and arbitrary expressions are rejected with `E2111`–`E2113` diagnostics.
+The checker marks `source` unavailable after the move and reports diagnostic `E2110` if a later read tries to use it. A moved local can be reinitialized with a fresh value. Move state is merged conservatively across `if` branches, loop exits, and exhaustive `match` arms. A self-move assignment is rejected with `E2114`. This initial operation is intentionally limited to named local `string` variables; globals, parameters, arrays, non-string values, and arbitrary expressions are rejected with `E2111`–`E2113` diagnostics.
 
 **Important limitation:** `move(name)` currently transfers the binding at compile time and lowers to the same C pointer. It does **not** yet free allocations at scope exit, and the language does not yet prohibit every possible string alias. Do not treat this slice as a Rust-like memory-safety guarantee. Deterministic destruction must not be enabled until borrowing/alias rules and all control-flow exits are handled.
 
