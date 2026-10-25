@@ -901,19 +901,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
-                bool is_parameter = false;
-                if (checker->function) {
-                    for (size_t i = 0; i < checker->function->param_count; i++) {
-                        if (checker->function->params[i] == source) {
-                            is_parameter = true;
-                            break;
-                        }
-                    }
-                }
-                if (source->is_global || is_parameter) {
+                if (source->is_global) {
                     diagnostic(c, argument->token, "error", "E2113",
-                               "move() can only transfer a local variable in this milestone.",
-                               "Create a local owned value first; globals and function parameters remain borrowed.");
+                               "move() cannot transfer a global string binding.",
+                               "Globals remain process-owned in this milestone; move a local string or an owned function parameter.");
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
