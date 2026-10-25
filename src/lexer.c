@@ -271,6 +271,7 @@ Token lexer_next(Lexer *lexer)
         case '+':
             if (match_char(lexer, '+')) return make_token(lexer, TOKEN_PLUS_PLUS);
             return make_token(lexer, match_char(lexer, '=') ? TOKEN_PLUS_EQUAL : TOKEN_PLUS);
+        case '&' : return make_token(lexer, TOKEN_AMPERSAND);
         case '*' : return make_token(lexer, TOKEN_STAR);
         case '/' : return make_token(lexer, TOKEN_SLASH);
         case '%' : return make_token(lexer, TOKEN_PERCENT);
