@@ -1,0 +1,11 @@
+function main() -> int {
+    let string owner = string.concat("Y", "Lang");
+    {
+        let string view = borrow(owner);
+        let string alias = view;
+        print(view, alias);
+    }
+    let string moved = move(owner);
+    print(moved);
+    return 0;
+}
