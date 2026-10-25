@@ -212,6 +212,16 @@ static YType parse_type(Parser *p)
     if (token_is(&token, "char")) return TYPE_CHAR;
     if (token_is(&token, "string")) return TYPE_STRING;
     if (token_is(&token, "void")) return TYPE_VOID;
+    if (token_is(&token, "owned")) {
+        Token owned_type = consume(p, TOKEN_IDENTIFIER,
+            "Expected 'string' after 'owned'.",
+            "The first owned type is 'owned string'.");
+        if (token_is(&owned_type, "string")) return TYPE_OWNED_STRING;
+        diagnostic(p->compiler, owned_type, "error", "E2115",
+                   "Only 'owned string' is supported as an owned type in this milestone.",
+                   "Use 'owned string name = string.own(value);'.");
+        return TYPE_ERROR;
+    }
     EnumDecl *enumeration = find_enum(p->compiler, token_copy(p->compiler, token));
     if (enumeration) return enumeration->type;
     StructDecl *structure = find_struct(p->compiler, token_copy(p->compiler, token));
@@ -232,6 +242,7 @@ const char *type_name(YType type)
         case TYPE_CHAR: return "char";
         case TYPE_STRING: return "string";
         case TYPE_VOID: return "void";
+        case TYPE_OWNED_STRING: return "owned string";
         case TYPE_ERROR: return "<error>";
     }
     return "<unknown>";
