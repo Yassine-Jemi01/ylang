@@ -1,0 +1,19 @@
+function main() -> int {
+    let owned string source = string.own("YLang");
+    {
+        let owned string duplicate = string.own(source);
+        print(duplicate);
+    }
+
+    let owned string transferred = move(source);
+    transferred = string.own(string.concat(transferred, " owned"));
+    print(transferred);
+
+    loop() {
+        let owned string temporary = string.own("loop");
+        print(temporary);
+        break;
+    }
+
+    return 0;
+}
