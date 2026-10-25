@@ -204,6 +204,13 @@ static bool has_active_immutable_borrow(Checker *checker, VarDecl *owner)
     return false;
 }
 
+static bool is_builtin_call_name(Checker *checker, Expr *expr, const char *name)
+{
+    return expr && expr->kind == EXPR_CALL &&
+           strcmp(expr->as.call.name, name) == 0 &&
+           resolve_function(checker, name) == NULL;
+}
+
 static const char *nearest_function(Checker *checker, const char *name)
 {
     const char *best_name = NULL;
