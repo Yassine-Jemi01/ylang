@@ -1,0 +1,10 @@
+function main() -> int {
+    let string owner = string.concat("hello", " world");
+    {
+        let string view = borrow_mut(owner);
+        view = string.concat(view, "!");
+        print(view);
+    }
+    print(owner);
+    return 0;
+}
