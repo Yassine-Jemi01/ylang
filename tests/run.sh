@@ -1307,6 +1307,19 @@ if ./build/ylang check tests/move-after-use.yl > build/move-after-use.out 2>&1; 
 fi
 grep -q 'E2110' build/move-after-use.out
 
+# Move state is path-sensitive within mutually exclusive branches.
+./build/ylang build tests/move-branch-alternatives.yl -o build/test-move-branch-alternatives >/dev/null
+./build/test-move-branch-alternatives > build/move-branch-alternatives.out
+printf 'YLang\n' > build/move-branch-alternatives.expected
+diff -u build/move-branch-alternatives.expected build/move-branch-alternatives.out
+
+# A move on only one path makes the source unavailable after the control-flow join.
+if ./build/ylang check tests/move-branch-join.yl > build/move-branch-join.out 2>&1; then
+    echo "FAIL: YLang accepted use after move at a branch join" >&2
+    exit 1
+fi
+grep -q 'E2110' build/move-branch-join.out
+
 # Invalid move operations must have targeted diagnostics.
 if ./build/ylang check tests/move-rejections.yl > build/move-rejections.out 2>&1; then
     echo "FAIL: YLang accepted unsupported move operations" >&2
