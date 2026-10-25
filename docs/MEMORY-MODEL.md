@@ -1,6 +1,6 @@
 # YLang Memory Model — RFC
 
-Status: partial implementation in the experimental C backend. In addition to compile-time `move(name)` checks, the compiler now has an explicit `owned_string` type with move-only binding transfers and generated cleanup at ordinary block exits, function returns, loop breaks, and loop continues. Borrow syntax/checking and full Rust-like lifetime analysis are still unimplemented.
+Status: partial implementation in the experimental C backend. The compiler has an explicit `owned_string` type with move-only binding transfers and generated cleanup at ordinary block exits, function returns, loop breaks, and loop continues. A restricted immutable `borrowed_string` function-parameter view is also implemented. General `&T` / `&mut T` borrow syntax, conflicting-borrow checks, and full Rust-like lifetime analysis are still unimplemented.
 
 ## Goals
 
@@ -61,7 +61,7 @@ Generated C keeps owned slots initialized to null and emits `yl_release` calls o
 
 The existing `string` type remains a legacy C-string representation; runtime-created legacy strings can still be retained until process exit. `owned_string` is supported only by the C backend for now. Global owned strings, arrays of owned strings, and owned-string struct fields are rejected (`E2118`) until global, array-element, and field cleanup are implemented. User functions that accept `owned_string` take ownership of that argument; call them with `move(name)` or a fresh owned expression.
 
-The separate experimental `borrowed_string` type is permitted only for function parameters. Such parameters are immutable, are passed as non-owning pointers, and cannot be stored in a local/global variable, a struct field, or a return type. They may be forwarded to other borrowed/legacy string parameters or used immediately by string helpers. An `owned_string` temporary is rejected when passed into a borrowed parameter because the temporary would have no named owner to keep it alive for the call. This provides a narrow immutable parameter view, not a general lifetime checker: the language still has no `&mut T`, no returned borrows, and no general alias analysis.
+The separate experimental `borrowed_string` type is permitted only for function parameters. Such parameters are immutable, are passed as non-owning pointers, and cannot be stored in a local/global variable, a struct field, or a return type. They may be forwarded only to other `borrowed_string` parameters or used immediately by non-retaining string helpers. An `owned_string` temporary is rejected when passed into a borrowed parameter because the temporary would have no named owner to keep it alive for the call. This provides a narrow immutable parameter view, not a general lifetime checker: the language still has no `&mut T`, no returned borrows, and no general alias analysis.
 
 The first runtime instrumentation commit adds an opt-in diagnostic:
 
