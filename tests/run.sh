@@ -1347,6 +1347,12 @@ if ./build/ylang check tests/move-self-assignment.yl > build/move-self-assignmen
 fi
 grep -q 'E2114' build/move-self-assignment.out
 
+# String parameters are cloned into the callee and can then be moved/returned safely.
+./build/ylang build tests/move-parameter-return.yl -o build/test-move-parameter-return >/dev/null
+./build/test-move-parameter-return > build/move-parameter-return.out
+printf 'YLang YLang\n' > build/move-parameter-return.expected
+diff -u build/move-parameter-return.expected build/move-parameter-return.out
+
 # Invalid move operations must have targeted diagnostics.
 if ./build/ylang check tests/move-rejections.yl > build/move-rejections.out 2>&1; then
     echo "FAIL: YLang accepted unsupported move operations" >&2
