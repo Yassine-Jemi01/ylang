@@ -467,6 +467,13 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             expr->as.name.name = var->name;
             expr->as.name.variable = var;
+            if (var->moved) {
+                diagnostic(c, expr->token, "error", "E2110",
+                           "This value was already moved and cannot be used again.",
+                           "Use the new owner, or assign a fresh value before reading this variable.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
             if (var->is_array && !checker->allow_array_name) {
                 diagnostic(c, expr->token, "error", "E2029",
                            "An array must be indexed before it can be used as a value.",
@@ -552,6 +559,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                            "Assignment type mismatch.", suggestion);
             }
             var->initialized = true;
+            var->moved = false;
             expr->type = target_type;
             return expr->type;
         }
@@ -708,6 +716,64 @@ static YType check_expr(Checker *checker, Expr *expr)
             return expr->type;
         }
         case EXPR_CALL: {
+            if (strcmp(expr->as.call.name, "move") == 0 &&
+                !resolve_function(checker, "move")) {
+                if (expr->as.call.count != 1U) {
+                    diagnostic(c, expr->token, "error", "E2111",
+                               "move() expects exactly one local string variable.",
+                               "Use move(name) to transfer a string value to a new owner.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                Expr *argument = expr->as.call.args[0];
+                if (argument->kind != EXPR_NAME) {
+                    (void)check_expr(checker, argument);
+                    diagnostic(c, argument->token, "error", "E2112",
+                               "move() currently requires a named string variable.",
+                               "Move a local binding directly, for example move(message).");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                YType argument_type = check_expr(checker, argument);
+                VarDecl *source = argument->as.name.variable;
+                if (argument_type == TYPE_ERROR || !source) {
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (argument_type != TYPE_STRING || source->is_array) {
+                    diagnostic(c, argument->token, "error", "E2112",
+                               "Only scalar string variables can be moved in this milestone.",
+                               "Use move(name) with a local variable whose type is string.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                bool is_parameter = false;
+                if (checker->function) {
+                    for (size_t i = 0; i < checker->function->param_count; i++) {
+                        if (checker->function->params[i] == source) {
+                            is_parameter = true;
+                            break;
+                        }
+                    }
+                }
+                if (source->is_global || is_parameter) {
+                    diagnostic(c, argument->token, "error", "E2113",
+                               "move() can only transfer a local variable in this milestone.",
+                               "Create a local owned value first; globals and function parameters remain borrowed.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (!source->initialized) {
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                source->moved = true;
+                source->initialized = false;
+                expr->type = TYPE_STRING;
+                return expr->type;
+            }
             if (strncmp(expr->as.call.name, "gui.", 4) == 0) {
                 c->uses_gui = true;
                 const GuiBuiltin *builtin = find_gui_builtin(expr->as.call.name);
