@@ -69,6 +69,10 @@ static void yl_cleanup(void) {
         fprintf(stderr,
                 "YLang memory stats: tracked_allocations=%zu tracked_bytes=%zu\n",
                 yl_tracked_allocations, yl_tracked_bytes);
+        fprintf(stderr,
+                "YLang owned-string stats: allocations=%zu frees=%zu live_allocations=%zu live_bytes=%zu\\n",
+                yl_owned_string_allocations, yl_owned_string_frees,
+                yl_owned_string_live_allocations, yl_owned_string_live_bytes);
     }
     while (yl_tracked) {
         YLTracked *next = yl_tracked->next;
