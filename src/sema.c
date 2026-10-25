@@ -263,6 +263,19 @@ static bool expr_contains_call_or_assignment(Expr *expr)
 static YType check_expr(Checker *checker, Expr *expr);
 static void check_stmt(Checker *checker, Stmt *stmt);
 
+static void check_control_body(Checker *checker, Stmt *stmt)
+{
+    if (!stmt) return;
+    if (stmt->kind == STMT_BLOCK) {
+        check_stmt(checker, stmt);
+        return;
+    }
+    Scope *outer = checker->scope;
+    checker->scope = scope_new(checker->compiler, outer);
+    check_stmt(checker, stmt);
+    checker->scope = outer;
+}
+
 typedef struct {
     const char *name;
     size_t arity;
@@ -1278,7 +1291,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 before[i] = c->all_vars[i]->initialized;
                 before_moved[i] = c->all_vars[i]->moved;
             }
-            check_stmt(checker, stmt->as.if_stmt.then_branch);
+            check_control_body(checker, stmt->as.if_stmt.then_branch);
             for (size_t i = 0; i < n; i++) {
                 after_then[i] = c->all_vars[i]->initialized;
                 after_then_moved[i] = c->all_vars[i]->moved;
@@ -1288,7 +1301,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 c->all_vars[i]->moved = before_moved[i];
             }
             if (stmt->as.if_stmt.else_branch) {
-                check_stmt(checker, stmt->as.if_stmt.else_branch);
+                check_control_body(checker, stmt->as.if_stmt.else_branch);
                 for (size_t i = 0; i < n; i++) {
                     c->all_vars[i]->initialized =
                         after_then[i] && c->all_vars[i]->initialized;
@@ -1313,7 +1326,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 before_moved[i] = c->all_vars[i]->moved;
             }
             checker->loop_depth++;
-            check_stmt(checker, stmt->as.loop_body);
+            check_control_body(checker, stmt->as.loop_body);
             checker->loop_depth--;
             for (size_t i = 0; i < n; i++) {
                 c->all_vars[i]->moved = before_moved[i] || c->all_vars[i]->moved;
@@ -1336,7 +1349,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 before_moved[i] = c->all_vars[i]->moved;
             }
             checker->loop_depth++;
-            check_stmt(checker, stmt->as.while_stmt.body);
+            check_control_body(checker, stmt->as.while_stmt.body);
             checker->loop_depth--;
             for (size_t i = 0; i < n; i++) {
                 c->all_vars[i]->moved = before_moved[i] || c->all_vars[i]->moved;
@@ -1365,7 +1378,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 }
             }
             checker->loop_depth++;
-            check_stmt(checker, stmt->as.for_stmt.body);
+            check_control_body(checker, stmt->as.for_stmt.body);
             if (stmt->as.for_stmt.increment) {
                 Expr *previous_assignment = checker->allowed_assignment;
                 checker->allowed_assignment =
@@ -1425,7 +1438,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     c->all_vars[j]->initialized = before[j];
                     c->all_vars[j]->moved = before_moved[j];
                 }
-                check_stmt(checker, arm->body);
+                check_control_body(checker, arm->body);
                 for (size_t j = 0; j < variable_count; j++)
                     moved_in_any_arm[j] = moved_in_any_arm[j] || c->all_vars[j]->moved;
             }
