@@ -410,6 +410,8 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             expr->as.member.field = field;
             expr->type = field->type;
+            if (expr->type == TYPE_STRING)
+                expr->borrowed_from = sema_member_root_variable(expr);
             return expr->type;
         }
         case EXPR_INT: {
@@ -779,6 +781,8 @@ static YType check_expr(Checker *checker, Expr *expr)
                 expr->type = TYPE_ERROR;
             } else {
                 expr->type = var->type;
+                if (expr->type == TYPE_STRING)
+                    expr->borrowed_from = var;
             }
             return expr->type;
         }
@@ -971,8 +975,12 @@ static YType check_expr(Checker *checker, Expr *expr)
                         diagnostic(c, expr->token, "error", "E2045", "to_string cannot convert this type.",
                                    "Supported types are int, float, bool, char, and string.");
                     expr->type = TYPE_STRING;
-                    if (arg_type == TYPE_STRING && expr->as.call.count > 0U)
-                        expr->borrowed_from = expr->as.call.args[0]->borrowed_from;
+                    if (arg_type == TYPE_STRING && expr->as.call.count > 0U) {
+                        Expr *source_expr = expr->as.call.args[0];
+                        expr->borrowed_from = source_expr->borrowed_from;
+                        if (!expr->borrowed_from && source_expr->kind == EXPR_NAME)
+                            expr->borrowed_from = source_expr->as.name.variable;
+                    }
                 }
                 return expr->type;
             }
@@ -1457,6 +1465,15 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     diagnostic(c, stmt->as.return_value->token, "error", "E2117",
                                "A borrowed string view cannot be returned from its function.",
                                "Return an owned string value or keep the borrow entirely within this function.");
+                }
+                if (actual == TYPE_STRING &&
+                    stmt->as.return_value->kind == EXPR_NAME &&
+                    stmt->as.return_value->as.name.variable &&
+                    !stmt->as.return_value->as.name.variable->is_global &&
+                    !stmt->as.return_value->as.name.variable->borrowed_from) {
+                    VarDecl *returned_owner = stmt->as.return_value->as.name.variable;
+                    returned_owner->moved = true;
+                    returned_owner->initialized = false;
                 }
                 if (expected == TYPE_VOID) {
                     diagnostic(c, stmt->token, "error", "E2054",
