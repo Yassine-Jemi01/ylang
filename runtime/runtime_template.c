@@ -90,6 +90,16 @@ static void *yl_track(void *ptr, size_t size) {
     }
     return ptr;
 }
+
+/* Runtime half of move semantics: transfer the pointer and leave a null
+   source slot so a future scope cleanup cannot release the transferred value. */
+static const char *yl_move_string(const char **source) {
+    if (!source) yl_runtime_error("invalid string move");
+    const char *value = *source;
+    *source = NULL;
+    return value;
+}
+
 static const char *yl_boolstr(bool value) { return value ? "true" : "false"; }
 static const char *yl_format(const char *format, ...);
 static const char *yl_to_string_int(int64_t value) { return yl_format("%lld", (long long)value); }
