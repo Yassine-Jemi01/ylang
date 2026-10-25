@@ -1224,52 +1224,9 @@ static void emit_cleanup_to_loop_mark(CodegenContext *ctx, unsigned indent)
     }
 }
 
-static void emit_cleanup_owned_stmt(Compiler *compiler, FILE *out,
-                                    Stmt *stmt, unsigned indent)
-{
-    if (!stmt) return;
-    switch (stmt->kind) {
-        case STMT_BLOCK:
-            for (size_t i = 0; i < stmt->as.block.count; i++)
-                emit_cleanup_owned_stmt(compiler, out, stmt->as.block.items[i], indent);
-            break;
-        case STMT_VAR:
-            if (stmt->as.variable->type == TYPE_OWNED_STRING) {
-                emit_indent(out, indent);
-                fprintf(out, "yl_release(%s);\n", stmt->as.variable->c_name);
-                emit_indent(out, indent);
-                fprintf(out, "%s = NULL;\n", stmt->as.variable->c_name);
-            }
-            break;
-        case STMT_IF:
-            emit_cleanup_owned_stmt(compiler, out, stmt->as.if_stmt.then_branch, indent);
-            emit_cleanup_owned_stmt(compiler, out, stmt->as.if_stmt.else_branch, indent);
-            break;
-        case STMT_LOOP:
-            emit_cleanup_owned_stmt(compiler, out, stmt->as.loop_body, indent);
-            break;
-        case STMT_WHILE:
-            emit_cleanup_owned_stmt(compiler, out, stmt->as.while_stmt.body, indent);
-            break;
-        case STMT_FOR:
-            emit_cleanup_owned_stmt(compiler, out, stmt->as.for_stmt.initializer, indent);
-            emit_cleanup_owned_stmt(compiler, out, stmt->as.for_stmt.body, indent);
-            break;
-        case STMT_MATCH:
-            for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++)
-                emit_cleanup_owned_stmt(compiler, out, stmt->as.match_stmt.arms[i]->body, indent);
-            break;
-        case STMT_PRINT:
-        case STMT_BREAK:
-        case STMT_CONTINUE:
-        case STMT_RETURN:
-        case STMT_EXPR:
-            break;
-    }
-}
-
 static void emit_cleanup_function_owned(CodegenContext *ctx, unsigned indent)
 {
+    /* Owned parameters belong to the callee and are released after locals. */
     for (size_t i = ctx->function->param_count; i > 0U; i--) {
         VarDecl *param = ctx->function->params[i - 1U];
         if (param->type != TYPE_OWNED_STRING) continue;
@@ -1278,7 +1235,15 @@ static void emit_cleanup_function_owned(CodegenContext *ctx, unsigned indent)
         emit_indent(ctx->out, indent);
         fprintf(ctx->out, "%s = NULL;\n", param->c_name);
     }
-    emit_cleanup_owned_stmt(ctx->compiler, ctx->out, ctx->function->body, indent);
+}
+
+static void emit_cleanup_active_owned(CodegenContext *ctx, unsigned indent)
+{
+    /* Clean only scopes that are active at this exact control-flow point. */
+    for (size_t i = ctx->scope_count; i > 0U; i--) {
+        emit_cleanup_scope_frame(ctx, &ctx->scopes[i - 1U], indent);
+    }
+    emit_cleanup_function_owned(ctx, indent);
 }
 
 static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
@@ -1412,7 +1377,7 @@ static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
                         temporary);
                 emit_expr_to_file(out, stmt->as.return_value);
                 fputs(";\n", out);
-                emit_cleanup_function_owned(ctx, indent);
+                emit_cleanup_active_owned(ctx, indent);
                 emit_indent(out, indent);
                 fprintf(out, "return %s;\n", temporary);
             } else {
