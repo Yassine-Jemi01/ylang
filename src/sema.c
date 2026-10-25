@@ -716,7 +716,8 @@ static YType check_expr(Checker *checker, Expr *expr)
             return expr->type;
         }
         case EXPR_CALL: {
-            if (strcmp(expr->as.call.name, "move") == 0) {
+            if (strcmp(expr->as.call.name, "move") == 0 &&
+                !resolve_function(checker, "move")) {
                 if (expr->as.call.count != 1U) {
                     diagnostic(c, expr->token, "error", "E2111",
                                "move() expects exactly one local string variable.",
