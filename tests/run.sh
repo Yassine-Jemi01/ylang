@@ -1293,4 +1293,15 @@ else
     echo "SKIP: SDL2 integration test (install SDL2 development files and pkg-config to enable)." >&2
 fi
 
+
+# Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
+./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-memory-stats > build/memory-stats.stdout 2> build/memory-stats.stderr
+printf 'value=42\n' > build/memory-stats.expected
+diff -u build/memory-stats.expected build/memory-stats.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=[1-9][0-9]* tracked_bytes=[1-9][0-9]*' build/memory-stats.stderr
+env -u YLANG_MEMORY_STATS ./build/test-memory-stats > build/memory-stats-default.stdout 2> build/memory-stats-default.stderr
+diff -u build/memory-stats.expected build/memory-stats-default.stdout
+[ ! -s build/memory-stats-default.stderr ]
+
 echo "All YLang tests passed."
