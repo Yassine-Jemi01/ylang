@@ -42,9 +42,34 @@ static void yl_runtime_error(const char *message) {
     fprintf(stderr, "YLang runtime error: %s\n", message);
     exit(70);
 }
-typedef struct YLTracked { void *ptr; struct YLTracked *next; } YLTracked;
+typedef struct YLTracked {
+    void *ptr;
+    size_t size;
+    struct YLTracked *next;
+} YLTracked;
 static YLTracked *yl_tracked = NULL;
+static size_t yl_tracked_allocations = 0U;
+static size_t yl_tracked_bytes = 0U;
+static int yl_memory_stats_state = -1;
+
+static bool yl_memory_stats_enabled(void) {
+    if (yl_memory_stats_state < 0) {
+        const char *value = getenv("YLANG_MEMORY_STATS");
+        yl_memory_stats_state = value && strcmp(value, "1") == 0 ? 1 : 0;
+    }
+    return yl_memory_stats_state == 1;
+}
+
+static size_t yl_saturating_add_size(size_t left, size_t right) {
+    return SIZE_MAX - left < right ? SIZE_MAX : left + right;
+}
+
 static void yl_cleanup(void) {
+    if (yl_memory_stats_enabled()) {
+        fprintf(stderr,
+                "YLang memory stats: tracked_allocations=%zu tracked_bytes=%zu\\n",
+                yl_tracked_allocations, yl_tracked_bytes);
+    }
     while (yl_tracked) {
         YLTracked *next = yl_tracked->next;
         free(yl_tracked->ptr);
@@ -52,12 +77,17 @@ static void yl_cleanup(void) {
         yl_tracked = next;
     }
 }
-static void *yl_track(void *ptr) {
+static void *yl_track(void *ptr, size_t size) {
     YLTracked *node = malloc(sizeof(*node));
     if (!node) yl_runtime_error("out of memory");
     node->ptr = ptr;
+    node->size = size;
     node->next = yl_tracked;
     yl_tracked = node;
+    if (yl_memory_stats_enabled()) {
+        yl_tracked_allocations = yl_saturating_add_size(yl_tracked_allocations, 1U);
+        yl_tracked_bytes = yl_saturating_add_size(yl_tracked_bytes, size);
+    }
     return ptr;
 }
 static const char *yl_boolstr(bool value) { return value ? "true" : "false"; }
@@ -104,7 +134,7 @@ static const char *yl_format(const char *format, ...) {
     }
     (void)vsnprintf(buffer, (size_t)needed + 1, format, args);
     va_end(args);
-    return (const char *)yl_track(buffer);
+    return (const char *)yl_track(buffer, (size_t)needed + 1U);
 }
 static int64_t yl_add_i64(int64_t a, int64_t b) {
     int64_t result;
@@ -223,7 +253,7 @@ static const char *yl_string_replace(const char *value, const char *needle,
         src = match + needle_length;
     }
     strcpy(dst, src);
-    return (const char *)yl_track(result);
+    return (const char *)yl_track(result, result_length + 1U);
 }
 static const char *yl_string_case(const char *value, bool upper) {
     size_t length = strlen(value);
@@ -234,7 +264,7 @@ static const char *yl_string_case(const char *value, bool upper) {
         result[i] = (char)(upper ? toupper(ch) : tolower(ch));
     }
     result[length] = '\0';
-    return (const char *)yl_track(result);
+    return (const char *)yl_track(result, length + 1U);
 }
 static const char *yl_string_upper(const char *value) { return yl_string_case(value, true); }
 static const char *yl_string_lower(const char *value) { return yl_string_case(value, false); }
@@ -267,7 +297,7 @@ static const char *yl_read_line(void) {
     }
     while (length > 0U && line[length - 1U] == '\r') length--;
     line[length] = '\0';
-    return (const char *)yl_track(line);
+    return (const char *)yl_track(line, capacity);
 }
 static const char *yl_read_file(const char *path) {
     FILE *file = fopen(path, "rb");
@@ -300,7 +330,7 @@ static const char *yl_read_file(const char *path) {
         yl_runtime_error("binary files are not supported by string I/O");
     }
     data[size] = '\0';
-    return (const char *)yl_track(data);
+    return (const char *)yl_track(data, size + 1U);
 }
 static bool yl_write_file(const char *path, const char *content) {
     FILE *file = fopen(path, "wb");
@@ -330,7 +360,7 @@ static const char *yl_path_basename(const char *path) {
     if (!result) yl_runtime_error("out of memory");
     memcpy(result, path + (root ? 0U : start), length);
     result[length] = '\0';
-    return (const char *)yl_track(result);
+    return (const char *)yl_track(result, length + 1U);
 }
 static const char *yl_path_extension(const char *path) {
     const char *base = yl_path_basename(path);
