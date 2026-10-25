@@ -383,6 +383,7 @@ const char *token_type_name(TokenType type)
         case TOKEN_GREATER_EQUAL: return "GREATER_EQUAL";
         case TOKEN_SEMICOLON: return "SEMICOLON";
         case TOKEN_COMMA: return "COMMA";
+        case TOKEN_AMPERSAND: return "AMPERSAND";
     }
 
     return "UNKNOWN_TOKEN";
