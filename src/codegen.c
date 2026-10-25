@@ -788,6 +788,14 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             break;
         }
         case EXPR_CALL: {
+            /* borrow(name) is a compile-time view; the runtime value is the
+               owner's existing string pointer. */
+            if (!expr->as.call.function &&
+                strcmp(expr->as.call.name, "borrow") == 0 &&
+                expr->as.call.count == 1U) {
+                emit_expr(sb, expr->as.call.args[0]);
+                break;
+            }
             /* move(name) is a compile-time ownership transfer; its runtime
                representation is still the same string pointer. */
             if (!expr->as.call.function &&
