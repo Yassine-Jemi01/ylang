@@ -386,6 +386,14 @@ static YType check_expr(Checker *checker, Expr *expr)
 {
     if (!expr) return TYPE_VOID;
     Compiler *c = checker->compiler;
+    /* These flags authorize only the expression at the current sink. Do not
+       propagate ownership-transfer permission into nested temporary values. */
+    bool allow_owned_value_here = checker->allow_owned_value;
+    bool allow_owned_move_here = checker->allow_owned_move;
+    bool allow_mut_borrow_here = checker->allow_mut_borrow;
+    checker->allow_owned_value = false;
+    checker->allow_owned_move = false;
+    checker->allow_mut_borrow = false;
     switch (expr->kind) {
         case EXPR_ERROR: expr->type = TYPE_ERROR; return expr->type;
         case EXPR_ENUM_VALUE:
@@ -847,7 +855,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                  strcmp(expr->as.call.name, "borrow_mut") == 0) &&
                 !resolve_function(checker, expr->as.call.name)) {
                 bool exclusive_request = strcmp(expr->as.call.name, "borrow_mut") == 0;
-                if (exclusive_request && !checker->allow_mut_borrow) {
+                if (exclusive_request && !allow_mut_borrow_here) {
                     diagnostic(c, expr->token, "error", "E2143",
                                "borrow_mut() must initialize a local '&mut string' binding.",
                                "Bind the exclusive borrow in a local block so its lifetime is visible to the checker.");
@@ -931,7 +939,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                     return expr->type;
                 }
                 YType actual = check_expr(checker, expr->as.call.args[0]);
-                if (!checker->allow_owned_value) {
+                if (!allow_owned_value_here) {
                     diagnostic(c, expr->token, "error", "E2144",
                                "string.own() must initialize, assign, pass, or return an owned value.",
                                "Bind the result to an owned string, pass it to an owned string parameter, or return it from an owned-string function.");
@@ -996,7 +1004,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
-                if (argument_type == TYPE_OWNED_STRING && !checker->allow_owned_move) {
+                if (argument_type == TYPE_OWNED_STRING && !allow_owned_move_here) {
                     diagnostic(c, argument->token, "error", "E2137",
                                "An owned string move must initialize or replace an owned string binding.",
                                "Use 'let owned string next = move(current);' or assign move(current) to another owned string.");
@@ -1243,7 +1251,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 }
             }
             if (function->return_type == TYPE_OWNED_STRING &&
-                !checker->allow_owned_value) {
+                !allow_owned_value_here) {
                 diagnostic(c, expr->token, "error", "E2144",
                            "An owned-string result cannot be discarded or used as a borrowed expression.",
                            "Bind it to an owned string, pass it to an owned string parameter, or return it from an owned-string function.");
