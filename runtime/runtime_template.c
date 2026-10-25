@@ -52,6 +52,77 @@ static size_t yl_tracked_allocations = 0U;
 static size_t yl_tracked_bytes = 0U;
 static int yl_memory_stats_state = -1;
 
+typedef struct YLSlot {
+    const char **value_slot;
+    struct YLSlot *next;
+} YLSlot;
+
+typedef struct YLScope {
+    struct YLScope *parent;
+    YLSlot *owned_slots;
+    struct YLScope **slot_pointer;
+} YLScope;
+
+static YLScope *yl_active_scope = NULL;
+
+static void yl_release(const char *ptr) {
+    if (!ptr) return;
+    YLTracked **link = &yl_tracked;
+    while (*link) {
+        YLTracked *node = *link;
+        if (node->ptr == (const void *)ptr) {
+            *link = node->next;
+            free(node->ptr);
+            free(node);
+            return;
+        }
+        link = &node->next;
+    }
+}
+
+static YLScope *yl_scope_current(void) {
+    return yl_active_scope;
+}
+
+static void yl_scope_enter(YLScope *scope, YLScope **scope_pointer) {
+    if (!scope || !scope_pointer) yl_runtime_error("invalid lexical scope state");
+    scope->parent = yl_active_scope;
+    scope->owned_slots = NULL;
+    scope->slot_pointer = scope_pointer;
+    *scope_pointer = scope;
+    yl_active_scope = scope;
+}
+
+static void yl_scope_register(YLScope *scope, YLSlot *slot,
+                              const char **value_slot) {
+    if (!scope || !slot || !value_slot) yl_runtime_error("invalid owned string slot");
+    slot->value_slot = value_slot;
+    slot->next = scope->owned_slots;
+    scope->owned_slots = slot;
+}
+
+static void yl_scope_leave_to(YLScope *boundary) {
+    while (yl_active_scope != boundary) {
+        YLScope *scope = yl_active_scope;
+        if (!scope) yl_runtime_error("invalid lexical scope unwind");
+        YLSlot *slot = scope->owned_slots;
+        while (slot) {
+            if (slot->value_slot) {
+                yl_release(*slot->value_slot);
+                *slot->value_slot = NULL;
+            }
+            slot = slot->next;
+        }
+        yl_active_scope = scope->parent;
+        if (scope->slot_pointer) *scope->slot_pointer = NULL;
+    }
+}
+
+static void yl_scope_leave(YLScope **scope_pointer) {
+    if (!scope_pointer || !*scope_pointer) return;
+    yl_scope_leave_to((*scope_pointer)->parent);
+}
+
 static bool yl_memory_stats_enabled(void) {
     if (yl_memory_stats_state < 0) {
         const char *value = getenv("YLANG_MEMORY_STATS");
@@ -91,8 +162,26 @@ static void *yl_track(void *ptr, size_t size) {
     return ptr;
 }
 
+static const char *yl_clone_string(const char *value) {
+    if (!value) return "";
+    size_t length = strlen(value);
+    if (length == SIZE_MAX) yl_runtime_error("string is too large to clone");
+    char *copy = malloc(length + 1U);
+    if (!copy) yl_runtime_error("out of memory");
+    memcpy(copy, value, length + 1U);
+    return (const char *)yl_track(copy, length + 1U);
+}
+
+static const char *yl_replace_string(const char **target, const char *value) {
+    if (!target) yl_runtime_error("invalid string assignment target");
+    const char *old = *target;
+    if (old != value) yl_release(old);
+    *target = value;
+    return value;
+}
+
 /* Runtime half of move semantics: transfer the pointer and leave a null
-   source slot so a future scope cleanup cannot release the transferred value. */
+   source slot so a scope cleanup cannot release the transferred value. */
 static const char *yl_move_string(const char **source) {
     if (!source) yl_runtime_error("invalid string move");
     const char *value = *source;
