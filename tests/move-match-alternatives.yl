@@ -1,0 +1,16 @@
+enum Choice { First, Second }
+
+function main() -> int {
+    let Choice choice = Choice.First;
+    let string source = string.concat("Y", "Lang");
+    match (choice) {
+        Choice.First -> {
+            let string destination = move(source);
+            print(destination);
+        }
+        Choice.Second -> {
+            print(source);
+        }
+    }
+    return 0;
+}
