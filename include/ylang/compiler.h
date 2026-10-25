@@ -109,7 +109,8 @@ struct VarDecl {
     bool initialized;
     bool moved; /* True after ownership is explicitly transferred with move(name). */
     Scope *decl_scope;
-    VarDecl *borrowed_from; /* Non-owning immutable view; source must outlive this binding. */
+    VarDecl *borrowed_from; /* Non-owning view; source must outlive this binding. */
+    bool is_mut_borrow; /* Binding aliases the owner's string slot through const char **. */
     bool is_global;
     bool is_array;
     size_t array_length;
