@@ -1179,7 +1179,13 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                            "Use a value type such as int, float, bool, char, or string.");
             }
             if (var->initializer) {
+                bool is_borrow_initializer =
+                    is_builtin_call_name(checker, var->initializer, "borrow");
+                bool old_allow_borrow = checker->allow_borrow_initializer;
+                checker->allow_borrow_initializer =
+                    is_borrow_initializer && !var->is_global;
                 YType init_type = check_expr(checker, var->initializer);
+                checker->allow_borrow_initializer = old_allow_borrow;
                 if (init_type != TYPE_ERROR && init_type != var->type) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
@@ -1187,6 +1193,14 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                         var->name, semantic_type_name(c, var->type), semantic_type_name(c, init_type));
                     diagnostic(c, var->initializer->token, "error", "E2001",
                                "Variable initializer type mismatch.", suggestion);
+                }
+                var->borrowed_from = var->initializer->borrowed_from;
+                if (var->borrowed_from != NULL &&
+                    (var->is_global || var->type != TYPE_STRING)) {
+                    diagnostic(c, var->token, "error", "E2117",
+                               "A borrowed string view must be a local string binding.",
+                               "Keep borrowed views local and declare them with type string.");
+                    var->borrowed_from = NULL;
                 }
                 var->initialized = true;
             }
