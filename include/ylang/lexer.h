@@ -61,7 +61,8 @@ typedef enum {
     TOKEN_GREATER_EQUAL,
 
     TOKEN_SEMICOLON,
-    TOKEN_COMMA
+    TOKEN_COMMA,
+    TOKEN_AMPERSAND
 } TokenType;
 
 typedef struct {
