@@ -1363,9 +1363,12 @@ test "$(./build/test-move-name-collision)" = "42"
 # Owned strings clone independently, move without aliasing, and drop at scope exits.
 ./build/ylang build tests/owned-string.yl -o build/test-owned-string >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-owned-string > build/owned-string.stdout 2> build/owned-string.stderr
-printf 'YLang\nYLang owned\nloop\n' > build/owned-string.expected
+printf 'YLang\nYLang owned\nowned=YLang owned\nloop\n' > build/owned-string.expected
 diff -u build/owned-string.expected build/owned-string.stdout
 grep -Eq 'YLang owned-string stats: allocations=4 frees=4 live_allocations=0 live_bytes=0' build/owned-string.stderr
+env -u YLANG_MEMORY_STATS ./build/test-owned-string > build/owned-string-default.stdout 2> build/owned-string-default.stderr
+diff -u build/owned-string.expected build/owned-string-default.stdout
+[ ! -s build/owned-string-default.stderr ]
 
 # Owned strings cannot be implicitly copied or escape into unsupported lifetimes.
 if ./build/ylang check tests/owned-string-rejections.yl > build/owned-string-rejections.out 2>&1; then
