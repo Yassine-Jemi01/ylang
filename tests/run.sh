@@ -1460,6 +1460,13 @@ for fixture in owned-string-struct-field owned-string-global owned-string-array;
     grep -q 'E2118' "build/$fixture.out"
 done
 
+# Early returns clean only active lexical scopes, and transfer the return owner.
+./build/ylang build tests/owned-string-early-return.yl -o build/test-owned-string-early-return >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string-early-return > build/owned-string-early-return.stdout 2> build/owned-string-early-return.stderr
+printf 'returned\\n' > build/owned-string-early-return.expected
+diff -u build/owned-string-early-return.expected build/owned-string-early-return.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-early-return.stderr
+
 # Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
 ./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-memory-stats > build/memory-stats.stdout 2> build/memory-stats.stderr
