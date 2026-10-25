@@ -1200,12 +1200,22 @@ static YType check_expr(Checker *checker, Expr *expr)
             for (size_t i = 0; i < expr->as.call.count; i++) {
                 Expr *arg = expr->as.call.args[i];
                 bool array_parameter = i < shared && function->params[i]->is_array;
+                VarDecl *param = i < shared ? function->params[i] : NULL;
                 bool previous_allow_array = checker->allow_array_name;
+                bool previous_owned_context = checker->allow_owned_value;
+                bool previous_move_context = checker->allow_owned_move;
                 checker->allow_array_name = array_parameter;
+                checker->allow_owned_value = param && param->type == TYPE_OWNED_STRING;
+                checker->allow_owned_move = param && param->type == TYPE_OWNED_STRING &&
+                    arg && arg->kind == EXPR_CALL &&
+                    strcmp(arg->as.call.name, "move") == 0 &&
+                    !resolve_function(checker, "move") &&
+                    arg->as.call.count == 1U;
                 YType arg_type = check_expr(checker, arg);
                 checker->allow_array_name = previous_allow_array;
+                checker->allow_owned_value = previous_owned_context;
+                checker->allow_owned_move = previous_move_context;
                 if (i >= shared || arg_type == TYPE_ERROR) continue;
-                VarDecl *param = function->params[i];
                 if (param->is_array) {
                     if (arg->kind != EXPR_NAME || !arg->as.name.variable ||
                         !arg->as.name.variable->is_array) {
@@ -1217,6 +1227,11 @@ static YType check_expr(Checker *checker, Expr *expr)
                                    "Function array element type mismatch.",
                                    "Pass an array whose element type matches the parameter declaration.");
                     }
+                } else if (param->type == TYPE_OWNED_STRING &&
+                           !owned_string_initializer_shape(checker, arg)) {
+                    diagnostic(c, arg->token, "error", "E2120",
+                               "An owned-string parameter consumes an owned value; a bare owner cannot be copied.",
+                               "Pass move(owner), string.own(owner), or another function's owned-string result.");
                 } else if (arg_type != param->type) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
