@@ -1397,7 +1397,7 @@ test "$(./build/test-borrow-name-collision)" = "42"
 # Owned local strings are released at lexical scope exit, including loop iterations.
 ./build/ylang build tests/scope-string-cleanup.yl -o build/test-scope-string-cleanup >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-scope-string-cleanup > build/scope-string-cleanup.stdout 2> build/scope-string-cleanup.stderr
-printf 'cycle-valuen=0\nYLang\nYLang\n' > build/scope-string-cleanup.expected
+printf 'ephemeral-print\n19\ncycle-valuen=0\nYLang\nYLang\n' > build/scope-string-cleanup.expected
 diff -u build/scope-string-cleanup.expected build/scope-string-cleanup.stdout
 grep -Eq 'released_allocations=[1-9][0-9]* released_bytes=[1-9][0-9]* live_allocations=0 live_bytes=0' build/scope-string-cleanup.stderr
 
