@@ -1,6 +1,6 @@
 # YLang Memory Model — RFC
 
-Status: experimental, partial implementation on `feature/ownership-memory-v3`. The compiler retains static `move(name)` checks for legacy `string` values and adds a separate `owned string` type with explicit cloning, runtime moves, lexical cleanup, and local `&string` / `&mut string` borrow checks. Borrowed function parameters/returns, globals, struct fields, and general ownership-aware function signatures are still unimplemented.
+Status: experimental, partial implementation on `feature/ownership-memory-v3`. The compiler retains static `move(name)` checks for legacy `string` values and adds a separate `owned string` type with explicit cloning, runtime moves, consuming `owned string` parameters, explicit owned returns, lexical cleanup, and local `&string` / `&mut string` borrow checks. Borrowed function parameters/returns, globals, struct fields, and general ownership-aware borrow signatures are still unimplemented.
 
 ## Goals
 
@@ -63,7 +63,7 @@ The regression suite covers successful owned string cloning/moving, scope and ea
 
 ## Future work
 
-1. Define ownership/borrow contracts for function parameters, return values, and imports.
+1. Add borrow-annotated function parameters/returns and ownership contracts for imported APIs.
 2. Add mutation operations before claiming that `&mut string` provides useful mutation semantics.
 3. Expand to owned structs/containers after nested destruction and exception/error paths are covered.
 4. Keep measuring throughput and live/peak memory with equivalent safety checks.
