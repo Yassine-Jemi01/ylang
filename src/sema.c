@@ -1091,28 +1091,54 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             }
             size_t n = c->all_var_count;
             bool *before = arena_alloc(&c->arena, n * sizeof(bool));
+            bool *before_moved = arena_alloc(&c->arena, n * sizeof(bool));
             bool *after_then = arena_alloc(&c->arena, n * sizeof(bool));
-            for (size_t i = 0; i < n; i++) before[i] = c->all_vars[i]->initialized;
+            bool *after_then_moved = arena_alloc(&c->arena, n * sizeof(bool));
+            for (size_t i = 0; i < n; i++) {
+                before[i] = c->all_vars[i]->initialized;
+                before_moved[i] = c->all_vars[i]->moved;
+            }
             check_stmt(checker, stmt->as.if_stmt.then_branch);
-            for (size_t i = 0; i < n; i++) after_then[i] = c->all_vars[i]->initialized;
-            for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
+            for (size_t i = 0; i < n; i++) {
+                after_then[i] = c->all_vars[i]->initialized;
+                after_then_moved[i] = c->all_vars[i]->moved;
+            }
+            for (size_t i = 0; i < n; i++) {
+                c->all_vars[i]->initialized = before[i];
+                c->all_vars[i]->moved = before_moved[i];
+            }
             if (stmt->as.if_stmt.else_branch) {
                 check_stmt(checker, stmt->as.if_stmt.else_branch);
-                for (size_t i = 0; i < n; i++)
-                    c->all_vars[i]->initialized = after_then[i] && c->all_vars[i]->initialized;
+                for (size_t i = 0; i < n; i++) {
+                    c->all_vars[i]->initialized =
+                        after_then[i] && c->all_vars[i]->initialized;
+                    c->all_vars[i]->moved =
+                        after_then_moved[i] || c->all_vars[i]->moved;
+                }
             } else {
-                for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
+                for (size_t i = 0; i < n; i++) {
+                    c->all_vars[i]->initialized = before[i];
+                    c->all_vars[i]->moved =
+                        before_moved[i] || after_then_moved[i];
+                }
             }
             break;
         }
         case STMT_LOOP: {
             size_t n = c->all_var_count;
             bool *before = arena_alloc(&c->arena, n * sizeof(bool));
-            for (size_t i = 0; i < n; i++) before[i] = c->all_vars[i]->initialized;
+            bool *before_moved = arena_alloc(&c->arena, n * sizeof(bool));
+            for (size_t i = 0; i < n; i++) {
+                before[i] = c->all_vars[i]->initialized;
+                before_moved[i] = c->all_vars[i]->moved;
+            }
             checker->loop_depth++;
             check_stmt(checker, stmt->as.loop_body);
             checker->loop_depth--;
-            for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
+            for (size_t i = 0; i < n; i++) {
+                c->all_vars[i]->moved = before_moved[i] || c->all_vars[i]->moved;
+                c->all_vars[i]->initialized = before[i] && !c->all_vars[i]->moved;
+            }
             break;
         }
         case STMT_WHILE: {
@@ -1124,11 +1150,18 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             }
             size_t n = c->all_var_count;
             bool *before = arena_alloc(&c->arena, n * sizeof(bool));
-            for (size_t i = 0; i < n; i++) before[i] = c->all_vars[i]->initialized;
+            bool *before_moved = arena_alloc(&c->arena, n * sizeof(bool));
+            for (size_t i = 0; i < n; i++) {
+                before[i] = c->all_vars[i]->initialized;
+                before_moved[i] = c->all_vars[i]->moved;
+            }
             checker->loop_depth++;
             check_stmt(checker, stmt->as.while_stmt.body);
             checker->loop_depth--;
-            for (size_t i = 0; i < n; i++) c->all_vars[i]->initialized = before[i];
+            for (size_t i = 0; i < n; i++) {
+                c->all_vars[i]->moved = before_moved[i] || c->all_vars[i]->moved;
+                c->all_vars[i]->initialized = before[i] && !c->all_vars[i]->moved;
+            }
             break;
         }
         case STMT_FOR: {
@@ -1136,7 +1169,11 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             checker->scope = scope_new(c, outer_scope);
             size_t n_before_init = c->all_var_count;
             bool *before = arena_alloc(&c->arena, n_before_init * sizeof(bool));
-            for (size_t i = 0; i < n_before_init; i++) before[i] = c->all_vars[i]->initialized;
+            bool *before_moved = arena_alloc(&c->arena, n_before_init * sizeof(bool));
+            for (size_t i = 0; i < n_before_init; i++) {
+                before[i] = c->all_vars[i]->initialized;
+                before_moved[i] = c->all_vars[i]->moved;
+            }
             if (stmt->as.for_stmt.initializer)
                 check_stmt(checker, stmt->as.for_stmt.initializer);
             if (stmt->as.for_stmt.condition) {
@@ -1158,7 +1195,10 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 checker->allowed_assignment = previous_assignment;
             }
             checker->loop_depth--;
-            for (size_t i = 0; i < n_before_init; i++) c->all_vars[i]->initialized = before[i];
+            for (size_t i = 0; i < n_before_init; i++) {
+                c->all_vars[i]->moved = before_moved[i] || c->all_vars[i]->moved;
+                c->all_vars[i]->initialized = before[i] && !c->all_vars[i]->moved;
+            }
             checker->scope = outer_scope;
             break;
         }
@@ -1178,8 +1218,13 @@ static void check_stmt(Checker *checker, Stmt *stmt)
 
             size_t variable_count = c->all_var_count;
             bool *before = arena_alloc(&c->arena, variable_count * sizeof(bool));
-            for (size_t i = 0; i < variable_count; i++)
+            bool *before_moved = arena_alloc(&c->arena, variable_count * sizeof(bool));
+            bool *moved_in_any_arm = arena_alloc(&c->arena, variable_count * sizeof(bool));
+            for (size_t i = 0; i < variable_count; i++) {
                 before[i] = c->all_vars[i]->initialized;
+                before_moved[i] = c->all_vars[i]->moved;
+                moved_in_any_arm[i] = false;
+            }
 
             for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++) {
                 MatchArm *arm = stmt->as.match_stmt.arms[i];
@@ -1196,9 +1241,13 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                                    "Keep exactly one arm for each enum variant.");
                     }
                 }
-                for (size_t j = 0; j < variable_count; j++)
+                for (size_t j = 0; j < variable_count; j++) {
                     c->all_vars[j]->initialized = before[j];
+                    c->all_vars[j]->moved = before_moved[j];
+                }
                 check_stmt(checker, arm->body);
+                for (size_t j = 0; j < variable_count; j++)
+                    moved_in_any_arm[j] = moved_in_any_arm[j] || c->all_vars[j]->moved;
             }
 
             if (enumeration) {
@@ -1219,8 +1268,10 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     }
                 }
             }
-            for (size_t i = 0; i < variable_count; i++)
-                c->all_vars[i]->initialized = before[i];
+            for (size_t i = 0; i < variable_count; i++) {
+                c->all_vars[i]->moved = before_moved[i] || moved_in_any_arm[i];
+                c->all_vars[i]->initialized = before[i] && !c->all_vars[i]->moved;
+            }
             break;
         }
         case STMT_BREAK:
