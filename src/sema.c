@@ -918,6 +918,11 @@ static YType check_expr(Checker *checker, Expr *expr)
                 }
                 for (size_t i = 0; i < expr->as.call.count; i++) {
                     YType actual = check_expr(checker, expr->as.call.args[i]);
+                    if (expr->as.call.args[i]->borrowed_from != NULL) {
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2118",
+                                   "Borrowed string views cannot be passed to GUI APIs yet.",
+                                   "Use the view locally or end its scope before calling GUI functions.");
+                    }
                     if (i < builtin->arity && actual != TYPE_ERROR &&
                         actual != builtin->args[i]) {
                         char suggestion[256];
@@ -1441,6 +1446,11 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 }
             } else {
                 YType actual = check_expr(checker, stmt->as.return_value);
+                if (stmt->as.return_value->borrowed_from != NULL) {
+                    diagnostic(c, stmt->as.return_value->token, "error", "E2117",
+                               "A borrowed string view cannot be returned from its function.",
+                               "Return an owned string value or keep the borrow entirely within this function.");
+                }
                 if (expected == TYPE_VOID) {
                     diagnostic(c, stmt->token, "error", "E2054",
                                "A void function cannot return a value.",
