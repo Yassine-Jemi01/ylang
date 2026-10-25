@@ -22,6 +22,7 @@ typedef struct {
     Expr *allowed_assignment;
     bool allow_array_name;
     bool allow_owned_move;
+    bool allow_mut_borrow;
     Module *module;
 } Checker;
 
@@ -833,6 +834,13 @@ static YType check_expr(Checker *checker, Expr *expr)
                  strcmp(expr->as.call.name, "borrow_mut") == 0) &&
                 !resolve_function(checker, expr->as.call.name)) {
                 bool exclusive_request = strcmp(expr->as.call.name, "borrow_mut") == 0;
+                if (exclusive_request && !checker->allow_mut_borrow) {
+                    diagnostic(c, expr->token, "error", "E2143",
+                               "borrow_mut() must initialize a local '&mut string' binding.",
+                               "Bind the exclusive borrow in a local block so its lifetime is visible to the checker.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
                 if (expr->as.call.count != 1U) {
                     diagnostic(c, expr->token, "error", "E2130",
                                "borrow() and borrow_mut() expect one named string variable.",
@@ -1299,13 +1307,20 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             }
             if (var->initializer) {
                 bool previous_move_context = checker->allow_owned_move;
+                bool previous_mut_borrow_context = checker->allow_mut_borrow;
                 checker->allow_owned_move = var->type == TYPE_OWNED_STRING &&
                     var->initializer->kind == EXPR_CALL &&
                     strcmp(var->initializer->as.call.name, "move") == 0 &&
                     !resolve_function(checker, "move") &&
                     var->initializer->as.call.count == 1U;
+                checker->allow_mut_borrow = var->type == TYPE_MUT_BORROW_STRING &&
+                    var->initializer->kind == EXPR_CALL &&
+                    strcmp(var->initializer->as.call.name, "borrow_mut") == 0 &&
+                    !resolve_function(checker, "borrow_mut") &&
+                    var->initializer->as.call.count == 1U;
                 YType init_type = check_expr(checker, var->initializer);
                 checker->allow_owned_move = previous_move_context;
+                checker->allow_mut_borrow = previous_mut_borrow_context;
                 if (init_type != TYPE_ERROR && init_type != var->type) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
@@ -1589,7 +1604,7 @@ bool check_program(Compiler *c)
     Checker checker = {
         .compiler = c, .scope = NULL, .function = NULL, .loop_depth = 0,
         .allowed_assignment = NULL, .allow_array_name = false,
-        .allow_owned_move = false, .module = NULL
+        .allow_owned_move = false, .allow_mut_borrow = false, .module = NULL
     };
 
     for (size_t i = 0; i < c->struct_count; i++) {
