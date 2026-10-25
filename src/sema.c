@@ -525,6 +525,18 @@ static YType check_expr(Checker *checker, Expr *expr)
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
+            if (!is_borrow_type(var->type)) {
+                size_t shared_count = 0U;
+                bool exclusive_active = false;
+                checker_active_borrows(checker, var, &shared_count, &exclusive_active);
+                if (exclusive_active) {
+                    diagnostic(c, expr->token, "error", "E2138",
+                               "The owner cannot be read directly while an exclusive borrow is active.",
+                               "Use the borrow_mut binding until its scope ends.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+            }
             if (var->is_array && !checker->allow_array_name) {
                 diagnostic(c, expr->token, "error", "E2029",
                            "An array must be indexed before it can be used as a value.",
@@ -790,6 +802,73 @@ static YType check_expr(Checker *checker, Expr *expr)
             return expr->type;
         }
         case EXPR_CALL: {
+            if ((strcmp(expr->as.call.name, "borrow") == 0 ||
+                 strcmp(expr->as.call.name, "borrow_mut") == 0) &&
+                !resolve_function(checker, expr->as.call.name)) {
+                bool exclusive_request = strcmp(expr->as.call.name, "borrow_mut") == 0;
+                if (expr->as.call.count != 1U) {
+                    diagnostic(c, expr->token, "error", "E2130",
+                               "borrow() and borrow_mut() expect one named string variable.",
+                               "Use borrow(owner) or borrow_mut(owner).");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                Expr *argument = expr->as.call.args[0];
+                if (argument->kind != EXPR_NAME) {
+                    (void)check_expr(checker, argument);
+                    diagnostic(c, argument->token, "error", "E2131",
+                               "A borrow must refer directly to a named binding.",
+                               "First bind the value to a variable, then borrow that variable.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                YType actual = check_expr(checker, argument);
+                VarDecl *owner = argument->as.name.variable;
+                if (actual == TYPE_ERROR || !owner) {
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (exclusive_request ? actual != TYPE_OWNED_STRING :
+                    (actual != TYPE_STRING && actual != TYPE_OWNED_STRING)) {
+                    diagnostic(c, argument->token, "error", "E2132",
+                               exclusive_request
+                                   ? "borrow_mut() requires a non-const owned string."
+                                   : "borrow() requires a string or owned string.",
+                               exclusive_request
+                                   ? "Use borrow_mut(name) on a mutable owned string binding."
+                                   : "Use borrow(name) on a string binding.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (exclusive_request && owner->is_const) {
+                    diagnostic(c, argument->token, "error", "E2133",
+                               "A const owned string cannot be exclusively borrowed.",
+                               "Remove const from the owner before creating borrow_mut(owner).");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                size_t shared_count = 0U;
+                bool exclusive_active = false;
+                checker_active_borrows(checker, owner, &shared_count, &exclusive_active);
+                if (exclusive_request && (shared_count != 0U || exclusive_active)) {
+                    diagnostic(c, argument->token, "error", "E2134",
+                               "An exclusive borrow conflicts with an active borrow.",
+                               "End all existing borrows before calling borrow_mut(owner).");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (!exclusive_request && exclusive_active) {
+                    diagnostic(c, argument->token, "error", "E2135",
+                               "A shared borrow conflicts with an active exclusive borrow.",
+                               "End the exclusive borrow before calling borrow(owner).");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                expr->type = exclusive_request ? TYPE_MUT_BORROW_STRING : TYPE_BORROW_STRING;
+                return expr->type;
+            }
             if (strcmp(expr->as.call.name, "string.own") == 0) {
                 if (expr->as.call.count != 1U) {
                     diagnostic(c, expr->token, "error", "E2116",
@@ -837,10 +916,29 @@ static YType check_expr(Checker *checker, Expr *expr)
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
-                if (!string_like_type(argument_type) || source->is_array) {
+                if ((argument_type != TYPE_STRING && argument_type != TYPE_OWNED_STRING) ||
+                    source->is_array) {
                     diagnostic(c, argument->token, "error", "E2112",
-                               "Only scalar string variables can be moved in this milestone.",
+                               "Only scalar string or owned string variables can be moved.",
                                "Use move(name) with a local string or owned string variable.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                size_t active_shared_borrows = 0U;
+                bool active_exclusive_borrow = false;
+                checker_active_borrows(checker, source, &active_shared_borrows,
+                                       &active_exclusive_borrow);
+                if (active_shared_borrows != 0U || active_exclusive_borrow) {
+                    diagnostic(c, argument->token, "error", "E2136",
+                               "A value cannot be moved while it is borrowed.",
+                               "End every borrow of this binding before moving it.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (argument_type == TYPE_OWNED_STRING && !checker->allow_owned_move) {
+                    diagnostic(c, argument->token, "error", "E2137",
+                               "An owned string move must initialize or replace an owned string binding.",
+                               "Use 'let owned string next = move(current);' or assign move(current) to another owned string.");
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
@@ -1439,7 +1537,8 @@ bool check_program(Compiler *c)
 {
     Checker checker = {
         .compiler = c, .scope = NULL, .function = NULL, .loop_depth = 0,
-        .allowed_assignment = NULL, .allow_array_name = false, .module = NULL
+        .allowed_assignment = NULL, .allow_array_name = false,
+        .allow_owned_move = false, .module = NULL
     };
 
     for (size_t i = 0; i < c->struct_count; i++) {
