@@ -962,7 +962,25 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 sb_append(sb, ", ");
                 emit_temp_assignment(sb, expr, "right", right);
                 sb_append(sb, ", ");
+                if (expr->type != TYPE_VOID && expr->type != TYPE_ERROR) {
+                    emit_temp_name(sb, expr, "result");
+                    sb_append(sb, " = ");
+                }
                 emit_binary_operation_with_temps(sb, expr);
+                if (left->type == TYPE_STRING) {
+                    sb_append(sb, ", yl_release(");
+                    emit_temp_name(sb, expr, "left");
+                    sb_append(sb, ")");
+                }
+                if (right->type == TYPE_STRING) {
+                    sb_append(sb, ", yl_release(");
+                    emit_temp_name(sb, expr, "right");
+                    sb_append(sb, ")");
+                }
+                if (expr->type != TYPE_VOID && expr->type != TYPE_ERROR) {
+                    sb_append(sb, ", ");
+                    emit_temp_name(sb, expr, "result");
+                }
                 sb_append(sb, ")");
             } else if (expr->type == TYPE_INT && op == TOKEN_PLUS) {
                 sb_append(sb, "yl_add_i64("); emit_expr(sb, left); sb_append(sb, ", "); emit_expr(sb, right); sb_append(sb, ")");
