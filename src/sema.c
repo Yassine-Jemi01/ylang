@@ -616,13 +616,40 @@ static YType check_expr(Checker *checker, Expr *expr)
                 right_expr->as.call.args[0]->kind == EXPR_NAME &&
                 strcmp(target->as.name.name,
                        right_expr->as.call.args[0]->as.name.name) == 0;
+            bool previous_move_context = checker->allow_owned_move;
+            checker->allow_owned_move = var->type == TYPE_OWNED_STRING &&
+                right_expr && right_expr->kind == EXPR_CALL &&
+                strcmp(right_expr->as.call.name, "move") == 0 &&
+                !resolve_function(checker, "move") &&
+                right_expr->as.call.count == 1U;
             YType right = check_expr(checker, right_expr);
+            checker->allow_owned_move = previous_move_context;
             if (self_move) {
                 diagnostic(c, expr->token, "error", "E2114",
                            "A binding cannot be moved into itself.",
                            "Move into a different destination variable.");
                 expr->type = TYPE_ERROR;
                 return expr->type;
+            }
+            if (is_borrow_type(var->type)) {
+                diagnostic(c, expr->token, "error", "E2141",
+                           "Borrow bindings cannot be reassigned.",
+                           "Create a new borrow binding inside the scope where it is needed.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            if (target && target->kind == EXPR_NAME &&
+                (var->type == TYPE_STRING || var->type == TYPE_OWNED_STRING)) {
+                size_t shared_count = 0U;
+                bool exclusive_active = false;
+                checker_active_borrows(checker, var, &shared_count, &exclusive_active);
+                if (shared_count != 0U || exclusive_active) {
+                    diagnostic(c, expr->token, "error", "E2142",
+                               "An owner cannot be replaced while it is borrowed.",
+                               "End the borrow before assigning a new value to the owner.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
             }
             if (var->type == TYPE_OWNED_STRING &&
                 right != TYPE_ERROR && !owned_string_initializer_shape(right_expr)) {
@@ -1258,8 +1285,27 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                                "Use string.own(value) to clone, or move(owner) to transfer ownership.");
                 }
             }
+            if (is_borrow_type(var->type)) {
+                if (var->is_global) {
+                    diagnostic(c, var->token, "error", "E2140",
+                               "Borrow bindings cannot be global.",
+                               "Borrow values must stay inside a local scope nested within the owner's lifetime.");
+                }
+                if (!borrow_initializer_shape(var->initializer, var->type)) {
+                    diagnostic(c, var->token, "error", "E2139",
+                               "A borrow binding must be initialized with borrow(name) or borrow_mut(name).",
+                               "Use 'let &string view = borrow(owner);' or 'let &mut string view = borrow_mut(owner);'.");
+                }
+            }
             if (var->initializer) {
+                bool previous_move_context = checker->allow_owned_move;
+                checker->allow_owned_move = var->type == TYPE_OWNED_STRING &&
+                    var->initializer->kind == EXPR_CALL &&
+                    strcmp(var->initializer->as.call.name, "move") == 0 &&
+                    !resolve_function(checker, "move") &&
+                    var->initializer->as.call.count == 1U;
                 YType init_type = check_expr(checker, var->initializer);
+                checker->allow_owned_move = previous_move_context;
                 if (init_type != TYPE_ERROR && init_type != var->type) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
@@ -1269,6 +1315,11 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                                "Variable initializer type mismatch.", suggestion);
                 }
                 var->initialized = true;
+                if (is_borrow_type(var->type) &&
+                    borrow_initializer_shape(var->initializer, var->type)) {
+                    Expr *borrow_arg = var->initializer->as.call.args[0];
+                    var->borrowed_from = borrow_arg->as.name.variable;
+                }
             }
             (void)scope_add(checker, checker->scope, var);
             break;
@@ -1549,6 +1600,10 @@ bool check_program(Compiler *c)
                 diagnostic(c, field->token, "error", "E2118",
                            "Owned strings cannot be stored in structs yet.",
                            "Keep owned strings in local bindings until struct destruction is implemented.");
+            } else if (is_borrow_type(field->type)) {
+                diagnostic(c, field->token, "error", "E2140",
+                           "Borrow fields are not supported yet.",
+                           "A borrow cannot be stored in a struct until field lifetimes are checked.");
             }
         }
     }
@@ -1573,6 +1628,10 @@ bool check_program(Compiler *c)
                 diagnostic(c, var->token, "error", "E2118",
                            "Owned strings are restricted to local variables.",
                            "Create an owned string inside a function scope.");
+            } else if (is_borrow_type(var->type)) {
+                diagnostic(c, var->token, "error", "E2140",
+                           "Borrow bindings cannot be global.",
+                           "Borrow values must stay inside a local scope nested within the owner's lifetime.");
             }
             (void)scope_add(&checker, globals, var);
         }
@@ -1662,6 +1721,10 @@ bool check_program(Compiler *c)
             diagnostic(c, function->token, "error", "E2121",
                        "Owned string return values are not supported yet.",
                        "Return a regular string, or keep ownership local until owned return transfer is implemented.");
+        } else if (is_borrow_type(function->return_type)) {
+            diagnostic(c, function->token, "error", "E2140",
+                       "Borrow return values are not supported yet.",
+                       "Return an owned value or a regular string; borrowed return lifetimes are not implemented.");
         }
         Scope *global_scope = function->module ?
             function->module->global_scope : NULL;
@@ -1672,6 +1735,10 @@ bool check_program(Compiler *c)
                 diagnostic(c, function->params[j]->token, "error", "E2121",
                            "Owned string parameters are not supported yet.",
                            "Accept a regular string parameter or construct an owned local string inside the function.");
+            } else if (is_borrow_type(function->params[j]->type)) {
+                diagnostic(c, function->params[j]->token, "error", "E2140",
+                           "Borrow parameters are not supported yet.",
+                           "Borrowed function parameters need explicit signature and lifetime rules.");
             }
             if (function->params[j]->type == TYPE_VOID) {
                 diagnostic(c, function->params[j]->token, "error", "E2005",
