@@ -489,6 +489,7 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             expr->as.name.name = var->name;
             expr->as.name.variable = var;
+            expr->borrowed_from = var->borrowed_from;
             if (var->moved) {
                 diagnostic(c, expr->token, "error", "E2110",
                            "This value was already moved and cannot be used again.",
@@ -576,6 +577,27 @@ static YType check_expr(Checker *checker, Expr *expr)
                 strcmp(target->as.name.name,
                        right_expr->as.call.args[0]->as.name.name) == 0;
             YType right = check_expr(checker, right_expr);
+            if (right_expr && right_expr->borrowed_from != NULL) {
+                diagnostic(c, right_expr->token, "error", "E2117",
+                           "A borrowed string view cannot be assigned into another binding.",
+                           "Create the view with a local declaration so its lifetime is checked lexically.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            if (var->borrowed_from != NULL) {
+                diagnostic(c, expr->token, "error", "E2116",
+                           "An immutable borrowed binding cannot be reassigned.",
+                           "Create a new borrow binding instead of assigning to the view.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            if (has_active_immutable_borrow(checker, var)) {
+                diagnostic(c, expr->token, "error", "E2118",
+                           "Cannot reassign a string owner while an immutable borrow is active.",
+                           "End all borrow scopes before replacing the owner.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
             if (self_move) {
                 diagnostic(c, expr->token, "error", "E2114",
                            "A binding cannot be moved into itself.",
@@ -754,6 +776,60 @@ static YType check_expr(Checker *checker, Expr *expr)
             return expr->type;
         }
         case EXPR_CALL: {
+            if (is_builtin_call_name(checker, expr, "borrow")) {
+                if (!checker->allow_borrow_initializer) {
+                    diagnostic(c, expr->token, "error", "E2117",
+                               "borrow() is only valid as a local string initializer.",
+                               "Use 'let string view = borrow(owner);' and keep the view within the owner's scope.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (expr->as.call.count != 1U) {
+                    diagnostic(c, expr->token, "error", "E2119",
+                               "borrow() expects exactly one string variable.",
+                               "Use borrow(name) with one named local string variable.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                Expr *argument = expr->as.call.args[0];
+                if (argument->kind != EXPR_NAME) {
+                    (void)check_expr(checker, argument);
+                    diagnostic(c, argument->token, "error", "E2119",
+                               "borrow() requires a named string variable.",
+                               "Bind the string to a local name, then borrow that name.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                YType source_type = check_expr(checker, argument);
+                VarDecl *source = argument->as.name.variable;
+                if (source_type == TYPE_ERROR || !source) {
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (source_type != TYPE_STRING || source->is_array ||
+                    source->borrowed_from != NULL) {
+                    diagnostic(c, argument->token, "error", "E2119",
+                               "borrow() currently accepts an owned string, not arrays or another view.",
+                               "Use borrow(owner) on an initialized string owner; nested/reborrowed views are not supported yet.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (!source->decl_scope ||
+                    !scope_outlives(source->decl_scope, checker->scope)) {
+                    diagnostic(c, argument->token, "error", "E2117",
+                               "The borrowed string would outlive its owner.",
+                               "Declare the view in the same scope as the owner or a nested scope.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                expr->borrowed_from = source;
+                expr->type = TYPE_STRING;
+                return expr->type;
+            }
             if (strcmp(expr->as.call.name, "move") == 0 &&
                 !resolve_function(checker, "move")) {
                 if (expr->as.call.count != 1U) {
@@ -780,10 +856,11 @@ static YType check_expr(Checker *checker, Expr *expr)
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
-                if (argument_type != TYPE_STRING || source->is_array) {
+                if (argument_type != TYPE_STRING || source->is_array ||
+                    source->borrowed_from != NULL) {
                     diagnostic(c, argument->token, "error", "E2112",
-                               "Only scalar string variables can be moved in this milestone.",
-                               "Use move(name) with a local variable whose type is string.");
+                               "Only owned scalar string variables can be moved in this milestone.",
+                               "Use move(name) with an owned local string, not an immutable borrow.");
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
@@ -804,6 +881,13 @@ static YType check_expr(Checker *checker, Expr *expr)
                     return expr->type;
                 }
                 if (!source->initialized) {
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (has_active_immutable_borrow(checker, source)) {
+                    diagnostic(c, argument->token, "error", "E2115",
+                               "Cannot move a string while an immutable borrow is active.",
+                               "End the borrow's lexical scope before moving the owner.");
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
@@ -875,6 +959,8 @@ static YType check_expr(Checker *checker, Expr *expr)
                         diagnostic(c, expr->token, "error", "E2045", "to_string cannot convert this type.",
                                    "Supported types are int, float, bool, char, and string.");
                     expr->type = TYPE_STRING;
+                    if (arg_type == TYPE_STRING && expr->as.call.count > 0U)
+                        expr->borrowed_from = expr->as.call.args[0]->borrowed_from;
                 }
                 return expr->type;
             }
@@ -987,6 +1073,11 @@ static YType check_expr(Checker *checker, Expr *expr)
                 checker->allow_array_name = array_parameter;
                 YType arg_type = check_expr(checker, arg);
                 checker->allow_array_name = previous_allow_array;
+                if (arg->borrowed_from != NULL) {
+                    diagnostic(c, arg->token, "error", "E2118",
+                               "Borrowed views cannot be passed to user-defined functions yet.",
+                               "Use the view locally or pass the owned string after ending the borrow scope.");
+                }
                 if (i >= shared || arg_type == TYPE_ERROR) continue;
                 VarDecl *param = function->params[i];
                 if (param->is_array) {
