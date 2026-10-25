@@ -548,6 +548,7 @@ static void emit_fstring_expr(StringBuilder *sb, Expr *expr)
                     sb_append(&args, "(int)("); emit_expr(&args, embedded); sb_append(&args, ")");
                     break;
                 case TYPE_STRING:
+                case TYPE_OWNED_STRING:
                     sb_append(&args, "(const char *)("); emit_expr(&args, embedded); sb_append(&args, ")");
                     break;
                 case TYPE_VOID: case TYPE_ERROR: break;
