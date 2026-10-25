@@ -721,7 +721,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     (void)snprintf(suffix, sizeof(suffix), "element%zu", i);
                     emit_temp_name(sb, expr, suffix);
                 } else {
-                    emit_expr(sb, expr->as.array.items[i]);
+                    emit_string_copy_or_value(sb, expr->as.array.items[i]);
                 }
             }
             sb_append(sb, "}");
@@ -1196,7 +1196,10 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
                     emit_indent(out, indent);
                     fprintf(out, "yl_codegen_tmp_%zu_element%zu = ",
                             array->codegen_id, i);
-                    emit_expr_to_file(out, array->as.array.items[i]);
+                    if (var->type == TYPE_STRING)
+                        emit_string_copy_or_value_to_file(out, array->as.array.items[i]);
+                    else
+                        emit_expr_to_file(out, array->as.array.items[i]);
                     fputs(";\n", out);
                 }
             }
@@ -1208,15 +1211,6 @@ static void emit_stmt(Compiler *c, FILE *out, Stmt *stmt, unsigned indent)
                 if (var->type == TYPE_STRING && !var->is_array &&
                     !var->borrowed_from) {
                     emit_string_copy_or_value_to_file(out, var->initializer);
-                } else if (var->is_array && var->type == TYPE_STRING &&
-                           var->initializer->kind == EXPR_ARRAY) {
-                    fputs("{", out);
-                    for (size_t i = 0; i < var->initializer->as.array.count; i++) {
-                        if (i) fputs(", ", out);
-                        emit_string_copy_or_value_to_file(
-                            out, var->initializer->as.array.items[i]);
-                    }
-                    fputs("}", out);
                 } else {
                     emit_expr_to_file(out, var->initializer);
                 }
