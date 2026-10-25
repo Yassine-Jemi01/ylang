@@ -42,6 +42,18 @@ The precise surface syntax and which standard-library operations borrow or consu
 - A resource is released exactly once. Use-after-move and double-release must be rejected or made impossible by generated code.
 - If ownership cannot be determined, compilation must fail with an actionable diagnostic rather than guessing.
 
+## Current experimental progress
+
+The first runtime instrumentation commit adds an opt-in diagnostic:
+
+```sh
+YLANG_MEMORY_STATS=1 ./your-program
+```
+
+When the generated program exits normally, it writes a line to standard error with the number of currently tracked payload allocations and their requested payload bytes. The counters saturate rather than wrapping. This is diagnostic instrumentation only: it does not reclaim memory earlier, the byte count excludes tracker-node and allocator overhead, and it is not a measurement of resident RAM. Programs using the existing tracker still retain those allocations until `yl_cleanup()`.
+
+The test suite includes an opt-in fixture and checks that enabling the diagnostic does not alter normal program output. Ownership, borrowing, and scope-based release are not implemented by this instrumentation.
+
 ## First implementation slice
 
 Implement this in small, reviewable steps:
