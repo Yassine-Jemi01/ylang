@@ -10,7 +10,7 @@ on:
       confirm_version:
         description: Type the exact stable version to confirm publication
         required: true
-        default: "2.0.0"
+        default: "2.1.0"
         type: string
 
 # Build and test jobs only need read access; release publishing opts into write.
@@ -271,10 +271,13 @@ jobs:
         run: |
           EXPECTED_VERSION="$(tr -d '\r\n' < .github/PUBLISH_STABLE)"
           test "$(tr -d '\r\n' < VERSION)" = "$EXPECTED_VERSION"
-      - name: Ensure release checklist has no open gates
+      - name: Ensure version-specific release checklist has no open gates
         run: |
-          if grep -nF -- '- [ ]' docs/STABLE-RELEASE-CHECKLIST.md; then
-            echo "Release blocked: docs/STABLE-RELEASE-CHECKLIST.md contains an unchecked acceptance gate." >&2
+          EXPECTED_VERSION="$(tr -d '\r\n' < .github/PUBLISH_STABLE)"
+          CHECKLIST="docs/RELEASE-CHECKLIST-${EXPECTED_VERSION}.md"
+          test -s "$CHECKLIST" || { echo "Release blocked: missing $CHECKLIST." >&2; exit 1; }
+          if grep -nF -- '- [ ]' "$CHECKLIST"; then
+            echo "Release blocked: $CHECKLIST contains an unchecked acceptance gate." >&2
             exit 1
           fi
       - name: Create stable release from the tested commit
@@ -294,7 +297,7 @@ jobs:
           gh release create "$TAG" \
             --target "$GITHUB_SHA" \
             --title "YLang ${EXPECTED_VERSION}" \
-            --notes-file docs/CHANGELOG-2.0.0.md \
+            --notes-file "docs/CHANGELOG-${EXPECTED_VERSION}.md" \
             --latest \
             build/ylang-yspm/*.yspkg
           echo "Published stable release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}" >> "$GITHUB_STEP_SUMMARY"
