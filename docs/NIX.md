@@ -45,7 +45,7 @@ nix run . -- build hello.yl -o hello
 ./hello
 ```
 
-The packaged compiler sets `YLANG_PATH` to its installed standard-library directory and adds GCC, Clang, NASM, and binutils to its runtime `PATH`. That allows the compiler to invoke a native C compiler for generated programs and provides the tools used by the experimental NASM backend.
+The packaged compiler sets `YLANG_PATH` to its installed standard-library directory and adds GCC, Clang, NASM, and binutils to its runtime `PATH`. That allows the compiler to invoke a native C compiler for generated programs and provides the tools used by the experimental NASM backend. SDL2 is not bundled into the compiler package; use `nix develop` for GUI/Game2D builds, where SDL2 and pkg-config are available.
 
 ## Development shell
 
