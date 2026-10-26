@@ -116,6 +116,9 @@ def check_book_links(errors: list[str]) -> None:
             if local_target.is_dir():
                 local_target = local_target / "index.html"
             if not local_target.is_file():
+                # The Pages deployment stages this PDF from docs/book/ after building the book.
+                if local_target == (SITE / "YLang-Book.pdf").resolve() and (ROOT / "docs/book/YLang-Book.pdf").is_file():
+                    continue
                 errors.append(f"{page_name} refers to missing local target: {target}.")
                 continue
 
