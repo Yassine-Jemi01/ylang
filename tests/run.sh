@@ -1474,6 +1474,13 @@ printf 'returned\n' > build/owned-string-early-return.expected
 diff -u build/owned-string-early-return.expected build/owned-string-early-return.stdout
 grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-early-return.stderr
 
+# Break and continue release loop-local owners; nested scopes preserve outer owners.
+./build/ylang build tests/owned-string-loop-cleanup.yl -o build/test-owned-string-loop-cleanup >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string-loop-cleanup > build/owned-string-loop-cleanup.stdout 2> build/owned-string-loop-cleanup.stderr
+printf 'iteration\\ninner\\nouter\\n' > build/owned-string-loop-cleanup.expected
+diff -u build/owned-string-loop-cleanup.expected build/owned-string-loop-cleanup.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-loop-cleanup.stderr
+
 # Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
 ./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-memory-stats > build/memory-stats.stdout 2> build/memory-stats.stderr
