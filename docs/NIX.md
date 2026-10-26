@@ -4,7 +4,7 @@ YLang includes an initial Nix Flake for building the compiler and entering a rep
 
 **Current scope:** `x86_64-linux`. The Nix package builds the compiler from this checkout, runs the existing Makefile test suite, and installs the standard-library sources and GUI headers/runtime source. Nix packaging is new and should be treated as experimental until it has been tested on NixOS by maintainers.
 
-The flake tracks the `nixos-unstable` branch of Nixpkgs. Generate and commit `flake.lock` when adopting this setup for a shared/reproducible build; the lock file pins the exact Nixpkgs revision used.
+The flake commits `flake.lock`, which pins the exact Nixpkgs snapshot used by builds. To intentionally update the Nixpkgs snapshot later, run `nix flake update`, review the `flake.lock` diff, and commit the reviewed change.
 
 ## Enable Flakes
 
@@ -17,7 +17,6 @@ nix.settings.experimental-features = [ "nix-command" "flakes" ];
 Then rebuild the system, or enable the features temporarily for an individual command:
 
 ```sh
-nix --extra-experimental-features "nix-command flakes" flake lock
 nix --extra-experimental-features "nix-command flakes" develop
 ```
 
@@ -26,8 +25,7 @@ nix --extra-experimental-features "nix-command flakes" develop
 From the root of a YLang checkout:
 
 ```sh
-nix flake lock
-nix build
+nix build --print-build-logs
 ./result/bin/ylang --version
 ```
 
@@ -61,7 +59,7 @@ The development shell sets `YLANG_PATH=./stdlib`, so named imports can find the 
 
 ## Install the package in a Nix profile
 
-After the flake has a reviewed, committed lock file, a local checkout can be installed with:
+A local checkout can be installed with:
 
 ```sh
 nix profile install .
