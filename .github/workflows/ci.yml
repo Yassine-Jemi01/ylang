@@ -155,12 +155,19 @@ jobs:
           package_path="$(find build/ylang-yspm -name '*.yspkg' -type f -print -quit)"
           test -n "$package_path"
           tar -tzf "$package_path" > build/ylang-yspm/package-files.txt
-          grep -Fxq "metadata.json" build/ylang-yspm/package-files.txt
-          grep -Fxq "root/usr/bin/ylang" build/ylang-yspm/package-files.txt
-          grep -Fxq "root/usr/share/ylang/stdlib/game2d.yl" build/ylang-yspm/package-files.txt
-          grep -Fxq "root/usr/share/doc/ylang/CHANGELOG.md" build/ylang-yspm/package-files.txt
-          grep -Fxq "root/usr/share/doc/ylang/CHANGELOG-2.1.0.md" build/ylang-yspm/package-files.txt
-          grep -Fxq "root/usr/share/doc/ylang/MEMORY-MODEL.md" build/ylang-yspm/package-files.txt
+          for expected in \
+            "metadata.json" \
+            "root/usr/bin/ylang" \
+            "root/usr/share/ylang/stdlib/game2d.yl" \
+            "root/usr/share/doc/ylang/CHANGELOG.md" \
+            "root/usr/share/doc/ylang/CHANGELOG-2.1.0.md" \
+            "root/usr/share/doc/ylang/MEMORY-MODEL.md"; do
+            if ! grep -Fxq "$expected" build/ylang-yspm/package-files.txt; then
+              echo "FAIL: YSPM archive is missing expected entry: $expected" >&2
+              cat build/ylang-yspm/package-files.txt >&2
+              exit 1
+            fi
+          done
           tar -xzOf "$package_path" metadata.json | python3 -c 'import json,sys; p=json.load(sys.stdin); assert p["name"] == "ylang"; assert p["architecture"] == "x86_64"; assert p["abi"] == "yspm-abi-1"'
           # Compare the archived payload with the built compiler byte-for-byte.
           # The following YSPM install/remove smoke test separately exercises package extraction and permissions.
