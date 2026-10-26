@@ -1,0 +1,57 @@
+name: Nix Flake
+
+on:
+  pull_request:
+    paths:
+      - "flake.nix"
+      - "flake.lock"
+      - "Makefile"
+      - "VERSION"
+      - "src/**"
+      - "include/**"
+      - "runtime/**"
+      - "stdlib/**"
+      - "tests/**"
+      - "tools/**"
+      - ".github/workflows/nix-flake.yml"
+  push:
+    branches: [main]
+    paths:
+      - "flake.nix"
+      - "flake.lock"
+      - "Makefile"
+      - "VERSION"
+      - "src/**"
+      - "include/**"
+      - "runtime/**"
+      - "stdlib/**"
+      - "tests/**"
+      - "tools/**"
+      - ".github/workflows/nix-flake.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nix-flake-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test (x86_64-linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Verify committed Flake lock
+        run: nix flake lock --no-update-lock-file
+
+      - name: Build YLang and run its test suite
+        run: nix build --print-build-logs .#default
