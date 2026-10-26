@@ -1,10 +1,17 @@
-# YLang 2.0.0
+# YLang
 
 **A small compiled programming language with explicit types and actionable diagnostics.**
 
 YLang is implemented in C17. Its compiler tokenizes and parses `.yl` files, checks names, initialization and types, generates C, and invokes GCC or Clang to produce a native executable. Linux and macOS are the primary tested targets; experimental native Windows support is available for 64-bit Windows with MinGW-w64. Windows support currently has a focused CI smoke suite and is not yet a claim of complete platform parity. It is a compiled language toolchain, not an interpreter.
 
 YLang **2.0.0** is the stable release of the 2.0 line. The stable compatibility commitment covers the documented core language and the default C-backend workflow. Newer subsystems—named imports, typed enums and structs, SDL2-backed GUI/Game2D APIs, the NASM backend, native Windows support, and optional YSPM packaging—remain explicitly experimental and may change independently of the stable core. Linux and macOS are the primary tested targets; native Windows x86-64 uses a limited MinGW-w64 smoke-tested path. YLang does not claim Rust-level memory safety or provide a security sandbox.
+
+## Release status
+
+- **Latest published stable release: 2.0.0.** Its compatibility guarantee covers the documented core language and the default C-backend workflow.
+- **Current development version: 2.1.0 release candidate — not yet published.** The repository's `VERSION` is set to `2.1.0`, but the `v2.1.0` tag and public release have not been created.
+- The candidate's ownership features (`owned_string` and `borrowed_string`) remain experimental and have documented backend and storage limitations. See the [2.1.0 candidate notes](docs/CHANGELOG-2.1.0.md) and [memory model](docs/MEMORY-MODEL.md).
+- Treat 2.1.0 as an official release only after its acceptance checks pass and it is published.
 
 ## The online book
 
