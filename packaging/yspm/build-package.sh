@@ -44,7 +44,7 @@ install -m 644 "$ROOT/LICENSE" "$STAGE/usr/share/licenses/ylang/LICENSE"
 for file in \
     README.md \
     docs/language-spec.md \
-    docs/CHANGELOG.md \
+    CHANGELOG.md \
     "docs/CHANGELOG-${VERSION}.md" \
     docs/CHANGELOG-2.0.0.md \
     docs/CHANGELOG-2.0-BETA.md \
