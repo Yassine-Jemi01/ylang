@@ -17,6 +17,10 @@ YLang **2.0.0** is the stable release of the 2.0 line. The stable compatibility 
 
 The [YLang Book](https://yassine-jemi01.github.io/ylang/learn/index.html) is a searchable, multi-page HTML guide with a chapter sidebar, previous/next navigation, theme switching, and copyable examples. It combines step-by-step tutorials with the canonical language, platform, compiler, and library references; it is rendered as a website, not served as raw Markdown.
 
+## Nix Flakes (experimental)
+
+An initial Nix Flake is available for `x86_64-linux`. It provides a compiler package with the standard-library sources, a `nix run` entry point, and a development shell with the native toolchain and optional GUI dependencies. See [Nix Flakes support](docs/NIX.md) for setup, build, test, and installation instructions. Generate and review `flake.lock` before relying on it for reproducible shared builds.
+
 ## Quick start
 
 ### Requirements
