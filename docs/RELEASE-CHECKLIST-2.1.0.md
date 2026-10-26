@@ -1,6 +1,6 @@
-# YLang 2.1.0 Release Acceptance Checklist
+# YLang 2.1.0 Pre-publication Acceptance Checklist
 
-**Status: not approved for publication.** This checklist is for the 2.1.0 candidate only. Do not tag or publish until every required automated gate has passed on the exact commit intended for release.
+**Status: not approved for publication.** Every gate in this file must be verified against the exact candidate commit before the publication marker is changed. Do not mark a gate complete merely because a similar earlier commit passed.
 
 ## Version and scope
 
@@ -9,7 +9,7 @@
 - [ ] The changelog and candidate notes describe the ownership feature as experimental, not as complete Rust-like memory safety.
 - [ ] `owned_string` backend restrictions and unsupported globals/arrays/struct fields are documented.
 - [ ] Existing 2.0.0 stable-core compatibility notes remain historically accurate; do not rewrite the 2.0.0 release record.
-- [ ] The release workflow's `.github/PUBLISH_STABLE` marker is not changed until the candidate has been approved and merged to `main`.
+- [ ] The candidate has been reviewed and merged to `main` before the publication marker is changed.
 
 ## Required automated validation
 
@@ -30,12 +30,12 @@
 - [ ] Run the ownership-specific tests under AddressSanitizer and UndefinedBehaviorSanitizer where supported.
 - [ ] Verify legacy `string` examples and existing compiler/backend parity tests remain unchanged.
 
-## Publication
+## Publication trigger
 
-- [ ] Review the final diff and generated documentation.
-- [ ] Merge the approved candidate PR.
-- [ ] Set `.github/PUBLISH_STABLE` to exactly `2.1.0` in a separately reviewed commit only when ready to invoke the protected release workflow.
-- [ ] Run the stable publishing workflow with confirmation `2.1.0`; confirm it tests the exact commit and creates the tag/release only after all required jobs pass.
-- [ ] Verify the published `v2.1.0` release assets and installation instructions after publication.
+The items above are the **pre-publication gates**. Do not put steps that can only be verified after the release in this file: the stable-publishing workflow intentionally refuses to run if any pre-publication checkbox remains open.
 
-A green historical PR check is not proof that the full release candidate passed. If any gate fails, fix it and validate a new candidate commit.
+After all gates above have been verified, reviewed, and checked, the separately reviewed release-authorization commit may set `.github/PUBLISH_STABLE` to exactly `2.1.0`. That push starts the stable publishing workflow, which must test that exact commit and stop on any failing job. The marker must not be changed just to probe the workflow.
+
+After publication, use [the post-release checklist](POST-RELEASE-CHECKLIST-2.1.0.md) to verify the generated release and assets. Those post-release checks are intentionally not part of the workflow's pre-publication gate.
+
+A green historical PR check is not proof that every gate above is satisfied. If any gate fails or cannot be verified, leave it unchecked, fix the issue, and validate a new candidate commit.
