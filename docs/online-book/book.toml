@@ -10,11 +10,12 @@ build-dir = "book"
 create-missing = false
 
 [output.html]
-default-theme = "light"
+default-theme = "navy"
 preferred-dark-theme = "navy"
 smart-punctuation = true
 git-repository-url = "https://github.com/Yassine-Jemi01/ylang"
 additional-css = ["theme/ylang-book.css"]
+additional-js = ["theme/ylang-nav.js"]
 
 [output.html.search]
 enable = true

@@ -1,0 +1,108 @@
+/* Shared YLang dark-teal identity for the static Reference & Docs landing page. */
+:root {
+  color-scheme: dark;
+  --blue: #167d8d;
+  --blue-strong: #93d4c8;
+  --navy: #e8f1ee;
+  --navy-deep: #091112;
+  --yellow: #d79a73;
+  --yellow-soft: #2b201b;
+  --page: #0d1718;
+  --surface: #142223;
+  --surface-alt: #101d1e;
+  --ink: #e8f1ee;
+  --muted: #9db1ad;
+  --line: #29413f;
+  --white: #142223;
+}
+
+html { color-scheme: dark; scroll-padding-top: 88px; }
+body { background: var(--page); color: var(--ink); }
+a { color: inherit; }
+:focus-visible { outline: 2px solid #93d4c8; outline-offset: 4px; }
+.skip-link { background: #93d4c8; color: #091112; border-radius: 6px; }
+.site-header {
+  background: rgb(13 23 24 / 90%);
+  border-bottom: 1px solid rgb(147 212 200 / 12%);
+  backdrop-filter: blur(16px);
+}
+.nav-wrap { min-height: 76px; gap: 28px; }
+.brand { color: #e8f1ee; gap: 10px; font-size: 1.14rem; font-weight: 800; letter-spacing: -.055em; }
+.brand img { width: 32px; height: 32px; }
+.site-nav { gap: clamp(20px, 3.1vw, 38px); }
+.site-nav a { color: #9db1ad; font-size: .86rem; font-weight: 650; }
+.site-nav a:hover { color: #e8f1ee; }
+.nav-github { border-color: #3a5b57; border-radius: 7px; background: rgb(20 34 35 / 70%); color: #e8f1ee; }
+.nav-github:hover { border-color: #93d4c8; background: #142223; color: #e8f1ee; }
+.menu-toggle { border-color: #29413f; border-radius: 7px; background: #142223; }
+.menu-toggle span { background: #e8f1ee; }
+
+.docs-hero {
+  background: radial-gradient(ellipse at 78% 10%, rgb(22 125 141 / 13%), transparent 44%), #0d1718;
+  border-bottom-color: #29413f;
+  padding-block: clamp(58px, 7vw, 88px);
+}
+.docs-hero .eyebrow,
+.docs-section-head .eyebrow { color: #93d4c8; }
+.docs-hero h1 { color: #e8f1ee; letter-spacing: -.065em; font-weight: 760; }
+.docs-hero h1 span { color: #93d4c8; }
+.docs-lede { color: #9db1ad; line-height: 1.8; }
+.docs-version-row > span { background: #142223; border-color: #29413f; color: #9db1ad; }
+.docs-version-row strong { color: #e8f1ee; }
+.docs-version-row a { color: #93d4c8; }
+.version-mark { background: #93d4c8; }
+.version-beta { background: #d79a73; }
+
+.docs-section { background: #0d1718; }
+.docs-section-alt { background: #101d1e; border-color: #29413f; }
+.docs-section-head h2,
+.docs-build-grid h2 { color: #e8f1ee; letter-spacing: -.055em; font-weight: 750; }
+.docs-section-head > p,
+.docs-build-grid > div:first-child > p:not(.eyebrow) { color: #9db1ad; line-height: 1.8; }
+.docs-card,
+.docs-card-featured {
+  background: #142223;
+  border-color: #29413f;
+  border-radius: 10px;
+  box-shadow: none;
+}
+.docs-card:hover { border-color: #93d4c8; background: #182b2c; transform: translateY(-3px); }
+.docs-card-kicker { color: #93d4c8; }
+.docs-card h3 { color: #e8f1ee; font-size: 1.08rem; font-weight: 750; letter-spacing: -.02em; }
+.docs-card p { color: #9db1ad; line-height: 1.75; }
+.docs-card-link,
+.docs-inline-link { color: #93d4c8; }
+.docs-card-link:hover,
+.docs-inline-link:hover { color: #d79a73; }
+
+.docs-build-grid { align-items: center; }
+.terminal-card { background: #101d1e; border: 1px solid #29413f; border-radius: 10px; box-shadow: none; }
+.terminal-heading { background: #142223; border-bottom: 1px solid #29413f; color: #9db1ad; }
+.terminal-card pre { color: #c8e3dc; background: #0a1213; }
+.terminal-card code { color: #c8e3dc; }
+.terminal-card .copy-button { color: #9db1ad; }
+.terminal-card .copy-button:hover { border-color: #3a5b57; color: #e8f1ee; background: #182b2c; }
+.docs-notice-section { background: #101d1e; border-top-color: #29413f; }
+.docs-notice { background: #142223; border-color: #3a5b57; border-radius: 10px; }
+.notice-label { color: #101516; background: #d79a73; border-radius: 4px; }
+.docs-notice h2 { color: #e8f1ee; }
+.docs-notice p { color: #9db1ad; line-height: 1.8; }
+.docs-notice code { color: #d79a73; }
+
+.site-footer { background: #091112; border-top-color: #29413f; }
+.footer-top { border-color: #1b2d2b; }
+.footer-top > p { color: #748d87; }
+.footer-brand { color: #e8f1ee; }
+.footer-links a { color: #9db1ad; }
+.footer-links a:hover { color: #93d4c8; }
+.footer-bottom { border-top-color: #1b2d2b; color: #748d87; }
+
+@media (max-width: 760px) {
+  .nav-wrap { min-height: 68px; gap: 12px; }
+  .site-nav { background: #0d1718; border-bottom-color: #29413f; box-shadow: 0 24px 30px rgb(0 0 0 / 22%); }
+  .site-nav a { border-bottom-color: rgb(41 65 63 / 55%); }
+  .nav-github { margin-left: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}

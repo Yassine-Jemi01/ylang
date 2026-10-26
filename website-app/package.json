@@ -1,0 +1,21 @@
+{
+  "name": "ylang-website",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "radix-ui": "1.6.7",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-icons": "5.5.0"
+  },
+  "devDependencies": {
+    "vite": "8.3.5",
+    "@vitejs/plugin-react": "6.1.2"
+  }
+}

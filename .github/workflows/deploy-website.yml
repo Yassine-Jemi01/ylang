@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "website/**"
+      - "website-app/**"
       - "docs/**"
       - "tools/build_docs_book.py"
       - ".github/workflows/deploy-website.yml"
@@ -28,26 +29,50 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
         with:
           enablement: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build React homepage
+        working-directory: website-app
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
       - name: Set up mdBook
         uses: peaceiris/actions-mdbook@v2
         with:
           mdbook-version: "0.5.4"
+
       - name: Build the online HTML book
         run: |
           python3 tools/build_docs_book.py
           mdbook build docs/online-book
           mkdir -p website/learn
           cp -a docs/online-book/book/. website/learn/
+
       - name: Add the versioned PDF edition
         run: cp docs/book/YLang-Book.pdf website/YLang-Book.pdf
+
+      - name: Assemble the deployed site
+        run: |
+          rm -rf site-dist
+          mkdir -p site-dist
+          cp -a website/. site-dist/
+          cp -a website-app/dist/. site-dist/
+
       - name: Upload website
         uses: actions/upload-pages-artifact@v3
         with:
-          path: website
+          path: site-dist
+
       - name: Deploy website
         id: deployment
         uses: actions/deploy-pages@v4
