@@ -1477,7 +1477,7 @@ grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned
 # Break and continue release loop-local owners; nested scopes preserve outer owners.
 ./build/ylang build tests/owned-string-loop-cleanup.yl -o build/test-owned-string-loop-cleanup >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-owned-string-loop-cleanup > build/owned-string-loop-cleanup.stdout 2> build/owned-string-loop-cleanup.stderr
-printf 'iteration\\ninner\\nouter\\n' > build/owned-string-loop-cleanup.expected
+printf 'iteration\ninner\nouter\n' > build/owned-string-loop-cleanup.expected
 diff -u build/owned-string-loop-cleanup.expected build/owned-string-loop-cleanup.stdout
 grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-loop-cleanup.stderr
 
