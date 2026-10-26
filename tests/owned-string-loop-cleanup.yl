@@ -1,0 +1,29 @@
+function exercise_loop_cleanup() -> int {
+    let int count = 0;
+    loop() {
+        let owned_string iteration = string.own("iteration");
+        count += 1;
+        if (count < 3) {
+            continue;
+        }
+        print(iteration);
+        break;
+    }
+    return 0;
+}
+
+function exercise_nested_scope_cleanup() -> int {
+    let owned_string outer = string.own("outer");
+    if (true) {
+        let owned_string inner = string.own("inner");
+        print(inner);
+    }
+    print(outer);
+    return 0;
+}
+
+function main() -> int {
+    exercise_loop_cleanup();
+    exercise_nested_scope_cleanup();
+    return 0;
+}
