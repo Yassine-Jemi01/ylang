@@ -18,6 +18,11 @@
           gnumake
           python3
           makeWrapper
+          gcc
+          clang
+          pkg-config
+          nasm
+          binutils
         ];
 
         dontConfigure = true;
@@ -100,7 +105,7 @@
 
             shellHook = ''
               export YLANG_PATH="$PWD/stdlib"
-              printf 'YLang development environment ready. Run: make test\\n'
+              printf 'YLang development environment ready. Run: make test\n'
             '';
           };
         });
