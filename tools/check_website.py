@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 import re
 import sys
 
@@ -29,6 +29,7 @@ class PageLinks(HTMLParser):
         self.ids: list[str] = []
         self.fragments: list[str] = []
         self.local_paths: list[str] = []
+        self.targets: list[str] = []
         self.lang_ok = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -43,6 +44,7 @@ class PageLinks(HTMLParser):
             if not target:
                 continue
             target = str(target).strip()
+            self.targets.append(target)
             if target.startswith("#"):
                 if len(target) > 1:
                     self.fragments.append(target[1:])
@@ -52,6 +54,81 @@ class PageLinks(HTMLParser):
             if parsed.scheme or parsed.netloc or not parsed.path:
                 continue
             self.local_paths.append(parsed.path)
+
+
+def check_book_links(errors: list[str]) -> None:
+    """Validate local links and fragments across the generated mdBook HTML."""
+    book_root = SITE / "learn"
+    if not book_root.is_dir():
+        # CI builds the book before running this checker. Keep the standalone
+        # marketing-site check usable when the generated book is absent.
+        return
+
+    pages = sorted(path for path in book_root.rglob("*.html") if path.is_file())
+    if not pages:
+        errors.append("website/learn contains no generated HTML book pages.")
+        return
+
+    parsed_pages: dict[Path, PageLinks] = {}
+
+    def parse_page(path: Path) -> PageLinks:
+        resolved = path.resolve()
+        if resolved not in parsed_pages:
+            parser = PageLinks()
+            parser.feed(resolved.read_text(encoding="utf-8"))
+            parsed_pages[resolved] = parser
+        return parsed_pages[resolved]
+
+    for page in pages:
+        parse_page(page)
+
+    site_root = SITE.resolve()
+    for page in pages:
+        parser = parse_page(page)
+        page_name = page.relative_to(SITE).as_posix()
+
+        duplicates = sorted({item for item in parser.ids if parser.ids.count(item) > 1})
+        if duplicates:
+            errors.append(f"{page_name} has duplicate IDs: {', '.join(duplicates)}.")
+
+        for target in parser.targets:
+            parsed = urlparse(target)
+            if parsed.scheme or parsed.netloc:
+                continue
+
+            path_part = unquote(parsed.path)
+            if not path_part:
+                if parsed.fragment and parsed.fragment not in parser.ids:
+                    errors.append(f"{page_name} refers to missing in-page anchor: {parsed.fragment}.")
+                continue
+
+            if path_part.startswith("/"):
+                local_target = (site_root / path_part.lstrip("/")).resolve()
+            else:
+                local_target = (page.parent / path_part).resolve()
+
+            try:
+                local_target.relative_to(site_root)
+            except ValueError:
+                errors.append(f"{page_name} link escapes the website root: {target}.")
+                continue
+
+            if local_target.is_dir():
+                local_target = local_target / "index.html"
+            if not local_target.is_file():
+                # The Pages deployment stages this PDF from docs/book/ after building the book.
+                if local_target == (SITE / "YLang-Book.pdf").resolve() and (ROOT / "docs/book/YLang-Book.pdf").is_file():
+                    continue
+                errors.append(f"{page_name} refers to missing local target: {target}.")
+                continue
+
+            if parsed.fragment and local_target.suffix.lower() == ".html":
+                target_parser = parse_page(local_target)
+                if parsed.fragment not in target_parser.ids:
+                    errors.append(
+                        f"{page_name} refers to missing anchor {parsed.fragment!r} "
+                        f"in {local_target.relative_to(site_root).as_posix()}."
+                    )
 
 
 def check_site() -> list[str]:
@@ -92,6 +169,8 @@ def check_site() -> list[str]:
             if target == "YLang-Book.pdf" and (ROOT / "docs/book/YLang-Book.pdf").is_file():
                 continue
             errors.append(f"{relative} refers to missing local file: {target}.")
+
+    check_book_links(errors)
 
     if errors:
         for error in errors:

@@ -13,7 +13,7 @@ Named imports, structs, enums, GUI/Game2D, NASM, native Windows support, and opt
 
 ## Start reading
 
-- Evaluate the [experimental memory model](../../MEMORY-MODEL.md) and read the [2.1.0 release-candidate notes](../../CHANGELOG-2.1.0.md) before using ownership APIs. The candidate is not a published release.
+- Evaluate the [experimental memory model](reference/MEMORY-MODEL.md) and read the [2.1.0 release-candidate notes](reference/CHANGELOG-2.1.0.md) before using ownership APIs. The candidate is not a published release.
 
 - [Install YLang](getting-started.md) and set up a compiler toolchain.
 - Build and run [your first program](hello-world.md).
