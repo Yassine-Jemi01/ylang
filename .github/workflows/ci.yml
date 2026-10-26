@@ -205,5 +205,8 @@ jobs:
           cp -a docs/online-book/book/. website/learn/
           test -s website/learn/index.html
           test -s website/learn/reference/language-spec.html
+          test -s website/learn/reference/MEMORY-MODEL.html
+          test -s website/learn/reference/CHANGELOG-2.1.0.html
+          cp docs/book/YLang-Book.pdf website/YLang-Book.pdf
       - name: Validate website
         run: python3 tools/check_website.py
