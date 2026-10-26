@@ -165,9 +165,23 @@ jobs:
           temp_root="$(mktemp -d)"
           trap 'rm -rf "$temp_root"' EXIT
           tar -xzf "$package_path" -C "$temp_root"
-          version_output="$("$temp_root/root/usr/bin/ylang" --version 2>&1 || true)"
-          printf '%s\n' "$version_output"
-          printf '%s\n' "$version_output" | grep -Fq "$(tr -d '\r\n' < VERSION)"
+          packaged_binary="$temp_root/root/usr/bin/ylang"
+          ls -l "$packaged_binary" build/ylang
+          file "$packaged_binary" build/ylang
+          if ! cmp -s "$packaged_binary" build/ylang; then
+            echo "FAIL: packaged compiler bytes differ from the build output." >&2
+            sha256sum "$packaged_binary" build/ylang >&2
+            exit 1
+          fi
+          set +e
+          "$packaged_binary" --version > build/packaged-version.stdout 2> build/packaged-version.stderr
+          version_status=$?
+          set -e
+          cat build/packaged-version.stdout
+          cat build/packaged-version.stderr >&2
+          echo "Packaged compiler --version exit status: $version_status"
+          test "$version_status" -eq 0
+          grep -Fq "$(tr -d '\r\n' < VERSION)" build/packaged-version.stdout
       - name: Exercise package install and removal in isolated root
         run: |
           package_path="$(find build/ylang-yspm -name '*.yspkg' -type f -print -quit)"
