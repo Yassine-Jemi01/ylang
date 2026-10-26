@@ -19,7 +19,7 @@ The [YLang Book](https://yassine-jemi01.github.io/ylang/learn/index.html) is a s
 
 ## Nix Flakes (experimental)
 
-An initial Nix Flake is available for `x86_64-linux`. It provides a compiler package with the standard-library sources, a `nix run` entry point, and a development shell with the native toolchain and optional GUI dependencies. See [Nix Flakes support](docs/NIX.md) for setup, build, test, and installation instructions. Generate and review `flake.lock` before relying on it for reproducible shared builds.
+An initial Nix Flake is available for `x86_64-linux`. It provides a compiler package with the standard-library sources, a `nix run` entry point, and a development shell with the native toolchain and optional GUI dependencies. See [Nix Flakes support](docs/NIX.md) for setup, build, test, and installation instructions. The committed `flake.lock` pins Nixpkgs; update it intentionally with `nix flake update` and review the resulting diff.
 
 ## Quick start
 
