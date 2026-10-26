@@ -162,26 +162,18 @@ jobs:
           grep -Fxq "root/usr/share/doc/ylang/CHANGELOG-2.1.0.md" build/ylang-yspm/package-files.txt
           grep -Fxq "root/usr/share/doc/ylang/MEMORY-MODEL.md" build/ylang-yspm/package-files.txt
           tar -xzOf "$package_path" metadata.json | python3 -c 'import json,sys; p=json.load(sys.stdin); assert p["name"] == "ylang"; assert p["architecture"] == "x86_64"; assert p["abi"] == "yspm-abi-1"'
-          temp_root="$(mktemp -d)"
-          trap 'rm -rf "$temp_root"' EXIT
-          tar -xzf "$package_path" -C "$temp_root"
-          packaged_binary="$temp_root/root/usr/bin/ylang"
-          ls -l "$packaged_binary" build/ylang
-          file "$packaged_binary" build/ylang
-          if ! cmp -s "$packaged_binary" build/ylang; then
+          # Compare the archived payload with the built compiler byte-for-byte.
+          # The following YSPM install/remove smoke test separately exercises package extraction and permissions.
+          tar -xzOf "$package_path" root/usr/bin/ylang > build/ylang-packaged-binary
+          if ! cmp -s build/ylang-packaged-binary build/ylang; then
             echo "FAIL: packaged compiler bytes differ from the build output." >&2
-            sha256sum "$packaged_binary" build/ylang >&2
+            sha256sum build/ylang-packaged-binary build/ylang >&2
             exit 1
           fi
-          set +e
-          "$packaged_binary" --version > build/packaged-version.stdout 2> build/packaged-version.stderr
-          version_status=$?
-          set -e
-          cat build/packaged-version.stdout
-          cat build/packaged-version.stderr >&2
-          echo "Packaged compiler --version exit status: $version_status"
-          test "$version_status" -eq 0
-          grep -Fq "$(tr -d '\r\n' < VERSION)" build/packaged-version.stdout
+          chmod +x build/ylang-packaged-binary
+          packaged_version="$(build/ylang-packaged-binary --version)"
+          printf '%s\n' "$packaged_version"
+          printf '%s\n' "$packaged_version" | grep -Fq "$(tr -d '\r\n' < VERSION)"
       - name: Exercise package install and removal in isolated root
         run: |
           package_path="$(find build/ylang-yspm -name '*.yspkg' -type f -print -quit)"
