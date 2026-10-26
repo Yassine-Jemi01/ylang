@@ -1460,6 +1460,13 @@ for fixture in owned-string-struct-field owned-string-global owned-string-array;
     grep -q 'E2118' "build/$fixture.out"
 done
 
+# Branch and match-arm exits release each locally owned value.
+./build/ylang build tests/owned-string-control-flow-cleanup.yl -o build/test-owned-string-control-flow-cleanup >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string-control-flow-cleanup > build/owned-string-control-flow-cleanup.stdout 2> build/owned-string-control-flow-cleanup.stderr
+printf 'then-branch\nelse-branch\nfirst-arm\nsecond-arm\n' > build/owned-string-control-flow-cleanup.expected
+diff -u build/owned-string-control-flow-cleanup.expected build/owned-string-control-flow-cleanup.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-control-flow-cleanup.stderr
+
 # Early returns clean only active lexical scopes, and transfer the return owner.
 ./build/ylang build tests/owned-string-early-return.yl -o build/test-owned-string-early-return >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-owned-string-early-return > build/owned-string-early-return.stdout 2> build/owned-string-early-return.stderr
