@@ -43,6 +43,8 @@
 - [YSPM Linux Packages](reference/YSPM.md)
 - [Game2D Library Reference](reference/GAME2D.md)
 - [YLang 2.0.0 Stable Release Notes](reference/CHANGELOG-2.0.0.md)
+- [Experimental Memory Model](reference/MEMORY-MODEL.md)
+- [YLang 2.1.0 Release Candidate Notes](reference/CHANGELOG-2.1.0.md)
 - [Stable Release Checklist](reference/STABLE-RELEASE-CHECKLIST.md)
 - [Previous Beta Notes](reference/CHANGELOG-2.0-BETA.md)
 - [Beta Release Checklist (historical)](reference/BETA-RELEASE-CHECKLIST.md)
