@@ -165,7 +165,9 @@ jobs:
           temp_root="$(mktemp -d)"
           trap 'rm -rf "$temp_root"' EXIT
           tar -xzf "$package_path" -C "$temp_root"
-          "$temp_root/root/usr/bin/ylang" --version
+          version_output="$("$temp_root/root/usr/bin/ylang" --version 2>&1 || true)"
+          printf '%s\n' "$version_output"
+          printf '%s\n' "$version_output" | grep -Fq "$(tr -d '\r\n' < VERSION)"
       - name: Exercise package install and removal in isolated root
         run: |
           package_path="$(find build/ylang-yspm -name '*.yspkg' -type f -print -quit)"
