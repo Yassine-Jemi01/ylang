@@ -10,7 +10,7 @@
 static void usage(FILE *stream)
 {
     fputs(
-        "YLang v" YLANG_VERSION " — stable compiled language toolchain\n\n"
+        "YLang v" YLANG_VERSION " — compiled language toolchain\n\n"
         "Usage:\n"
         "  ylang check <file.yl>\n"
         "  ylang build <file.yl> [-o executable] [--cc gcc|clang]\n"
