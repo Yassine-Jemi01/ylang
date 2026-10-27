@@ -54,8 +54,15 @@ make sanitize CC="$NATIVE_CC" PYTHON=python3
 step "Rebuild the normal compiler after sanitizer instrumentation"
 make clean all CC="$NATIVE_CC" PYTHON=python3
 
-step "Test the VS Code extension"
+step "Test and package the VS Code extension for local installation"
 npm test --prefix editors/vscode
+EXT_VERSION="$(node -p 'require("./editors/vscode/package.json").version')"
+mkdir -p build/acceptance
+(
+  cd editors/vscode
+  npx --yes @vscode/vsce package --out "../../build/acceptance/ylang-language-support-${EXT_VERSION}.vsix"
+)
+test -s "build/acceptance/ylang-language-support-${EXT_VERSION}.vsix"
 
 if command -v nvim >/dev/null 2>&1; then
   step "Test Neovim diagnostics and syntax highlighting"
