@@ -1,38 +1,38 @@
-# YLang 2.2.0 — Development Changelog
+# YLang 2.2.0 — Stable Release
 
-**Status: development candidate. This file is not a release announcement, and 2.2.0 must not be published until the full CI matrix and the project owner's end-to-end acceptance test pass on the release commit.**
+YLang 2.2.0 expands the developer toolchain with experimental HTTP/API requests, asynchronous HTTP tasks, environment-variable access, and source-aware native debugging. The documented core language and default C-backend workflow remain the compatibility foundation.
 
-## Included in this development branch
+**Compatibility boundary:** the HTTP client, HTTP-task async API, debugger integration, named imports, structs/enums, GUI/Game2D, NASM backend, native Windows path, and YSPM packaging have explicit experimental limitations. This release does not claim Rust-level memory safety, a security sandbox, general-purpose async functions, a built-in JSON parser/serializer, a complete VS Code Debug Adapter Protocol implementation, or Windows interactive debugging.
 
-- Adds the experimental HTTP API via optional libcurl: synchronous wrappers and generic `http.request(method, url, body, headers)` for GET, POST, PUT, PATCH, DELETE, and HEAD.
-- Adds the first async I/O slice: `http.request_async(...)` returns a distinct `http_task`, `await task` consumes the task to return its response body, and `http.cancel(task)` cancels pending request state. Multiple transfers progress concurrently through libcurl multi while awaiting one.
-- Adds `http.status()`, `http.response_headers()`, and `http.last_error()` for the most recent request.
-- Adds `env.get(name)` so API credentials can be read from process environment variables without invoking a shell.
-- Enforces request-method validation, HTTP header validation, a 16 KiB header limit, an 8 MiB response body limit, connect/overall timeouts, HTTPS certificate/hostname verification, and HTTP/HTTPS-only redirects. Requests with headers other than `Content-Type` do not automatically follow redirects, preventing custom API credentials from being forwarded to redirect targets.
-- Adds a source-aware experimental `ylang debug` command using `-O0`, debug symbols, and GDB on Linux or LLDB on macOS; generated C uses `#line` directives to map statements to original `.yl` locations.
-- Adds integration coverage using an in-process loopback HTTP server, concurrent asynchronous requests, cancellation and consumed-handle checks, redirect protection, source-map checks, debugger launch checks, and unsupported-Windows-debugger checks.
-- Adds a repeatable native-backend benchmark for compile latency, executable latency, and binary size without pretending to establish a universal speed threshold. Adds dedicated security-defaults and performance-measurement guides.
-- Updates VS Code and Neovim syntax highlighting for the `http` and `env` namespaces. The VS Code extension version is 0.6.0, includes the terminal debug command, and can be packaged as a local `.vsix` for acceptance testing. Marketplace publication is not included in this development change.
-- Adds `tools/test-2.2-candidate.sh` and `docs/ACCEPTANCE-2.2.0.md` so the compiler, HTTP/async integration, debugger path, sanitizer, benchmark, editors, generated book, and refreshed homepage can be checked in one local run.
-- Integrates the supplied website refresh: the React homepage and official logo are aligned with the documentation theme, the book/reference pages use matching dark-teal/rust styling and navigation, and the previous static homepage is preserved as `classic.html` in the Pages deployment artifact.
+## Highlights
 
-## Compatibility and limitations
+- **HTTP and API requests:** synchronous helpers and `http.request(method, url, body, headers)` for GET, POST, PUT, PATCH, DELETE, and HEAD through optional libcurl support.
+- **Asynchronous HTTP tasks:** `http.request_async(...)` returns an `http_task`; `await task` consumes it and returns the response body; `http.cancel(task)` requests cancellation. The libcurl multi interface lets multiple transfers progress while tasks are awaited.
+- **Response and error inspection:** `http.status()`, `http.response_headers()`, and `http.last_error()` expose the latest response status, headers, and transport/configuration error.
+- **Environment access:** `env.get(name)` reads process environment variables without invoking a shell, allowing programs to obtain credentials without hard-coding them.
+- **Security defaults:** request-method and header validation, a 16 KiB header limit, an 8 MiB response-body limit, connect and overall timeouts, HTTPS certificate/hostname verification, and restricted redirect behavior for requests carrying custom headers.
+- **Source-aware debugger:** `ylang debug` builds with `-O0` and debug symbols, then launches GDB on Linux or LLDB on macOS. Generated C source mappings let supported breakpoints refer to original `.yl` locations.
+- **Developer tooling:** updated VS Code and Neovim syntax support for `http` and `env`, a terminal-based VS Code debug command, and repeatable compile/runtime/binary-size benchmark tooling.
+- **Documentation and website:** refreshed homepage, online book, reference pages, and candidate-acceptance tooling.
 
-- Async/await currently applies only to HTTP task handles; general-purpose async functions, a background scheduler, and GUI/event-loop integration are not implemented.
-- The HTTP API returns response bodies as strings. A JSON parser/serializer is not included; programs must currently construct/inspect JSON text themselves.
-- HTTP support requires libcurl development files and `pkg-config` only when a program using `http.*` is linked. Ordinary programs do not need libcurl.
-- The generic method names are case-sensitive and accept uppercase `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, and `HEAD` only.
-- HTTP status codes such as 404 are not transport failures. Callers must inspect `http.status()`; `http.last_error()` describes transport or request-configuration failures.
-- Debugging is an initial CLI workflow, not a complete Debug Adapter Protocol implementation. VS Code starts GDB/LLDB in the integrated terminal; there is no dedicated Variables/Call Stack UI yet.
-- Interactive debugger launch is supported only on Linux (GDB) and macOS (LLDB) in this branch. The Windows command fails early with an explicit unsupported message. The NASM backend has no source-level debugger contract.
-- Source mapping points the native debugger at YLang file/line locations, but local variables and some scopes may still expose generated C names. This is not a sandbox or a Rust-level memory-safety guarantee.
-- The official homepage still describes 2.0.0 as the current stable release while this branch is only a development candidate. No public release or deployment is performed by these changes.
+## Known limitations
 
-## Required gates before stable release
+- Async/await applies only to HTTP task handles. General async functions, a background scheduler, and GUI/event-loop integration are not implemented.
+- HTTP response bodies are strings; a built-in JSON parser/serializer is not included.
+- Programs that use `http.*` require libcurl development files and `pkg-config` when linking. Ordinary programs do not require libcurl.
+- HTTP method names are case-sensitive and must be uppercase. HTTP status codes such as 404 are not transport failures; callers must inspect `http.status()`.
+- Debugging is an initial CLI workflow, not a complete Debug Adapter Protocol implementation. Local-variable names and some scopes may reflect generated C. Interactive debugging is supported on Linux with GDB and macOS with LLDB; Windows and the NASM backend do not have a source-level debugger contract.
+- Experimental extensions are not covered by the stable-core compatibility guarantee and do not provide a security sandbox or complete Rust-like memory safety.
 
-1. All jobs on the exact candidate commit pass: GCC, Clang, macOS, Windows smoke tests, sanitizers, packaging, editor tests, book/site integrity, and the homepage build.
-2. API integration tests cover GET, POST, PUT, custom headers, response headers, status codes, invalid headers, missing environment variables, and error behavior.
-3. The owner completes one consolidated test round on the candidate build and confirms the expected behavior.
-4. Version and release metadata are reviewed for the exact 2.2.0 release commit, then the release is tagged and published explicitly.
+## Build and verify
 
-See `ROADMAP-2.2.0.md`, `HTTP.md`, `DEBUGGER.md`, and `DEBUGGER-SPEC.md` for the full design and known boundaries.
+Build from source with GCC or Clang and GNU Make:
+
+```sh
+make
+make test
+```
+
+For HTTP-enabled programs, install libcurl development files and `pkg-config`. See [HTTP and API Requests](HTTP.md), [the debugger guide](DEBUGGER.md), [the security model](SECURITY.md), and [the performance guide](PERFORMANCE.md) for requirements and details.
+
+The candidate acceptance procedure is documented in [ACCEPTANCE-2.2.0.md](ACCEPTANCE-2.2.0.md). YLang 2.2.0 does not include Marketplace publication of the VS Code extension; the extension can be packaged locally as a `.vsix`.
