@@ -243,6 +243,24 @@ jobs:
         run: nvim --headless -u NONE +'luafile editors/nvim/tests/syntax.lua'
 
 
+
+  zed-tree-sitter:
+    name: Zed Tree-sitter grammar
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Tree-sitter CLI
+        run: npm install --global tree-sitter-cli
+      - name: Generate YLang parser
+        run: tree-sitter generate
+      - name: Run grammar corpus tests
+        run: tree-sitter test
+
   website-app-build:
     name: Homepage build and asset checks
     runs-on: ubuntu-latest
