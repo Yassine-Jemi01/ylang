@@ -49,6 +49,31 @@ function main() -> int {
     print(put);
     print(http.status());
 
+    let owned_string patched = http.request(
+        "PATCH",
+        string.concat(base, "/echo"),
+        "{\"method\":\"patch\"}",
+        "Content-Type: application/json"
+    );
+    print(patched);
+    print(http.status());
+
+    let owned_string deleted = http.request(
+        "DELETE",
+        string.concat(base, "/delete"),
+        "{\"method\":\"delete\"}",
+        "Content-Type: application/json"
+    );
+    print(deleted);
+    print(http.status());
+
+    let owned_string headed = http.request(
+        "HEAD", string.concat(base, "/hello"), "", ""
+    );
+    print(headed);
+    print(http.status());
+    print(string.contains(http.response_headers(), "Content-Type: text/plain; charset=utf-8"));
+
     let owned_string custom = http.post_with_headers(
         string.concat(base, "/custom"),
         "{\"source\":\"ylang\"}",
@@ -83,6 +108,18 @@ function main() -> int {
         "Invalid Header: not-allowed"
     );
     print(rejected);
+    print(http.status());
+    print(string.length(http.last_error()) > 0);
+
+    let owned_string bad_method = http.request(
+        "TRACE", string.concat(base, "/hello"), "", ""
+    );
+    print(bad_method);
+    print(http.status());
+    print(string.length(http.last_error()) > 0);
+
+    let owned_string bad_url = http.get("file:///etc/passwd");
+    print(bad_url);
     print(http.status());
     print(string.length(http.last_error()) > 0);
     print(string.length(env.get("YLANG_MISSING_TEST_VAR")) == 0);

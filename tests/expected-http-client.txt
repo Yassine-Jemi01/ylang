@@ -13,6 +13,13 @@ true
 200
 {"method":"put"}
 200
+{"method":"patch"}
+200
+deleted:{"method":"delete"}
+200
+
+200
+true
 custom|{"source":"ylang"}
 200
 not-found
@@ -23,6 +30,12 @@ not-found
 true
 true
 
+true
+
+0
+true
+
+0
 true
 
 0

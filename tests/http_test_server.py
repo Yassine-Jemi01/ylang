@@ -75,6 +75,27 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.send_bytes(404, "unknown-path")
 
+    def do_PATCH(self):
+        body = self.read_body()
+        if self.path == "/echo" and self.headers.get("Content-Type") == "application/json":
+            self.send_bytes(200, body, "application/json; charset=utf-8")
+        else:
+            self.send_bytes(404, "unknown-path")
+
+    def do_DELETE(self):
+        body = self.read_body()
+        if self.path == "/delete":
+            self.send_bytes(200, "deleted:" + body)
+        else:
+            self.send_bytes(404, "unknown-path")
+
+    def do_HEAD(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", "5")
+        self.send_connection_close()
+        self.end_headers()
+
 
 def main():
     if len(sys.argv) != 2:
