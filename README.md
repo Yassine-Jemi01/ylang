@@ -9,9 +9,10 @@ YLang **2.0.0** is the stable release of the 2.0 line. The stable compatibility 
 ## Release status
 
 - **Latest published stable release: 2.0.0.** Its compatibility guarantee covers the documented core language and the default C-backend workflow.
-- **Current development version: 2.1.0 release candidate — not yet published.** The repository's `VERSION` is set to `2.1.0`, but the `v2.1.0` tag and public release have not been created.
-- The candidate's ownership features (`owned_string` and `borrowed_string`) remain experimental and have documented backend and storage limitations. See the [2.1.0 candidate notes](docs/CHANGELOG-2.1.0.md) and [memory model](docs/MEMORY-MODEL.md).
-- Treat 2.1.0 as an official release only after its acceptance checks pass and it is published.
+- **Current development version: `2.2.0-dev` — not released.** This branch explores HTTP/API requests, the first asynchronous HTTP-task API, environment-variable access, source-aware native debugging, editor support, and the accompanying documentation refresh.
+- The HTTP client and debugger are experimental. Async/await currently applies only to HTTP task handles; general async functions, a built-in JSON parser/serializer, a complete VS Code Debug Adapter Protocol integration, and Windows interactive debugging are not implemented in this candidate. See the [2.2.0 development changelog](docs/CHANGELOG-2.2.0.md), [HTTP guide](docs/HTTP.md), [debugger guide](docs/DEBUGGER.md), [security model](docs/SECURITY.md), [performance benchmark guide](docs/PERFORMANCE.md), and [release roadmap](docs/ROADMAP-2.2.0.md). The consolidated local acceptance test is documented in [docs/ACCEPTANCE-2.2.0.md](docs/ACCEPTANCE-2.2.0.md) and run with `bash tools/test-2.2-candidate.sh`.
+- The 2.1.0 ownership proposal and its limits remain documented in the [2.1.0 candidate notes](docs/CHANGELOG-2.1.0.md) and [memory model](docs/MEMORY-MODEL.md).
+- Do not treat 2.2.0 as stable until the full acceptance matrix passes, the project owner completes the consolidated test round, and a release tag is created explicitly.
 
 ## The online book
 
@@ -202,12 +203,14 @@ ylang --help
 ylang --version
 ylang check <file.yl>
 ylang build <file.yl> [-o executable] [--cc gcc|clang]
+ylang debug <file.yl> [-o executable] [--cc gcc|clang]
 ylang emit-c <file.yl> [-o generated.c]
 ylang fix <file.yl> -o <fixed.yl>
 ```
 
 - `check` parses and performs semantic/type checks without invoking a native compiler.
 - `build` validates the source, generates C, and invokes GCC or Clang. Invalid YLang source does not produce an executable.
+- `debug` builds with `-O0`, full debug symbols, and frame pointers, then starts GDB on Linux or LLDB on macOS. The generated C includes source-line directives so supported breakpoints and stepping can refer to original `.yl` files. This debugger path is experimental: local-variable names may reflect generated C, and Windows/VS Code Debug Adapter integration is not complete.
 - `emit-c` writes the generated C source so it can be inspected.
 - `fix` applies only the currently supported high-confidence fix (`pritn(...)` to `print(...)`) and requires `-o`. The output is written to the requested path; always run `check` on it. This is intentionally not a general-purpose automatic repair engine.
 
@@ -311,7 +314,7 @@ function main() -> int {
 }
 ```
 
-Explicit conversions include `to_float(int)`, range-checked `to_int(float)`, and `to_string(value)` for int/float/bool/char/string. Use `string.is_int(text)` before `string.parse_int(text)` for untrusted input; invalid or out-of-range parsing raises a runtime error. `io.file_exists(path)` lets programs check a path before reading. String helpers and I/O are also available: `string.length`, `string.contains`, `string.starts_with`, `string.ends_with`, `string.concat`, `string.replace`, `io.read_line()`, `io.read_file(path)`, and `io.write_file(path, content)`. The new `path` namespace provides `path.exists(path)`, `path.basename(path)`, and `path.extension(path)`. On Linux/macOS, `image.open(path)` safely launches the system default viewer (using an argument vector rather than a shell command), returning whether the viewer launcher succeeded; it does not decode/render images inside YLang yet. File I/O is synchronous and text-only; read errors terminate with a runtime error, while writes return a boolean status. Run `make test` to test these APIs alongside math, arrays, and bounds protection. Arrays can be passed to functions with their length supplied automatically, but cannot yet be returned or nested; object-oriented classes are not implemented yet.
+Explicit conversions include `to_float(int)`, range-checked `to_int(float)`, and `to_string(value)` for int/float/bool/char/string. Use `string.is_int(text)` before `string.parse_int(text)` for untrusted input; invalid or out-of-range parsing raises a runtime error. `io.file_exists(path)` lets programs check a path before reading. String helpers and I/O are also available: `string.length`, `string.contains`, `string.starts_with`, `string.ends_with`, `string.concat`, `string.replace`, `io.read_line()`, `io.read_file(path)`, and `io.write_file(path, content)`. The new `path` namespace provides `path.exists(path)`, `path.basename(path)`, and `path.extension(path)`. The experimental `env.get(name)` helper reads process environment variables without invoking a shell. Optional `http.get`, `http.get_with_headers`, `http.post`, and `http.post_with_headers` calls provide synchronous HTTP/HTTPS requests through libcurl. The generic `http.request(method, url, body, headers)` supports GET, POST, PUT, PATCH, DELETE, and HEAD. `http.status()`, `http.response_headers()`, and `http.last_error()` expose the last response's status, final response headers, and transport/configuration error. See [HTTP and API Requests](docs/HTTP.md) for dependencies, timeouts, response limits, TLS defaults, and API-key guidance. On Linux/macOS, `image.open(path)` safely launches the system default viewer (using an argument vector rather than a shell command), returning whether the viewer launcher succeeded; it does not decode/render images inside YLang yet. File I/O is synchronous and text-only; read errors terminate with a runtime error, while writes return a boolean status. Run `make test` to test these APIs alongside math, arrays, and bounds protection. Arrays can be passed to functions with their length supplied automatically, but cannot yet be returned or nested; object-oriented classes are not implemented yet.
 
 
 ## Supported language features

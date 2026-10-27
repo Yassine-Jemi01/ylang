@@ -5,14 +5,14 @@ endif
 syn case match
 
 " Core declarations and control flow, including YLang 2.0 constructs.
-syn keyword ylangKeyword function return let const if else loop while for break continue and or not
+syn keyword ylangKeyword function return let const if else loop while for break continue and or not await
 syn keyword ylangDeclaration struct enum match from import
 syn keyword ylangBoolean true false
-syn keyword ylangType int float bool char string void
+syn keyword ylangType int float bool char string void http_task
 syn keyword ylangBuiltin print
 
 " Qualified built-in namespaces and user-defined enum/struct names.
-syn match ylangNamespace "\<\(math\|string\|path\|io\|image\|gui\)\>\ze\."
+syn match ylangNamespace "\<\(math\|string\|path\|io\|image\|gui\|http\|env\)\>\ze\."
 syn match ylangDeclaredType "\<[A-Z][A-Za-z0-9_]*\>"
 syn match ylangQualifiedType "\<[A-Z][A-Za-z0-9_]*\>\ze\s*\."
 syn match ylangMember "\.\zs[A-Za-z_][A-Za-z0-9_]*"

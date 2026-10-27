@@ -46,11 +46,20 @@ for file in \
     docs/language-spec.md \
     CHANGELOG.md \
     "docs/CHANGELOG-${VERSION}.md" \
+    docs/CHANGELOG-2.2.0.md \
+    docs/ACCEPTANCE-2.2.0.md \
+    docs/CHANGELOG-2.1.0.md \
     docs/CHANGELOG-2.0.0.md \
     docs/CHANGELOG-2.0-BETA.md \
     docs/MEMORY-MODEL.md \
     docs/GAME2D.md \
-    docs/WINDOWS.md
+    docs/WINDOWS.md \
+    docs/HTTP.md \
+    docs/PERFORMANCE.md \
+    docs/SECURITY.md \
+    docs/DEBUGGER.md \
+    docs/DEBUGGER-SPEC.md \
+    docs/ROADMAP-2.2.0.md
 do
     if [[ -f "$ROOT/$file" ]]; then
         install -m 644 "$ROOT/$file" "$STAGE/usr/share/doc/ylang/$(basename "$file")"

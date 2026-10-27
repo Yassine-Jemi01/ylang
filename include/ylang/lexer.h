@@ -30,6 +30,7 @@ typedef enum {
     TOKEN_AND,
     TOKEN_OR,
     TOKEN_NOT,
+    TOKEN_AWAIT,
     TOKEN_TRY,
     TOKEN_CATCH,
     TOKEN_CLASS,

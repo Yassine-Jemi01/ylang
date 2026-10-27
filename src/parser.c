@@ -213,6 +213,7 @@ static YType parse_type(Parser *p)
     if (token_is(&token, "string")) return TYPE_STRING;
     if (token_is(&token, "borrowed_string")) return TYPE_BORROWED_STRING;
     if (token_is(&token, "owned_string")) return TYPE_OWNED_STRING;
+    if (token_is(&token, "http_task")) return TYPE_HTTP_TASK;
     if (token_is(&token, "void")) return TYPE_VOID;
     EnumDecl *enumeration = find_enum(p->compiler, token_copy(p->compiler, token));
     if (enumeration) return enumeration->type;
@@ -236,6 +237,7 @@ const char *type_name(YType type)
         case TYPE_BORROWED_STRING: return "borrowed_string";
         case TYPE_OWNED_STRING: return "owned_string";
         case TYPE_VOID: return "void";
+        case TYPE_HTTP_TASK: return "http_task";
         case TYPE_ERROR: return "<error>";
     }
     return "<unknown>";
@@ -403,7 +405,8 @@ static Expr *parse_primary(Parser *p)
             if (token_is(&token, "math") || token_is(&token, "string") ||
                 token_is(&token, "owned_string") || token_is(&token, "io") ||
                 token_is(&token, "path") || token_is(&token, "image") ||
-                token_is(&token, "gui")) {
+                token_is(&token, "gui") || token_is(&token, "http") ||
+                token_is(&token, "env")) {
                 StringBuilder qualified;
                 sb_init(&qualified);
                 sb_append_n(&qualified, token.start, token.length);
@@ -527,7 +530,7 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
 
     Expr *left;
     Token op = p->current;
-    if (match(p, TOKEN_MINUS) || match(p, TOKEN_NOT) || match(p, TOKEN_BANG)) {
+    if (match(p, TOKEN_MINUS) || match(p, TOKEN_NOT) || match(p, TOKEN_BANG) || match(p, TOKEN_AWAIT)) {
         op = p->previous;
         Expr *right = parse_precedence(p, 8);
         left = new_expr(p->compiler, EXPR_UNARY, op);

@@ -44,7 +44,7 @@ const ecosystem = [
 ];
 
 function Mark() {
-  return <span className="brand-mark" aria-hidden="true">Y</span>;
+  return <img className="brand-mark" src="./ylang-mark.svg" alt="" width="32" height="32" />;
 }
 
 function CopyButton({ value, label = 'Copy', className = '' }) {
@@ -93,6 +93,7 @@ function Header() {
         </button>
         <nav className={`site-nav ${menuOpen ? 'site-nav--open' : ''}`} aria-label="Main navigation">
           <a href="#language" onClick={() => setMenuOpen(false)}>Language</a>
+          <a href="#preview" onClick={() => setMenuOpen(false)}>2.2 preview</a>
           <a href="#install" onClick={() => setMenuOpen(false)}>Get started</a>
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
@@ -110,6 +111,15 @@ function Header() {
                 </DropdownMenu.Item>
                 <DropdownMenu.Item className="resource-menu-item" asChild>
                   <a href={PDF}><FiDownload /> Book PDF <FiArrowUpRight className="menu-external" /></a>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item className="resource-menu-item" asChild>
+                  <a href={`${SITE}learn/reference/HTTP.html`}><FiCode /> HTTP & API requests <FiArrowUpRight className="menu-external" /></a>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item className="resource-menu-item" asChild>
+                  <a href={`${SITE}learn/reference/DEBUGGER.html`}><FiTerminal /> Debugger (experimental) <FiArrowUpRight className="menu-external" /></a>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item className="resource-menu-item" asChild>
+                  <a href={`${SITE}classic.html`}><FiLayers /> Classic homepage <FiArrowUpRight className="menu-external" /></a>
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
@@ -218,6 +228,58 @@ function LanguageSection() {
   );
 }
 
+
+function ExperimentalSection() {
+  return (
+    <section className="section preview-section" id="preview">
+      <div className="container">
+        <div className="section-heading">
+          <p className="eyebrow"><span className="eyebrow-mark" /> 2.2 / IN DEVELOPMENT</p>
+          <h2>Build beyond the stable core.</h2>
+          <p>These are experimental improvements on the development branch, not promises about the current stable release. Each feature stays marked as in progress until its tests and limitations are reviewed.</p>
+        </div>
+        <div className="feature-grid preview-grid">
+          <FeatureCard
+            number="01"
+            icon={<FiLayers />}
+            title="HTTP and API requests"
+            description="Call HTTP/HTTPS endpoints with custom headers, request bodies, status codes, response headers, and bounded responses."
+            meta="EXPERIMENTAL · LIBCURL"
+          />
+          <FeatureCard
+            number="02"
+            icon={<FiCode />}
+            title="Async HTTP tasks"
+            description="Queue concurrent HTTP tasks, await their response bodies, or cancel requests before consuming the result."
+            meta="FIRST ASYNC SLICE"
+          />
+          <FeatureCard
+            number="03"
+            icon={<FiTerminal />}
+            title="Source-aware debugging"
+            description="Build with debug symbols and use GDB or LLDB with YLang source-line mappings from the command line."
+            meta="GDB · LLDB · CLI"
+          />
+          <FeatureCard
+            number="04"
+            icon={<FiMonitor />}
+            title="Measured tooling"
+            description="Run repeatable compile/runtime benchmarks, expand regression coverage, and use editor commands for diagnostics and debugging."
+            meta="BENCHMARKS · EDITORS"
+          />
+        </div>
+        <div className="preview-links">
+          <a className="text-link" href={SITE + 'learn/reference/HTTP.html'}>HTTP and async task guide <FiArrowUpRight aria-hidden="true" /></a>
+          <a className="text-link" href={SITE + 'learn/reference/DEBUGGER.html'}>Debugger guide <FiArrowUpRight aria-hidden="true" /></a>
+          <a className="text-link" href={SITE + 'learn/reference/ROADMAP-2.2.0.html'}>2.2 development roadmap <FiArrowUpRight aria-hidden="true" /></a>
+          <a className="text-link" href={SITE + 'learn/reference/SECURITY.html'}>Security model and HTTP defaults <FiArrowUpRight aria-hidden="true" /></a>
+          <a className="text-link" href={SITE + 'learn/reference/PERFORMANCE.html'}>Performance benchmarks <FiArrowUpRight aria-hidden="true" /></a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function InstallSection() {
   return (
     <section className="section install-section" id="install">
@@ -310,6 +372,7 @@ export default function App() {
         <Hero />
         <Ecosystem />
         <LanguageSection />
+        <ExperimentalSection />
         <InstallSection />
         <NextSteps />
       </main>

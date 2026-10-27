@@ -8,6 +8,8 @@ This is a real multi-page HTML book—not a raw Markdown page or a list of links
 
 - **Stable core — 2.0.0:** the documented core language and default C-backend workflow.
 - **Previous stable line — 1.1.0:** useful for older projects that intentionally stay on that contract.
+- **2.2.0 development candidate:** see the [development changelog](reference/CHANGELOG-2.2.0.md); it is not a stable release.
+- The candidate includes an experimental HTTP/async-task slice, a terminal-based debugger, and a reproducible [performance harness](reference/PERFORMANCE.md). Read the [security model](reference/SECURITY.md) before using network APIs in a server process.
 
 Named imports, structs, enums, GUI/Game2D, NASM, native Windows support, and optional YSPM packaging remain experimental extensions with explicit limits. They are not covered by the stable-core compatibility guarantee; YLang does not claim Rust-level memory safety or provide a security sandbox.
 

@@ -33,6 +33,7 @@ static const char *c_base_type(Compiler *compiler, YType type)
         case TYPE_STRING:
         case TYPE_BORROWED_STRING:
         case TYPE_OWNED_STRING: return "const char *";
+        case TYPE_HTTP_TASK: return "int64_t";
         case TYPE_VOID: return "void";
         case TYPE_ERROR: return "int";
         default: return "int64_t";
@@ -86,6 +87,7 @@ static const char *format_for_type(YType type)
         case TYPE_STRING:
         case TYPE_BORROWED_STRING:
         case TYPE_OWNED_STRING: return "%s";
+        case TYPE_HTTP_TASK: return "%lld";
         case TYPE_VOID: case TYPE_ERROR: return "%s";
     }
     return "%s";
@@ -619,6 +621,17 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "path.basename") == 0) return "yl_path_basename";
     if (strcmp(name, "path.extension") == 0) return "yl_path_extension";
     if (strcmp(name, "image.open") == 0) return "yl_image_open";
+    if (strcmp(name, "env.get") == 0) return "yl_env_get";
+    if (strcmp(name, "http.get") == 0) return "yl_http_get";
+    if (strcmp(name, "http.get_with_headers") == 0) return "yl_http_get_with_headers";
+    if (strcmp(name, "http.post") == 0) return "yl_http_post";
+    if (strcmp(name, "http.post_with_headers") == 0) return "yl_http_post_with_headers";
+    if (strcmp(name, "http.request") == 0) return "yl_http_request";
+    if (strcmp(name, "http.request_async") == 0) return "yl_http_request_async";
+    if (strcmp(name, "http.cancel") == 0) return "yl_http_cancel";
+    if (strcmp(name, "http.status") == 0) return "yl_http_status";
+    if (strcmp(name, "http.response_headers") == 0) return "yl_http_response_headers";
+    if (strcmp(name, "http.last_error") == 0) return "yl_http_last_error";
     if (strcmp(name, "gui.init") == 0) return "ylgui_api_init";
     if (strcmp(name, "gui.create_window") == 0) return "ylgui_api_create_window";
     if (strcmp(name, "gui.poll") == 0) return "ylgui_api_poll";
@@ -917,7 +930,11 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
         }
         case EXPR_UNARY: {
             TokenType op = expr->as.unary.op.type;
-            if (expr->is_min_int) {
+            if (op == TOKEN_AWAIT) {
+                sb_append(sb, "yl_http_await((int64_t)(");
+                emit_expr(sb, expr->as.unary.right);
+                sb_append(sb, "))");
+            } else if (expr->is_min_int) {
                 sb_append(sb, "INT64_MIN");
             } else if (op == TOKEN_MINUS && expr->type == TYPE_INT) {
                 sb_append(sb, "yl_neg_i64("); emit_expr(sb, expr->as.unary.right); sb_append(sb, ")");
@@ -1246,11 +1263,50 @@ static void emit_cleanup_active_owned(CodegenContext *ctx, unsigned indent)
     emit_cleanup_function_owned(ctx, indent);
 }
 
+static const char *source_path_for_token(Compiler *compiler, Token token)
+{
+    uintptr_t address = (uintptr_t)(const void *)token.start;
+    for (size_t i = 0; i < compiler->module_count; i++) {
+        Module *module = compiler->modules[i];
+        uintptr_t base = (uintptr_t)(const void *)module->source;
+        if (address >= base && address - base <= module->source_length) {
+            return module->path;
+        }
+    }
+    return compiler->filename ? compiler->filename : "<unknown>";
+}
+
+/*
+ * Preserve YLang source locations in GCC/Clang debug information. The path is
+ * escaped as a C-preprocessor line-marker filename, including unusual quotes
+ * and backslashes in paths. These directives are harmless in normal builds
+ * and also improve attribution of native compiler diagnostics.
+ */
+static void emit_source_line_directive(Compiler *compiler, FILE *out, Token token)
+{
+    if (!token.start || token.line == 0U) return;
+    const char *path = source_path_for_token(compiler, token);
+    if (!path || !*path) path = "<unknown>";
+    fprintf(out, "#line %zu \"", token.line);
+    for (const unsigned char *p = (const unsigned char *)path; *p; p++) {
+        switch (*p) {
+            case '\\': fputs("\\\\", out); break;
+            case '"': fputs("\\\"", out); break;
+            case '\n': fputs("\\n", out); break;
+            case '\r': fputs("\\r", out); break;
+            case '\t': fputs("\\t", out); break;
+            default: fputc((int)*p, out); break;
+        }
+    }
+    fputs("\"\n", out);
+}
+
 static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
 {
     if (!stmt) return;
     Compiler *c = ctx->compiler;
     FILE *out = ctx->out;
+    emit_source_line_directive(c, out, stmt->token);
     switch (stmt->kind) {
         case STMT_BLOCK:
             push_owned_scope(ctx, stmt);

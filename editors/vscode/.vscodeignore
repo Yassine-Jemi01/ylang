@@ -1,0 +1,8 @@
+.gitignore
+.vscode/**
+**/*.test.js
+test/**
+tests/**
+install-catppuccin-icon.sh
+*.log
+*.vsix

@@ -15,6 +15,7 @@
 - [Types and Explicit Conversions](types.md)
 - [Functions and Modules](modules.md)
 - [The Standard Library](standard-library.md)
+- [HTTP and API Requests](reference/HTTP.md)
 
 # Part III — Build Real Things
 
@@ -34,6 +35,11 @@
 
 - [Compiler Architecture](reference/architecture.md)
 - [Backend Roadmap](reference/BACKEND-ROADMAP.md)
+- [YLang Debugger](reference/DEBUGGER.md)
+- [Performance Benchmarking](reference/PERFORMANCE.md)
+- [Security Model and Safe Defaults](reference/SECURITY.md)
+- [YLang 2.2 Roadmap](reference/ROADMAP-2.2.0.md)
+- [Debugger Design](reference/DEBUGGER-SPEC.md)
 - [Option and Result Design](reference/OPTION-RESULT-DESIGN.md)
 - [YLang 2.0 Design Notes](reference/YLANG-2.0-DESIGN.md)
 
@@ -45,6 +51,8 @@
 - [YLang 2.0.0 Stable Release Notes](reference/CHANGELOG-2.0.0.md)
 - [Experimental Memory Model](reference/MEMORY-MODEL.md)
 - [YLang 2.1.0 Release Candidate Notes](reference/CHANGELOG-2.1.0.md)
+- [YLang 2.2.0 Development Notes](reference/CHANGELOG-2.2.0.md)
+- [2.2.0 Candidate Acceptance](reference/ACCEPTANCE-2.2.0.md)
 - [Stable Release Checklist](reference/STABLE-RELEASE-CHECKLIST.md)
 - [Previous Beta Notes](reference/CHANGELOG-2.0-BETA.md)
 - [Beta Release Checklist (historical)](reference/BETA-RELEASE-CHECKLIST.md)

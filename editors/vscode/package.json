@@ -1,11 +1,16 @@
 {
   "name": "ylang-language-support",
   "displayName": "YLang Language Support",
-  "description": "YLang syntax highlighting, compiler diagnostics, custom file icon, and Code Runner support.",
-  "scripts": {
-    "test": "node test/diagnostics.test.js && node test/syntax.test.js"
+  "description": "YLang syntax highlighting, compiler diagnostics, source-aware debug command, custom file icon, and Code Runner support.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Yassine-Jemi01/ylang.git",
+    "directory": "editors/vscode"
   },
-  "version": "0.5.0",
+  "scripts": {
+    "test": "node test/diagnostics.test.js && node test/syntax.test.js && node test/metadata.test.js"
+  },
+  "version": "0.6.0",
   "publisher": "yassine-jemi01",
   "license": "MIT",
   "categories": [
@@ -63,6 +68,10 @@
       {
         "command": "ylang.showOutput",
         "title": "YLang: Show Output"
+      },
+      {
+        "command": "ylang.debugCurrentFile",
+        "title": "YLang: Debug Current File"
       }
     ],
     "configuration": {

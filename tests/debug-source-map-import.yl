@@ -1,0 +1,6 @@
+from "./debug map lib.yl" import imported_answer;
+
+function main() -> int {
+    print(imported_answer());
+    return 0;
+}

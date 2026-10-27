@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Install toolchain (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y build-essential clang libclang-rt-dev nasm libsdl2-dev pkg-config
+        run: sudo apt-get update && sudo apt-get install -y build-essential clang libclang-rt-dev nasm gdb libsdl2-dev libcurl4-openssl-dev pkg-config
       - name: Install toolchain (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -30,7 +30,9 @@ jobs:
           brew list llvm >/dev/null 2>&1 || brew install llvm
           brew list make >/dev/null 2>&1 || brew install make
           brew list sdl2 >/dev/null 2>&1 || brew install sdl2
+          brew list curl >/dev/null 2>&1 || brew install curl
           brew list pkg-config >/dev/null 2>&1 || brew install pkg-config
+          echo "PKG_CONFIG_PATH=$(brew --prefix curl)/lib/pkgconfig:${PKG_CONFIG_PATH:-}" >> "$GITHUB_ENV"
       - name: Select compiler
         id: compiler
         shell: bash
@@ -73,6 +75,7 @@ jobs:
           install: >-
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-curl
             mingw-w64-x86_64-pkgconf
             make
             python
@@ -124,6 +127,21 @@ jobs:
           ./build/ylang.exe build build/windows-smoke/input.yl -o build/windows-smoke/input.exe
           output="$(printf 'native Windows input\n' | ./build/windows-smoke/input.exe)"
           test "$output" = "native Windows input"
+      - name: Test native Windows HTTP, async tasks, and redirect safety
+        run: |
+          export YLANG_TEST_API_KEY=test-token
+          python tests/run_http_integration.py
+      - name: Reject unsupported Windows interactive debugger cleanly
+        run: |
+          if ./build/ylang.exe debug tests/debug-source-map.yl -o build/windows-smoke/debug-unsupported.exe > build/windows-smoke/debug.out 2>&1; then
+            echo "FAIL: Windows interactive debugger unexpectedly claimed support" >&2
+            exit 1
+          else
+            status=$?
+            test "$status" -eq 64
+          fi
+          grep -q "interactive debugging is not implemented on Windows" build/windows-smoke/debug.out
+          test ! -e build/windows-smoke/debug-unsupported.exe
 
   yspm-package-smoke:
     name: Build and inspect YLang .yspkg package
@@ -161,7 +179,15 @@ jobs:
             "root/usr/share/ylang/stdlib/game2d.yl" \
             "root/usr/share/doc/ylang/CHANGELOG.md" \
             "root/usr/share/doc/ylang/CHANGELOG-2.1.0.md" \
-            "root/usr/share/doc/ylang/MEMORY-MODEL.md"; do
+            "root/usr/share/doc/ylang/CHANGELOG-2.2.0.md" \
+            "root/usr/share/doc/ylang/ACCEPTANCE-2.2.0.md" \
+            "root/usr/share/doc/ylang/MEMORY-MODEL.md" \
+            "root/usr/share/doc/ylang/HTTP.md" \
+            "root/usr/share/doc/ylang/DEBUGGER.md" \
+            "root/usr/share/doc/ylang/DEBUGGER-SPEC.md" \
+            "root/usr/share/doc/ylang/ROADMAP-2.2.0.md" \
+            "root/usr/share/doc/ylang/PERFORMANCE.md" \
+            "root/usr/share/doc/ylang/SECURITY.md"; do
             if ! grep -Fxq "$expected" build/ylang-yspm/package-files.txt; then
               echo "FAIL: YSPM archive is missing expected entry: $expected" >&2
               cat build/ylang-yspm/package-files.txt >&2
@@ -199,11 +225,47 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y neovim
       - name: Test VS Code diagnostic parser
         run: npm test --prefix editors/vscode
+      - name: Package the installable VS Code extension
+        working-directory: editors/vscode
+        run: |
+          mkdir -p ../../artifacts
+          npx --yes @vscode/vsce package --out ../../artifacts/ylang-language-support-0.6.0.vsix
+      - name: Upload VS Code extension for one-round acceptance testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: ylang-vscode-extension-0.6.0
+          path: artifacts/ylang-language-support-0.6.0.vsix
+          if-no-files-found: error
+          retention-days: 7
       - name: Test Neovim diagnostic parser
         run: nvim --headless -u NONE +'luafile editors/nvim/tests/diagnostics.lua'
       - name: Test Neovim syntax highlighting
         run: nvim --headless -u NONE +'luafile editors/nvim/tests/syntax.lua'
 
+
+  website-app-build:
+    name: Homepage build and asset checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website-app/package-lock.json
+      - name: Install locked homepage dependencies
+        working-directory: website-app
+        run: npm ci --no-audit --no-fund
+      - name: Build the React homepage
+        working-directory: website-app
+        run: npm run build
+      - name: Verify homepage and official logo are included
+        run: |
+          test -s website-app/dist/index.html
+          test -s website-app/dist/ylang-mark.svg
+          grep -q "YLang" website-app/dist/index.html
 
   website-integrity:
     name: English-only website integrity
@@ -225,6 +287,10 @@ jobs:
           test -s website/learn/reference/language-spec.html
           test -s website/learn/reference/MEMORY-MODEL.html
           test -s website/learn/reference/CHANGELOG-2.1.0.html
+          test -s website/learn/reference/CHANGELOG-2.2.0.html
+          test -s website/learn/reference/ACCEPTANCE-2.2.0.html
+          test -s website/learn/reference/PERFORMANCE.html
+          test -s website/learn/reference/SECURITY.html
           cp docs/book/YLang-Book.pdf website/YLang-Book.pdf
       - name: Validate website
         run: python3 tools/check_website.py

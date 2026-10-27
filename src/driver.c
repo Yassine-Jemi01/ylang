@@ -296,12 +296,51 @@ static bool read_sdl2_flags(char *storage, size_t capacity,
     return *flag_count > 0;
 }
 
+static bool read_http_flags(char *storage, size_t capacity,
+                            char **flags, size_t flag_capacity,
+                            size_t *flag_count)
+{
+    FILE *pipe = popen("pkg-config --cflags --libs libcurl", "r");
+    if (!pipe) {
+        fputs("ylang: could not start pkg-config while preparing the HTTP build.\n", stderr);
+        return false;
+    }
+    size_t used = 0;
+    while (used + 1U < capacity) {
+        size_t got = fread(storage + used, 1U, capacity - used - 1U, pipe);
+        used += got;
+        if (got == 0U) break;
+    }
+    storage[used] = '\0';
+    int status = pclose(pipe);
+#ifdef _WIN32
+    if (status == -1 || status != 0 || used == 0U || used + 1U >= capacity) {
+#else
+    if (status == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0 ||
+        used == 0U || used + 1U >= capacity) {
+#endif
+        fputs("ylang: HTTP builds require libcurl development files and pkg-config (Fedora: libcurl-devel; Debian/Ubuntu: libcurl4-openssl-dev; macOS: brew install curl pkg-config; Windows MSYS2: mingw-w64-x86_64-curl).\n", stderr);
+        return false;
+    }
+    *flag_count = 0U;
+    for (char *part = strtok(storage, " \t\r\n");
+         part != NULL; part = strtok(NULL, " \t\r\n")) {
+        if (*flag_count >= flag_capacity) {
+            fputs("ylang: too many libcurl compiler flags returned by pkg-config.\n", stderr);
+            return false;
+        }
+        flags[(*flag_count)++] = part;
+    }
+    return *flag_count > 0U;
+}
+
 static int run_native_compiler(const char *cc, const char *c_path,
-                               const char *output_path, bool uses_gui)
+                               const char *output_path, bool uses_gui,
+                               bool debug_mode, bool uses_http)
 {
     const char *requested_opt = getenv("YLANG_OPT_LEVEL");
-    const char *optimization = "-O2";
-    if (requested_opt && requested_opt[0] != '\0') {
+    const char *optimization = debug_mode ? "-O0" : "-O2";
+    if (!debug_mode && requested_opt && requested_opt[0] != '\0') {
         if (strcmp(requested_opt, "0") == 0) optimization = "-O0";
         else if (strcmp(requested_opt, "1") == 0) optimization = "-O1";
         else if (strcmp(requested_opt, "2") == 0) optimization = "-O2";
@@ -316,9 +355,13 @@ static int run_native_compiler(const char *cc, const char *c_path,
     }
 
     char runtime_path[4096], include_path[4096];
-    char flag_storage[4096];
-    char *sdl_flags[64];
-    size_t sdl_flag_count = 0;
+    char flag_storage[4096], http_flag_storage[4096];
+    char *sdl_flags[64], *http_flags[64];
+    size_t sdl_flag_count = 0, http_flag_count = 0;
+    if (uses_http &&
+        !read_http_flags(http_flag_storage, sizeof(http_flag_storage),
+                         http_flags, sizeof(http_flags) / sizeof(http_flags[0]),
+                         &http_flag_count)) return 1;
     if (uses_gui) {
         if (!resolve_gui_paths(runtime_path, sizeof(runtime_path),
                                include_path, sizeof(include_path))) {
@@ -331,9 +374,10 @@ static int run_native_compiler(const char *cc, const char *c_path,
                              &sdl_flag_count)) return 1;
     }
 
-    char *args[96];
+    char *args[192];
     size_t n = 0;
     args[n++] = (char *)cc;
+    if (uses_http) args[n++] = "-DYLANG_USE_HTTP=1";
     args[n++] = "-std=c17";
     args[n++] = "-Wall";
     args[n++] = "-Wextra";
@@ -342,7 +386,8 @@ static int run_native_compiler(const char *cc, const char *c_path,
     args[n++] = "-Wno-unused-variable";
     args[n++] = "-Wno-unused-but-set-variable";
     args[n++] = (char *)optimization;
-    args[n++] = "-g";
+    args[n++] = debug_mode ? "-g3" : "-g";
+    if (debug_mode) args[n++] = "-fno-omit-frame-pointer";
 #if !defined(__APPLE__) && !defined(_WIN32)
     args[n++] = "-D_FORTIFY_SOURCE=3";
 #endif
@@ -373,6 +418,7 @@ static int run_native_compiler(const char *cc, const char *c_path,
         args[n++] = "-Wl,-z,relro,-z,now";
 #endif
     }
+    for (size_t i = 0; i < http_flag_count; i++) args[n++] = http_flags[i];
 #ifdef _WIN32
     /* The generated runtime uses ShellExecuteA for image.open(). */
     args[n++] = "-lshell32";
@@ -450,6 +496,12 @@ static int run_external(char *const argv[])
 int ylang_run(const char *command, const char *input_path,
               const char *output_path, const char *cc)
 {
+#ifdef _WIN32
+    if (strcmp(command, "debug") == 0) {
+        fputs("ylang: interactive debugging is not implemented on Windows yet. The native debug command currently supports GDB on Linux and LLDB on macOS.\n", stderr);
+        return 64;
+    }
+#endif
     size_t source_length = 0;
     char *source = read_source_file(input_path, &source_length);
     if (!source) {
@@ -698,9 +750,26 @@ int ylang_run(const char *command, const char *input_path,
         printf("Generated C source: %s\n", c_path);
     } else {
         const char *target = native_target;
-        result = run_native_compiler(cc ? cc : "gcc", c_path, target, compiler.uses_gui);
-        if (result == 0) printf("Build succeeded: %s\n", target);
-        else fprintf(stderr, "ylang: native compilation failed (exit %d).\n", result);
+        bool debug_mode = strcmp(command, "debug") == 0;
+        result = run_native_compiler(cc ? cc : "gcc", c_path, target,
+                                     compiler.uses_gui, debug_mode, compiler.uses_http);
+        if (result == 0) {
+            printf("Build succeeded: %s\n", target);
+            if (debug_mode) {
+#ifdef _WIN32
+                fputs("ylang: the interactive debug command is not yet supported on Windows; use a Linux GDB or macOS LLDB build.\n", stderr);
+                result = 64;
+#elif defined(__APPLE__)
+                char *debugger_args[] = { "lldb", "--", (char *)target, NULL };
+                result = run_external(debugger_args);
+#else
+                char *debugger_args[] = { "gdb", "-q", "--args", (char *)target, NULL };
+                result = run_external(debugger_args);
+#endif
+            }
+        } else {
+            fprintf(stderr, "ylang: native compilation failed (exit %d).\n", result);
+        }
         (void)unlink(c_path);
         (void)rmdir(temporary_directory);
     }

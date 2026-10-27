@@ -1,6 +1,6 @@
 # YLang 2.2.0 Roadmap
 
-**Status: planning document only. This is not a release announcement or a promise that any listed feature is already implemented.**
+**Status: development roadmap for the unreleased `2.2.0-dev` branch. This is not a release announcement. The status notes below distinguish implemented slices from incomplete goals.**
 
 YLang 2.1.x should focus on fixes, correctness, compatibility, tests, and completion of the current release candidate. The 2.2 line is intended to expand what developers can build with YLang and improve the developer experience.
 
@@ -17,7 +17,7 @@ Acceptance goals:
 - Add tests for successful completion, failures, timeouts, cancellation, and repeated use.
 - Preserve existing synchronous programs and the default build path.
 
-Syntax such as `async` and `await` is illustrative until design and implementation are accepted.
+A first async I/O slice now exists on this development branch: `http.request_async(...)` returns an `http_task`, `await task` consumes it to return the response body, and `http.cancel(task)` requests cancellation. It uses libcurl's multi interface so queued transfers progress concurrently while a task is awaited. General-purpose async functions, a background scheduler, and GUI/event-loop integration remain unimplemented; the broader acceptance goal is only partially complete.
 
 ### 2. HTTP and API requests
 
@@ -30,7 +30,7 @@ Provide a standard, typed way to call HTTP APIs from YLang. A first useful miles
 - Documented redirect behavior.
 - Examples that read credentials from environment/configuration rather than hard-coding secrets.
 
-The API may work synchronously first if needed, with async integration designed as part of feature 1. Never embed API credentials in the compiler or examples.
+Current implementation status: the C backend has synchronous HTTP helpers and a generic method API; `http.request_async`, `await http_task`, and `http.cancel` use libcurl's multi interface. Response bodies remain strings and there is no built-in JSON parser/serializer. The NASM backend does not support HTTP; the native Windows HTTP path is covered by CI, but interactive debugging is not implemented there. Never embed API credentials in the compiler or examples.
 
 ### 3. YLang Debugger
 
@@ -45,7 +45,7 @@ Initial capability goals:
 - Integrate debugging into the YLang VS Code extension.
 - Start with the established C backend; do not imply NASM support until debug information and behavior are tested.
 
-The implementation may reuse GDB/LLDB as the native debugging engine, but should hide generated-C details as much as practical. Source mapping, generated C naming, launch behavior, supported platforms, and debugger dependencies need a separate design and acceptance tests before a stable interface is promised.
+Current implementation status: `ylang debug` creates an unoptimized debug build with symbols and source-line mapping, then launches GDB on Linux or LLDB on macOS. VS Code exposes a terminal-based command for it. There is no dedicated Debug Adapter Protocol adapter, so IDE breakpoints, Variables/Call Stack panes, generated local names, and scope mapping are still limited. The NASM backend and Windows interactive debugging are not supported.
 
 ### 4. Performance and security improvements
 
@@ -101,4 +101,6 @@ Do not label 2.2.0 stable until:
 - VS Code packaging and Marketplace instructions are verified.
 - Website links, assets, and installation guidance are checked.
 
-The feature list and order may change based on implementation findings. Do not describe a future feature as implemented until its acceptance checks pass.
+Current editor/website status: VS Code is version 0.6.0 on this branch, the repository recommends it via `.vscode/extensions.json`, syntax highlighting includes `http` and `env`, and the debug command is wired to the native compiler. Marketplace publication is still a manual release task; a workspace recommendation does not discover the extension for arbitrary `.yl` files. The homepage, reference landing page, and online book share the refreshed dark-teal/rust design, while the original static home is preserved as `classic.html` in the deployment artifact.
+
+The feature list and order may change based on implementation findings. The HTTP task API is only the first async slice; do not mark broader asynchronous programming complete until general async functions, cancellation/error behavior, and event-loop integration have been separately designed and tested. Do not describe a future feature as implemented until its acceptance checks pass.

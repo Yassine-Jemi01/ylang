@@ -1,0 +1,127 @@
+function main() -> int {
+    let string port = io.read_line();
+    let string base = string.concat("http://127.0.0.1:", port);
+
+    let http_task cancel_after_pump = http.request_async(
+        "GET", string.concat(base, "/slow"), "", ""
+    );
+    let http_task hello_task = http.request_async(
+        "GET", string.concat(base, "/hello"), "", ""
+    );
+    let http_task auth_task = http.request_async(
+        "GET", string.concat(base, "/auth"), "",
+        string.concat("Authorization: Bearer ", env.get("YLANG_TEST_API_KEY"))
+    );
+    let owned_string hello = await hello_task;
+    print(hello);
+    print(http.status());
+    print(string.contains(http.response_headers(), "Content-Type: text/plain; charset=utf-8"));
+    print(http.cancel(cancel_after_pump));
+
+    let owned_string auth = await auth_task;
+    print(auth);
+    print(http.status());
+
+    let owned_string redirected = http.get(string.concat(base, "/redirect"));
+    print(redirected);
+    print(http.status());
+
+    let owned_string guarded_redirect = http.get_with_headers(
+        string.concat(base, "/redirect"), "X-Secret: must-not-follow"
+    );
+    print(guarded_redirect);
+    print(http.status());
+    print(string.contains(http.response_headers(), "Location: /redirect-target"));
+
+    let owned_string posted = http.post(
+        string.concat(base, "/echo"),
+        "{\"ok\":true}"
+    );
+    print(posted);
+    print(http.status());
+
+    let owned_string put = http.request(
+        "PUT",
+        string.concat(base, "/echo"),
+        "{\"method\":\"put\"}",
+        "Content-Type: application/json"
+    );
+    print(put);
+    print(http.status());
+
+    let owned_string patched = http.request(
+        "PATCH",
+        string.concat(base, "/echo"),
+        "{\"method\":\"patch\"}",
+        "Content-Type: application/json"
+    );
+    print(patched);
+    print(http.status());
+
+    let owned_string deleted = http.request(
+        "DELETE",
+        string.concat(base, "/delete"),
+        "{\"method\":\"delete\"}",
+        "Content-Type: application/json"
+    );
+    print(deleted);
+    print(http.status());
+
+    let owned_string headed = http.request(
+        "HEAD", string.concat(base, "/hello"), "", ""
+    );
+    print(headed);
+    print(http.status());
+    print(string.contains(http.response_headers(), "Content-Type: text/plain; charset=utf-8"));
+
+    let owned_string custom = http.post_with_headers(
+        string.concat(base, "/custom"),
+        "{\"source\":\"ylang\"}",
+        "Content-Type: application/json\nX-Test: custom"
+    );
+    print(custom);
+    print(http.status());
+
+    let owned_string missing = http.get(string.concat(base, "/missing"));
+    print(missing);
+    print(http.status());
+    print(http.last_error());
+
+    let http_task protected_redirect_task = http.request_async(
+        "GET", string.concat(base, "/redirect"), "", "X-Secret: must-not-follow"
+    );
+    let owned_string protected_redirect_body = await protected_redirect_task;
+    print(protected_redirect_body);
+    print(http.status());
+    print(string.contains(http.response_headers(), "Location: /redirect-target"));
+
+    let http_task cancelled = http.request_async(
+        "GET", string.concat(base, "/slow"), "", ""
+    );
+    print(http.cancel(cancelled));
+    let owned_string reused = await cancelled;
+    print(reused);
+    print(string.length(http.last_error()) > 0);
+
+    let owned_string rejected = http.get_with_headers(
+        string.concat(base, "/hello"),
+        "Invalid Header: not-allowed"
+    );
+    print(rejected);
+    print(http.status());
+    print(string.length(http.last_error()) > 0);
+
+    let owned_string bad_method = http.request(
+        "TRACE", string.concat(base, "/hello"), "", ""
+    );
+    print(bad_method);
+    print(http.status());
+    print(string.length(http.last_error()) > 0);
+
+    let owned_string bad_url = http.get("file:///etc/passwd");
+    print(bad_url);
+    print(http.status());
+    print(string.length(http.last_error()) > 0);
+    print(string.length(env.get("YLANG_MISSING_TEST_VAR")) == 0);
+    return 0;
+}

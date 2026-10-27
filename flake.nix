@@ -25,6 +25,10 @@
           binutils
         ];
 
+        buildInputs = with pkgs; [
+          curl
+        ];
+
         dontConfigure = true;
 
         buildPhase = ''
@@ -57,7 +61,10 @@
               pkgs.clang
               pkgs.nasm
               pkgs.binutils
-            ]}"
+              pkgs.pkg-config
+            ]}" \
+            --prefix PKG_CONFIG_PATH : "${pkgs.curl.dev}/lib/pkgconfig" \
+            --prefix LD_LIBRARY_PATH : "${pkgs.curl}/lib"
 
           runHook postInstall
         '';
@@ -98,6 +105,7 @@
               gnumake
               python3
               pkg-config
+              curl
               SDL2
               nasm
               binutils

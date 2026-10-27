@@ -23,7 +23,7 @@ for (const name of includes) {
   assert.ok(repository[name], `grammar include #${name} must be defined`);
 }
 
-for (const keyword of ["struct", "enum", "match", "from", "import", "for", "while"]) {
+for (const keyword of ["struct", "enum", "match", "from", "import", "for", "while", "await"]) {
   assert.ok(repository.keywords.match.includes(keyword), `missing YLang 2.0 keyword: ${keyword}`);
 }
 assert.ok(repository["struct-declaration"], "struct declarations should have a dedicated scope");
@@ -31,6 +31,9 @@ assert.ok(repository["enum-declaration"], "enum declarations and variants should
 assert.ok(repository["field-declaration"], "struct fields should be highlighted");
 assert.ok(repository["variable-declaration"], "typed variable declarations should be highlighted");
 assert.ok(repository.namespace.match.includes("gui"), "built-in namespaces should be highlighted");
+assert.ok(repository.namespace.match.includes("http"), "HTTP namespace should be highlighted");
+assert.ok(repository.namespace.match.includes("env"), "environment namespace should be highlighted");
+assert.ok(repository.types.match.includes("http_task"), "HTTP task handles should be highlighted as a type");
 assert.match(repository.numbers.match, /eE/, "scientific-notation floats should be highlighted");
 assert.ok(repository.operators.match.includes("\\+\\+"), "postfix increment should be highlighted");
 assert.ok(repository.operators.match.includes("\\+="), "compound addition assignment should be highlighted");
