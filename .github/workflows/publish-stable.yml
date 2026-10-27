@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".github/PUBLISH_STABLE"
+      - "docs/RELEASE-CHECKLIST-2.2.0.md"
   workflow_dispatch:
     inputs:
       confirm_version:
@@ -53,7 +54,7 @@ jobs:
           fi
       - name: Install toolchain (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y build-essential clang libclang-rt-dev nasm libsdl2-dev pkg-config
+        run: sudo apt-get update && sudo apt-get install -y build-essential clang libclang-rt-dev nasm libsdl2-dev pkg-config libcurl4-openssl-dev
       - name: Install toolchain (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -62,6 +63,8 @@ jobs:
           brew list make >/dev/null 2>&1 || brew install make
           brew list sdl2 >/dev/null 2>&1 || brew install sdl2
           brew list pkg-config >/dev/null 2>&1 || brew install pkg-config
+          brew list curl >/dev/null 2>&1 || brew install curl
+          echo "PKG_CONFIG_PATH=$(brew --prefix curl)/lib/pkgconfig:${PKG_CONFIG_PATH:-}" >> "$GITHUB_ENV"
       - name: Select compiler
         id: compiler
         shell: bash
