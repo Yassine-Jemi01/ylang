@@ -1,6 +1,6 @@
 # HTTP and API Requests (Experimental)
 
-**Status: experimental development feature for YLang 2.2.** HTTP functions are implemented on the C backend behind an optional libcurl dependency. The API is synchronous today; it does not implement async/await yet.
+**Status: experimental development feature for YLang 2.2.** HTTP functions are implemented on the C backend behind an optional libcurl dependency. The API includes synchronous calls plus an initial asynchronous task API built on libcurl's multi interface; async/await is currently restricted to HTTP task handles, not general-purpose YLang functions.
 
 ## Requirements
 
@@ -11,7 +11,7 @@ Install libcurl development files and pkg-config only on machines that build pro
 - macOS: `brew install curl pkg-config`; if Homebrew curl is keg-only, set `PKG_CONFIG_PATH="$(brew --prefix curl)/lib/pkgconfig:$PKG_CONFIG_PATH"`.
 - Windows with MSYS2 MINGW64: `pacman -S mingw-w64-x86_64-curl mingw-w64-x86_64-pkgconf`
 
-The ordinary compiler and programs that do not call `http.*` do not require libcurl. `ylang check` validates HTTP calls without linking the HTTP runtime; native `ylang build` requires the development dependency when an HTTP function is used. The experimental NASM backend does not support HTTP calls.
+The ordinary compiler and programs that do not call `http.*` do not require libcurl. `ylang check` validates HTTP calls without linking the HTTP runtime; native `ylang build` requires the development dependency when an HTTP function is used. The experimental NASM backend does not support HTTP calls. Async tasks are process-local handles with a maximum of 32 in-flight slots; each task may be consumed once by `await`, and cancellation is not a remote rollback.
 
 ## API
 
@@ -73,5 +73,5 @@ Replace the illustrative endpoint, model name, request JSON, and authorization s
 - DNS, TLS, timeout, connection, response-size, and other libcurl failures return an empty owned string and set `http.last_error()`.
 - HTTP statuses such as 400, 401, 404, and 500 are not treated as transport errors. The response body and status are returned so the program can inspect them.
 - `http.status()` and `http.last_error()` describe the most recent HTTP operation in the current process; they are not per-request response objects.
-- Synchronous `http.get`/`http.request` calls block until the transfer completes. The `request_async`/`await` workflow allows several network transfers to progress concurrently, but `await` itself blocks the current thread while pumping libcurl. It is not a general scheduler and must not be described as non-blocking on GUI event loops.
+- Synchronous `http.get`/`http.request` calls block until the transfer completes. The `request_async`/`await` workflow allows several network transfers to progress concurrently, but `await` itself blocks the current thread while pumping libcurl. It is not a general scheduler and must not be described as non-blocking on GUI event loops. General async functions, structured task groups, and GUI/event-loop integration remain future work.
 - `http.cancel(task)` cancels a queued or in-progress request; cancellation is not a remote rollback and may happen after the server has received the request.
