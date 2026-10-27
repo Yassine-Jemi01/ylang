@@ -15,10 +15,12 @@ on:
 
 # Build and test jobs only need read access; release publishing opts into write.
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-and-test:
+    permissions:
+      contents: read
     if: github.ref == 'refs/heads/main'
     name: build-and-test (${{ matrix.os }}, ${{ matrix.compiler }})
     strategy:
@@ -90,6 +92,8 @@ jobs:
         run: ${{ steps.compiler.outputs.make }} sanitize CC="${{ steps.compiler.outputs.cc }}"
 
   windows-native-smoke:
+    permissions:
+      contents: read
     if: github.ref == 'refs/heads/main'
     name: Windows native compiler smoke tests
     runs-on: windows-latest
@@ -163,6 +167,8 @@ jobs:
 
 
   editor-diagnostics:
+    permissions:
+      contents: read
     if: github.ref == 'refs/heads/main'
     name: Editor diagnostics
     runs-on: ubuntu-latest
@@ -185,6 +191,8 @@ jobs:
         run: nvim --headless -u NONE +'luafile editors/nvim/tests/syntax.lua'
 
   website-integrity:
+    permissions:
+      contents: read
     name: English-only website integrity
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -209,6 +217,8 @@ jobs:
           python3 tools/check_website.py
 
   build-yspm-package:
+    permissions:
+      contents: read
     if: github.ref == 'refs/heads/main'
     name: Build YLang Linux package for YSPM
     runs-on: ubuntu-latest
