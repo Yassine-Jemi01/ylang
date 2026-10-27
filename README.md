@@ -9,9 +9,10 @@ YLang **2.0.0** is the stable release of the 2.0 line. The stable compatibility 
 ## Release status
 
 - **Latest published stable release: 2.0.0.** Its compatibility guarantee covers the documented core language and the default C-backend workflow.
-- **Current development version: 2.1.0 release candidate — not yet published.** The repository's `VERSION` is set to `2.1.0`, but the `v2.1.0` tag and public release have not been created.
-- The candidate's ownership features (`owned_string` and `borrowed_string`) remain experimental and have documented backend and storage limitations. See the [2.1.0 candidate notes](docs/CHANGELOG-2.1.0.md) and [memory model](docs/MEMORY-MODEL.md).
-- Treat 2.1.0 as an official release only after its acceptance checks pass and it is published.
+- **Current development version: `2.2.0-dev` — not released.** This branch explores synchronous HTTP/API requests, environment-variable access, source-aware native debugging, editor support, and the accompanying documentation refresh.
+- The HTTP client and debugger are experimental. Async/await, a built-in JSON parser/serializer, a complete VS Code Debug Adapter Protocol integration, and Windows interactive debugging are not implemented in this candidate. See the [2.2.0 development changelog](docs/CHANGELOG-2.2.0.md), [HTTP guide](docs/HTTP.md), [debugger guide](docs/DEBUGGER.md), and [release roadmap](docs/ROADMAP-2.2.0.md).
+- The 2.1.0 ownership proposal and its limits remain documented in the [2.1.0 candidate notes](docs/CHANGELOG-2.1.0.md) and [memory model](docs/MEMORY-MODEL.md).
+- Do not treat 2.2.0 as stable until the full acceptance matrix passes, the project owner completes the consolidated test round, and a release tag is created explicitly.
 
 ## The online book
 
