@@ -86,14 +86,14 @@ function Header() {
         <a className="brand" href="#top" aria-label="YLang home">
           <Mark />
           <span>YLang</span>
-          <span className="brand-version">2.0</span>
+          <span className="brand-version">2.2</span>
         </a>
         <button className="mobile-menu" type="button" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen} onClick={() => setMenuOpen(v => !v)}>
           {menuOpen ? <FiX /> : <FiMenu />}
         </button>
         <nav className={`site-nav ${menuOpen ? 'site-nav--open' : ''}`} aria-label="Main navigation">
           <a href="#language" onClick={() => setMenuOpen(false)}>Language</a>
-          <a href="#preview" onClick={() => setMenuOpen(false)}>2.2 preview</a>
+          <a href="#preview" onClick={() => setMenuOpen(false)}>2.2 features</a>
           <a href="#install" onClick={() => setMenuOpen(false)}>Get started</a>
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
@@ -139,7 +139,7 @@ function Hero() {
       <div className="container hero-grid">
         <div className="hero-copy">
           <p className="eyebrow"><span className="eyebrow-mark" /> OPEN SOURCE · BUILT IN THE OPEN</p>
-          <div className="release-pill"><span className="release-dot" /> Stable release <span className="pill-divider" /> v2.0.0</div>
+          <div className="release-pill"><span className="release-dot" /> Stable release <span className="pill-divider" /> v2.2.0</div>
           <h1>Readable code.<br /><span>Native programs.</span></h1>
           <p className="hero-lede">A compiled programming language with explicit types, helpful diagnostics, and a compiler you can explore. Clear syntax in your editor; a native executable at the end.</p>
           <div className="hero-actions">
@@ -234,9 +234,9 @@ function ExperimentalSection() {
     <section className="section preview-section" id="preview">
       <div className="container">
         <div className="section-heading">
-          <p className="eyebrow"><span className="eyebrow-mark" /> 2.2 / IN DEVELOPMENT</p>
+          <p className="eyebrow"><span className="eyebrow-mark" /> 2.2 / RELEASED</p>
           <h2>Build beyond the stable core.</h2>
-          <p>These are experimental improvements on the development branch, not promises about the current stable release. Each feature stays marked as in progress until its tests and limitations are reviewed.</p>
+          <p>YLang 2.2.0 adds these capabilities while keeping their experimental boundaries explicit. Read the release notes and guides before relying on them in production.</p>
         </div>
         <div className="feature-grid preview-grid">
           <FeatureCard
@@ -271,7 +271,7 @@ function ExperimentalSection() {
         <div className="preview-links">
           <a className="text-link" href={SITE + 'learn/reference/HTTP.html'}>HTTP and async task guide <FiArrowUpRight aria-hidden="true" /></a>
           <a className="text-link" href={SITE + 'learn/reference/DEBUGGER.html'}>Debugger guide <FiArrowUpRight aria-hidden="true" /></a>
-          <a className="text-link" href={SITE + 'learn/reference/ROADMAP-2.2.0.html'}>2.2 development roadmap <FiArrowUpRight aria-hidden="true" /></a>
+          <a className="text-link" href={SITE + 'learn/reference/CHANGELOG-2.2.0.html'}>YLang 2.2.0 release notes <FiArrowUpRight aria-hidden="true" /></a>
           <a className="text-link" href={SITE + 'learn/reference/SECURITY.html'}>Security model and HTTP defaults <FiArrowUpRight aria-hidden="true" /></a>
           <a className="text-link" href={SITE + 'learn/reference/PERFORMANCE.html'}>Performance benchmarks <FiArrowUpRight aria-hidden="true" /></a>
         </div>
@@ -358,7 +358,7 @@ function Footer() {
           <a href={BOOK}>Book</a><a href={DOCS}>Docs</a><a href={REPO} target="_blank" rel="noreferrer">GitHub <FiArrowUpRight aria-hidden="true" /></a>
         </div>
       </div>
-      <div className="container footer-bottom"><span>Open-source programming language project.</span><span>Stable release: 2.0.0</span></div>
+      <div className="container footer-bottom"><span>Open-source programming language project.</span><span>Stable release: 2.2.0</span></div>
     </footer>
   );
 }
