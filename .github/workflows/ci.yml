@@ -175,7 +175,12 @@ jobs:
             "root/usr/share/ylang/stdlib/game2d.yl" \
             "root/usr/share/doc/ylang/CHANGELOG.md" \
             "root/usr/share/doc/ylang/CHANGELOG-2.1.0.md" \
-            "root/usr/share/doc/ylang/MEMORY-MODEL.md"; do
+            "root/usr/share/doc/ylang/CHANGELOG-2.2.0.md" \
+            "root/usr/share/doc/ylang/MEMORY-MODEL.md" \
+            "root/usr/share/doc/ylang/HTTP.md" \
+            "root/usr/share/doc/ylang/DEBUGGER.md" \
+            "root/usr/share/doc/ylang/DEBUGGER-SPEC.md" \
+            "root/usr/share/doc/ylang/ROADMAP-2.2.0.md"; do
             if ! grep -Fxq "$expected" build/ylang-yspm/package-files.txt; then
               echo "FAIL: YSPM archive is missing expected entry: $expected" >&2
               cat build/ylang-yspm/package-files.txt >&2
