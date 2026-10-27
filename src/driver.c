@@ -297,11 +297,12 @@ static bool read_sdl2_flags(char *storage, size_t capacity,
 }
 
 static int run_native_compiler(const char *cc, const char *c_path,
-                               const char *output_path, bool uses_gui)
+                               const char *output_path, bool uses_gui,
+                               bool debug_mode)
 {
     const char *requested_opt = getenv("YLANG_OPT_LEVEL");
-    const char *optimization = "-O2";
-    if (requested_opt && requested_opt[0] != '\0') {
+    const char *optimization = debug_mode ? "-O0" : "-O2";
+    if (!debug_mode && requested_opt && requested_opt[0] != '\0') {
         if (strcmp(requested_opt, "0") == 0) optimization = "-O0";
         else if (strcmp(requested_opt, "1") == 0) optimization = "-O1";
         else if (strcmp(requested_opt, "2") == 0) optimization = "-O2";
@@ -342,7 +343,8 @@ static int run_native_compiler(const char *cc, const char *c_path,
     args[n++] = "-Wno-unused-variable";
     args[n++] = "-Wno-unused-but-set-variable";
     args[n++] = (char *)optimization;
-    args[n++] = "-g";
+    args[n++] = debug_mode ? "-g3" : "-g";
+    if (debug_mode) args[n++] = "-fno-omit-frame-pointer";
 #if !defined(__APPLE__) && !defined(_WIN32)
     args[n++] = "-D_FORTIFY_SOURCE=3";
 #endif
@@ -698,9 +700,26 @@ int ylang_run(const char *command, const char *input_path,
         printf("Generated C source: %s\n", c_path);
     } else {
         const char *target = native_target;
-        result = run_native_compiler(cc ? cc : "gcc", c_path, target, compiler.uses_gui);
-        if (result == 0) printf("Build succeeded: %s\n", target);
-        else fprintf(stderr, "ylang: native compilation failed (exit %d).\n", result);
+        bool debug_mode = strcmp(command, "debug") == 0;
+        result = run_native_compiler(cc ? cc : "gcc", c_path, target,
+                                     compiler.uses_gui, debug_mode);
+        if (result == 0) {
+            printf("Build succeeded: %s\n", target);
+            if (debug_mode) {
+#ifdef _WIN32
+                fputs("ylang: the interactive debug command is not yet supported on Windows; use a Linux GDB or macOS LLDB build.\n", stderr);
+                result = 64;
+#elif defined(__APPLE__)
+                char *debugger_args[] = { "lldb", "--", (char *)target, NULL };
+                result = run_external(debugger_args);
+#else
+                char *debugger_args[] = { "gdb", "-q", "--args", (char *)target, NULL };
+                result = run_external(debugger_args);
+#endif
+            }
+        } else {
+            fprintf(stderr, "ylang: native compilation failed (exit %d).\n", result);
+        }
         (void)unlink(c_path);
         (void)rmdir(temporary_directory);
     }
