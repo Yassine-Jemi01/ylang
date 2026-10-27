@@ -291,6 +291,5 @@ jobs:
           test -s website/learn/reference/ACCEPTANCE-2.2.0.html
           test -s website/learn/reference/PERFORMANCE.html
           test -s website/learn/reference/SECURITY.html
-          cp docs/book/YLang-Book.pdf website/YLang-Book.pdf
       - name: Validate website
         run: python3 tools/check_website.py
