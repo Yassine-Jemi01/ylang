@@ -127,6 +127,10 @@ jobs:
           ./build/ylang.exe build build/windows-smoke/input.yl -o build/windows-smoke/input.exe
           output="$(printf 'native Windows input\n' | ./build/windows-smoke/input.exe)"
           test "$output" = "native Windows input"
+      - name: Test native Windows HTTP, async tasks, and redirect safety
+        run: |
+          export YLANG_TEST_API_KEY=test-token
+          python tests/run_http_integration.py
       - name: Reject unsupported Windows interactive debugger cleanly
         run: |
           if ./build/ylang.exe debug tests/debug-source-map.yl -o build/windows-smoke/debug-unsupported.exe > build/windows-smoke/debug.out 2>&1; then

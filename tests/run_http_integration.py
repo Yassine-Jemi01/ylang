@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run the YLang HTTP integration test against an in-process loopback server."""
 from pathlib import Path
+import os
 import subprocess
 import sys
 import threading
@@ -25,14 +26,16 @@ def main():
     thread.start()
     try:
         port = server.server_address[1]
-        run_checked(["./build/ylang", "check", "tests/http-client.yl"])
-        run_checked(["./build/ylang", "build", "tests/http-client.yl", "-o", "build/test-http-client"])
-        import os
+        compiler = "./build/ylang.exe" if os.name == "nt" else "./build/ylang"
+        executable = "./build/test-http-client.exe" if os.name == "nt" else "./build/test-http-client"
+        output_path = "build/test-http-client.exe" if os.name == "nt" else "build/test-http-client"
+        run_checked([compiler, "check", "tests/http-client.yl"])
+        run_checked([compiler, "build", "tests/http-client.yl", "-o", output_path])
         env = os.environ.copy()
         env["YLANG_TEST_API_KEY"] = "test-token"
         env.pop("YLANG_MISSING_TEST_VAR", None)
         result = subprocess.run(
-            ["./build/test-http-client"],
+            [executable],
             cwd=ROOT,
             input=f"{port}\n",
             text=True,
