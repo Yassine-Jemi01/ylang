@@ -66,6 +66,7 @@ jobs:
           rm -rf site-dist
           mkdir -p site-dist
           cp -a website/. site-dist/
+          cp -a website/index.html site-dist/classic.html
           cp -a website-app/dist/. site-dist/
 
       - name: Upload website
