@@ -1,8 +1,8 @@
-# YLang 2.2.0 Roadmap
+# YLang 2.2.0 Release Scope and Follow-up Roadmap
 
-**Status: development roadmap for the unreleased `2.2.0-dev` branch. This is not a release announcement. The status notes below distinguish implemented slices from incomplete goals.**
+**Status: YLang 2.2.0 is released. This document records the shipped scope and follow-up work; incomplete goals below are not claims that those features shipped in 2.2.0.**
 
-YLang 2.1.x should focus on fixes, correctness, compatibility, tests, and completion of the current release candidate. The 2.2 line is intended to expand what developers can build with YLang and improve the developer experience.
+YLang 2.2.0 expands the toolchain with an initial HTTP/async-task API, environment-variable access, source-aware command-line debugging, and developer-tooling improvements. The documented core language and default C-backend workflow remain the compatibility foundation; the new APIs and integrations retain their stated experimental limits.
 
 ## Scope: five feature areas
 
@@ -17,7 +17,7 @@ Acceptance goals:
 - Add tests for successful completion, failures, timeouts, cancellation, and repeated use.
 - Preserve existing synchronous programs and the default build path.
 
-A first async I/O slice now exists on this development branch: `http.request_async(...)` returns an `http_task`, `await task` consumes it to return the response body, and `http.cancel(task)` requests cancellation. It uses libcurl's multi interface so queued transfers progress concurrently while a task is awaited. General-purpose async functions, a background scheduler, and GUI/event-loop integration remain unimplemented; the broader acceptance goal is only partially complete.
+YLang 2.2.0 ships a first async I/O slice: `http.request_async(...)` returns an `http_task`, `await task` consumes it to return the response body, and `http.cancel(task)` requests cancellation. It uses libcurl's multi interface so queued transfers progress concurrently while a task is awaited. General-purpose async functions, a background scheduler, and GUI/event-loop integration remain unimplemented; the broader acceptance goal is only partially complete.
 
 ### 2. HTTP and API requests
 
@@ -30,7 +30,7 @@ Provide a standard, typed way to call HTTP APIs from YLang. A first useful miles
 - Documented redirect behavior.
 - Examples that read credentials from environment/configuration rather than hard-coding secrets.
 
-Current implementation status: the C backend has synchronous HTTP helpers and a generic method API; `http.request_async`, `await http_task`, and `http.cancel` use libcurl's multi interface. Response bodies remain strings and there is no built-in JSON parser/serializer. The NASM backend does not support HTTP; the native Windows HTTP path is covered by CI, but interactive debugging is not implemented there. Never embed API credentials in the compiler or examples.
+YLang 2.2.0 implementation status: the C backend has synchronous HTTP helpers and a generic method API; `http.request_async`, `await http_task`, and `http.cancel` use libcurl's multi interface. Response bodies remain strings and there is no built-in JSON parser/serializer. The NASM backend does not support HTTP; the native Windows HTTP path is covered by CI, but interactive debugging is not implemented there. Never embed API credentials in the compiler or examples.
 
 ### 3. YLang Debugger
 
@@ -45,7 +45,7 @@ Initial capability goals:
 - Integrate debugging into the YLang VS Code extension.
 - Start with the established C backend; do not imply NASM support until debug information and behavior are tested.
 
-Current implementation status: `ylang debug` creates an unoptimized debug build with symbols and source-line mapping, then launches GDB on Linux or LLDB on macOS. VS Code exposes a terminal-based command for it. There is no dedicated Debug Adapter Protocol adapter, so IDE breakpoints, Variables/Call Stack panes, generated local names, and scope mapping are still limited. The NASM backend and Windows interactive debugging are not supported.
+YLang 2.2.0 implementation status: `ylang debug` creates an unoptimized debug build with symbols and source-line mapping, then launches GDB on Linux or LLDB on macOS. VS Code exposes a terminal-based command for it. There is no dedicated Debug Adapter Protocol adapter, so IDE breakpoints, Variables/Call Stack panes, generated local names, and scope mapping are still limited. The NASM backend and Windows interactive debugging are not supported.
 
 ### 4. Performance and security improvements
 
@@ -82,25 +82,23 @@ Website acceptance goals:
 - Existing technical guidance remains accurate; styling changes must not silently remove or rewrite documentation.
 - Links, navigation, mobile layouts, and code examples are checked before launch.
 
-## Suggested order
+## Follow-up priorities
 
-1. Finish the 2.1.x correctness and release acceptance work.
-2. Design async execution and HTTP APIs together, then implement the smallest coherent vertical slice.
-3. Design source mapping and the debugger interface before implementing the VS Code debugger flow.
-4. Run performance/security work continuously, not only at the end.
-5. Complete Marketplace onboarding, identity, website, compatibility checks, and release notes before publishing 2.2.0.
+1. Design and implement general-purpose async functions, scheduler behavior, and cancellation/error propagation.
+2. Add a documented JSON parser/serializer and improve HTTP API ergonomics.
+3. Evaluate a dedicated VS Code Debug Adapter Protocol integration, local-variable inspection, and expanded platform support.
+4. Continue performance and security testing with reproducible baselines and explicit compatibility checks.
+5. Complete Marketplace publication and future editor-discovery work separately from the compiler release.
 
-## Release gates
+## Future release gates
 
-Do not label 2.2.0 stable until:
-- Required test, sanitizer, and relevant platform CI jobs pass on the exact release commit.
-- New syntax and standard-library APIs have reference documentation and runnable examples.
-- Existing programs covered by the compatibility policy continue to build and behave as documented.
-- HTTP security defaults and timeout/error behavior are tested.
-- Debugger limitations and supported platforms are explicit.
-- VS Code packaging and Marketplace instructions are verified.
-- Website links, assets, and installation guidance are checked.
+For future releases that expand these areas:
+- Require test, sanitizer, and relevant platform CI jobs on the exact release commit.
+- Add reference documentation and runnable examples for new syntax and standard-library APIs.
+- Preserve the documented core compatibility policy.
+- Test HTTP security defaults, timeout/error behavior, and debugger platform boundaries.
+- Verify editor packaging, Marketplace instructions, website links, assets, and installation guidance before claiming those tasks complete.
 
-Current editor/website status: VS Code is version 0.6.0 on this branch, the repository recommends it via `.vscode/extensions.json`, syntax highlighting includes `http` and `env`, and the debug command is wired to the native compiler. Marketplace publication is still a manual release task; a workspace recommendation does not discover the extension for arbitrary `.yl` files. The homepage, reference landing page, and online book share the refreshed dark-teal/rust design, while the original static home is preserved as `classic.html` in the deployment artifact.
+Current editor/website status: VS Code is version 0.6.0 in this release, the repository recommends it via `.vscode/extensions.json`, syntax highlighting includes `http` and `env`, and the debug command is wired to the native compiler. Marketplace publication is still a manual release task; a workspace recommendation does not discover the extension for arbitrary `.yl` files. The homepage, reference landing page, and online book share the refreshed dark-teal/rust design, while the original static home is preserved as `classic.html` in the deployment artifact.
 
 The feature list and order may change based on implementation findings. The HTTP task API is only the first async slice; do not mark broader asynchronous programming complete until general async functions, cancellation/error behavior, and event-loop integration have been separately designed and tested. Do not describe a future feature as implemented until its acceptance checks pass.
