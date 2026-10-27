@@ -17,6 +17,7 @@
 - [x] `python3 tests/run_http_integration.py` passed on the candidate checkout.
 - [x] Manual `ylang debug` acceptance passed: GDB stopped at `examples/hello.yl:3`, continued, and the program exited normally.
 - [x] The stable publishing workflow reruns GCC/Clang regression tests, sanitizers, Windows native smoke tests, editor diagnostics, website integrity, and YSPM packaging on the exact release commit; publication depends on every job succeeding.
+- [x] Linux and macOS release CI install libcurl development files and pkg-config so the HTTP integration tests can run.
 - [x] The changelog, README, homepage, and online-book release status are updated for 2.2.0 while explicitly retaining experimental feature boundaries.
 
 ## Owner acceptance
