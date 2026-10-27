@@ -42,15 +42,15 @@ module.exports = grammar({
     parameter_list: $ => commaSep1($.parameter),
     parameter: $ => seq(field("type", $._type), field("name", $.identifier)),
     struct_declaration: $ => seq(
-      "struct", field("name", $._type_identifier), "{",
+      "struct", field("name", $.type_identifier), "{",
       repeat($.field_declaration), "}"
     ),
     field_declaration: $ => seq($._type, $.identifier, optional("[]"), ";"),
     enum_declaration: $ => seq(
-      "enum", field("name", $._type_identifier), "{",
+      "enum", field("name", $.type_identifier), "{",
       commaSep1($.enum_variant), optional(","), "}"
     ),
-    enum_variant: $ => alias($.identifier, $.enum_variant),
+    enum_variant: $ => /[A-Za-z_][A-Za-z0-9_]*/,
     variable_declaration: $ => seq(
       "let", optional("const"), field("type", $._type),
       field("name", $.identifier), optional("[]"),
@@ -80,13 +80,13 @@ module.exports = grammar({
     expression_statement: $ => seq($._expression, ";"),
 
     _type: $ => choice(
-      $.primitive_type, $._type_identifier,
+      $.primitive_type, $.type_identifier,
       $.array_type, $.qualified_type
     ),
     primitive_type: $ => choice("int", "float", "bool", "char", "string", "void", "http_task"),
     type_identifier: $ => /[A-Z][A-Za-z0-9_]*/,
-    qualified_type: $ => seq($._type_identifier, ".", $._type_identifier),
-    array_type: $ => seq(choice($.primitive_type, $._type_identifier), "[]"),
+    qualified_type: $ => seq($.type_identifier, ".", $.type_identifier),
+    array_type: $ => seq(choice($.primitive_type, $.type_identifier), "[]"),
 
     _expression: $ => choice(
       $.assignment_expression,
@@ -140,7 +140,7 @@ module.exports = grammar({
     member_expression: $ => prec.left(10, seq($._expression, ".", $.identifier)),
     qualified_identifier: $ => prec(11, seq($.identifier, ".", $.identifier)),
     index_expression: $ => prec.left(10, seq($._expression, "[", $._expression, "]")),
-    struct_initializer: $ => prec(2, seq($._type_identifier, "(", optional($.argument_list), ")")),
+    struct_initializer: $ => prec(2, seq($.type_identifier, "(", optional($.argument_list), ")")),
     array_expression: $ => seq("[", optional(commaSep1($._expression)), "]"),
     parenthesized_expression: $ => seq("(", $._expression, ")"),
     integer: $ => /(?:0[xX][0-9a-fA-F]+|[0-9]+)/,
