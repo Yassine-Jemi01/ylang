@@ -180,7 +180,9 @@ jobs:
             "root/usr/share/doc/ylang/HTTP.md" \
             "root/usr/share/doc/ylang/DEBUGGER.md" \
             "root/usr/share/doc/ylang/DEBUGGER-SPEC.md" \
-            "root/usr/share/doc/ylang/ROADMAP-2.2.0.md"; do
+            "root/usr/share/doc/ylang/ROADMAP-2.2.0.md" \
+            "root/usr/share/doc/ylang/PERFORMANCE.md" \
+            "root/usr/share/doc/ylang/SECURITY.md"; do
             if ! grep -Fxq "$expected" build/ylang-yspm/package-files.txt; then
               echo "FAIL: YSPM archive is missing expected entry: $expected" >&2
               cat build/ylang-yspm/package-files.txt >&2
@@ -269,6 +271,8 @@ jobs:
           test -s website/learn/reference/MEMORY-MODEL.html
           test -s website/learn/reference/CHANGELOG-2.1.0.html
           test -s website/learn/reference/CHANGELOG-2.2.0.html
+          test -s website/learn/reference/PERFORMANCE.html
+          test -s website/learn/reference/SECURITY.html
           cp docs/book/YLang-Book.pdf website/YLang-Book.pdf
       - name: Validate website
         run: python3 tools/check_website.py

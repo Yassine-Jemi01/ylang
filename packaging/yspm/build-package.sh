@@ -54,6 +54,8 @@ for file in \
     docs/GAME2D.md \
     docs/WINDOWS.md \
     docs/HTTP.md \
+    docs/PERFORMANCE.md \
+    docs/SECURITY.md \
     docs/DEBUGGER.md \
     docs/DEBUGGER-SPEC.md \
     docs/ROADMAP-2.2.0.md

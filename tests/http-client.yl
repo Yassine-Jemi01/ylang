@@ -70,6 +70,9 @@ function main() -> int {
         "GET", string.concat(base, "/slow"), "", ""
     );
     print(http.cancel(cancelled));
+    let owned_string reused = await cancelled;
+    print(reused);
+    print(string.length(http.last_error()) > 0);
 
     let owned_string rejected = http.get_with_headers(
         string.concat(base, "/hello"),

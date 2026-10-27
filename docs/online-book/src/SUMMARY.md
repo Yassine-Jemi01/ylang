@@ -36,6 +36,8 @@
 - [Compiler Architecture](reference/architecture.md)
 - [Backend Roadmap](reference/BACKEND-ROADMAP.md)
 - [YLang Debugger](reference/DEBUGGER.md)
+- [Performance Benchmarking](reference/PERFORMANCE.md)
+- [Security Model and Safe Defaults](reference/SECURITY.md)
 - [YLang 2.2 Roadmap](reference/ROADMAP-2.2.0.md)
 - [Debugger Design](reference/DEBUGGER-SPEC.md)
 - [Option and Result Design](reference/OPTION-RESULT-DESIGN.md)

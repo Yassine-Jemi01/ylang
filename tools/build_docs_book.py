@@ -38,6 +38,8 @@ REFERENCE_DOCS = (
     "CHANGELOG-2.1.0.md",
     "CHANGELOG-2.2.0.md",
     "HTTP.md",
+    "PERFORMANCE.md",
+    "SECURITY.md",
     "DEBUGGER.md",
     "DEBUGGER-SPEC.md",
     "ROADMAP-2.2.0.md",

@@ -102,9 +102,12 @@ def main() -> int:
                 run_samples.append(run_elapsed)
 
         print("YLang native backend benchmark")
-        print(f"YLang version: {run([str(compiler), "--version"], cwd=ROOT).stdout.strip()}")
+        version_output = run([str(compiler), "--version"], cwd=ROOT).stdout.strip()
+        native_cc_version = run([args.cc, "--version"], cwd=ROOT).stdout.splitlines()[0]
+        print(f"YLang version: {version_output}")
         print(f"Host: {platform.platform()}")
-        print(f"Native C compiler: {args.cc}")
+        print(f"Native C compiler: {native_cc_version}")
+        print(f"YLANG_OPT_LEVEL: {os.environ.get('YLANG_OPT_LEVEL', 'default')}")
         print(f"Source: {source}")
         print(f"Measured runs: {args.runs}; warm-ups: {args.warmup}")
         print(f"Compile median: {median_ms(compile_samples):.3f} ms")

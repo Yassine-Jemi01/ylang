@@ -272,6 +272,8 @@ function ExperimentalSection() {
           <a className="text-link" href={SITE + 'learn/reference/HTTP.html'}>HTTP and async task guide <FiArrowUpRight aria-hidden="true" /></a>
           <a className="text-link" href={SITE + 'learn/reference/DEBUGGER.html'}>Debugger guide <FiArrowUpRight aria-hidden="true" /></a>
           <a className="text-link" href={SITE + 'learn/reference/ROADMAP-2.2.0.html'}>2.2 development roadmap <FiArrowUpRight aria-hidden="true" /></a>
+          <a className="text-link" href={SITE + 'learn/reference/SECURITY.html'}>Security model and HTTP defaults <FiArrowUpRight aria-hidden="true" /></a>
+          <a className="text-link" href={SITE + 'learn/reference/PERFORMANCE.html'}>Performance benchmarks <FiArrowUpRight aria-hidden="true" /></a>
         </div>
       </div>
     </section>

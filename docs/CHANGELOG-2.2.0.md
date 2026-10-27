@@ -10,7 +10,8 @@
 - Adds `env.get(name)` so API credentials can be read from process environment variables without invoking a shell.
 - Enforces request-method validation, HTTP header validation, a 16 KiB header limit, an 8 MiB response body limit, connect/overall timeouts, HTTPS certificate/hostname verification, and HTTP/HTTPS-only redirects. Requests with custom headers do not automatically follow redirects, preventing custom API credentials from being forwarded to redirect targets.
 - Adds a source-aware experimental `ylang debug` command using `-O0`, debug symbols, and GDB on Linux or LLDB on macOS; generated C uses `#line` directives to map statements to original `.yl` locations.
-- Adds integration coverage using an in-process loopback HTTP server, concurrent asynchronous requests, task cancellation, source-map checks, debugger launch checks, and unsupported-Windows-debugger checks.
+- Adds integration coverage using an in-process loopback HTTP server, concurrent asynchronous requests, cancellation and consumed-handle checks, redirect protection, source-map checks, debugger launch checks, and unsupported-Windows-debugger checks.
+- Adds a repeatable native-backend benchmark for compile latency, executable latency, and binary size without pretending to establish a universal speed threshold. Adds dedicated security-defaults and performance-measurement guides.
 - Updates VS Code and Neovim syntax highlighting for the `http` and `env` namespaces.
 - Aligns the React homepage mark with the official documentation logo, adds direct links to the experimental HTTP/debugger reference pages, and preserves the previous static homepage as `classic.html` in the Pages deployment artifact.
 
