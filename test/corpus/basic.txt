@@ -1,0 +1,49 @@
+==================
+Function and types
+==================
+
+function main() -> int {
+    let string greeting = "Hello";
+    let int answer = 42;
+    print(f"Result: {answer}");
+    return 0;
+}
+
+---
+
+(source_file
+  (function_declaration
+    name: (identifier)
+    (block
+      (variable_declaration type: (primitive_type) name: (identifier) (string))
+      (variable_declaration type: (primitive_type) name: (identifier) (integer))
+      (expression_statement
+        (call_expression
+          function: (identifier)
+          (argument_list (format_string))))
+      (return_statement (integer)))))
+
+==================
+Struct and enum
+==================
+
+struct Person {
+    string name;
+    int age;
+}
+enum State {
+    Ready,
+    Busy,
+}
+
+---
+
+(source_file
+  (struct_declaration
+    name: (type_identifier)
+    (field_declaration (primitive_type) (identifier))
+    (field_declaration (primitive_type) (identifier)))
+  (enum_declaration
+    name: (type_identifier)
+    (enum_variant)
+    (enum_variant)))

@@ -1,0 +1,11 @@
+{
+  "grammars": [
+    {
+      "name": "ylang",
+      "camelcase": "YLang",
+      "scope": "source.ylang",
+      "path": ".",
+      "file-types": ["yl"]
+    }
+  ]
+}

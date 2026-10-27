@@ -1,0 +1,17 @@
+{
+  "name": "tree-sitter-ylang",
+  "version": "0.1.0",
+  "description": "Tree-sitter grammar for the YLang programming language",
+  "main": "bindings/node",
+  "keywords": ["tree-sitter", "ylang"],
+  "license": "MIT",
+  "tree-sitter": [
+    {
+      "scope": "source.ylang",
+      "file-types": ["yl"]
+    }
+  ],
+  "scripts": {
+    "test": "tree-sitter test"
+  }
+}
