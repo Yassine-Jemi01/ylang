@@ -1,8 +1,11 @@
 hello
 200
+true
 authorized
 200
 {"ok":true}
+200
+{"method":"put"}
 200
 custom|{"source":"ylang"}
 200
