@@ -31,6 +31,8 @@ assert.ok(repository["enum-declaration"], "enum declarations and variants should
 assert.ok(repository["field-declaration"], "struct fields should be highlighted");
 assert.ok(repository["variable-declaration"], "typed variable declarations should be highlighted");
 assert.ok(repository.namespace.match.includes("gui"), "built-in namespaces should be highlighted");
+assert.ok(repository.namespace.match.includes("http"), "HTTP namespace should be highlighted");
+assert.ok(repository.namespace.match.includes("env"), "environment namespace should be highlighted");
 assert.match(repository.numbers.match, /eE/, "scientific-notation floats should be highlighted");
 assert.ok(repository.operators.match.includes("\\+\\+"), "postfix increment should be highlighted");
 assert.ok(repository.operators.match.includes("\\+="), "compound addition assignment should be highlighted");
