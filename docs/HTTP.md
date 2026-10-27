@@ -21,10 +21,12 @@ The ordinary compiler and programs that do not call `http.*` do not require libc
 | `http.get_with_headers(url, headers)` | `owned_string` | GET request with headers |
 | `http.post(url, body)` | `owned_string` | POST request with `Content-Type: application/json` |
 | `http.post_with_headers(url, body, headers)` | `owned_string` | POST with a custom header block |
+| `http.request(method, url, body, headers)` | `owned_string` | Request using GET, POST, PUT, PATCH, DELETE, or HEAD |
 | `http.status()` | `int` | HTTP status from the most recent request |
+| `http.response_headers()` | `string` | Final response headers, newline-separated |
 | `http.last_error()` | `string` | Transport/configuration error for the most recent request, or an empty string after a successful transfer |
 
-Pass headers as one header per line, separated by `\n`, for example `"Content-Type: application/json\nAuthorization: Bearer ..."`. Header names are validated and malformed headers are rejected. Use `http.status()` to distinguish HTTP error responses such as 404 from transport failures: an HTTP 404 response is still a successful HTTP transfer and its body is returned.
+Pass headers as one header per line, separated by `\n`, for example `"Content-Type: application/json\nAuthorization: Bearer ..."`. Header names are validated and malformed headers are rejected. Use `http.status()` to distinguish HTTP error responses such as 404 from transport failures: an HTTP 404 response is still a successful HTTP transfer and its body is returned. `http.response_headers()` returns the final response's headers as newline-separated lines, replacing intermediate response headers after redirects. `http.request(method, url, body, headers)` accepts only the uppercase methods GET, POST, PUT, PATCH, DELETE, or HEAD. Its `body` argument is used for POST/PUT/PATCH/DELETE; GET and HEAD ignore it.
 
 Responses are limited to 8 MiB. Connections time out after 5 seconds and whole requests after 15 seconds. Redirects are limited to five and stay on HTTP/HTTPS protocols. HTTPS certificate and hostname verification are enabled; the runtime does not offer an insecure TLS bypass. These safeguards help with reliability, but they do not make arbitrary URLs safe in every application or create a network sandbox.
 
