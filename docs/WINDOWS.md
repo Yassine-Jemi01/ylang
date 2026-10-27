@@ -11,7 +11,7 @@ Install MSYS2 from https://www.msys2.org/, then open the **MSYS2 MINGW64** termi
 Update the package database and install the tools:
 
     pacman -Syu
-    pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-SDL2 mingw-w64-x86_64-pkgconf make python
+    pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-SDL2 mingw-w64-x86_64-curl mingw-w64-x86_64-pkgconf make python
 
 Ensure the MinGW64 bin directory is on PATH when using YLang from a Windows terminal:
 
@@ -70,7 +70,7 @@ In PowerShell, use:
 
 ## 5. Optional GUI and Game2D
 
-The compiler can validate GUI calls without SDL2, but linking and running GUI/game programs requires SDL2 development files and pkg-config. The MINGW64 package command above installs both.
+The compiler can validate GUI calls without SDL2 or libcurl, but GUI builds require SDL2 development files and pkg-config. Programs using the experimental HTTP namespace additionally require the MinGW-w64 libcurl package and pkg-config; see [HTTP and API Requests](HTTP.md). The MINGW64 package command above installs both.
 
 The initial GUI runtime supports one active window, event polling, keyboard/mouse state, timing, background clearing, and filled rectangles. Game2D is intended for simple 2D prototypes and examples. Sprites, audio, in-window text rendering, scene management, and a full physics engine are not part of this milestone.
 
