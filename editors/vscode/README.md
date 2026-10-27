@@ -44,6 +44,14 @@ ln -s "$PWD/editors/vscode" ~/.vscode/extensions/yassine-jemi01.ylang-language-s
 
 Fully restart VS Code, or run **Developer: Reload Window** from the Command Palette.
 
+## Debugging (experimental)
+
+On Linux with GDB or macOS with LLDB, use **YLang: Debug Current File** from the Command Palette. The extension saves the active `.yl` file and opens the native debugger in the integrated terminal using the compiler's `debug` command.
+
+This is an initial terminal-based debug workflow, not a complete Debug Adapter Protocol implementation. Breakpoints, stepping, call stack and variable inspection are provided by GDB/LLDB; some names may be generated C names. Interactive debug integration is not implemented on Windows yet.
+
+Build the compiler with debug command support, install GDB (Linux) or LLDB (macOS), and set `ylang.compilerPath` if VS Code cannot find your compiler.
+
 ## Diagnostic details
 
 The Problems panel keeps inline messages compact. Hover over a diagnostic to read the compiler's full explanation and the `= help:` suggestion. Unknown or newly added diagnostic codes fall back to the compiler message, and unparsed compiler failures are logged to the YLang output channel rather than silently discarded.
