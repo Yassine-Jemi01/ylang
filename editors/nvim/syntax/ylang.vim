@@ -12,7 +12,7 @@ syn keyword ylangType int float bool char string void
 syn keyword ylangBuiltin print
 
 " Qualified built-in namespaces and user-defined enum/struct names.
-syn match ylangNamespace "\<\(math\|string\|path\|io\|image\|gui\)\>\ze\."
+syn match ylangNamespace "\<\(math\|string\|path\|io\|image\|gui\|http\|env\)\>\ze\."
 syn match ylangDeclaredType "\<[A-Z][A-Za-z0-9_]*\>"
 syn match ylangQualifiedType "\<[A-Z][A-Za-z0-9_]*\>\ze\s*\."
 syn match ylangMember "\.\zs[A-Za-z_][A-Za-z0-9_]*"
