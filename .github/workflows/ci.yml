@@ -32,7 +32,7 @@ jobs:
           brew list sdl2 >/dev/null 2>&1 || brew install sdl2
           brew list curl >/dev/null 2>&1 || brew install curl
           brew list pkg-config >/dev/null 2>&1 || brew install pkg-config
-          echo "$(brew --prefix curl)/lib/pkgconfig" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_PATH=$(brew --prefix curl)/lib/pkgconfig:${PKG_CONFIG_PATH:-}" >> "$GITHUB_ENV"
       - name: Select compiler
         id: compiler
         shell: bash
