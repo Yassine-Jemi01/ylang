@@ -137,7 +137,7 @@ module.exports = grammar({
       "(", optional($.argument_list), ")"
     )),
     argument_list: $ => commaSep1($._expression),
-    member_expression: $ => prec.left(10, seq($._expression, ".", $.identifier)),
+    member_expression: $ => prec.left(10, seq($._expression, ".", field("property", $.identifier))),
     qualified_identifier: $ => prec(11, seq($.identifier, ".", $.identifier)),
     index_expression: $ => prec.left(10, seq($._expression, "[", $._expression, "]")),
     struct_initializer: $ => prec(2, seq($.type_identifier, "(", optional($.argument_list), ")")),
