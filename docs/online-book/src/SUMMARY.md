@@ -52,6 +52,7 @@
 - [Experimental Memory Model](reference/MEMORY-MODEL.md)
 - [YLang 2.1.0 Release Candidate Notes](reference/CHANGELOG-2.1.0.md)
 - [YLang 2.2.0 Development Notes](reference/CHANGELOG-2.2.0.md)
+- [2.2.0 Candidate Acceptance](reference/ACCEPTANCE-2.2.0.md)
 - [Stable Release Checklist](reference/STABLE-RELEASE-CHECKLIST.md)
 - [Previous Beta Notes](reference/CHANGELOG-2.0-BETA.md)
 - [Beta Release Checklist (historical)](reference/BETA-RELEASE-CHECKLIST.md)
