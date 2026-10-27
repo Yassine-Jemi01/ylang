@@ -408,7 +408,6 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 ![YLang logo](assets/branding/ylang-logo-full.svg)
 
 - [YLang Book (online HTML)](https://yassine-jemi01.github.io/ylang/learn/index.html)
-- [YLang Book (PDF)](docs/book/YLang-Book.pdf)
 - [Language specification](docs/language-spec.md)
 - [Architecture](docs/architecture.md)
 - [YLang 2.0 design roadmap](docs/YLANG-2.0-DESIGN.md)

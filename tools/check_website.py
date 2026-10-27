@@ -116,9 +116,6 @@ def check_book_links(errors: list[str]) -> None:
             if local_target.is_dir():
                 local_target = local_target / "index.html"
             if not local_target.is_file():
-                # The Pages deployment stages this PDF from docs/book/ after building the book.
-                if local_target == (SITE / "YLang-Book.pdf").resolve() and (ROOT / "docs/book/YLang-Book.pdf").is_file():
-                    continue
                 errors.append(f"{page_name} refers to missing local target: {target}.")
                 continue
 
@@ -164,9 +161,6 @@ def check_site() -> list[str]:
         for target in sorted(set(parser.local_paths)):
             local_target = (SITE / target).resolve()
             if local_target.is_file():
-                continue
-            # deploy-website.yml copies the book from docs/book into the Pages artifact.
-            if target == "YLang-Book.pdf" and (ROOT / "docs/book/YLang-Book.pdf").is_file():
                 continue
             errors.append(f"{relative} refers to missing local file: {target}.")
 

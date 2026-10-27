@@ -58,9 +58,6 @@ jobs:
           mkdir -p website/learn
           cp -a docs/online-book/book/. website/learn/
 
-      - name: Add the versioned PDF edition
-        run: cp docs/book/YLang-Book.pdf website/YLang-Book.pdf
-
       - name: Assemble the deployed site
         run: |
           rm -rf site-dist
