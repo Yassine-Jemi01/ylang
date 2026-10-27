@@ -1,5 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <rect width="64" height="64" rx="15" fill="#12383a"/>
-  <path d="M16 17h10l6 12 6-12h10L36.5 39.5V48h-9v-8.5L16 17Z" fill="#8ad1c6"/>
-  <path d="M43 42h7v7h-7z" fill="#d58b58"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 384" role="img" aria-labelledby="title">
+  <title id="title">YLang</title>
+  <rect width="384" height="384" rx="82" fill="#1d3b56"/>
+  <path d="M92 92 192 192" fill="none" stroke="#83c4f0" stroke-width="34" stroke-linecap="round"/>
+  <path d="M292 92 192 192" fill="none" stroke="#ffd343" stroke-width="34" stroke-linecap="round"/>
+  <path d="M192 192v104" fill="none" stroke="#f7faff" stroke-width="34" stroke-linecap="round"/>
 </svg>
