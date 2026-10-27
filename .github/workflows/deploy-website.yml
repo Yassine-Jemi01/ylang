@@ -43,7 +43,7 @@ jobs:
       - name: Build React homepage
         working-directory: website-app
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm run build
 
       - name: Set up mdBook
