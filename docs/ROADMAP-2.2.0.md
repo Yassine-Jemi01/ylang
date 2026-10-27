@@ -17,7 +17,7 @@ Acceptance goals:
 - Add tests for successful completion, failures, timeouts, cancellation, and repeated use.
 - Preserve existing synchronous programs and the default build path.
 
-Syntax such as `async` and `await` is illustrative until design and implementation are accepted.
+A first async I/O slice now exists on this development branch: `http.request_async(...)` returns an `http_task`, `await task` consumes it to return the response body, and `http.cancel(task)` requests cancellation. It uses libcurl's multi interface so queued transfers progress concurrently while a task is awaited. General-purpose async functions, a background scheduler, and GUI/event-loop integration remain unimplemented; the broader acceptance goal is only partially complete.
 
 ### 2. HTTP and API requests
 
@@ -101,4 +101,4 @@ Do not label 2.2.0 stable until:
 - VS Code packaging and Marketplace instructions are verified.
 - Website links, assets, and installation guidance are checked.
 
-The feature list and order may change based on implementation findings. Do not describe a future feature as implemented until its acceptance checks pass.
+The feature list and order may change based on implementation findings. The HTTP task API is only the first async slice; do not mark broader asynchronous programming complete until general async functions, cancellation/error behavior, and event-loop integration have been separately designed and tested. Do not describe a future feature as implemented until its acceptance checks pass.

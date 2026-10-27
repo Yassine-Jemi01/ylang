@@ -2,15 +2,19 @@ function main() -> int {
     let string port = io.read_line();
     let string base = string.concat("http://127.0.0.1:", port);
 
-    let owned_string hello = http.get(string.concat(base, "/hello"));
+    let http_task hello_task = http.request_async(
+        "GET", string.concat(base, "/hello"), "", ""
+    );
+    let http_task auth_task = http.request_async(
+        "GET", string.concat(base, "/auth"), "",
+        string.concat("Authorization: Bearer ", env.get("YLANG_TEST_API_KEY"))
+    );
+    let owned_string hello = await hello_task;
     print(hello);
     print(http.status());
     print(string.contains(http.response_headers(), "Content-Type: text/plain; charset=utf-8"));
 
-    let owned_string auth = http.get_with_headers(
-        string.concat(base, "/auth"),
-        string.concat("Authorization: Bearer ", env.get("YLANG_TEST_API_KEY"))
-    );
+    let owned_string auth = await auth_task;
     print(auth);
     print(http.status());
 
@@ -42,6 +46,11 @@ function main() -> int {
     print(missing);
     print(http.status());
     print(http.last_error());
+
+    let http_task cancelled = http.request_async(
+        "GET", string.concat(base, "/slow"), "", ""
+    );
+    print(http.cancel(cancelled));
 
     let owned_string rejected = http.get_with_headers(
         string.concat(base, "/hello"),

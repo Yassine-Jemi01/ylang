@@ -214,11 +214,11 @@
       "name": "constant.language.boolean.ylang"
     },
     "keywords": {
-      "match": "\\b(?:function|return|let|const|if|else|loop|while|for|break|continue|and|or|not|struct|enum|match|from|import)\\b",
+      "match": "\\b(?:function|return|let|const|if|else|loop|while|for|break|continue|and|or|not|await|struct|enum|match|from|import)\\b",
       "name": "keyword.control.ylang"
     },
     "types": {
-      "match": "\\b(?:int|float|bool|char|string|void)\\b",
+      "match": "\\b(?:int|float|bool|char|string|void|http_task)\\b",
       "name": "storage.type.ylang"
     },
     "builtin-functions": {

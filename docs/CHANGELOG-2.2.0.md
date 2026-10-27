@@ -4,18 +4,19 @@
 
 ## Included in this development branch
 
-- Adds the experimental synchronous HTTP API via optional libcurl: GET/POST wrappers and the generic `http.request(method, url, body, headers)` for GET, POST, PUT, PATCH, DELETE, and HEAD.
+- Adds the experimental HTTP API via optional libcurl: synchronous wrappers and generic `http.request(method, url, body, headers)` for GET, POST, PUT, PATCH, DELETE, and HEAD.
+- Adds the first async I/O slice: `http.request_async(...)` returns a distinct `http_task`, `await task` consumes the task to return its response body, and `http.cancel(task)` cancels pending request state. Multiple transfers progress concurrently through libcurl multi while awaiting one.
 - Adds `http.status()`, `http.response_headers()`, and `http.last_error()` for the most recent request.
 - Adds `env.get(name)` so API credentials can be read from process environment variables without invoking a shell.
 - Enforces request-method validation, HTTP header validation, a 16 KiB header limit, an 8 MiB response body limit, connect/overall timeouts, five-redirect maximum, HTTPS certificate/hostname verification, and HTTP/HTTPS-only redirects.
 - Adds a source-aware experimental `ylang debug` command using `-O0`, debug symbols, and GDB on Linux or LLDB on macOS; generated C uses `#line` directives to map statements to original `.yl` locations.
-- Adds integration coverage using an in-process loopback HTTP server, source-map checks, debugger launch checks, and unsupported-Windows-debugger checks.
+- Adds integration coverage using an in-process loopback HTTP server, concurrent asynchronous requests, task cancellation, source-map checks, debugger launch checks, and unsupported-Windows-debugger checks.
 - Updates VS Code and Neovim syntax highlighting for the `http` and `env` namespaces.
 - Aligns the React homepage mark with the official documentation logo, adds direct links to the experimental HTTP/debugger reference pages, and preserves the previous static homepage as `classic.html` in the Pages deployment artifact.
 
 ## Compatibility and limitations
 
-- HTTP requests are synchronous; async/await, cancellation, and event-loop integration are not implemented in this candidate.
+- Async/await currently applies only to HTTP task handles; general-purpose async functions, a background scheduler, and GUI/event-loop integration are not implemented.
 - The HTTP API returns response bodies as strings. A JSON parser/serializer is not included; programs must currently construct/inspect JSON text themselves.
 - HTTP support requires libcurl development files and `pkg-config` only when a program using `http.*` is linked. Ordinary programs do not need libcurl.
 - The generic method names are case-sensitive and accept uppercase `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, and `HEAD` only.

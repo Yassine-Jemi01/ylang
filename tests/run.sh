@@ -75,6 +75,12 @@ if [ -f build/debug-launch.out ]; then
     grep -Fq "Build succeeded: build/debug-launch-test" build/debug-launch.out
 fi
 
+if ./build/ylang check tests/await-type-error.yl > build/await-type-error.out 2>&1; then
+    echo "FAIL: await accepted an integer instead of an http_task" >&2
+    exit 1
+fi
+grep -q 'E2123' build/await-type-error.out
+
 # HTTP integration runs its loopback server in-process to avoid background process leakage.
 python3 tests/run_http_integration.py
 if ./build/ylang > build/no-args.out 2>&1; then

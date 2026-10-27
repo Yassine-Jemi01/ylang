@@ -12,6 +12,8 @@ vim.api.nvim_buf_set_lines(0, 0, -1, false, {
   "    match (direction) { Direction.North -> { break; } }",
   '    print(http.get("https://api.example.test"));',
   '    print(env.get("API_TOKEN"));',
+  "    await task;",
+  "    let http_task pending = task;",
   "    return 0;",
   "}",
 })
@@ -36,5 +38,7 @@ assert(group_at(8, "match") == "ylangDeclaration", "match should be highlighted"
 assert(group_at(8, "North") == "ylangMember", "qualified enum members should be highlighted")
 assert(group_at(9, "http") == "ylangNamespace", "HTTP namespace should be highlighted")
 assert(group_at(10, "env") == "ylangNamespace", "environment namespace should be highlighted")
+assert(group_at(11, "await") == "ylangKeyword", "await should be highlighted as a keyword")
+assert(group_at(12, "http_task") == "ylangType", "HTTP task handles should be highlighted as a type")
 print("YLang Neovim syntax tests passed")
 vim.cmd("qa!")
