@@ -1,0 +1,11 @@
+id = "ylang"
+name = "YLang"
+version = "0.1.0"
+schema_version = 1
+authors = ["Yassine Jemi"]
+description = "Syntax highlighting and language configuration for YLang source files."
+repository = "https://github.com/Yassine-Jemi01/ylang"
+
+[grammars.ylang]
+repository = "https://github.com/Yassine-Jemi01/ylang"
+rev = "239c1bc892a9db1df6e85caef1f8b4d09618a7a7"

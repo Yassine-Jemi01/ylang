@@ -21,6 +21,7 @@
 
 - [GUI and Game2D](gui-game2d.md)
 - [Platform Support](platform-support.md)
+- [Editor Support](editor-support.md)
 
 # Part IV — Language Reference
 
