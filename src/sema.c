@@ -311,6 +311,7 @@ static const StringBuiltin string_builtins[] = {
     {"path.basename", 1, TYPE_STRING},
     {"path.extension", 1, TYPE_STRING},
     {"image.open", 1, TYPE_BOOL},
+    {"env.get", 1, TYPE_STRING},
     {"http.get", 1, TYPE_OWNED_STRING},
     {"http.get_with_headers", 2, TYPE_OWNED_STRING},
     {"http.post", 2, TYPE_OWNED_STRING},
