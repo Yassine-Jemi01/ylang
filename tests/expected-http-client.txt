@@ -1,0 +1,14 @@
+hello
+200
+authorized
+200
+{"ok":true}
+200
+custom|{"source":"ylang"}
+200
+not-found
+404
+
+
+0
+true
