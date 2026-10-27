@@ -12,8 +12,9 @@
 - Adds a source-aware experimental `ylang debug` command using `-O0`, debug symbols, and GDB on Linux or LLDB on macOS; generated C uses `#line` directives to map statements to original `.yl` locations.
 - Adds integration coverage using an in-process loopback HTTP server, concurrent asynchronous requests, cancellation and consumed-handle checks, redirect protection, source-map checks, debugger launch checks, and unsupported-Windows-debugger checks.
 - Adds a repeatable native-backend benchmark for compile latency, executable latency, and binary size without pretending to establish a universal speed threshold. Adds dedicated security-defaults and performance-measurement guides.
-- Updates VS Code and Neovim syntax highlighting for the `http` and `env` namespaces.
-- Aligns the React homepage mark with the official documentation logo, adds direct links to the experimental HTTP/debugger reference pages, and preserves the previous static homepage as `classic.html` in the Pages deployment artifact.
+- Updates VS Code and Neovim syntax highlighting for the `http` and `env` namespaces. The VS Code extension version is 0.6.0, includes the terminal debug command, and can be packaged as a local `.vsix` for acceptance testing. Marketplace publication is not included in this development change.
+- Adds `tools/test-2.2-candidate.sh` and `docs/ACCEPTANCE-2.2.0.md` so the compiler, HTTP/async integration, debugger path, sanitizer, benchmark, editors, generated book, and refreshed homepage can be checked in one local run.
+- Integrates the supplied website refresh: the React homepage and official logo are aligned with the documentation theme, the book/reference pages use matching dark-teal/rust styling and navigation, and the previous static homepage is preserved as `classic.html` in the Pages deployment artifact.
 
 ## Compatibility and limitations
 
