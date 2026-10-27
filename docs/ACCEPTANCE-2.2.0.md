@@ -8,7 +8,7 @@ The repository's GitHub Actions matrix tests GCC, Clang, macOS, Windows native s
 bash tools/test-2.2-candidate.sh
 ```
 
-It checks the normal compiler/regression suite, the HTTP/async integration fixture, the source-aware debugger path, a repeatable benchmark with known output, ASan/UBSan, VS Code tests, Neovim tests when installed, the mdBook output and link integrity, and the React homepage build. It requires GCC or Clang, Make, Python 3, pkg-config plus libcurl development files, GDB or LLDB, Node.js 22+, npm, and mdBook 0.5.4.
+It checks the normal compiler/regression suite, the HTTP/async integration fixture, the source-aware debugger path, a repeatable benchmark with known output, ASan/UBSan, VS Code tests and a packaged `.vsix`, Neovim tests when installed, the mdBook output and link integrity, and the React homepage build. The extension package is written under `build/acceptance/`. It requires GCC or Clang, Make, Python 3, pkg-config plus libcurl development files, GDB or LLDB, Node.js 22+, npm, and mdBook 0.5.4.
 
 On Fedora, install the common build dependencies with:
 
@@ -29,7 +29,7 @@ cd ../ylang-2.2-acceptance
 bash tools/test-2.2-candidate.sh
 ```
 
-For Clang, run the same script with `NATIVE_CC=clang`. If it fails, keep the full output and report the first failing step rather than publishing the candidate.
+For Clang, run the same script with `NATIVE_CC=clang`. After it passes, install the extension package in VSCodium with `codium --install-extension build/acceptance/ylang-language-support-0.6.0.vsix` (or use `code --install-extension ...` in VS Code), then reload the window and open the sample file. If the script fails, keep the full output and report the first failing step rather than publishing the candidate.
 
 Passing CI is necessary but not enough. The project owner should also try the actual public-facing workflow once: run a small `.yl` program that starts two HTTP tasks, awaits them, checks the response/status, then launch `ylang debug` and set a source-line breakpoint. This final hands-on check must use the exact commit proposed for release.
 
