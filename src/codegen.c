@@ -1273,11 +1273,11 @@ static void emit_source_line_directive(Compiler *compiler, FILE *out, Token toke
     fprintf(out, "#line %zu \"", token.line);
     for (const unsigned char *p = (const unsigned char *)path; *p; p++) {
         switch (*p) {
-            case '\\\\': fputs("\\\\\\\\", out); break;
-            case '"': fputs("\\\\\"", out); break;
-            case '\\n': fputs("\\\\n", out); break;
-            case '\\r': fputs("\\\\r", out); break;
-            case '\\t': fputs("\\\\t", out); break;
+            case '\\': fputs("\\\\", out); break;
+            case '"': fputs("\\\"", out); break;
+            case '\n': fputs("\\n", out); break;
+            case '\r': fputs("\\r", out); break;
+            case '\t': fputs("\\t", out); break;
             default: fputc((int)*p, out); break;
         }
     }
