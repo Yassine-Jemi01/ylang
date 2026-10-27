@@ -3,11 +3,8 @@ hello
 true
 authorized
 200
-hello
+redirect-target-reached
 200
-
-302
-true
 
 302
 true
@@ -20,6 +17,9 @@ custom|{"source":"ylang"}
 not-found
 404
 
+
+302
+true
 true
 
 0
