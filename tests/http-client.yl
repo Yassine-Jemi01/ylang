@@ -18,6 +18,17 @@ function main() -> int {
     print(auth);
     print(http.status());
 
+    let owned_string redirected = http.get(string.concat(base, "/redirect"));
+    print(redirected);
+    print(http.status());
+
+    let owned_string guarded_redirect = http.get_with_headers(
+        string.concat(base, "/redirect"), "X-Secret: must-not-follow"
+    );
+    print(guarded_redirect);
+    print(http.status());
+    print(string.contains(http.response_headers(), "Location: /redirect-target"));
+
     let owned_string posted = http.post(
         string.concat(base, "/echo"),
         "{\"ok\":true}"
@@ -46,6 +57,14 @@ function main() -> int {
     print(missing);
     print(http.status());
     print(http.last_error());
+
+    let http_task protected_redirect_task = http.request_async(
+        "GET", string.concat(base, "/redirect"), "", "X-Secret: must-not-follow"
+    );
+    let owned_string protected_redirect_body = await protected_redirect_task;
+    print(protected_redirect_body);
+    print(http.status());
+    print(string.contains(http.response_headers(), "Location: /redirect-target"));
 
     let http_task cancelled = http.request_async(
         "GET", string.concat(base, "/slow"), "", ""

@@ -24,7 +24,19 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Connection", "close")
 
     def do_GET(self):
-        if self.path == "/hello":
+        if self.path == "/redirect":
+            self.send_response(302)
+            self.send_header("Location", "/redirect-target")
+            self.send_header("Content-Length", "0")
+            self.send_connection_close()
+            self.end_headers()
+        elif self.path == "/redirect-target":
+            self.send_bytes(200, "redirect-target-reached")
+        elif self.path == "/slow":
+            import time
+            time.sleep(0.2)
+            self.send_bytes(200, "slow-response")
+        elif self.path == "/hello":
             self.send_bytes(200, "hello")
         elif self.path == "/auth":
             if self.headers.get("Authorization") == "Bearer test-token":

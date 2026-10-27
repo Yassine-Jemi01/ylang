@@ -3,6 +3,14 @@ hello
 true
 authorized
 200
+hello
+200
+
+302
+true
+
+302
+true
 {"ok":true}
 200
 {"method":"put"}
