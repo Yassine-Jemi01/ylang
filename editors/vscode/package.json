@@ -8,7 +8,7 @@
     "directory": "editors/vscode"
   },
   "scripts": {
-    "test": "node test/diagnostics.test.js && node test/syntax.test.js"
+    "test": "node test/diagnostics.test.js && node test/syntax.test.js && node test/metadata.test.js"
   },
   "version": "0.6.0",
   "publisher": "yassine-jemi01",
