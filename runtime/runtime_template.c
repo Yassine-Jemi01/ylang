@@ -137,6 +137,9 @@ typedef struct { char *data; size_t length; size_t capacity; bool too_large; } Y
 static char yl_http_error[256];
 static int64_t yl_http_last_status_code;
 static bool yl_http_initialized;
+static char yl_http_response_header_text[YL_HTTP_MAX_HEADERS + 1U];
+static size_t yl_http_response_header_length;
+static bool yl_http_response_headers_too_large;
 static void yl_http_set_error(const char *message) {
     if (!message) message = "unknown HTTP error";
     (void)snprintf(yl_http_error, sizeof(yl_http_error), "%s", message);
@@ -167,6 +170,31 @@ static size_t yl_http_write(char *data, size_t size, size_t count, void *userdat
     buffer->length += bytes; buffer->data[buffer->length] = '\0';
     return bytes;
 }
+static size_t yl_http_header_write(char *data, size_t size, size_t count, void *userdata) {
+    (void)userdata;
+    if (size && count > SIZE_MAX / size) return 0U;
+    size_t bytes = size * count;
+    /* A redirect or interim status starts a fresh response-header block. */
+    if (bytes >= 5U && memcmp(data, "HTTP/", 5U) == 0) {
+        yl_http_response_header_length = 0U;
+        yl_http_response_header_text[0] = '\0';
+        yl_http_response_headers_too_large = false;
+        return bytes;
+    }
+    size_t length = bytes;
+    while (length > 0U && (data[length - 1U] == '\n' || data[length - 1U] == '\r')) length--;
+    if (length == 0U) return bytes;
+    if (length > YL_HTTP_MAX_HEADERS - yl_http_response_header_length - 1U) {
+        yl_http_response_headers_too_large = true;
+        return 0U;
+    }
+    memcpy(yl_http_response_header_text + yl_http_response_header_length, data, length);
+    yl_http_response_header_length += length;
+    yl_http_response_header_text[yl_http_response_header_length++] = '\n';
+    yl_http_response_header_text[yl_http_response_header_length] = '\0';
+    return bytes;
+}
+
 static bool yl_http_header_name_ok(const char *name, size_t length) {
     if (!length) return false;
     for (size_t i = 0; i < length; i++) {
@@ -220,6 +248,17 @@ static const char *yl_http_empty(void) {
 }
 static const char *yl_http_request(const char *method, const char *url, const char *body, const char *raw_headers) {
     yl_http_error[0] = '\0'; yl_http_last_status_code = 0;
+    yl_http_response_header_length = 0U;
+    yl_http_response_header_text[0] = '\0';
+    yl_http_response_headers_too_large = false;
+    bool supported_method = method &&
+        (strcmp(method, "GET") == 0 || strcmp(method, "POST") == 0 ||
+         strcmp(method, "PUT") == 0 || strcmp(method, "PATCH") == 0 ||
+         strcmp(method, "DELETE") == 0 || strcmp(method, "HEAD") == 0);
+    if (!supported_method) {
+        yl_http_set_error("Unsupported HTTP method; use GET, POST, PUT, PATCH, DELETE, or HEAD");
+        return yl_http_empty();
+    }
     if (!url || (strncmp(url, "http://", 7U) != 0 && strncmp(url, "https://", 8U) != 0)) {
         yl_http_set_error("URL must begin with http:// or https://"); return yl_http_empty();
     }
@@ -239,6 +278,8 @@ static const char *yl_http_request(const char *method, const char *url, const ch
     YL_HTTP_OPTION(CURLOPT_ERRORBUFFER, error_buffer);
     YL_HTTP_OPTION(CURLOPT_WRITEFUNCTION, yl_http_write);
     YL_HTTP_OPTION(CURLOPT_WRITEDATA, &response);
+    YL_HTTP_OPTION(CURLOPT_HEADERFUNCTION, yl_http_header_write);
+    YL_HTTP_OPTION(CURLOPT_HEADERDATA, NULL);
     YL_HTTP_OPTION(CURLOPT_NOSIGNAL, 1L);
     YL_HTTP_OPTION(CURLOPT_CONNECTTIMEOUT_MS, 5000L);
     YL_HTTP_OPTION(CURLOPT_TIMEOUT_MS, 15000L);
@@ -250,16 +291,26 @@ static const char *yl_http_request(const char *method, const char *url, const ch
     YL_HTTP_OPTION(CURLOPT_REDIR_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
     YL_HTTP_OPTION(CURLOPT_USERAGENT, "YLang/2.2");
     if (headers) YL_HTTP_OPTION(CURLOPT_HTTPHEADER, headers);
-    if (strcmp(method, "POST") == 0) {
+    if (strcmp(method, "GET") == 0) {
+        YL_HTTP_OPTION(CURLOPT_HTTPGET, 1L);
+    } else if (strcmp(method, "HEAD") == 0) {
+        YL_HTTP_OPTION(CURLOPT_CUSTOMREQUEST, "HEAD");
+        YL_HTTP_OPTION(CURLOPT_NOBODY, 1L);
+    } else if (strcmp(method, "POST") == 0) {
         YL_HTTP_OPTION(CURLOPT_POST, 1L);
         YL_HTTP_OPTION(CURLOPT_POSTFIELDS, body ? body : "");
         YL_HTTP_OPTION(CURLOPT_POSTFIELDSIZE, (long)(body ? strlen(body) : 0U));
-    } else { YL_HTTP_OPTION(CURLOPT_HTTPGET, 1L); }
+    } else {
+        YL_HTTP_OPTION(CURLOPT_CUSTOMREQUEST, method);
+        YL_HTTP_OPTION(CURLOPT_POSTFIELDS, body ? body : "");
+        YL_HTTP_OPTION(CURLOPT_POSTFIELDSIZE, (long)(body ? strlen(body) : 0U));
+    }
 #undef YL_HTTP_OPTION
     if (code == CURLE_OK) code = curl_easy_perform(curl);
     (void)curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &yl_http_last_status_code);
     if (code != CURLE_OK) {
-        if (response.too_large) yl_http_set_error("HTTP response exceeded the 8 MiB limit");
+        if (yl_http_response_headers_too_large) yl_http_set_error("HTTP response headers exceeded the 16 KiB limit");
+        else if (response.too_large) yl_http_set_error("HTTP response exceeded the 8 MiB limit");
         else if (error_buffer[0]) yl_http_set_error(error_buffer);
         else yl_http_set_error(curl_easy_strerror(code));
         free(response.data); response.data = NULL; response.length = 0U;
@@ -273,6 +324,7 @@ static const char *yl_http_get_with_headers(const char *url, const char *headers
 static const char *yl_http_post(const char *url, const char *body) { return yl_http_request("POST", url, body, "Content-Type: application/json"); }
 static const char *yl_http_post_with_headers(const char *url, const char *body, const char *headers) { return yl_http_request("POST", url, body, headers); }
 static int64_t yl_http_status(void) { return yl_http_last_status_code; }
+static const char *yl_http_response_headers(void) { return yl_http_response_header_text; }
 static const char *yl_http_last_error(void) { return yl_http_error; }
 #endif
 
