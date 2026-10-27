@@ -7,5 +7,16 @@
       "path": ".",
       "file-types": ["yl"]
     }
-  ]
+  ],
+  "metadata": {
+    "version": "2.2.0",
+    "license": "MIT",
+    "description": "Tree-sitter grammar for the YLang programming language",
+    "authors": [
+      { "name": "Yassine Jemi", "email": "absitabsi886@gmail.com" }
+    ],
+    "links": {
+      "repository": "https://github.com/Yassine-Jemi01/ylang"
+    }
+  }
 }
