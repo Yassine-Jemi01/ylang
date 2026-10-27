@@ -15,6 +15,7 @@
 - [Types and Explicit Conversions](types.md)
 - [Functions and Modules](modules.md)
 - [The Standard Library](standard-library.md)
+- [HTTP and API Requests](reference/HTTP.md)
 
 # Part III — Build Real Things
 
@@ -34,6 +35,9 @@
 
 - [Compiler Architecture](reference/architecture.md)
 - [Backend Roadmap](reference/BACKEND-ROADMAP.md)
+- [YLang Debugger](reference/DEBUGGER.md)
+- [YLang 2.2 Roadmap](reference/ROADMAP-2.2.0.md)
+- [Debugger Design](reference/DEBUGGER-SPEC.md)
 - [Option and Result Design](reference/OPTION-RESULT-DESIGN.md)
 - [YLang 2.0 Design Notes](reference/YLANG-2.0-DESIGN.md)
 
