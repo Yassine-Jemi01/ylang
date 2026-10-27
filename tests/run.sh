@@ -56,6 +56,17 @@ grep -Fq '#line 4 "tests/debug-source-map.yl"' build/debug-source-map.c
 ./build/ylang build tests/debug-source-map.yl -o build/test-debug-source-map >/dev/null
 [ "$(./build/test-debug-source-map)" = "42" ]
 
+# Launch the native debugger against a source-mapped debug build and exit cleanly.
+if command -v gdb >/dev/null 2>&1; then
+    printf 'quit\n' | ./build/ylang debug tests/debug-source-map.yl -o build/debug-launch-test > build/debug-launch.out 2>&1
+elif command -v lldb >/dev/null 2>&1; then
+    printf 'quit\n' | ./build/ylang debug tests/debug-source-map.yl -o build/debug-launch-test > build/debug-launch.out 2>&1
+else
+    echo "FAIL: install GDB or LLDB to run debugger integration tests" >&2
+    exit 1
+fi
+grep -Fq "Build succeeded: build/debug-launch-test" build/debug-launch.out
+
 # HTTP integration runs its loopback server in-process to avoid background process leakage.
 python3 tests/run_http_integration.py
 if ./build/ylang > build/no-args.out 2>&1; then
