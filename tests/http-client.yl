@@ -1,0 +1,44 @@
+function main() -> int {
+    let string port = io.read_line();
+    let string base = string.concat("http://127.0.0.1:", port);
+
+    let owned_string hello = http.get(string.concat(base, "/hello"));
+    print(hello);
+    print(http.status());
+
+    let owned_string auth = http.get_with_headers(
+        string.concat(base, "/auth"),
+        "Authorization: Bearer test-token"
+    );
+    print(auth);
+    print(http.status());
+
+    let owned_string posted = http.post(
+        string.concat(base, "/echo"),
+        "{\"ok\":true}"
+    );
+    print(posted);
+    print(http.status());
+
+    let owned_string custom = http.post_with_headers(
+        string.concat(base, "/custom"),
+        "{\"source\":\"ylang\"}",
+        "Content-Type: application/json\nX-Test: custom"
+    );
+    print(custom);
+    print(http.status());
+
+    let owned_string missing = http.get(string.concat(base, "/missing"));
+    print(missing);
+    print(http.status());
+    print(http.last_error());
+
+    let owned_string rejected = http.get_with_headers(
+        string.concat(base, "/hello"),
+        "Invalid Header: not-allowed"
+    );
+    print(rejected);
+    print(http.status());
+    print(string.length(http.last_error()) > 0);
+    return 0;
+}
