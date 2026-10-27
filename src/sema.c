@@ -316,7 +316,9 @@ static const StringBuiltin string_builtins[] = {
     {"http.get_with_headers", 2, TYPE_OWNED_STRING},
     {"http.post", 2, TYPE_OWNED_STRING},
     {"http.post_with_headers", 3, TYPE_OWNED_STRING},
+    {"http.request", 4, TYPE_OWNED_STRING},
     {"http.status", 0, TYPE_INT},
+    {"http.response_headers", 0, TYPE_STRING},
     {"http.last_error", 0, TYPE_STRING}
 };
 
