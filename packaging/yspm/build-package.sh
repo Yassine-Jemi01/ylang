@@ -47,6 +47,7 @@ for file in \
     CHANGELOG.md \
     "docs/CHANGELOG-${VERSION}.md" \
     docs/CHANGELOG-2.2.0.md \
+    docs/ACCEPTANCE-2.2.0.md \
     docs/CHANGELOG-2.1.0.md \
     docs/CHANGELOG-2.0.0.md \
     docs/CHANGELOG-2.0-BETA.md \
