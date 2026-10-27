@@ -14,14 +14,25 @@ function main() -> int {
 (source_file
   (function_declaration
     name: (identifier)
+    return_type: (primitive_type)
     (block
-      (variable_declaration type: (primitive_type) name: (identifier) (string))
-      (variable_declaration type: (primitive_type) name: (identifier) (integer))
+      (variable_declaration
+        type: (primitive_type)
+        name: (identifier)
+        (string))
+      (variable_declaration
+        type: (primitive_type)
+        name: (identifier)
+        (integer))
       (expression_statement
         (call_expression
           function: (identifier)
-          (argument_list (format_string (interpolation (identifier))))))
-      (return_statement (integer)))))
+          (argument_list
+            (format_string
+              (interpolation
+                (identifier))))))
+      (return_statement
+        (integer)))))
 
 ==================
 Struct and enum
@@ -41,9 +52,15 @@ enum State {
 (source_file
   (struct_declaration
     name: (type_identifier)
-    (field_declaration (primitive_type) (identifier))
-    (field_declaration (primitive_type) (identifier)))
+    (field_declaration
+      (primitive_type)
+      (identifier))
+    (field_declaration
+      (primitive_type)
+      (identifier)))
   (enum_declaration
     name: (type_identifier)
-    (enum_variant (identifier))
-    (enum_variant (identifier))))))
+    (enum_variant
+      (identifier))
+    (enum_variant
+      (identifier))))
