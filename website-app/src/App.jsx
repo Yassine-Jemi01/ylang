@@ -9,7 +9,6 @@ import {
   FiCode,
   FiCpu,
   FiCopy,
-  FiDownload,
   FiGithub,
   FiLayers,
   FiMonitor,
@@ -25,7 +24,6 @@ const REPO = 'https://github.com/Yassine-Jemi01/ylang';
 const SITE = 'https://yassine-jemi01.github.io/ylang/';
 const BOOK = `${SITE}learn/index.html`;
 const DOCS = `${SITE}docs.html`;
-const PDF = `${SITE}YLang-Book.pdf`;
 
 const installCommands = {
   fedora: 'sudo dnf install gcc make clang',
@@ -108,9 +106,6 @@ function Header() {
                 </DropdownMenu.Item>
                 <DropdownMenu.Item className="resource-menu-item" asChild>
                   <a href={DOCS}><FiLayers /> Reference & docs <FiArrowUpRight className="menu-external" /></a>
-                </DropdownMenu.Item>
-                <DropdownMenu.Item className="resource-menu-item" asChild>
-                  <a href={PDF}><FiDownload /> Book PDF <FiArrowUpRight className="menu-external" /></a>
                 </DropdownMenu.Item>
                 <DropdownMenu.Item className="resource-menu-item" asChild>
                   <a href={`${SITE}learn/reference/HTTP.html`}><FiCode /> HTTP & API requests <FiArrowUpRight className="menu-external" /></a>
