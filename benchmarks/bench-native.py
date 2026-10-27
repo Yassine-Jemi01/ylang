@@ -32,13 +32,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--cc", choices=("gcc", "clang"), default="gcc", help="native C compiler")
     parser.add_argument("--runs", type=int, default=10, help="measured repetitions (default: 10)")
     parser.add_argument("--warmup", type=int, default=2, help="warm-up repetitions (default: 2)")
-    parser.add_argument("--expected-output", help="optional exact stdout expected from the program")
+    parser.add_argument("--expected-output", help="exact stdout expected from the program, including newlines")
+    parser.add_argument("--expected-file", type=Path, help="file containing the exact expected stdout")
     parser.add_argument("--keep-dir", type=Path, help="optional directory to keep the final binary and generated build artifacts")
     args = parser.parse_args()
     if args.runs < 1:
         parser.error("--runs must be at least one")
     if args.warmup < 0:
         parser.error("--warmup must be zero or greater")
+    if args.expected_output is not None and args.expected_file is not None:
+        parser.error("use either --expected-output or --expected-file, not both")
     return args
 
 
@@ -82,6 +85,12 @@ def main() -> int:
         cleanup = True
 
     try:
+        expected_output = args.expected_output
+        if args.expected_file is not None:
+            expected_path = args.expected_file.resolve()
+            if not expected_path.is_file():
+                raise RuntimeError(f"expected-output file not found: {expected_path}")
+            expected_output = expected_path.read_text(encoding="utf-8")
         executable = work / ("bench.exe" if os.name == "nt" else "bench")
         compile_samples: list[int] = []
         run_samples: list[int] = []
@@ -92,10 +101,10 @@ def main() -> int:
             check_start = time.perf_counter_ns()
             result = run([str(executable)], cwd=source.parent)
             run_elapsed = time.perf_counter_ns() - check_start
-            if args.expected_output is not None and result.stdout != args.expected_output:
+            if expected_output is not None and result.stdout != expected_output:
                 raise RuntimeError(
                     f"output mismatch on iteration {iteration + 1}\n"
-                    f"expected: {args.expected_output!r}\nactual:   {result.stdout!r}"
+                    f"expected: {expected_output!r}\nactual:   {result.stdout!r}"
                 )
             if iteration >= args.warmup:
                 compile_samples.append(compile_elapsed)

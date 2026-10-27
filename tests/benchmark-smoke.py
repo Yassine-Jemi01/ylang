@@ -11,7 +11,7 @@ command = [
     str(ROOT / "benchmarks" / "native-loop.yl"),
     "--runs", "2",
     "--warmup", "1",
-    "--expected-output", "49995000\n",
+    "--expected-file", str(ROOT / "benchmarks" / "expected-native-loop.txt"),
 ]
 result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, timeout=90)
 if result.returncode != 0:
