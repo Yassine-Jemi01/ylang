@@ -242,6 +242,13 @@ static bool yl_http_headers(const char *raw, struct curl_slist **result) {
     }
     return true;
 }
+static bool yl_http_redirects_allowed(const struct curl_slist *headers) {
+    for (const struct curl_slist *item = headers; item; item = item->next) {
+        if (!item->data || strncmp(item->data, "Content-Type:", 13U) != 0) return false;
+    }
+    return true;
+}
+
 static const char *yl_http_empty(void) {
     char *value = malloc(1U); if (!value) yl_runtime_error("out of memory");
     value[0] = '\0'; return (const char *)yl_track(value, 1U);
@@ -283,7 +290,7 @@ static const char *yl_http_request(const char *method, const char *url, const ch
     YL_HTTP_OPTION(CURLOPT_NOSIGNAL, 1L);
     YL_HTTP_OPTION(CURLOPT_CONNECTTIMEOUT_MS, 5000L);
     YL_HTTP_OPTION(CURLOPT_TIMEOUT_MS, 15000L);
-    YL_HTTP_OPTION(CURLOPT_FOLLOWLOCATION, headers ? 0L : 1L);
+    YL_HTTP_OPTION(CURLOPT_FOLLOWLOCATION, yl_http_redirects_allowed(headers) ? 1L : 0L);
     YL_HTTP_OPTION(CURLOPT_MAXREDIRS, 5L);
     YL_HTTP_OPTION(CURLOPT_SSL_VERIFYPEER, 1L);
     YL_HTTP_OPTION(CURLOPT_SSL_VERIFYHOST, 2L);
@@ -473,7 +480,7 @@ static int64_t yl_http_request_async(const char *method, const char *url, const 
     YL_HTTP_TASK_OPTION(CURLOPT_NOSIGNAL, 1L);
     YL_HTTP_TASK_OPTION(CURLOPT_CONNECTTIMEOUT_MS, 5000L);
     YL_HTTP_TASK_OPTION(CURLOPT_TIMEOUT_MS, 15000L);
-    YL_HTTP_TASK_OPTION(CURLOPT_FOLLOWLOCATION, task->headers ? 0L : 1L);
+    YL_HTTP_TASK_OPTION(CURLOPT_FOLLOWLOCATION, yl_http_redirects_allowed(task->headers) ? 1L : 0L);
     YL_HTTP_TASK_OPTION(CURLOPT_MAXREDIRS, 5L);
     YL_HTTP_TASK_OPTION(CURLOPT_SSL_VERIFYPEER, 1L);
     YL_HTTP_TASK_OPTION(CURLOPT_SSL_VERIFYHOST, 2L);

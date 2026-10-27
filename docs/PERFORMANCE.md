@@ -6,13 +6,13 @@
 
 Build YLang first, then run the same workload on the same host and toolchain before and after a change:
 
-\`\`\`sh
-python3 benchmarks/bench-native.py benchmarks/native-loop.yl \\
-  --cc gcc --runs 30 --warmup 3 \\
+```sh
+python3 benchmarks/bench-native.py benchmarks/native-loop.yl \
+  --cc gcc --runs 30 --warmup 3 \
   --expected-file benchmarks/expected-native-loop.txt
-\`\`\`
+```
 
-Use \`--cc clang\` for the Clang path. The optional \`--compiler /path/to/ylang\` chooses the compiler executable. Add \`--keep-dir build/benchmark-artifacts\` to preserve the final generated executable for inspection.
+Use `--cc clang` for the Clang path. The optional `--compiler /path/to/ylang` chooses the compiler executable. Add `--keep-dir build/benchmark-artifacts` to preserve the final generated executable for inspection.
 
 The report shows the YLang version, host platform, selected native C compiler, compile-time median and P95, execution-time median and P95, and executable byte size. The expected-output check ensures that the benchmark is still measuring a program with known behavior rather than a broken output path.
 
@@ -27,4 +27,4 @@ The CI smoke test verifies that the harness executes and reports its metrics; it
 
 ## Suggested comparison record
 
-For performance-sensitive changes, keep the commit SHA, YLang version, operating system/architecture, native compiler version, \`YLANG_OPT_LEVEL\`, run count, warm-up count, median, P95, binary size, and expected program output together. Re-run several times if a result is close to the noise floor. Prefer stable improvements across repeated measurements over a single faster number.
+For performance-sensitive changes, keep the commit SHA, YLang version, operating system/architecture, native compiler version, `YLANG_OPT_LEVEL`, run count, warm-up count, median, P95, binary size, and expected program output together. Re-run several times if a result is close to the noise floor. Prefer stable improvements across repeated measurements over a single faster number.
