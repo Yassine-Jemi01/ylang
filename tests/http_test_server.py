@@ -36,9 +36,12 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.send_bytes(404, "unknown-path")
 
-    def do_POST(self):
+    def read_body(self):
         size = int(self.headers.get("Content-Length", "0"))
-        body = self.rfile.read(size).decode("utf-8")
+        return self.rfile.read(size).decode("utf-8")
+
+    def do_POST(self):
+        body = self.read_body()
         if self.path == "/echo":
             if self.headers.get("Content-Type") != "application/json":
                 self.send_bytes(415, "wrong-content-type")
@@ -46,6 +49,13 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_bytes(200, body, "application/json; charset=utf-8")
         elif self.path == "/custom":
             self.send_bytes(200, self.headers.get("X-Test", "") + "|" + body)
+        else:
+            self.send_bytes(404, "unknown-path")
+
+    def do_PUT(self):
+        body = self.read_body()
+        if self.path == "/echo" and self.headers.get("Content-Type") == "application/json":
+            self.send_bytes(200, body, "application/json; charset=utf-8")
         else:
             self.send_bytes(404, "unknown-path")
 
