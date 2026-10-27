@@ -619,6 +619,7 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "path.basename") == 0) return "yl_path_basename";
     if (strcmp(name, "path.extension") == 0) return "yl_path_extension";
     if (strcmp(name, "image.open") == 0) return "yl_image_open";
+    if (strcmp(name, "env.get") == 0) return "yl_env_get";
     if (strcmp(name, "http.get") == 0) return "yl_http_get";
     if (strcmp(name, "http.get_with_headers") == 0) return "yl_http_get_with_headers";
     if (strcmp(name, "http.post") == 0) return "yl_http_post";
