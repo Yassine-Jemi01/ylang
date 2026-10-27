@@ -45,5 +45,5 @@ enum State {
     (field_declaration (primitive_type) (identifier)))
   (enum_declaration
     name: (type_identifier)
-    (enum_variant)
-    (enum_variant)))
+    (enum_variant (identifier))
+    (enum_variant (identifier))))))

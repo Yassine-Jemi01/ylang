@@ -50,7 +50,7 @@ module.exports = grammar({
       "enum", field("name", $.type_identifier), "{",
       commaSep1($.enum_variant), optional(","), "}"
     ),
-    enum_variant: $ => /[A-Za-z_][A-Za-z0-9_]*/,
+    enum_variant: $ => $.identifier,
     variable_declaration: $ => seq(
       "let", optional("const"), field("type", $._type),
       field("name", $.identifier), optional("[]"),
