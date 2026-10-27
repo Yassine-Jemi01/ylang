@@ -18,7 +18,11 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(payload)))
         self.send_connection_close()
         self.end_headers()
-        self.wfile.write(payload)
+        try:
+            self.wfile.write(payload)
+        except (BrokenPipeError, ConnectionResetError):
+            # A client may cancel an in-flight request after receiving its task result.
+            pass
 
     def send_connection_close(self):
         self.send_header("Connection", "close")

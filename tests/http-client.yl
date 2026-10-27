@@ -2,6 +2,9 @@ function main() -> int {
     let string port = io.read_line();
     let string base = string.concat("http://127.0.0.1:", port);
 
+    let http_task cancel_after_pump = http.request_async(
+        "GET", string.concat(base, "/slow"), "", ""
+    );
     let http_task hello_task = http.request_async(
         "GET", string.concat(base, "/hello"), "", ""
     );
@@ -13,6 +16,7 @@ function main() -> int {
     print(hello);
     print(http.status());
     print(string.contains(http.response_headers(), "Content-Type: text/plain; charset=utf-8"));
+    print(http.cancel(cancel_after_pump));
 
     let owned_string auth = await auth_task;
     print(auth);
