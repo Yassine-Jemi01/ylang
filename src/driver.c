@@ -496,6 +496,12 @@ static int run_external(char *const argv[])
 int ylang_run(const char *command, const char *input_path,
               const char *output_path, const char *cc)
 {
+#ifdef _WIN32
+    if (strcmp(command, "debug") == 0) {
+        fputs("ylang: interactive debugging is not implemented on Windows yet. The native debug command currently supports GDB on Linux and LLDB on macOS.\n", stderr);
+        return 64;
+    }
+#endif
     size_t source_length = 0;
     char *source = read_source_file(input_path, &source_length);
     if (!source) {
