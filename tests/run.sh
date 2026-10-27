@@ -56,6 +56,13 @@ grep -Fq '#line 4 "tests/debug-source-map.yl"' build/debug-source-map.c
 ./build/ylang build tests/debug-source-map.yl -o build/test-debug-source-map >/dev/null
 [ "$(./build/test-debug-source-map)" = "42" ]
 
+# Imported modules retain their original source path, including paths with spaces.
+./build/ylang check tests/debug-source-map-import.yl >/dev/null
+./build/ylang emit-c tests/debug-source-map-import.yl -o build/debug-source-map-import.c >/dev/null
+grep -E -q '#line 2 ".*debug map lib[.]yl"' build/debug-source-map-import.c
+./build/ylang build tests/debug-source-map-import.yl -o build/test-debug-source-map-import >/dev/null
+[ "$(./build/test-debug-source-map-import)" = "42" ]
+
 # Launch the native debugger against a source-mapped debug build and exit cleanly.
 if command -v gdb >/dev/null 2>&1; then
     printf 'quit\n' | ./build/ylang debug tests/debug-source-map.yl -o build/debug-launch-test > build/debug-launch.out 2>&1
