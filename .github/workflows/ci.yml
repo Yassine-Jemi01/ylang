@@ -225,6 +225,18 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y neovim
       - name: Test VS Code diagnostic parser
         run: npm test --prefix editors/vscode
+      - name: Package the installable VS Code extension
+        working-directory: editors/vscode
+        run: |
+          mkdir -p ../../artifacts
+          npx --yes @vscode/vsce package --out ../../artifacts/ylang-language-support-0.6.0.vsix
+      - name: Upload VS Code extension for one-round acceptance testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: ylang-vscode-extension-0.6.0
+          path: artifacts/ylang-language-support-0.6.0.vsix
+          if-no-files-found: error
+          retention-days: 7
       - name: Test Neovim diagnostic parser
         run: nvim --headless -u NONE +'luafile editors/nvim/tests/diagnostics.lua'
       - name: Test Neovim syntax highlighting
