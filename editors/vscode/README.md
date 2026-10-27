@@ -1,7 +1,5 @@
 # YLang Language Support for VS Code
 
-<p align="center"><img src="icons/ylang-light.svg" alt="YLang official mark" width="96"></p>
-
 This extension registers the `.yl` file extension as YLang and provides syntax highlighting, compiler diagnostics, a language icon, and Code Runner integration.
 
 ## Included

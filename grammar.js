@@ -6,7 +6,7 @@ module.exports = grammar({
   word: $ => $.identifier,
 
   conflicts: $ => [
-    [$.type, $.identifier],
+    [$._type, $.identifier],
     [$.call_expression, $.struct_initializer],
     [$.array_type, $.array_expression],
   ],
@@ -36,23 +36,23 @@ module.exports = grammar({
     function_declaration: $ => seq(
       "function", field("name", $.identifier),
       "(", optional($.parameter_list), ")",
-      optional(seq("->", field("return_type", $.type))),
+      optional(seq("->", field("return_type", $._type))),
       $.block
     ),
     parameter_list: $ => commaSep1($.parameter),
-    parameter: $ => seq(field("type", $.type), field("name", $.identifier)),
+    parameter: $ => seq(field("type", $._type), field("name", $.identifier)),
     struct_declaration: $ => seq(
-      "struct", field("name", $.type_identifier), "{",
+      "struct", field("name", $._type_identifier), "{",
       repeat($.field_declaration), "}"
     ),
-    field_declaration: $ => seq($.type, $.identifier, optional("[]"), ";"),
+    field_declaration: $ => seq($._type, $.identifier, optional("[]"), ";"),
     enum_declaration: $ => seq(
-      "enum", field("name", $.type_identifier), "{",
+      "enum", field("name", $._type_identifier), "{",
       commaSep1($.enum_variant), optional(","), "}"
     ),
-    enum_variant: $ => $.identifier,
+    enum_variant: $ => alias($.identifier, $.enum_variant),
     variable_declaration: $ => seq(
-      "let", optional("const"), field("type", $.type),
+      "let", optional("const"), field("type", $._type),
       field("name", $.identifier), optional("[]"),
       optional(seq("=", $._expression)), ";"
     ),
@@ -79,14 +79,14 @@ module.exports = grammar({
     block: $ => seq("{", repeat($._statement), "}"),
     expression_statement: $ => seq($._expression, ";"),
 
-    type: $ => choice(
-      $.primitive_type, $.type_identifier,
+    _type: $ => choice(
+      $.primitive_type, $._type_identifier,
       $.array_type, $.qualified_type
     ),
     primitive_type: $ => choice("int", "float", "bool", "char", "string", "void", "http_task"),
     type_identifier: $ => /[A-Z][A-Za-z0-9_]*/,
-    qualified_type: $ => seq($.type_identifier, ".", $.type_identifier),
-    array_type: $ => seq(choice($.primitive_type, $.type_identifier), "[]"),
+    qualified_type: $ => seq($._type_identifier, ".", $._type_identifier),
+    array_type: $ => seq(choice($.primitive_type, $._type_identifier), "[]"),
 
     _expression: $ => choice(
       $.assignment_expression,
@@ -140,7 +140,7 @@ module.exports = grammar({
     member_expression: $ => prec.left(10, seq($._expression, ".", $.identifier)),
     qualified_identifier: $ => prec(11, seq($.identifier, ".", $.identifier)),
     index_expression: $ => prec.left(10, seq($._expression, "[", $._expression, "]")),
-    struct_initializer: $ => prec(2, seq($.type_identifier, "(", optional($.argument_list), ")")),
+    struct_initializer: $ => prec(2, seq($._type_identifier, "(", optional($.argument_list), ")")),
     array_expression: $ => seq("[", optional(commaSep1($._expression)), "]"),
     parenthesized_expression: $ => seq("(", $._expression, ")"),
     integer: $ => /(?:0[xX][0-9a-fA-F]+|[0-9]+)/,
