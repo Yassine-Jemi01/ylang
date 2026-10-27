@@ -33,6 +33,7 @@ static const char *c_base_type(Compiler *compiler, YType type)
         case TYPE_STRING:
         case TYPE_BORROWED_STRING:
         case TYPE_OWNED_STRING: return "const char *";
+        case TYPE_HTTP_TASK: return "int64_t";
         case TYPE_VOID: return "void";
         case TYPE_ERROR: return "int";
         default: return "int64_t";
@@ -86,6 +87,7 @@ static const char *format_for_type(YType type)
         case TYPE_STRING:
         case TYPE_BORROWED_STRING:
         case TYPE_OWNED_STRING: return "%s";
+        case TYPE_HTTP_TASK: return "%lld";
         case TYPE_VOID: case TYPE_ERROR: return "%s";
     }
     return "%s";
@@ -625,6 +627,8 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "http.post") == 0) return "yl_http_post";
     if (strcmp(name, "http.post_with_headers") == 0) return "yl_http_post_with_headers";
     if (strcmp(name, "http.request") == 0) return "yl_http_request";
+    if (strcmp(name, "http.request_async") == 0) return "yl_http_request_async";
+    if (strcmp(name, "http.cancel") == 0) return "yl_http_cancel";
     if (strcmp(name, "http.status") == 0) return "yl_http_status";
     if (strcmp(name, "http.response_headers") == 0) return "yl_http_response_headers";
     if (strcmp(name, "http.last_error") == 0) return "yl_http_last_error";
@@ -926,7 +930,11 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
         }
         case EXPR_UNARY: {
             TokenType op = expr->as.unary.op.type;
-            if (expr->is_min_int) {
+            if (op == TOKEN_AWAIT) {
+                sb_append(sb, "yl_http_await((int64_t)(");
+                emit_expr(sb, expr->as.unary.right);
+                sb_append(sb, "))");
+            } else if (expr->is_min_int) {
                 sb_append(sb, "INT64_MIN");
             } else if (op == TOKEN_MINUS && expr->type == TYPE_INT) {
                 sb_append(sb, "yl_neg_i64("); emit_expr(sb, expr->as.unary.right); sb_append(sb, ")");

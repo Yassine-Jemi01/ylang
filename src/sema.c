@@ -317,6 +317,7 @@ static const StringBuiltin string_builtins[] = {
     {"http.post", 2, TYPE_OWNED_STRING},
     {"http.post_with_headers", 3, TYPE_OWNED_STRING},
     {"http.request", 4, TYPE_OWNED_STRING},
+    {"http.request_async", 4, TYPE_HTTP_TASK},
     {"http.status", 0, TYPE_INT},
     {"http.response_headers", 0, TYPE_STRING},
     {"http.last_error", 0, TYPE_STRING}
@@ -644,7 +645,16 @@ static YType check_expr(Checker *checker, Expr *expr)
                 }
             }
             YType right = check_expr(checker, operand);
-            if (op == TOKEN_MINUS) {
+            if (op == TOKEN_AWAIT) {
+                if (right != TYPE_HTTP_TASK && right != TYPE_ERROR) {
+                    diagnostic(c, expr->token, "error", "E2123",
+                               "await requires an http_task handle.",
+                               "Create a task with http.request_async(method, url, body, headers), then write 'await task'.");
+                    expr->type = TYPE_ERROR;
+                } else {
+                    expr->type = TYPE_OWNED_STRING;
+                }
+            } else if (op == TOKEN_MINUS) {
                 if (right != TYPE_INT && right != TYPE_FLOAT && right != TYPE_ERROR) {
                     diagnostic(c, expr->token, "error", "E2030",
                                "Unary '-' requires a numeric value.",
@@ -950,6 +960,24 @@ static YType check_expr(Checker *checker, Expr *expr)
                 } else {
                     expr->type = TYPE_INT;
                 }
+                return expr->type;
+            }
+            if (strcmp(expr->as.call.name, "http.cancel") == 0) {
+                c->uses_http = true;
+                if (expr->as.call.count != 1U) {
+                    diagnostic(c, expr->token, "error", "E2124",
+                               "http.cancel expects exactly one task handle.",
+                               "Pass an http_task returned by http.request_async(...).");
+                    for (size_t i = 0; i < expr->as.call.count; i++) (void)check_expr(checker, expr->as.call.args[i]);
+                } else {
+                    YType handle_type = check_expr(checker, expr->as.call.args[0]);
+                    if (handle_type != TYPE_HTTP_TASK && handle_type != TYPE_ERROR) {
+                        diagnostic(c, expr->as.call.args[0]->token, "error", "E2125",
+                                   "http.cancel requires an http_task handle.",
+                                   "Pass the value returned by http.request_async(...).");
+                    }
+                }
+                expr->type = TYPE_BOOL;
                 return expr->type;
             }
             const StringBuiltin *string_builtin = find_string_builtin(expr->as.call.name);

@@ -150,6 +150,7 @@ static TokenType identifier_type(const Lexer *lexer)
     if (is_word(lexer, "and")) return TOKEN_AND;
     if (is_word(lexer, "or")) return TOKEN_OR;
     if (is_word(lexer, "not")) return TOKEN_NOT;
+    if (is_word(lexer, "await")) return TOKEN_AWAIT;
     if (is_word(lexer, "try")) return TOKEN_TRY;
     if (is_word(lexer, "catch")) return TOKEN_CATCH;
     if (is_word(lexer, "class")) return TOKEN_CLASS;
@@ -354,6 +355,7 @@ const char *token_type_name(TokenType type)
         case TOKEN_AND: return "AND";
         case TOKEN_OR: return "OR";
         case TOKEN_NOT: return "NOT";
+        case TOKEN_AWAIT: return "AWAIT";
         case TOKEN_TRY: return "TRY";
         case TOKEN_CATCH: return "CATCH";
         case TOKEN_CLASS: return "CLASS";

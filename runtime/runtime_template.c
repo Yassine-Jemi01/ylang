@@ -307,7 +307,9 @@ static const char *yl_http_request(const char *method, const char *url, const ch
     }
 #undef YL_HTTP_OPTION
     if (code == CURLE_OK) code = curl_easy_perform(curl);
-    (void)curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &yl_http_last_status_code);
+    long response_code = 0;
+    (void)curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    yl_http_last_status_code = (int64_t)response_code;
     if (code != CURLE_OK) {
         if (yl_http_response_headers_too_large) yl_http_set_error("HTTP response headers exceeded the 16 KiB limit");
         else if (response.too_large) yl_http_set_error("HTTP response exceeded the 8 MiB limit");
@@ -326,6 +328,229 @@ static const char *yl_http_post_with_headers(const char *url, const char *body, 
 static int64_t yl_http_status(void) { return yl_http_last_status_code; }
 static const char *yl_http_response_headers(void) { return yl_http_response_header_text; }
 static const char *yl_http_last_error(void) { return yl_http_error; }
+
+typedef struct {
+    int64_t id;
+    bool active;
+    bool done;
+    bool attached;
+    CURL *easy;
+    struct curl_slist *headers;
+    char *url;
+    char *body_text;
+    YLHttpBuffer body;
+    char error_buffer[CURL_ERROR_SIZE];
+    char error[256];
+    int64_t status;
+    char response_headers[YL_HTTP_MAX_HEADERS + 1U];
+    size_t response_header_length;
+    bool response_headers_too_large;
+} YLHttpTask;
+#define YL_HTTP_MAX_TASKS 32U
+static YLHttpTask yl_http_tasks[YL_HTTP_MAX_TASKS];
+static CURLM *yl_http_multi;
+static int64_t yl_http_next_task_id = 1;
+
+static void yl_http_task_error(YLHttpTask *task, const char *message) {
+    if (task) (void)snprintf(task->error, sizeof(task->error), "%s", message ? message : "unknown HTTP error");
+}
+static void yl_http_task_release(YLHttpTask *task) {
+    if (!task) return;
+    if (task->easy) {
+        if (task->attached && yl_http_multi) (void)curl_multi_remove_handle(yl_http_multi, task->easy);
+        curl_easy_cleanup(task->easy);
+    }
+    curl_slist_free_all(task->headers);
+    free(task->url);
+    free(task->body_text);
+    free(task->body.data);
+    memset(task, 0, sizeof(*task));
+}
+static void yl_http_async_shutdown(void) {
+    for (size_t i = 0; i < YL_HTTP_MAX_TASKS; i++)
+        if (yl_http_tasks[i].active) yl_http_task_release(&yl_http_tasks[i]);
+    if (yl_http_multi) { curl_multi_cleanup(yl_http_multi); yl_http_multi = NULL; }
+    curl_global_cleanup();
+}
+static YLHttpTask *yl_http_task_find(int64_t id) {
+    for (size_t i = 0; i < YL_HTTP_MAX_TASKS; i++)
+        if (yl_http_tasks[i].active && yl_http_tasks[i].id == id) return &yl_http_tasks[i];
+    return NULL;
+}
+static size_t yl_http_task_header_callback(char *data, size_t size, size_t count, void *userdata) {
+    YLHttpTask *task = (YLHttpTask *)userdata;
+    if (!task || (size && count > SIZE_MAX / size)) return 0U;
+    size_t bytes = size * count;
+    if (bytes >= 5U && memcmp(data, "HTTP/", 5U) == 0) {
+        task->response_header_length = 0U;
+        task->response_headers[0] = '\0';
+        task->response_headers_too_large = false;
+        return bytes;
+    }
+    size_t length = bytes;
+    while (length && (data[length - 1U] == '\r' || data[length - 1U] == '\n')) length--;
+    if (!length) return bytes;
+    if (task->response_header_length >= YL_HTTP_MAX_HEADERS ||
+        length > YL_HTTP_MAX_HEADERS - task->response_header_length - 1U) {
+        task->response_headers_too_large = true;
+        return 0U;
+    }
+    memcpy(task->response_headers + task->response_header_length, data, length);
+    task->response_header_length += length;
+    task->response_headers[task->response_header_length++] = '\n';
+    task->response_headers[task->response_header_length] = '\0';
+    return bytes;
+}
+static void yl_http_task_poll_completions(void) {
+    int remaining = 0;
+    CURLMsg *message = NULL;
+    while ((message = curl_multi_info_read(yl_http_multi, &remaining)) != NULL) {
+        if (message->msg != CURLMSG_DONE) continue;
+        YLHttpTask *task = NULL;
+        (void)curl_easy_getinfo(message->easy_handle, CURLINFO_PRIVATE, &task);
+        if (!task || !task->active) {
+            (void)curl_multi_remove_handle(yl_http_multi, message->easy_handle);
+            continue;
+        }
+        long response_code = 0;
+        (void)curl_easy_getinfo(message->easy_handle, CURLINFO_RESPONSE_CODE, &response_code);
+        task->status = (int64_t)response_code;
+        (void)curl_multi_remove_handle(yl_http_multi, message->easy_handle);
+        task->attached = false;
+        if (message->data.result != CURLE_OK) {
+            if (task->response_headers_too_large) yl_http_task_error(task, "HTTP response headers exceeded the 16 KiB limit");
+            else if (task->body.too_large) yl_http_task_error(task, "HTTP response exceeded the 8 MiB limit");
+            else if (task->error_buffer[0]) yl_http_task_error(task, task->error_buffer);
+            else yl_http_task_error(task, curl_easy_strerror(message->data.result));
+        }
+        task->done = true;
+    }
+}
+static int64_t yl_http_request_async(const char *method, const char *url, const char *body, const char *raw_headers) {
+    yl_http_error[0] = '\0'; yl_http_last_status_code = 0;
+    yl_http_response_header_text[0] = '\0'; yl_http_response_header_length = 0U;
+    bool allowed = method &&
+        (strcmp(method, "GET") == 0 || strcmp(method, "POST") == 0 ||
+         strcmp(method, "PUT") == 0 || strcmp(method, "PATCH") == 0 ||
+         strcmp(method, "DELETE") == 0 || strcmp(method, "HEAD") == 0);
+    if (!allowed) { yl_http_set_error("Unsupported HTTP method; use GET, POST, PUT, PATCH, DELETE, or HEAD"); return 0; }
+    if (!url || (strncmp(url, "http://", 7U) != 0 && strncmp(url, "https://", 8U) != 0)) {
+        yl_http_set_error("URL must begin with http:// or https://"); return 0;
+    }
+    if (!yl_http_initialized) {
+        if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) { yl_http_set_error("Could not initialize HTTP runtime"); return 0; }
+        yl_http_initialized = true;
+    }
+    if (!yl_http_multi) {
+        yl_http_multi = curl_multi_init();
+        if (!yl_http_multi) { yl_http_set_error("Could not initialize asynchronous HTTP runtime"); return 0; }
+        (void)curl_multi_setopt(yl_http_multi, CURLMOPT_MAX_TOTAL_CONNECTIONS, (long)YL_HTTP_MAX_TASKS);
+        (void)atexit(yl_http_async_shutdown);
+    }
+    YLHttpTask *task = NULL;
+    for (size_t i = 0; i < YL_HTTP_MAX_TASKS; i++) if (!yl_http_tasks[i].active) { task = &yl_http_tasks[i]; break; }
+    if (!task) { yl_http_set_error("Too many in-flight HTTP tasks (limit 32)"); return 0; }
+    memset(task, 0, sizeof(*task));
+    task->active = true; task->id = yl_http_next_task_id++;
+    if (yl_http_next_task_id <= 0) yl_http_next_task_id = 1;
+    size_t url_length = strlen(url), body_length = strlen(body ? body : "");
+    task->url = malloc(url_length + 1U);
+    task->body_text = malloc(body_length + 1U);
+    if (!task->url || !task->body_text) { yl_http_task_error(task, "Out of memory preparing HTTP request"); task->done = true; return task->id; }
+    memcpy(task->url, url, url_length + 1U); memcpy(task->body_text, body ? body : "", body_length + 1U);
+    if (!yl_http_headers(raw_headers, &task->headers)) { yl_http_task_error(task, yl_http_error); task->done = true; return task->id; }
+    task->easy = curl_easy_init();
+    if (!task->easy) { yl_http_task_error(task, "Could not create HTTP request"); task->done = true; return task->id; }
+    CURLcode code = CURLE_OK;
+#define YL_HTTP_TASK_OPTION(option, value) do { if (code == CURLE_OK) code = curl_easy_setopt(task->easy, option, value); } while (0)
+    YL_HTTP_TASK_OPTION(CURLOPT_URL, task->url);
+    YL_HTTP_TASK_OPTION(CURLOPT_PRIVATE, task);
+    YL_HTTP_TASK_OPTION(CURLOPT_ERRORBUFFER, task->error_buffer);
+    YL_HTTP_TASK_OPTION(CURLOPT_WRITEFUNCTION, yl_http_write);
+    YL_HTTP_TASK_OPTION(CURLOPT_WRITEDATA, &task->body);
+    YL_HTTP_TASK_OPTION(CURLOPT_HEADERFUNCTION, yl_http_task_header_callback);
+    YL_HTTP_TASK_OPTION(CURLOPT_HEADERDATA, task);
+    YL_HTTP_TASK_OPTION(CURLOPT_NOSIGNAL, 1L);
+    YL_HTTP_TASK_OPTION(CURLOPT_CONNECTTIMEOUT_MS, 5000L);
+    YL_HTTP_TASK_OPTION(CURLOPT_TIMEOUT_MS, 15000L);
+    YL_HTTP_TASK_OPTION(CURLOPT_FOLLOWLOCATION, 1L);
+    YL_HTTP_TASK_OPTION(CURLOPT_MAXREDIRS, 5L);
+    YL_HTTP_TASK_OPTION(CURLOPT_SSL_VERIFYPEER, 1L);
+    YL_HTTP_TASK_OPTION(CURLOPT_SSL_VERIFYHOST, 2L);
+    YL_HTTP_TASK_OPTION(CURLOPT_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
+    YL_HTTP_TASK_OPTION(CURLOPT_REDIR_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
+    YL_HTTP_TASK_OPTION(CURLOPT_USERAGENT, "YLang/2.2");
+    if (task->headers) YL_HTTP_TASK_OPTION(CURLOPT_HTTPHEADER, task->headers);
+    if (strcmp(method, "GET") == 0) YL_HTTP_TASK_OPTION(CURLOPT_HTTPGET, 1L);
+    else if (strcmp(method, "HEAD") == 0) {
+        YL_HTTP_TASK_OPTION(CURLOPT_CUSTOMREQUEST, "HEAD");
+        YL_HTTP_TASK_OPTION(CURLOPT_NOBODY, 1L);
+    } else if (strcmp(method, "POST") == 0) {
+        YL_HTTP_TASK_OPTION(CURLOPT_POST, 1L);
+        YL_HTTP_TASK_OPTION(CURLOPT_POSTFIELDS, task->body_text);
+        YL_HTTP_TASK_OPTION(CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)body_length);
+    } else {
+        YL_HTTP_TASK_OPTION(CURLOPT_CUSTOMREQUEST, method);
+        YL_HTTP_TASK_OPTION(CURLOPT_POSTFIELDS, task->body_text);
+        YL_HTTP_TASK_OPTION(CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)body_length);
+    }
+#undef YL_HTTP_TASK_OPTION
+    if (code != CURLE_OK) { yl_http_task_error(task, curl_easy_strerror(code)); task->done = true; return task->id; }
+    CURLMcode multi_code = curl_multi_add_handle(yl_http_multi, task->easy);
+    if (multi_code != CURLM_OK) { yl_http_task_error(task, curl_multi_strerror(multi_code)); task->done = true; return task->id; }
+    task->attached = true;
+    return task->id;
+}
+static const char *yl_http_await(int64_t id) {
+    YLHttpTask *task = yl_http_task_find(id);
+    if (!task) {
+        yl_http_set_error("Invalid, cancelled, or already awaited HTTP task handle");
+        yl_http_last_status_code = 0; yl_http_response_header_text[0] = '\0';
+        return yl_http_empty();
+    }
+    while (!task->done && yl_http_multi) {
+        int running = 0;
+        CURLMcode code = curl_multi_perform(yl_http_multi, &running);
+        yl_http_task_poll_completions();
+        task = yl_http_task_find(id);
+        if (!task) break;
+        if (code != CURLM_OK) {
+            for (size_t i = 0; i < YL_HTTP_MAX_TASKS; i++) {
+                YLHttpTask *item = &yl_http_tasks[i];
+                if (!item->active || item->done) continue;
+                yl_http_task_error(item, curl_multi_strerror(code));
+                if (item->easy && item->attached) { (void)curl_multi_remove_handle(yl_http_multi, item->easy); item->attached = false; }
+                item->done = true;
+            }
+            break;
+        }
+        if (!task->done && running > 0) { int descriptors = 0; (void)curl_multi_poll(yl_http_multi, NULL, 0U, 1000, &descriptors); }
+    }
+    task = yl_http_task_find(id);
+    if (!task) { yl_http_set_error("HTTP task was consumed while awaiting"); return yl_http_empty(); }
+    yl_http_last_status_code = task->status;
+    yl_http_response_header_length = task->response_header_length;
+    memcpy(yl_http_response_header_text, task->response_headers, task->response_header_length + 1U);
+    yl_http_set_error(task->error[0] ? task->error : "");
+    char *result = NULL;
+    if (!task->error[0] && task->body.data) {
+        result = malloc(task->body.length + 1U);
+        if (result) memcpy(result, task->body.data, task->body.length + 1U);
+    }
+    if (!result) { result = malloc(1U); if (!result) yl_runtime_error("out of memory after HTTP await"); result[0] = '\0'; }
+    size_t result_length = strlen(result);
+    yl_http_task_release(task);
+    return (const char *)yl_track(result, result_length + 1U);
+}
+static bool yl_http_cancel(int64_t id) {
+    YLHttpTask *task = yl_http_task_find(id);
+    if (!task) { yl_http_set_error("Invalid, cancelled, or already awaited HTTP task handle"); return false; }
+    yl_http_set_error("HTTP task cancelled");
+    yl_http_last_status_code = 0; yl_http_response_header_text[0] = '\0';
+    yl_http_task_release(task);
+    return true;
+}
+
 #endif
 
 static const char *yl_env_get(const char *name) {
