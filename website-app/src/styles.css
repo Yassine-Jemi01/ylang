@@ -125,6 +125,15 @@ h1, h2, h3, p { margin: 0; }
 .text-loop-band .text-loop { height: 170px; max-height: 170px; }
 .text-loop-band .text-loop-svg { height: 170px; max-height: 170px; }
 
+/* 2.2 development preview */
+.preview-section { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: radial-gradient(ellipse at 15% 20%, rgb(141 56 22 / 9%), transparent 45%), var(--bg-2); }
+.preview-grid.feature-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.preview-grid .feature-card { min-height: 264px; padding: 23px 21px 22px; }
+.preview-grid .feature-card p { min-height: 106px; }
+.preview-grid .feature-meta { letter-spacing: .065em; }
+.preview-links { display: flex; flex-wrap: wrap; gap: 12px 25px; margin-top: 24px; }
+.preview-links .text-link { font-size: .84rem; }
+
 /* Install */
 .install-section { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: linear-gradient(120deg, #101d1e, #0e1819 65%, #171f1e); }
 .install-grid { display: grid; grid-template-columns: minmax(0, .83fr) minmax(0, 1.1fr); align-items: start; gap: clamp(42px, 8vw, 110px); }
@@ -190,6 +199,9 @@ h1, h2, h3, p { margin: 0; }
 
 @media (max-width: 1000px) {
   .hero-grid { grid-template-columns: minmax(0, 1fr); min-height: 620px; }
+  .preview-grid.feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .preview-grid .feature-card:nth-child(3) { border-top: 1px solid var(--line); border-left: 0; }
+  .preview-grid .feature-card:nth-child(4) { border-top: 1px solid var(--line); }
   .hero h1 { font-size: clamp(3rem, 5.8vw, 4.3rem); }
   .ecosystem-inner { grid-template-columns: 140px minmax(0, 1fr); gap: 15px; }
   .ecosystem-loop .logoloop__label { font-size: .72rem; }
@@ -198,6 +210,11 @@ h1, h2, h3, p { margin: 0; }
 }
 @media (max-width: 760px) {
   html { scroll-padding-top: 72px; }
+  .preview-grid.feature-grid { grid-template-columns: minmax(0, 1fr); }
+  .preview-grid .feature-card + .feature-card { border-top: 1px solid var(--line); border-left: 0; }
+  .preview-grid .feature-card { min-height: 0; }
+  .preview-grid .feature-card p { min-height: 0; }
+  .preview-links { align-items: flex-start; flex-direction: column; gap: 10px; }
   .container { width: min(var(--container), calc(100% - 34px)); }
   .nav-wrap { min-height: 68px; gap: 12px; }
   .mobile-menu { display: grid; order: 3; margin-left: 2px; }

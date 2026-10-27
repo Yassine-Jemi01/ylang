@@ -93,6 +93,7 @@ function Header() {
         </button>
         <nav className={`site-nav ${menuOpen ? 'site-nav--open' : ''}`} aria-label="Main navigation">
           <a href="#language" onClick={() => setMenuOpen(false)}>Language</a>
+          <a href="#preview" onClick={() => setMenuOpen(false)}>2.2 preview</a>
           <a href="#install" onClick={() => setMenuOpen(false)}>Get started</a>
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
@@ -227,6 +228,56 @@ function LanguageSection() {
   );
 }
 
+
+function ExperimentalSection() {
+  return (
+    <section className="section preview-section" id="preview">
+      <div className="container">
+        <div className="section-heading">
+          <p className="eyebrow"><span className="eyebrow-mark" /> 2.2 / IN DEVELOPMENT</p>
+          <h2>Build beyond the stable core.</h2>
+          <p>These are experimental improvements on the development branch, not promises about the current stable release. Each feature stays marked as in progress until its tests and limitations are reviewed.</p>
+        </div>
+        <div className="feature-grid preview-grid">
+          <FeatureCard
+            number="01"
+            icon={<FiLayers />}
+            title="HTTP and API requests"
+            description="Call HTTP/HTTPS endpoints with custom headers, request bodies, status codes, response headers, and bounded responses."
+            meta="EXPERIMENTAL · LIBCURL"
+          />
+          <FeatureCard
+            number="02"
+            icon={<FiCode />}
+            title="Async HTTP tasks"
+            description="Queue concurrent HTTP tasks, await their response bodies, or cancel requests before consuming the result."
+            meta="FIRST ASYNC SLICE"
+          />
+          <FeatureCard
+            number="03"
+            icon={<FiTerminal />}
+            title="Source-aware debugging"
+            description="Build with debug symbols and use GDB or LLDB with YLang source-line mappings from the command line."
+            meta="GDB · LLDB · CLI"
+          />
+          <FeatureCard
+            number="04"
+            icon={<FiMonitor />}
+            title="Measured tooling"
+            description="Run repeatable compile/runtime benchmarks, expand regression coverage, and use editor commands for diagnostics and debugging."
+            meta="BENCHMARKS · EDITORS"
+          />
+        </div>
+        <div className="preview-links">
+          <a className="text-link" href={SITE + 'learn/reference/HTTP.html'}>HTTP and async task guide <FiArrowUpRight aria-hidden="true" /></a>
+          <a className="text-link" href={SITE + 'learn/reference/DEBUGGER.html'}>Debugger guide <FiArrowUpRight aria-hidden="true" /></a>
+          <a className="text-link" href={SITE + 'learn/reference/ROADMAP-2.2.0.html'}>2.2 development roadmap <FiArrowUpRight aria-hidden="true" /></a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function InstallSection() {
   return (
     <section className="section install-section" id="install">
@@ -319,6 +370,7 @@ export default function App() {
         <Hero />
         <Ecosystem />
         <LanguageSection />
+        <ExperimentalSection />
         <InstallSection />
         <NextSteps />
       </main>
