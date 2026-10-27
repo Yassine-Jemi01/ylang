@@ -117,6 +117,9 @@ function Header() {
                 <DropdownMenu.Item className="resource-menu-item" asChild>
                   <a href={`${SITE}learn/reference/DEBUGGER.html`}><FiTerminal /> Debugger (experimental) <FiArrowUpRight className="menu-external" /></a>
                 </DropdownMenu.Item>
+                <DropdownMenu.Item className="resource-menu-item" asChild>
+                  <a href={`${SITE}classic.html`}><FiLayers /> Classic homepage <FiArrowUpRight className="menu-external" /></a>
+                </DropdownMenu.Item>
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
