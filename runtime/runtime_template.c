@@ -690,6 +690,12 @@ static const char *yl_http_last_error(void) {
 }
 #endif
 
+static const char *yl_env_get(const char *name) {
+    if (!name || !*name) return "";
+    const char *value = getenv(name);
+    return value ? value : "";
+}
+
 static const char *yl_boolstr(bool value) { return value ? "true" : "false"; }
 static const char *yl_format(const char *format, ...);
 static const char *yl_to_string_int(int64_t value) { return yl_format("%lld", (long long)value); }
