@@ -37,6 +37,7 @@ REFERENCE_DOCS = (
     "MEMORY-MODEL.md",
     "CHANGELOG-2.1.0.md",
     "CHANGELOG-2.2.0.md",
+    "ACCEPTANCE-2.2.0.md",
     "HTTP.md",
     "PERFORMANCE.md",
     "SECURITY.md",
