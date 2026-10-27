@@ -20,7 +20,7 @@ function main() -> int {
       (expression_statement
         (call_expression
           function: (identifier)
-          (argument_list (format_string))))
+          (argument_list (format_string (interpolation (identifier))))))
       (return_statement (integer)))))
 
 ==================

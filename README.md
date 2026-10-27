@@ -16,6 +16,13 @@ YLang **2.2.0** is the latest stable release. The documented core language and d
 
 The [YLang Book](https://yassine-jemi01.github.io/ylang/learn/index.html) is a searchable, multi-page HTML guide with a chapter sidebar, previous/next navigation, theme switching, and copyable examples. It combines step-by-step tutorials with the canonical language, platform, compiler, and library references; it is rendered as a website, not served as raw Markdown.
 
+## Editor support
+
+YLang includes integrations for [VS Code](editors/vscode/README.md) and
+[Neovim](editors/nvim/README.md). Initial [Zed support](editors/zed/README.md)
+provides Tree-sitter highlighting and editor configuration; compiler diagnostics
+and language-server features are not yet available in Zed.
+
 ## Nix Flakes (experimental)
 
 An initial Nix Flake is available for `x86_64-linux`. It provides a compiler package with the standard-library sources, a `nix run` entry point, and a development shell with the native toolchain and optional GUI dependencies. See [Nix Flakes support](docs/NIX.md) for setup, build, test, and installation instructions. The committed `flake.lock` pins Nixpkgs; update it intentionally with `nix flake update` and review the resulting diff.
