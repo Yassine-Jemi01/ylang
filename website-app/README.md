@@ -1,6 +1,6 @@
 # YLang website refresh
 
-React/Vite homepage refresh for YLang, with a restrained dark-teal and rust palette. This revision removes the unreliable ASCII background entirely, keeps the moving curved-text marquee, and points Book, Documentation, and PDF links at the published GitHub Pages pages so they work in local preview as well. The artificial terminal/code-card remains removed from the hero. Curved text uses `requestAnimationFrame`.
+React/Vite homepage refresh for YLang, with a restrained dark-teal and rust palette. This revision removes the unreliable ASCII background entirely, keeps the moving curved-text marquee, and points Book and Documentation links at the published GitHub Pages pages so they work in local preview as well. The artificial terminal/code-card remains removed from the hero. Curved text uses `requestAnimationFrame`.
 
 ## Stack
 
@@ -28,7 +28,7 @@ npm run build
 npm run preview
 ```
 
-The output is written to `dist/`. In the YLang repository, the deploy workflow preserves the existing online book, reference page, and PDF, then overlays the built homepage.
+The output is written to `dist/`. In the YLang repository, the deploy workflow preserves the existing online book and reference page, then overlays the built homepage.
 
 ## Integration
 
@@ -42,4 +42,4 @@ The script copies `website-app/` into the target repository and backs up the exi
 
 ## Claims and release status
 
-The homepage describes YLang 2.0.0 as stable and the C backend as the default workflow. The NASM backend, GUI/Game2D APIs, and native Windows path remain labelled experimental.
+The homepage describes YLang 2.2.0 as the current stable release and the C backend as the default workflow. The NASM backend, GUI/Game2D APIs, and native Windows path remain labelled experimental.
