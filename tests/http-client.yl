@@ -5,6 +5,7 @@ function main() -> int {
     let owned_string hello = http.get(string.concat(base, "/hello"));
     print(hello);
     print(http.status());
+    print(string.contains(http.response_headers(), "Content-Type: text/plain; charset=utf-8"));
 
     let owned_string auth = http.get_with_headers(
         string.concat(base, "/auth"),
@@ -18,6 +19,15 @@ function main() -> int {
         "{\"ok\":true}"
     );
     print(posted);
+    print(http.status());
+
+    let owned_string put = http.request(
+        "PUT",
+        string.concat(base, "/echo"),
+        "{\"method\":\"put\"}",
+        "Content-Type: application/json"
+    );
+    print(put);
     print(http.status());
 
     let owned_string custom = http.post_with_headers(
