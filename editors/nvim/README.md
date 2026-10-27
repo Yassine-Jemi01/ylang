@@ -1,39 +1,38 @@
 # YLang support for Neovim
 
-<p align="center">
-  <img src="assets/ylang-mark.svg" alt="YLang logo" width="96">
-</p>
+<p align="center"><img src="assets/ylang-mark.svg" alt="YLang official mark" width="96"></p>
 
-This lightweight Neovim integration adds native syntax highlighting and uses YLang's real `ylang check` command with Neovim's built-in diagnostic UI. It does not require an LSP client, null-ls, or another plugin.
+This lightweight Neovim integration adds native syntax highlighting and uses YLang's real ylang check command with Neovim's built-in diagnostic UI. It does not require an LSP client, null-ls, or another plugin.
 
 ## Features
 
-- YLang 2.2 syntax highlighting for declarations, `struct`/`enum`/`match`, imports, fields, enum variants, built-in namespaces, strings/f-strings, comments, numbers, and operators.
+- Highlights YLang 2.2 declarations, `struct`/`enum`/`match`, imports, fields and enum variants, built-in namespaces, strings/f-strings, comments, numbers, and operators.
 - Marks syntax and semantic errors in the buffer with underlines, signs, and virtual text.
 - Preserves YLang diagnostic codes and compiler hints.
-- Checks the current unsaved buffer while typing, when opening a `.yl` file, and after saving.
-- Provides `:YLangCheck` to check immediately and `:YLangDiagnostics` to show the current line's full message and hint.
+- Checks the current unsaved buffer while typing, when opening a .yl file, and after saving.
+- Provides :YLangCheck to check immediately and :YLangDiagnostics to show the current line's full message and hint.
 - Runs the compiler without a shell and checks a temporary copy so unsaved text can be validated without touching the source file. For named files, the scratch file is placed beside the source so relative imports resolve during checks.
 
 ## Install from a YLang checkout
 
-Add the plugin folder to Neovim's runtime path in `~/.config/nvim/init.lua`:
+Add the plugin folder to Neovim's runtime path in ~/.config/nvim/init.lua:
 
-```lua
+~~~lua
 vim.opt.rtp:prepend(vim.fn.expand("~/Documents/ylang-1.0/editors/nvim"))
+
 vim.g.ylang_compiler_path = vim.fn.expand("~/Documents/ylang-1.0/build/ylang")
 -- Optional settings:
 vim.g.ylang_check_on_change = true
 vim.g.ylang_check_on_save = true
 vim.g.ylang_check_debounce_ms = 400
 vim.g.ylang_check_timeout_ms = 10000
-```
+~~~
 
-Adjust the paths if your checkout is somewhere else. Restart Neovim and open a `.yl` file. The integration is loaded automatically for the YLang filetype.
+Adjust the paths if your YLang checkout is somewhere else. Restart Neovim and open a `.yl` file. The extension is loaded automatically for the ylang filetype.
 
-If you use lazy.nvim, load the plugin directory directly:
+If you use lazy.nvim, the plugin directory can also be loaded directly:
 
-```lua
+~~~lua
 {
   dir = vim.fn.expand("~/Documents/ylang-1.0/editors/nvim"),
   name = "ylang-diagnostics",
@@ -41,15 +40,15 @@ If you use lazy.nvim, load the plugin directory directly:
     vim.g.ylang_compiler_path = vim.fn.expand("~/Documents/ylang-1.0/build/ylang")
   end,
 }
-```
+~~~
 
 ## Use it
 
-- `:YLangCheck` — run the compiler on the current buffer now.
-- `:YLangDiagnostics` — open a floating diagnostic for the current line, including any compiler hint.
-- `:lopen` after running `:lua vim.diagnostic.setloclist()` — inspect diagnostics in the location list.
+- :YLangCheck — run the compiler on the current buffer now.
+- :YLangDiagnostics — open a floating diagnostic for the current line, including any compiler hint.
+- :lopen after running :lua vim.diagnostic.setloclist() — inspect diagnostics in the location list.
 
-You can also open Neovim's message area with `:messages` if the compiler cannot start or the check times out.
+You can also open Neovim's message area with :messages if the compiler cannot start or the check times out.
 
 ## Requirements
 
@@ -58,24 +57,25 @@ You can also open Neovim's message area with `:messages` if the compiler cannot 
 
 ## Smoke test
 
-Open a temporary file with intentionally invalid YLang:
+Open a temporary file with intentionally invalid YLang, for example:
 
-```yl
+~~~ylang
 function main() -> int {
     let int answer = "not an integer";
     return 0;
 }
-```
+~~~
 
-The `let` line should receive a diagnostic. Correct the type and the diagnostic should disappear after the next check.
+The let line should receive a diagnostic. Correct the type and the diagnostic should disappear after the next check.
 
-Run tests from the repository root:
+Run the diagnostic parser and syntax-highlighting regression tests from the repository root with:
 
-```sh
+~~~sh
 nvim --headless -u NONE +'luafile editors/nvim/tests/diagnostics.lua'
 nvim --headless -u NONE +'luafile editors/nvim/tests/syntax.lua'
-```
+~~~
+
 
 ## Branding note
 
-Neovim's core filetype system has no built-in per-language logo slot. The official YLang mark is included in `assets/ylang-mark.svg` for documentation and for optional integrations such as file-icon plugins; the editor integration itself does not require an icon plugin.
+Neovim's core filetype system has no built-in per-language logo slot. The official YLang mark is included in `assets/ylang-mark.svg` for documentation and optional file-icon integrations; the Neovim integration does not require an icon plugin.
