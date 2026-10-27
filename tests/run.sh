@@ -56,31 +56,8 @@ grep -Fq '#line 4 "tests/debug-source-map.yl"' build/debug-source-map.c
 ./build/ylang build tests/debug-source-map.yl -o build/test-debug-source-map >/dev/null
 [ "$(./build/test-debug-source-map)" = "42" ]
 
-# HTTP is optional for ordinary programs, but enabled HTTP calls use libcurl safely.
-rm -f build/http-port
-python3 tests/http_test_server.py build/http-port > build/http-server.log 2>&1 &
-http_server_pid=$!
-trap 'kill "$http_server_pid" 2>/dev/null || true' EXIT INT TERM
-http_attempt=0
-while [ ! -s build/http-port ] && [ "$http_attempt" -lt 50 ]; do
-    sleep 0.1
-    http_attempt=$((http_attempt + 1))
-done
-if [ ! -s build/http-port ]; then
-    echo "FAIL: localhost HTTP test server did not start" >&2
-    cat build/http-server.log >&2
-    exit 1
-fi
-http_port=$(cat build/http-port)
-./build/ylang check tests/http-client.yl >/dev/null
-./build/ylang build tests/http-client.yl -o build/test-http-client >/dev/null
-export YLANG_TEST_API_KEY=test-token
-unset YLANG_MISSING_TEST_VAR
-printf '%s\n' "$http_port" | ./build/test-http-client > build/http-client.out
-diff -u tests/expected-http-client.txt build/http-client.out
-kill "$http_server_pid" 2>/dev/null || true
-wait "$http_server_pid" 2>/dev/null || true
-trap - EXIT INT TERM
+# HTTP integration runs its loopback server in-process to avoid background process leakage.
+python3 tests/run_http_integration.py
 if ./build/ylang > build/no-args.out 2>&1; then
     echo "FAIL: ylang without arguments should return usage error" >&2
     exit 1
