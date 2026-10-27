@@ -310,7 +310,13 @@ static const StringBuiltin string_builtins[] = {
     {"path.exists", 1, TYPE_BOOL},
     {"path.basename", 1, TYPE_STRING},
     {"path.extension", 1, TYPE_STRING},
-    {"image.open", 1, TYPE_BOOL}
+    {"image.open", 1, TYPE_BOOL},
+    {"http.get", 1, TYPE_OWNED_STRING},
+    {"http.get_with_headers", 2, TYPE_OWNED_STRING},
+    {"http.post", 2, TYPE_OWNED_STRING},
+    {"http.post_with_headers", 3, TYPE_OWNED_STRING},
+    {"http.status", 0, TYPE_INT},
+    {"http.last_error", 0, TYPE_STRING}
 };
 
 static const StringBuiltin *find_string_builtin(const char *name)
@@ -945,6 +951,9 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             const StringBuiltin *string_builtin = find_string_builtin(expr->as.call.name);
             if (string_builtin) {
+                if (strncmp(string_builtin->name, "http.", 5U) == 0) {
+                    c->uses_http = true;
+                }
                 if (expr->as.call.count != string_builtin->arity) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
