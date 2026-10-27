@@ -1281,7 +1281,7 @@ static void emit_source_line_directive(Compiler *compiler, FILE *out, Token toke
             default: fputc((int)*p, out); break;
         }
     }
-    fputs("\"\\n", out);
+    fputs("\"\n", out);
 }
 
 static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
