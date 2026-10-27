@@ -12,6 +12,8 @@ function main() -> int {
         "GET", string.concat(base, "/auth"), "",
         string.concat("Authorization: Bearer ", env.get("YLANG_TEST_API_KEY"))
     );
+    print(hello_task);
+    print(f"task={hello_task}");
     let owned_string hello = await hello_task;
     print(hello);
     print(http.status());
