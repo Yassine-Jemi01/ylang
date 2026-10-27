@@ -9,7 +9,7 @@ EXPECTED_VERSION=$(cat VERSION)
 ./build/ylang --help > build/help.out
 grep -q 'ylang check' build/help.out
 grep -q 'ylang debug' build/help.out
-grep -Fq "YLang v${EXPECTED_VERSION} — stable compiled language toolchain" build/help.out
+grep -Fq "YLang v${EXPECTED_VERSION} — compiled language toolchain" build/help.out
 ./build/ylang check examples/type-conversions.yl >/dev/null
 ./build/ylang build examples/type-conversions.yl -o build/test-type-conversions >/dev/null
 ./build/test-type-conversions > build/type-conversions.out
