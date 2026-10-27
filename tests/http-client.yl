@@ -8,7 +8,7 @@ function main() -> int {
 
     let owned_string auth = http.get_with_headers(
         string.concat(base, "/auth"),
-        "Authorization: Bearer test-token"
+        string.concat("Authorization: Bearer ", env.get("YLANG_TEST_API_KEY"))
     );
     print(auth);
     print(http.status());
@@ -40,5 +40,6 @@ function main() -> int {
     print(rejected);
     print(http.status());
     print(string.length(http.last_error()) > 0);
+    print(string.length(env.get("YLANG_MISSING_TEST_VAR")) == 0);
     return 0;
 }
