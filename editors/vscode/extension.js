@@ -386,6 +386,44 @@ function checkCurrentFile() {
   output.show(true);
 }
 
+async function debugCurrentFile() {
+  const document = vscode.window.activeTextEditor?.document;
+  if (!document || document.languageId !== "ylang") {
+    vscode.window.showInformationMessage("Open a YLang (.yl) file first.");
+    return;
+  }
+  if (document.uri.scheme !== "file") {
+    vscode.window.showErrorMessage("Save the YLang file to disk before starting the debugger.");
+    return;
+  }
+  if (process.platform === "win32") {
+    vscode.window.showInformationMessage(
+      "Interactive YLang debugging currently supports GDB on Linux and LLDB on macOS. Windows debug integration is not implemented yet."
+    );
+    return;
+  }
+  if (!(await document.save())) {
+    vscode.window.showInformationMessage("Save the YLang file before debugging.");
+    return;
+  }
+
+  const sourcePath = document.uri.fsPath;
+  const sourceDirectory = path.dirname(sourcePath);
+  const sourceName = path.basename(sourcePath, path.extname(sourcePath));
+  const executablePath = path.join(sourceDirectory, sourceName + ".debug");
+  const compiler = compilerExecutable(setting("compilerPath", "ylang"));
+
+  output.appendLine("Starting YLang debug build for " + sourcePath);
+  output.appendLine("The integrated terminal will open GDB (Linux) or LLDB (macOS).");
+  const terminal = vscode.window.createTerminal({
+    name: "YLang Debug: " + sourceName,
+    cwd: sourceDirectory,
+    shellPath: compiler,
+    shellArgs: ["debug", sourcePath, "-o", executablePath]
+  });
+  terminal.show();
+}
+
 function activate(context) {
   diagnostics = vscode.languages.createDiagnosticCollection("ylang");
   output = vscode.window.createOutputChannel("YLang");
@@ -393,7 +431,8 @@ function activate(context) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand("ylang.checkCurrentFile", checkCurrentFile),
-    vscode.commands.registerCommand("ylang.showOutput", () => output.show())
+    vscode.commands.registerCommand("ylang.showOutput", () => output.show()),
+    vscode.commands.registerCommand("ylang.debugCurrentFile", debugCurrentFile)
   );
 
   context.subscriptions.push(
