@@ -202,12 +202,14 @@ ylang --help
 ylang --version
 ylang check <file.yl>
 ylang build <file.yl> [-o executable] [--cc gcc|clang]
+ylang debug <file.yl> [-o executable] [--cc gcc|clang]
 ylang emit-c <file.yl> [-o generated.c]
 ylang fix <file.yl> -o <fixed.yl>
 ```
 
 - `check` parses and performs semantic/type checks without invoking a native compiler.
 - `build` validates the source, generates C, and invokes GCC or Clang. Invalid YLang source does not produce an executable.
+- `debug` builds with `-O0`, full debug symbols, and frame pointers, then starts GDB on Linux or LLDB on macOS. The generated C includes source-line directives so supported breakpoints and stepping can refer to original `.yl` files. This debugger path is experimental: local-variable names may reflect generated C, and Windows/VS Code Debug Adapter integration is not complete.
 - `emit-c` writes the generated C source so it can be inspected.
 - `fix` applies only the currently supported high-confidence fix (`pritn(...)` to `print(...)`) and requires `-o`. The output is written to the requested path; always run `check` on it. This is intentionally not a general-purpose automatic repair engine.
 
