@@ -386,6 +386,10 @@ function checkCurrentFile() {
   output.show(true);
 }
 
+function quotePosixShellArgument(value) {
+  return "'" + String(value).replace(/'/g, "'\\''") + "'";
+}
+
 async function debugCurrentFile() {
   const document = vscode.window.activeTextEditor?.document;
   if (!document || document.languageId !== "ylang") {
@@ -417,11 +421,16 @@ async function debugCurrentFile() {
   output.appendLine("The integrated terminal will open GDB (Linux) or LLDB (macOS).");
   const terminal = vscode.window.createTerminal({
     name: "YLang Debug: " + sourceName,
-    cwd: sourceDirectory,
-    shellPath: compiler,
-    shellArgs: ["debug", sourcePath, "-o", executablePath]
+    cwd: sourceDirectory
   });
   terminal.show();
+  terminal.sendText([
+    quotePosixShellArgument(compiler),
+    "debug",
+    quotePosixShellArgument(sourcePath),
+    "-o",
+    quotePosixShellArgument(executablePath)
+  ].join(" "));
 }
 
 function activate(context) {

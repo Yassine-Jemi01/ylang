@@ -26,7 +26,11 @@ const extensionConfigPath = path.join(root, "extension.js");
 const extensionSource = fs.readFileSync(extensionConfigPath, "utf8");
 assert.match(extensionSource, /registerCommand\("ylang\.debugCurrentFile", debugCurrentFile\)/,
   "debug command must be registered in activate()");
-assert.match(extensionSource, /shellArgs: \["debug", sourcePath, "-o", executablePath\]/,
-  "debug command must pass the source file and output path to the compiler");
+assert.match(extensionSource, /terminal\.sendText\(/,
+  "debug command should run the compiler inside the user's normal integrated shell");
+assert.match(extensionSource, /quotePosixShellArgument\(sourcePath\)/,
+  "debug command must quote paths safely when launching the compiler");
+assert.doesNotMatch(extensionSource, /shellPath:\s*compiler/,
+  "the compiler is a command, not an interactive terminal shell");
 
 console.log("VS Code YLang extension manifest tests passed");
