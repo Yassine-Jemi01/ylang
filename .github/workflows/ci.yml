@@ -219,6 +219,30 @@ jobs:
         run: nvim --headless -u NONE +'luafile editors/nvim/tests/syntax.lua'
 
 
+  website-app-build:
+    name: Homepage build and asset checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website-app/package-lock.json
+      - name: Install locked homepage dependencies
+        working-directory: website-app
+        run: npm ci --no-audit --no-fund
+      - name: Build the React homepage
+        working-directory: website-app
+        run: npm run build
+      - name: Verify homepage and official logo are included
+        run: |
+          test -s website-app/dist/index.html
+          test -s website-app/dist/ylang-mark.svg
+          grep -q "YLang" website-app/dist/index.html
+
   website-integrity:
     name: English-only website integrity
     runs-on: ubuntu-latest
