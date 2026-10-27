@@ -619,6 +619,12 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "path.basename") == 0) return "yl_path_basename";
     if (strcmp(name, "path.extension") == 0) return "yl_path_extension";
     if (strcmp(name, "image.open") == 0) return "yl_image_open";
+    if (strcmp(name, "http.get") == 0) return "yl_http_get";
+    if (strcmp(name, "http.get_with_headers") == 0) return "yl_http_get_with_headers";
+    if (strcmp(name, "http.post") == 0) return "yl_http_post";
+    if (strcmp(name, "http.post_with_headers") == 0) return "yl_http_post_with_headers";
+    if (strcmp(name, "http.status") == 0) return "yl_http_status";
+    if (strcmp(name, "http.last_error") == 0) return "yl_http_last_error";
     if (strcmp(name, "gui.init") == 0) return "ylgui_api_init";
     if (strcmp(name, "gui.create_window") == 0) return "ylgui_api_create_window";
     if (strcmp(name, "gui.poll") == 0) return "ylgui_api_poll";
