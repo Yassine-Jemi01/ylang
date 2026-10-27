@@ -44,7 +44,7 @@ const ecosystem = [
 ];
 
 function Mark() {
-  return <span className="brand-mark" aria-hidden="true">Y</span>;
+  return <img className="brand-mark" src="./ylang-mark.svg" alt="" width="32" height="32" />;
 }
 
 function CopyButton({ value, label = 'Copy', className = '' }) {
@@ -110,6 +110,12 @@ function Header() {
                 </DropdownMenu.Item>
                 <DropdownMenu.Item className="resource-menu-item" asChild>
                   <a href={PDF}><FiDownload /> Book PDF <FiArrowUpRight className="menu-external" /></a>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item className="resource-menu-item" asChild>
+                  <a href={`${SITE}learn/reference/HTTP.html`}><FiCode /> HTTP & API requests <FiArrowUpRight className="menu-external" /></a>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item className="resource-menu-item" asChild>
+                  <a href={`${SITE}learn/reference/DEBUGGER.html`}><FiTerminal /> Debugger (experimental) <FiArrowUpRight className="menu-external" /></a>
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
