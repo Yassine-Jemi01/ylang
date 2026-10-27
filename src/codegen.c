@@ -1246,11 +1246,50 @@ static void emit_cleanup_active_owned(CodegenContext *ctx, unsigned indent)
     emit_cleanup_function_owned(ctx, indent);
 }
 
+static const char *source_path_for_token(Compiler *compiler, Token token)
+{
+    uintptr_t address = (uintptr_t)(const void *)token.start;
+    for (size_t i = 0; i < compiler->module_count; i++) {
+        Module *module = compiler->modules[i];
+        uintptr_t base = (uintptr_t)(const void *)module->source;
+        if (address >= base && address - base <= module->source_length) {
+            return module->path;
+        }
+    }
+    return compiler->filename ? compiler->filename : "<unknown>";
+}
+
+/*
+ * Preserve YLang source locations in GCC/Clang debug information. The path is
+ * escaped as a C-preprocessor line-marker filename, including unusual quotes
+ * and backslashes in paths. These directives are harmless in normal builds
+ * and also improve attribution of native compiler diagnostics.
+ */
+static void emit_source_line_directive(Compiler *compiler, FILE *out, Token token)
+{
+    if (!token.start || token.line == 0U) return;
+    const char *path = source_path_for_token(compiler, token);
+    if (!path || !*path) path = "<unknown>";
+    fprintf(out, "#line %zu \"", token.line);
+    for (const unsigned char *p = (const unsigned char *)path; *p; p++) {
+        switch (*p) {
+            case '\\\\': fputs("\\\\\\\\", out); break;
+            case '"': fputs("\\\\\"", out); break;
+            case '\\n': fputs("\\\\n", out); break;
+            case '\\r': fputs("\\\\r", out); break;
+            case '\\t': fputs("\\\\t", out); break;
+            default: fputc((int)*p, out); break;
+        }
+    }
+    fputs("\"\\n", out);
+}
+
 static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
 {
     if (!stmt) return;
     Compiler *c = ctx->compiler;
     FILE *out = ctx->out;
+    emit_source_line_directive(c, out, stmt->token);
     switch (stmt->kind) {
         case STMT_BLOCK:
             push_owned_scope(ctx, stmt);
