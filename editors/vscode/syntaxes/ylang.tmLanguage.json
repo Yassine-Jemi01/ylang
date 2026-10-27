@@ -363,7 +363,7 @@
       }
     },
     "namespace": {
-      "match": "\\b(?:math|string|path|io|image|gui)\\b(?=\\s*\\.)",
+      "match": "\\b(?:math|string|path|io|image|gui|env|http)\\b(?=\\s*\\.)",
       "name": "support.namespace.ylang"
     },
     "qualified-type": {
