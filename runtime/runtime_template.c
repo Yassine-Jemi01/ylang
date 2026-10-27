@@ -133,561 +133,147 @@ static const char *yl_string_own(const char *value) {
 #ifdef YLANG_USE_HTTP
 #define YL_HTTP_MAX_RESPONSE (8U * 1024U * 1024U)
 #define YL_HTTP_MAX_HEADERS (16U * 1024U)
-
-typedef struct {
-    char *data;
-    size_t length;
-    size_t capacity;
-    bool too_large;
-    bool out_of_memory;
-} YLHttpBuffer;
-
+typedef struct { char *data; size_t length; size_t capacity; bool too_large; } YLHttpBuffer;
 static char yl_http_error[256];
 static int64_t yl_http_last_status_code;
-static bool yl_http_curl_initialized;
-
+static bool yl_http_initialized;
 static void yl_http_set_error(const char *message) {
     if (!message) message = "unknown HTTP error";
     (void)snprintf(yl_http_error, sizeof(yl_http_error), "%s", message);
 }
-
-static size_t yl_http_write_callback(char *data, size_t size, size_t count, void *userdata) {
+static size_t yl_http_write(char *data, size_t size, size_t count, void *userdata) {
     YLHttpBuffer *buffer = (YLHttpBuffer *)userdata;
-    if (size != 0U && count > SIZE_MAX / size) return 0U;
+    if (size && count > SIZE_MAX / size) return 0U;
     size_t bytes = size * count;
-    if (bytes > YL_HTTP_MAX_RESPONSE - buffer->length) {
-        buffer->too_large = true;
-        return 0U;
-    }
-    if (bytes > SIZE_MAX - buffer->length - 1U) {
-        buffer->too_large = true;
-        return 0U;
+    if (buffer->length > YL_HTTP_MAX_RESPONSE ||
+        bytes > YL_HTTP_MAX_RESPONSE - buffer->length ||
+        bytes > SIZE_MAX - buffer->length - 1U) {
+        buffer->too_large = true; return 0U;
     }
     size_t needed = buffer->length + bytes + 1U;
     if (needed > buffer->capacity) {
         size_t capacity = buffer->capacity ? buffer->capacity : 4096U;
         while (capacity < needed) {
             if (capacity > (YL_HTTP_MAX_RESPONSE + 1U) / 2U) {
-                capacity = YL_HTTP_MAX_RESPONSE + 1U;
-                break;
+                capacity = YL_HTTP_MAX_RESPONSE + 1U; break;
             }
             capacity *= 2U;
         }
         char *grown = realloc(buffer->data, capacity);
-        if (!grown) {
-            buffer->out_of_memory = true;
-            return 0U;
-        }
-        buffer->data = grown;
-        buffer->capacity = capacity;
+        if (!grown) return 0U;
+        buffer->data = grown; buffer->capacity = capacity;
     }
-    if (bytes != 0U) memcpy(buffer->data + buffer->length, data, bytes);
-    buffer->length += bytes;
-    buffer->data[buffer->length] = '\0';
+    if (bytes) memcpy(buffer->data + buffer->length, data, bytes);
+    buffer->length += bytes; buffer->data[buffer->length] = '\0';
     return bytes;
 }
-
-static bool yl_http_valid_header_name(const char *name, size_t length) {
-    if (length == 0U) return false;
+static bool yl_http_header_name_ok(const char *name, size_t length) {
+    if (!length) return false;
     for (size_t i = 0; i < length; i++) {
         unsigned char ch = (unsigned char)name[i];
-        if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-              (ch >= '0' && ch <= '9') || ch == '!' || ch == '#' ||
-              ch == ' { return value ? "true" : "false"; }
-static const char *yl_format(const char *format, ...);
-static const char *yl_to_string_int(int64_t value) { return yl_format("%lld", (long long)value); }
-static const char *yl_to_string_float(double value) { return yl_format("%.17g", value); }
-static const char *yl_to_string_char(char value) { return yl_format("%c", (int)value); }
-static int64_t yl_to_int(double value) {
-    if (!isfinite(value) ||
-        value < -9223372036854775808.0 ||
-        value >= 9223372036854775808.0) {
-        yl_runtime_error("to_int value is outside the signed 64-bit range");
-    }
-    return (int64_t)value;
-}
-static bool yl_string_is_int(const char *value) {
-    if (!value || !*value) return false;
-    errno = 0;
-    char *end = NULL;
-    (void)strtoll(value, &end, 10);
-    return errno != ERANGE && end != value && end && *end == '\0';
-}
-static int64_t yl_string_parse_int(const char *value) {
-    if (!yl_string_is_int(value)) {
-        yl_runtime_error("string.parse_int received invalid or out-of-range integer text");
-    }
-    return (int64_t)strtoll(value, NULL, 10);
-}
-static const char *yl_format(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    va_list copy;
-    va_copy(copy, args);
-    int needed = vsnprintf(NULL, 0, format, copy);
-    va_end(copy);
-    if (needed < 0) {
-        va_end(args);
-        yl_runtime_error("formatting failed");
-    }
-    char *buffer = malloc((size_t)needed + 1);
-    if (!buffer) {
-        va_end(args);
-        yl_runtime_error("out of memory");
-    }
-    (void)vsnprintf(buffer, (size_t)needed + 1, format, args);
-    va_end(args);
-    return (const char *)yl_track(buffer, (size_t)needed + 1U);
-}
-static int64_t yl_add_i64(int64_t a, int64_t b) {
-    int64_t result;
-    if (__builtin_add_overflow(a, b, &result)) {
-        yl_runtime_error("integer overflow in addition");
-    }
-    return result;
-}
-static int64_t yl_add_assign_i64(int64_t *target, int64_t value) {
-    *target = yl_add_i64(*target, value);
-    return *target;
-}
-static double yl_add_assign_f64(double *target, double value) {
-    *target += value;
-    return *target;
-}
-static int64_t yl_sub_i64(int64_t a, int64_t b) {
-    int64_t result;
-    if (__builtin_sub_overflow(a, b, &result)) {
-        yl_runtime_error("integer overflow in subtraction");
-    }
-    return result;
-}
-static int64_t yl_mul_i64(int64_t a, int64_t b) {
-    int64_t result;
-    if (__builtin_mul_overflow(a, b, &result)) {
-        yl_runtime_error("integer overflow in multiplication");
-    }
-    return result;
-}
-static int64_t yl_neg_i64(int64_t value) {
-    if (value == INT64_MIN) yl_runtime_error("integer overflow in negation");
-    return -value;
-}
-static int64_t yl_div_i64(int64_t a, int64_t b) {
-    if (b == 0) yl_runtime_error("integer division by zero");
-    if (a == INT64_MIN && b == -1) {
-        yl_runtime_error("integer overflow in division");
-    }
-    return a / b;
-}
-static int64_t yl_mod_i64(int64_t a, int64_t b) {
-    if (b == 0) yl_runtime_error("integer modulo by zero");
-    if (a == INT64_MIN && b == -1) return 0;
-    return a % b;
-}
-static double yl_div_f64(double a, double b) {
-    if (b == 0.0) yl_runtime_error("floating-point division by zero");
-    return a / b;
-}
-static size_t yl_bounds(int64_t index, size_t length) {
-    if (index < 0 || (uint64_t)index >= (uint64_t)length) {
-        yl_runtime_error("array index out of bounds");
-    }
-    return (size_t)index;
-}
-static double yl_math_clamp(double value, double low, double high) {
-    if (low > high) yl_runtime_error("math.clamp lower bound exceeds upper bound");
-    return fmin(fmax(value, low), high);
-}
-static int64_t yl_string_length(const char *value) {
-    return (int64_t)strlen(value);
-}
-static bool yl_string_contains(const char *value, const char *needle) {
-    return strstr(value, needle) != NULL;
-}
-static bool yl_string_starts_with(const char *value, const char *prefix) {
-    size_t prefix_length = strlen(prefix);
-    return strncmp(value, prefix, prefix_length) == 0;
-}
-static bool yl_string_ends_with(const char *value, const char *suffix) {
-    size_t value_length = strlen(value);
-    size_t suffix_length = strlen(suffix);
-    return suffix_length <= value_length &&
-           memcmp(value + value_length - suffix_length, suffix, suffix_length) == 0;
-}
-static const char *yl_string_concat(const char *left, const char *right) {
-    return yl_format("%s%s", left, right);
-}
-static const char *yl_string_replace(const char *value, const char *needle,
-                                    const char *replacement) {
-    if (!*needle) return yl_format("%s", value);
-    size_t value_length = strlen(value);
-    size_t needle_length = strlen(needle);
-    size_t replacement_length = strlen(replacement);
-    size_t match_count = 0;
-    const char *scan = value;
-    while ((scan = strstr(scan, needle)) != NULL) {
-        match_count++;
-        scan += needle_length;
-    }
-    size_t result_length;
-    if (replacement_length >= needle_length) {
-        size_t delta = replacement_length - needle_length;
-        if (delta && match_count > (SIZE_MAX - value_length - 1) / delta) {
-            yl_runtime_error("string replacement result is too large");
-        }
-        result_length = value_length + match_count * delta;
-    } else {
-        result_length = value_length - match_count * (needle_length - replacement_length);
-    }
-    if (result_length == SIZE_MAX) {
-        yl_runtime_error("string replacement result is too large");
-    }
-    char *result = malloc(result_length + 1);
-    if (!result) yl_runtime_error("out of memory");
-    const char *src = value;
-    char *dst = result;
-    const char *match;
-    while ((match = strstr(src, needle)) != NULL) {
-        size_t span = (size_t)(match - src);
-        memcpy(dst, src, span);
-        dst += span;
-        memcpy(dst, replacement, replacement_length);
-        dst += replacement_length;
-        src = match + needle_length;
-    }
-    strcpy(dst, src);
-    return (const char *)yl_track(result, result_length + 1U);
-}
-static const char *yl_string_case(const char *value, bool upper) {
-    size_t length = strlen(value);
-    char *result = malloc(length + 1);
-    if (!result) yl_runtime_error("out of memory");
-    for (size_t i = 0; i < length; i++) {
-        unsigned char ch = (unsigned char)value[i];
-        result[i] = (char)(upper ? toupper(ch) : tolower(ch));
-    }
-    result[length] = '\0';
-    return (const char *)yl_track(result, length + 1U);
-}
-static const char *yl_string_upper(const char *value) { return yl_string_case(value, true); }
-static const char *yl_string_lower(const char *value) { return yl_string_case(value, false); }
-static const char *yl_read_line(void) {
-    size_t capacity = 128U;
-    size_t length = 0U;
-    char *line = malloc(capacity);
-    if (!line) yl_runtime_error("out of memory");
-    int ch = 0;
-    while ((ch = fgetc(stdin)) != EOF && ch != '\n') {
-        if (length + 1U >= capacity) {
-            if (capacity > SIZE_MAX / 2U) {
-                free(line);
-                yl_runtime_error("input line is too large");
-            }
-            size_t next = capacity * 2U;
-            char *grown = realloc(line, next);
-            if (!grown) {
-                free(line);
-                yl_runtime_error("out of memory");
-            }
-            line = grown;
-            capacity = next;
-        }
-        line[length++] = (char)ch;
-    }
-    if (ch == EOF && ferror(stdin)) {
-        free(line);
-        yl_runtime_error("failed to read standard input");
-    }
-    while (length > 0U && line[length - 1U] == '\r') length--;
-    line[length] = '\0';
-    return (const char *)yl_track(line, capacity);
-}
-static const char *yl_read_file(const char *path) {
-    FILE *file = fopen(path, "rb");
-    if (!file) yl_runtime_error("cannot open file for reading");
-    if (fseek(file, 0, SEEK_END) != 0) {
-        fclose(file);
-        yl_runtime_error("cannot seek input file");
-    }
-    long end = ftell(file);
-    if (end < 0 || (uintmax_t)end >= (uintmax_t)SIZE_MAX) {
-        fclose(file);
-        yl_runtime_error("input file is too large");
-    }
-    rewind(file);
-    size_t size = (size_t)end;
-    char *data = malloc(size + 1);
-    if (!data) {
-        fclose(file);
-        yl_runtime_error("out of memory");
-    }
-    size_t got = fread(data, 1, size, file);
-    bool failed = ferror(file) != 0 || got != size;
-    fclose(file);
-    if (failed) {
-        free(data);
-        yl_runtime_error("failed to read input file");
-    }
-    if (memchr(data, '\0', size)) {
-        free(data);
-        yl_runtime_error("binary files are not supported by string I/O");
-    }
-    data[size] = '\0';
-    return (const char *)yl_track(data, size + 1U);
-}
-static bool yl_write_file(const char *path, const char *content) {
-    FILE *file = fopen(path, "wb");
-    if (!file) return false;
-    size_t size = strlen(content);
-    bool ok = fwrite(content, 1, size, file) == size;
-    if (fclose(file) != 0) ok = false;
-    return ok;
-}
-static bool yl_path_exists(const char *path) {
-    struct stat info;
-    return path && stat(path, &info) == 0;
-}
-static bool yl_path_separator(char ch) {
-    return ch == '/' || ch == '\\';
-}
-static const char *yl_path_basename(const char *path) {
-    if (!path) return "";
-    size_t end = strlen(path);
-    while (end > 1U && yl_path_separator(path[end - 1U])) end--;
-    size_t start = end;
-    while (start > 0U && !yl_path_separator(path[start - 1U])) start--;
-    size_t length = end - start;
-    bool root = length == 0U && end == 1U && yl_path_separator(path[0]);
-    if (root) length = 1U;
-    char *result = malloc(length + 1U);
-    if (!result) yl_runtime_error("out of memory");
-    memcpy(result, path + (root ? 0U : start), length);
-    result[length] = '\0';
-    return (const char *)yl_track(result, length + 1U);
-}
-static const char *yl_path_extension(const char *path) {
-    const char *base = yl_path_basename(path);
-    const char *dot = strrchr(base, '.');
-    if (!dot || dot == base) return "";
-    return dot + 1;
-}
-#ifdef _WIN32
-static bool yl_image_open(const char *path) {
-    if (!path || !*path || !yl_path_exists(path)) return false;
-    HINSTANCE result = ShellExecuteA(NULL, "open", path, NULL, NULL, SW_SHOWNORMAL);
-    return (INT_PTR)result > 32;
-}
-#else
-static bool yl_image_open(const char *path) {
-    if (!path || !*path || !yl_path_exists(path)) return false;
-    pid_t child = fork();
-    if (child < 0) return false;
-    if (child == 0) {
-#if defined(__APPLE__)
-        execlp("open", "open", path, (char *)NULL);
-#else
-        execlp("xdg-open", "xdg-open", path, (char *)NULL);
-#endif
-        _exit(127);
-    }
-    int status = 0;
-    while (waitpid(child, &status, 0) < 0) {
-        if (errno == EINTR) continue;
-        return false;
-    }
-    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
-}
-#endif
- || ch == '%' || ch == '&' || ch == '\'' ||
-              ch == '*' || ch == '+' || ch == '-' || ch == '.' ||
-              ch == '^' || ch == '_' || ch == 0x60 || ch == '|' || ch == '~')) {
-            return false;
-        }
+        bool alpha = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+        bool digit = ch >= '0' && ch <= '9';
+        if (!alpha && !digit && !strchr("!#$%&*+-.^_|~", (int)ch)) return false;
     }
     return true;
 }
-
-/*
- * Headers use one HTTP header per line. Reject malformed names and control
- * characters so input cannot inject a second header or request line.
- */
-static bool yl_http_parse_headers(const char *raw, struct curl_slist **result) {
+static bool yl_http_headers(const char *raw, struct curl_slist **result) {
     *result = NULL;
     if (!raw || !*raw) return true;
-    size_t total = strlen(raw);
-    if (total > YL_HTTP_MAX_HEADERS) {
-        yl_http_set_error("HTTP request headers exceed the 16 KiB limit");
-        return false;
+    if (strlen(raw) > YL_HTTP_MAX_HEADERS) {
+        yl_http_set_error("HTTP headers exceed the 16 KiB limit"); return false;
     }
     const char *line = raw;
     while (*line) {
         const char *end = strchr(line, '\n');
         size_t length = end ? (size_t)(end - line) : strlen(line);
-        if (length > 0U && line[length - 1U] == '\r') {
-            curl_slist_free_all(*result);
-            *result = NULL;
-            yl_http_set_error("HTTP headers must use newline-separated lines without carriage returns");
-            return false;
+        if (length && line[length - 1U] == '\r') {
+            yl_http_set_error("Use newline-separated HTTP headers without carriage returns");
+            curl_slist_free_all(*result); *result = NULL; return false;
         }
-        if (length == 0U) {
-            line = end ? end + 1 : line + length;
-            if (!end) break;
-            continue;
-        }
+        if (!length) { if (!end) break; line = end + 1; continue; }
         const char *colon = memchr(line, ':', length);
-        if (!colon || !yl_http_valid_header_name(line, (size_t)(colon - line))) {
-            curl_slist_free_all(*result);
-            *result = NULL;
-            yl_http_set_error("Malformed HTTP header; expected a valid Header-Name: value line");
-            return false;
+        if (!colon || !yl_http_header_name_ok(line, (size_t)(colon - line))) {
+            yl_http_set_error("Malformed HTTP header; expected Header-Name: value");
+            curl_slist_free_all(*result); *result = NULL; return false;
         }
         for (size_t i = 0; i < length; i++) {
             unsigned char ch = (unsigned char)line[i];
             if ((ch < 32U && ch != '\t') || ch == 127U) {
-                curl_slist_free_all(*result);
-                *result = NULL;
                 yl_http_set_error("HTTP headers cannot contain control characters");
-                return false;
+                curl_slist_free_all(*result); *result = NULL; return false;
             }
         }
         char *copy = malloc(length + 1U);
-        if (!copy) {
-            curl_slist_free_all(*result);
-            *result = NULL;
-            yl_http_set_error("out of memory while preparing HTTP headers");
-            return false;
-        }
-        memcpy(copy, line, length);
-        copy[length] = '\0';
-        struct curl_slist *grown = curl_slist_append(*result, copy);
-        free(copy);
-        if (!grown) {
-            curl_slist_free_all(*result);
-            *result = NULL;
-            yl_http_set_error("out of memory while preparing HTTP headers");
-            return false;
-        }
+        if (!copy) { yl_http_set_error("Out of memory preparing HTTP headers"); curl_slist_free_all(*result); *result = NULL; return false; }
+        memcpy(copy, line, length); copy[length] = '\0';
+        struct curl_slist *grown = curl_slist_append(*result, copy); free(copy);
+        if (!grown) { yl_http_set_error("Out of memory preparing HTTP headers"); curl_slist_free_all(*result); *result = NULL; return false; }
         *result = grown;
-        if (!end) break;
-        line = end + 1;
+        if (!end) break; line = end + 1;
     }
     return true;
 }
-
-static const char *yl_http_empty_result(void) {
-    char *empty = malloc(1U);
-    if (!empty) yl_runtime_error("out of memory after HTTP request");
-    empty[0] = '\0';
-    return (const char *)yl_track(empty, 1U);
+static const char *yl_http_empty(void) {
+    char *value = malloc(1U); if (!value) yl_runtime_error("out of memory");
+    value[0] = '\0'; return (const char *)yl_track(value, 1U);
 }
-
-static const char *yl_http_request(const char *method, const char *url,
-                                   const char *body, const char *headers) {
-    yl_http_last_status_code = 0;
-    yl_http_error[0] = '\0';
-    if (!url || (strncmp(url, "https://", 8U) != 0 &&
-                 strncmp(url, "http://", 7U) != 0)) {
-        yl_http_set_error("HTTP URL must begin with http:// or https://");
-        return yl_http_empty_result();
+static const char *yl_http_request(const char *method, const char *url, const char *body, const char *raw_headers) {
+    yl_http_error[0] = '\0'; yl_http_last_status_code = 0;
+    if (!url || (strncmp(url, "http://", 7U) != 0 && strncmp(url, "https://", 8U) != 0)) {
+        yl_http_set_error("URL must begin with http:// or https://"); return yl_http_empty();
     }
-    if (!yl_http_curl_initialized) {
-        CURLcode global_result = curl_global_init(CURL_GLOBAL_DEFAULT);
-        if (global_result != CURLE_OK) {
-            yl_http_set_error("could not initialize the HTTP runtime");
-            return yl_http_empty_result();
+    if (!yl_http_initialized) {
+        if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
+            yl_http_set_error("Could not initialize HTTP runtime"); return yl_http_empty();
         }
-        yl_http_curl_initialized = true;
+        yl_http_initialized = true;
     }
-
-    struct curl_slist *header_list = NULL;
-    if (!yl_http_parse_headers(headers, &header_list)) return yl_http_empty_result();
-
-    CURL *handle = curl_easy_init();
-    if (!handle) {
-        curl_slist_free_all(header_list);
-        yl_http_set_error("could not create an HTTP request");
-        return yl_http_empty_result();
-    }
-
-    YLHttpBuffer buffer = {0};
-    char curl_error[CURL_ERROR_SIZE] = {0};
-    CURLcode option_result = CURLE_OK;
-#define YL_HTTP_SETOPT(option, value) do { \
-    if (option_result == CURLE_OK) option_result = curl_easy_setopt(handle, option, value); \
-} while (0)
-    YL_HTTP_SETOPT(CURLOPT_URL, url);
-    YL_HTTP_SETOPT(CURLOPT_ERRORBUFFER, curl_error);
-    YL_HTTP_SETOPT(CURLOPT_WRITEFUNCTION, yl_http_write_callback);
-    YL_HTTP_SETOPT(CURLOPT_WRITEDATA, &buffer);
-    YL_HTTP_SETOPT(CURLOPT_NOSIGNAL, 1L);
-    YL_HTTP_SETOPT(CURLOPT_CONNECTTIMEOUT_MS, 5000L);
-    YL_HTTP_SETOPT(CURLOPT_TIMEOUT_MS, 15000L);
-    YL_HTTP_SETOPT(CURLOPT_FOLLOWLOCATION, 1L);
-    YL_HTTP_SETOPT(CURLOPT_MAXREDIRS, 5L);
-    YL_HTTP_SETOPT(CURLOPT_SSL_VERIFYPEER, 1L);
-    YL_HTTP_SETOPT(CURLOPT_SSL_VERIFYHOST, 2L);
-    YL_HTTP_SETOPT(CURLOPT_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
-    YL_HTTP_SETOPT(CURLOPT_REDIR_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
-    YL_HTTP_SETOPT(CURLOPT_USERAGENT, "YLang/2.2");
-    if (header_list) YL_HTTP_SETOPT(CURLOPT_HTTPHEADER, header_list);
+    struct curl_slist *headers = NULL;
+    if (!yl_http_headers(raw_headers, &headers)) return yl_http_empty();
+    CURL *curl = curl_easy_init();
+    if (!curl) { curl_slist_free_all(headers); yl_http_set_error("Could not create HTTP request"); return yl_http_empty(); }
+    YLHttpBuffer response = {0}; char error_buffer[CURL_ERROR_SIZE] = {0}; CURLcode code = CURLE_OK;
+#define YL_HTTP_OPTION(option, value) do { if (code == CURLE_OK) code = curl_easy_setopt(curl, option, value); } while (0)
+    YL_HTTP_OPTION(CURLOPT_URL, url);
+    YL_HTTP_OPTION(CURLOPT_ERRORBUFFER, error_buffer);
+    YL_HTTP_OPTION(CURLOPT_WRITEFUNCTION, yl_http_write);
+    YL_HTTP_OPTION(CURLOPT_WRITEDATA, &response);
+    YL_HTTP_OPTION(CURLOPT_NOSIGNAL, 1L);
+    YL_HTTP_OPTION(CURLOPT_CONNECTTIMEOUT_MS, 5000L);
+    YL_HTTP_OPTION(CURLOPT_TIMEOUT_MS, 15000L);
+    YL_HTTP_OPTION(CURLOPT_FOLLOWLOCATION, 1L);
+    YL_HTTP_OPTION(CURLOPT_MAXREDIRS, 5L);
+    YL_HTTP_OPTION(CURLOPT_SSL_VERIFYPEER, 1L);
+    YL_HTTP_OPTION(CURLOPT_SSL_VERIFYHOST, 2L);
+    YL_HTTP_OPTION(CURLOPT_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
+    YL_HTTP_OPTION(CURLOPT_REDIR_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
+    YL_HTTP_OPTION(CURLOPT_USERAGENT, "YLang/2.2");
+    if (headers) YL_HTTP_OPTION(CURLOPT_HTTPHEADER, headers);
     if (strcmp(method, "POST") == 0) {
-        YL_HTTP_SETOPT(CURLOPT_POST, 1L);
-        YL_HTTP_SETOPT(CURLOPT_POSTFIELDS, body ? body : "");
-        YL_HTTP_SETOPT(CURLOPT_POSTFIELDSIZE_LARGE,
-                       (curl_off_t)(body ? strlen(body) : 0U));
-    } else {
-        YL_HTTP_SETOPT(CURLOPT_HTTPGET, 1L);
+        YL_HTTP_OPTION(CURLOPT_POST, 1L);
+        YL_HTTP_OPTION(CURLOPT_POSTFIELDS, body ? body : "");
+        YL_HTTP_OPTION(CURLOPT_POSTFIELDSIZE, (long)(body ? strlen(body) : 0U));
+    } else { YL_HTTP_OPTION(CURLOPT_HTTPGET, 1L); }
+#undef YL_HTTP_OPTION
+    if (code == CURLE_OK) code = curl_easy_perform(curl);
+    (void)curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &yl_http_last_status_code);
+    if (code != CURLE_OK) {
+        if (response.too_large) yl_http_set_error("HTTP response exceeded the 8 MiB limit");
+        else if (error_buffer[0]) yl_http_set_error(error_buffer);
+        else yl_http_set_error(curl_easy_strerror(code));
+        free(response.data); response.data = NULL; response.length = 0U;
     }
-#undef YL_HTTP_SETOPT
-
-    CURLcode request_result = option_result;
-    if (request_result == CURLE_OK) request_result = curl_easy_perform(handle);
-    (void)curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &yl_http_last_status_code);
-
-    if (request_result != CURLE_OK) {
-        if (buffer.too_large) {
-            yl_http_set_error("HTTP response exceeded the 8 MiB response limit");
-        } else if (buffer.out_of_memory) {
-            yl_http_set_error("out of memory while receiving the HTTP response");
-        } else if (curl_error[0]) {
-            yl_http_set_error(curl_error);
-        } else {
-            yl_http_set_error(curl_easy_strerror(request_result));
-        }
-        free(buffer.data);
-        buffer.data = NULL;
-        buffer.length = 0U;
-    }
-    curl_easy_cleanup(handle);
-    curl_slist_free_all(header_list);
-
-    if (!buffer.data) {
-        buffer.data = malloc(1U);
-        if (!buffer.data) yl_runtime_error("out of memory after HTTP request");
-        buffer.data[0] = '\0';
-        buffer.length = 0U;
-    }
-    return (const char *)yl_track(buffer.data, buffer.length + 1U);
+    curl_easy_cleanup(curl); curl_slist_free_all(headers);
+    if (!response.data) { response.data = malloc(1U); if (!response.data) yl_runtime_error("out of memory"); response.data[0] = '\0'; response.length = 0U; }
+    return (const char *)yl_track(response.data, response.length + 1U);
 }
-
-static const char *yl_http_get(const char *url) {
-    return yl_http_request("GET", url, NULL, NULL);
-}
-static const char *yl_http_get_with_headers(const char *url, const char *headers) {
-    return yl_http_request("GET", url, NULL, headers);
-}
-static const char *yl_http_post(const char *url, const char *body) {
-    return yl_http_request("POST", url, body, "Content-Type: application/json");
-}
-static const char *yl_http_post_with_headers(const char *url, const char *body, const char *headers) {
-    return yl_http_request("POST", url, body, headers);
-}
-static int64_t yl_http_status(void) {
-    return yl_http_last_status_code;
-}
-static const char *yl_http_last_error(void) {
-    return yl_http_error;
-}
+static const char *yl_http_get(const char *url) { return yl_http_request("GET", url, NULL, NULL); }
+static const char *yl_http_get_with_headers(const char *url, const char *headers) { return yl_http_request("GET", url, NULL, headers); }
+static const char *yl_http_post(const char *url, const char *body) { return yl_http_request("POST", url, body, "Content-Type: application/json"); }
+static const char *yl_http_post_with_headers(const char *url, const char *body, const char *headers) { return yl_http_request("POST", url, body, headers); }
+static int64_t yl_http_status(void) { return yl_http_last_status_code; }
+static const char *yl_http_last_error(void) { return yl_http_error; }
 #endif
 
 static const char *yl_env_get(const char *name) {
