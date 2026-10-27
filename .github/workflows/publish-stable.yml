@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - ".github/PUBLISH_STABLE"
-      - "docs/RELEASE-CHECKLIST-2.2.0.md"
   workflow_dispatch:
     inputs:
       confirm_version:
