@@ -74,6 +74,8 @@ fi
 http_port=$(cat build/http-port)
 ./build/ylang check tests/http-client.yl >/dev/null
 ./build/ylang build tests/http-client.yl -o build/test-http-client >/dev/null
+export YLANG_TEST_API_KEY=test-token
+unset YLANG_MISSING_TEST_VAR
 printf '%s\n' "$http_port" | ./build/test-http-client > build/http-client.out
 diff -u tests/expected-http-client.txt build/http-client.out
 kill "$http_server_pid" 2>/dev/null || true
