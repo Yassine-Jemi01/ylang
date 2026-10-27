@@ -29,5 +29,6 @@
 
 - [x] The publication marker is changed only after the release metadata, notes, and checklist are committed.
 - [x] Publication is performed by the stable workflow, which refuses to overwrite an existing tag or release and targets the exact tested commit.
+- [x] The publish job has explicit `contents: write` permission; build/test jobs are restricted to read-only repository access.
 
 If any required CI job fails, the workflow must not publish. After publication, verify the generated release and attached YSPM package separately.
