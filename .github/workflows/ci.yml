@@ -127,6 +127,17 @@ jobs:
           ./build/ylang.exe build build/windows-smoke/input.yl -o build/windows-smoke/input.exe
           output="$(printf 'native Windows input\n' | ./build/windows-smoke/input.exe)"
           test "$output" = "native Windows input"
+      - name: Reject unsupported Windows interactive debugger cleanly
+        run: |
+          if ./build/ylang.exe debug tests/debug-source-map.yl -o build/windows-smoke/debug-unsupported.exe > build/windows-smoke/debug.out 2>&1; then
+            echo "FAIL: Windows interactive debugger unexpectedly claimed support" >&2
+            exit 1
+          else
+            status=$?
+            test "$status" -eq 64
+          fi
+          grep -q "interactive debugging is not implemented on Windows" build/windows-smoke/debug.out
+          test ! -e build/windows-smoke/debug-unsupported.exe
 
   yspm-package-smoke:
     name: Build and inspect YLang .yspkg package
