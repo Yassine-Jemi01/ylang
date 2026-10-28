@@ -54,7 +54,6 @@ install_editor() {
   mkdir -p "$ext_dir"
   rm -rf "$ext_dir/$EXTENSION_ID-$EXTENSION_VERSION"
   ln -s "$INSTALL_DIR/editors/vscode" "$ext_dir/$EXTENSION_ID-$EXTENSION_VERSION"
-  "$cli" --install-extension "$ext_dir/$EXTENSION_ID-$EXTENSION_VERSION" --force >/dev/null 2>&1 || true
 }
 
 install_editor code "$HOME/.vscode/extensions"
