@@ -1,5 +1,7 @@
 # YLang support for Neovim
 
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/ylang-logo-dark.svg"><img src="assets/ylang-logo-light.svg" alt="YLang" width="300"></picture></p>
+
 <p align="center"><img src="assets/ylang-mark.svg" alt="YLang official mark" width="96"></p>
 
 This lightweight Neovim integration adds native syntax highlighting and uses YLang's real ylang check command with Neovim's built-in diagnostic UI. It does not require an LSP client, null-ls, or another plugin.
@@ -78,4 +80,4 @@ nvim --headless -u NONE +'luafile editors/nvim/tests/syntax.lua'
 
 ## Branding note
 
-Neovim's core filetype system has no built-in per-language logo slot. The official YLang mark is included in `assets/ylang-mark.svg` for documentation and optional file-icon integrations; the Neovim integration does not require an icon plugin.
+Neovim's core filetype system has no built-in per-language logo slot. The official full light/dark wordmarks, transparent mark, and square icon are included in `assets/`. Neovim itself has no built-in per-language logo slot, so these assets are available for documentation and optional file-icon integrations; the Neovim integration does not require an icon plugin.
