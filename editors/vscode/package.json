@@ -1,7 +1,7 @@
 {
   "name": "ylang-language-support",
   "displayName": "YLang Language Support",
-  "description": "YLang syntax highlighting, official branding assets, compiler diagnostics, source-aware debug command, custom file icon, and Code Runner support.",
+  "description": "Official YLang language support with syntax highlighting, compiler diagnostics, logo assets, and integrated Code Runner defaults.",
   "repository": {
     "type": "git",
     "url": "https://github.com/Yassine-Jemi01/ylang.git",
