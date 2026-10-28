@@ -16,7 +16,7 @@ YLang syntax highlighting and language intelligence for `.yl` files. The extensi
 
    ```sh
    make
-   ./editors/zed/install-lsp.sh
+   sh ./editors/zed/install-lsp.sh
    ```
 
    The installer places `ylang` and `ylang-lsp` in `~/.local/bin`, and the Python server in `~/.local/share/ylang`. Ensure `~/.local/bin` is on your `PATH`. Python 3 is required.
