@@ -1,10 +1,11 @@
 id = "ylang"
 name = "YLang"
-version = "0.1.0"
+version = "0.2.0"
 schema_version = 1
 authors = ["Yassine Jemi"]
-description = "Syntax highlighting and language configuration for YLang source files."
+description = "YLang syntax highlighting and language intelligence."
 repository = "https://github.com/Yassine-Jemi01/ylang"
+lib = "ylang_zed_extension"
 
 [grammars.ylang]
 repository = "https://github.com/Yassine-Jemi01/ylang"
