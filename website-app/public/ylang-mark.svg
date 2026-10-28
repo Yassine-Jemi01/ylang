@@ -1,7 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 384" role="img" aria-labelledby="title">
-  <title id="title">YLang</title>
-  <rect width="384" height="384" rx="82" fill="#1d3b56"/>
-  <path d="M92 92 192 192" fill="none" stroke="#83c4f0" stroke-width="34" stroke-linecap="round"/>
-  <path d="M292 92 192 192" fill="none" stroke="#ffd343" stroke-width="34" stroke-linecap="round"/>
-  <path d="M192 192v104" fill="none" stroke="#f7faff" stroke-width="34" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="YLang mark">
+  <polygon points="28,52 96,52 126,94.7 126,204 94,204 94,146" fill="#00A8D6"/>
+  <polygon points="228,52 160,52 130,94.7 130,204 162,204 162,146" fill="#FF8A3D"/>
 </svg>
