@@ -1,10 +1,12 @@
-# YLang diagnostics for Neovim
+# YLang support for Neovim
+
+<p align="center"><img src="assets/ylang-mark.svg" alt="YLang official mark" width="96"></p>
 
 This lightweight Neovim integration adds native syntax highlighting and uses YLang's real ylang check command with Neovim's built-in diagnostic UI. It does not require an LSP client, null-ls, or another plugin.
 
 ## Features
 
-- Highlights YLang 2.0 declarations, `struct`/`enum`/`match`, imports, fields and enum variants, built-in namespaces, strings/f-strings, comments, numbers, and operators.
+- Highlights YLang 2.2 declarations, `struct`/`enum`/`match`, imports, fields and enum variants, built-in namespaces, strings/f-strings, comments, numbers, and operators.
 - Marks syntax and semantic errors in the buffer with underlines, signs, and virtual text.
 - Preserves YLang diagnostic codes and compiler hints.
 - Checks the current unsaved buffer while typing, when opening a .yl file, and after saving.
@@ -26,7 +28,7 @@ vim.g.ylang_check_debounce_ms = 400
 vim.g.ylang_check_timeout_ms = 10000
 ~~~
 
-Adjust the paths if your YLang checkout is somewhere else. Restart Neovim and open a .yl file. The extension is loaded automatically for the ylang filetype.
+Adjust the paths if your YLang checkout is somewhere else. Restart Neovim and open a `.yl` file. The extension is loaded automatically for the ylang filetype.
 
 If you use lazy.nvim, the plugin directory can also be loaded directly:
 
@@ -72,3 +74,8 @@ Run the diagnostic parser and syntax-highlighting regression tests from the repo
 nvim --headless -u NONE +'luafile editors/nvim/tests/diagnostics.lua'
 nvim --headless -u NONE +'luafile editors/nvim/tests/syntax.lua'
 ~~~
+
+
+## Branding note
+
+Neovim's core filetype system has no built-in per-language logo slot. The official YLang mark is included in `assets/ylang-mark.svg` for documentation and optional file-icon integrations; the Neovim integration does not require an icon plugin.
