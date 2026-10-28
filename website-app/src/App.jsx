@@ -82,8 +82,7 @@ function Header() {
     <header className="site-header">
       <div className="container nav-wrap">
         <a className="brand" href="#top" aria-label="YLang home">
-          <Mark />
-          <span>YLang</span>
+          <img className="brand-wordmark" src="./ylang-logo-dark.svg" alt="YLang" width="112" height="37" />
           <span className="brand-version">2.2</span>
         </a>
         <button className="mobile-menu" type="button" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen} onClick={() => setMenuOpen(v => !v)}>
@@ -139,6 +138,7 @@ function Hero() {
           <p className="hero-lede">A compiled programming language with explicit types, helpful diagnostics, and a compiler you can explore. Clear syntax in your editor; a native executable at the end.</p>
           <div className="hero-actions">
             <a className="button button-primary" href="#install">Get started <FiArrowRight aria-hidden="true" /></a>
+            <a className="button button-secondary" href="https://github.com/Yassine-Jemi01/ylang/tree/main/editors/vscode">Install the editor extension <FiArrowUpRight aria-hidden="true" /></a>
             <a className="button button-secondary" href={BOOK}>Read the book <FiBookOpen aria-hidden="true" /></a>
           </div>
           <p className="hero-footnote"><FiCode aria-hidden="true" /> Small language. Real compiler. Open source.</p>
@@ -307,7 +307,21 @@ function InstallSection() {
           <div className="install-divider" />
           <div className="install-panel-heading">
             <span className="panel-step">02</span>
-            <div><h3>Build YLang</h3><p>From the repository root.</p></div>
+            <div><h3>Set up your editor</h3><p>Install YLang support and the Run Code button.</p></div>
+          </div>
+          <div className="editor-install">
+            <p>Already have VS Code or VSCodium? Run this one command in a terminal:</p>
+            <div className="shell-block">
+              <CopyButton value="curl -fsSL https://raw.githubusercontent.com/Yassine-Jemi01/ylang/main/editors/vscode/install.sh | bash" label="Copy install command" />
+              <pre><code>curl -fsSL https://raw.githubusercontent.com/Yassine-Jemi01/ylang/main/editors/vscode/install.sh | bash</code></pre>
+            </div>
+            <p className="install-result"><FiCheck aria-hidden="true" /> Installs the compiler, YLang language support, Code Runner, and Error Lens.</p>
+            <a className="text-link" href="https://github.com/Yassine-Jemi01/ylang/tree/main/editors/vscode">Manual installation guide <FiArrowUpRight aria-hidden="true" /></a>
+          </div>
+          <div className="install-divider" />
+          <div className="install-panel-heading">
+            <span className="panel-step">03</span>
+            <div><h3>Or build from source</h3><p>For compiler development and testing.</p></div>
           </div>
           <div className="shell-block">
             <CopyButton value={'git clone https://github.com/Yassine-Jemi01/ylang.git\ncd ylang\nmake\nmake test'} label="Copy steps" />

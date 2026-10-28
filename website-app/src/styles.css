@@ -45,7 +45,7 @@ h1, h2, h3, p { margin: 0; }
 .site-header { position: sticky; z-index: 80; top: 0; background: rgb(13 23 24 / 88%); border-bottom: 1px solid rgb(147 212 200 / 10%); backdrop-filter: blur(16px); }
 .nav-wrap { min-height: 76px; display: flex; align-items: center; gap: 28px; }
 .brand { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 10px; color: var(--text); font-size: 1.14rem; font-weight: 800; letter-spacing: -.055em; }
-.brand-mark { display: block; flex: 0 0 32px; width: 32px; height: 32px; border: 0; border-radius: 9px; background: transparent; object-fit: contain; }
+.brand-wordmark { display: block; width: 112px; height: 37px; object-fit: contain; }
 .brand-version { margin-left: -4px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted-2); font: 500 .66rem/1.5 var(--mono); letter-spacing: 0; }
 .site-nav { display: flex; align-items: center; gap: clamp(20px, 3.1vw, 38px); margin-left: auto; }
 .site-nav > a, .nav-dropdown-trigger { display: inline-flex; align-items: center; gap: 6px; border: 0; padding: 8px 0; color: var(--muted); background: transparent; font-size: .86rem; font-weight: 650; cursor: pointer; transition: color .2s ease; }
@@ -270,3 +270,10 @@ h1, h2, h3, p { margin: 0; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+
+/* Editor quick install */
+.editor-install > p { margin: 12px 0; color: var(--muted); font-size: .86rem; line-height: 1.7; }
+.editor-install .shell-block { margin-top: 12px; }
+.editor-install .shell-block pre { overflow-wrap: anywhere; white-space: pre-wrap; }
+.editor-install .text-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--teal-soft); font-size: .82rem; font-weight: 750; }
+.editor-install .text-link svg { width: 14px; height: 14px; }

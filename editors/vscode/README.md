@@ -13,38 +13,28 @@ This extension registers the `.yl` file extension as YLang and provides syntax h
 - Syntax and semantic diagnostics from the real `ylang check` compiler command, including current array/type diagnostics, diagnostic codes, full explanations, and actionable compiler hints in diagnostic details.
 - Checks on open, while editing, and on save. Checks use a temporary copy of the current editor buffer, so unsaved edits are checked too. For saved files in writable directories, the temporary source is created beside the file so relative imports continue to resolve.
 
-## Requirements
+## Quick install (Linux)
 
-- VS Code 1.85 or newer.
-- The YLang compiler built locally.
-- [Code Runner](https://marketplace.visualstudio.com/items?itemName=formulahendry.code-runner) for the **Run Code** shortcut.
-- [Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens) for displaying diagnostic messages inline next to the affected source code. The language extension creates the diagnostics; Error Lens displays them.
-
-Build the compiler:
+The easiest way is to run the installer from a terminal. It supports both VS Code and VSCodium, builds the compiler, installs the YLang editor support, and installs Code Runner and Error Lens:
 
 ```sh
-cd ~/Documents/ylang-1.0
-make clean
+curl -fsSL https://raw.githubusercontent.com/Yassine-Jemi01/ylang/main/editors/vscode/install.sh | bash
+```
+
+The installer asks before replacing an existing local checkout, installs the compiler to `~/.local/bin/ylang`, and links the extension into the editor's extension directory. Ensure `~/.local/bin` is on your `PATH`. Restart the editor after installation.
+
+## Manual install
+
+If you prefer not to use the script, clone the repository and build the compiler:
+
+```sh
+git clone https://github.com/Yassine-Jemi01/ylang.git
+cd ylang
 make
 make test
 ```
 
-## Install or update the local extension on Linux
-
-From the root of the YLang repository, run:
-
-```sh
-git pull --ff-only
-mkdir -p ~/.vscode/extensions
-rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.1.0
-rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.2.0
-rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.3.0
-rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.4.0
-rm -f ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.6.0
-ln -s "$PWD/editors/vscode" ~/.vscode/extensions/yassine-jemi01.ylang-language-support-0.6.0
-```
-
-Fully restart VS Code, or run **Developer: Reload Window** from the Command Palette.
+Then run `editors/vscode/install.sh` from the repository root.
 
 ## Debugging (experimental)
 
