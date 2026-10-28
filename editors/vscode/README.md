@@ -1,5 +1,7 @@
 # YLang Language Support for VS Code
 
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/ylang-logo-dark.svg"><img src="assets/ylang-logo-light.svg" alt="YLang" width="300"></picture></p>
+
 This extension registers the `.yl` file extension as YLang and provides syntax highlighting, compiler diagnostics, a language icon, and Code Runner integration.
 
 ## Included
@@ -80,6 +82,14 @@ npm test
 ## Run programs with Code Runner
 
 Save a `.yl` file and invoke **Run Code** (default shortcut: `Ctrl+Alt+N`). The configured executor compiles the source and runs the output executable in the same directory.
+
+## Official branding assets
+
+- `assets/ylang-logo-light.svg` and `assets/ylang-logo-dark.svg`: full wordmarks for light and dark backgrounds.
+- `assets/ylang-mark.svg`: transparent blue/orange mark used by VS Code's language icon.
+- `assets/ylang-icon.svg`: square application-style icon.
+
+The full wordmarks are included in the packaged extension and can be reused in documentation. VS Code's language icon intentionally uses the compact mark so it remains legible at small sizes.
 
 ## File icon note
 
