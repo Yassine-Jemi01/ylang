@@ -7,37 +7,43 @@
 
 # YLang support for Zed
 
-Syntax highlighting and editor structure for YLang `.yl` files, powered by Tree-sitter.
+YLang syntax highlighting and language intelligence for `.yl` files. The extension uses Tree-sitter for syntax and the YLang Language Server Protocol (LSP) server for editor features.
 
-## Quick setup
+## Install
 
-1. Download or clone the [YLang repository](https://github.com/Yassine-Jemi01/ylang).
-2. In Zed, open the **Command Palette** (`Ctrl+Shift+P`).
-3. Run **zed: install dev extension** (shown as **Install Dev Extension** in the Extensions view).
-4. Select the `editors/zed` directory inside the cloned repository.
-5. Open a `.yl` file. If needed, choose **YLang** from the language selector.
+1. Clone or download the [YLang repository](https://github.com/Yassine-Jemi01/ylang).
+2. Build and install the compiler and LSP server:
 
-If you already have the repository, skip the download step and select its existing `editors/zed` directory.
+   ```sh
+   make
+   ./editors/zed/install-lsp.sh
+   ```
 
-## What works
+   The installer places `ylang` and `ylang-lsp` in `~/.local/bin`, and the Python server in `~/.local/share/ylang`. Ensure `~/.local/bin` is on your `PATH`. Python 3 is required.
 
-- `.yl` file association
-- Tree-sitter syntax highlighting
-- Bracket matching
-- Comment toggling
-- Block indentation
+3. In Zed, open the Command Palette (`Ctrl+Shift+P`).
+4. Run **zed: install dev extension** and select the repository's `editors/zed` directory.
+5. Restart Zed and open a `.yl` file.
+
+Set `YLANG_COMPILER` to the compiler executable path if your compiler is installed somewhere other than `~/.local/bin/ylang`.
+
+## LSP features
+
+- Compiler diagnostics from `ylang check` while editing and saving.
+- Completion for YLang keywords, built-in types, and symbols in the current file.
+- Hover information for local declarations and built-in symbols.
+- Go to definition for declarations in the current file.
+- Document symbols for functions, structs, enums, and variables.
 
 ## Current limitations
 
-This is syntax/editor-structure support, **not a language server**. Compiler diagnostics, completion, go-to-definition, formatting, and debugging are not available in Zed yet.
+This is the initial LSP foundation. Completion, hover, and definition are currently based on lightweight source scanning and are limited to the current file; they are not yet backed by the compiler's semantic symbol table. Formatting, rename, references, cross-file navigation, code actions, and debugging are not implemented. Compiler diagnostics depend on the output format of `ylang check`; malformed or incomplete source may not always produce a diagnostic.
 
-The extension is currently installed as a development extension from this repository. Publishing it in Zed's extension gallery requires a dedicated extension repository and Zed's submission process.
+The extension is installed as a development extension from this repository. Publishing it in Zed's extension gallery requires a dedicated extension repository and Zed's submission process.
 
 ## Grammar development
 
-The Tree-sitter grammar source is at the repository root in `grammar.js`. The Zed extension pins a specific grammar commit in `extension.toml` so Zed can fetch it reproducibly.
-
-From the repository root, install the Tree-sitter CLI and run:
+The Tree-sitter grammar source is at the repository root in `grammar.js`. The Zed extension pins a specific grammar commit in `extension.toml`.
 
 ```sh
 npm install --global tree-sitter-cli
