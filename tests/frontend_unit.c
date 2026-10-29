@@ -31,6 +31,24 @@ static int test_lexer(void)
         }
     }
 
+    Lexer modern_bindings = lexer_init(
+        "let mut count: int = 0; let name: string = \"YLang\"; value?");
+    const TokenType binding_tokens[] = {
+        TOKEN_LET, TOKEN_MUT, TOKEN_IDENTIFIER, TOKEN_COLON, TOKEN_IDENTIFIER,
+        TOKEN_EQUAL, TOKEN_NUMBER, TOKEN_SEMICOLON,
+        TOKEN_LET, TOKEN_IDENTIFIER, TOKEN_COLON, TOKEN_IDENTIFIER,
+        TOKEN_EQUAL, TOKEN_STRING, TOKEN_SEMICOLON,
+        TOKEN_IDENTIFIER, TOKEN_QUESTION, TOKEN_EOF
+    };
+    for (size_t i = 0; i < sizeof(binding_tokens) / sizeof(binding_tokens[0]); i++) {
+        Token token = lexer_next(&modern_bindings);
+        if (token.type != binding_tokens[i]) {
+            fprintf(stderr, "modern binding token %zu: expected %s, got %s\n",
+                    i, token_type_name(binding_tokens[i]), token_type_name(token.type));
+            return 1;
+        }
+    }
+
     Lexer hex_character = lexer_init("'\\x42'");
     Token character = lexer_next(&hex_character);
     if (character.type != TOKEN_CHAR || character.length != 6U) {
@@ -191,11 +209,16 @@ static int test_parser(void)
 {
     const char *source =
         "let int base = 2;\n"
+        "let answer: int = 42;\n"
+        "let mut offset: int = 1;\n"
         "enum Direction { North, East }\n"
         "struct Point { int x; int y; }\n"
         "function main() -> int {\n"
         "    let Point p = Point(base, 3);\n"
-        "    return p.x;\n"
+        "    let name: string = \"YLang\";\n"
+        "    let mut count: int = 0;\n"
+        "    count = count + offset;\n"
+        "    return p.x + count;\n"
         "}\n";
     Compiler compiler = {0};
     compiler.filename = "frontend-unit.yl";
@@ -204,7 +227,7 @@ static int test_parser(void)
 
     Program *program = parse_program(&compiler);
     const int failed = compiler.had_error || !program ||
-                       program->global_count != 1 ||
+                       program->global_count != 3 ||
                        program->function_count != 1 ||
                        compiler.enum_count != 1 ||
                        compiler.struct_count != 1;
