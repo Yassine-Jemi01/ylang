@@ -136,7 +136,8 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
                 op != TOKEN_SLASH && op != TOKEN_PERCENT &&
                 op != TOKEN_EQUAL_EQUAL && op != TOKEN_BANG_EQUAL &&
                 op != TOKEN_LESS && op != TOKEN_LESS_EQUAL &&
-                op != TOKEN_GREATER && op != TOKEN_GREATER_EQUAL) {
+                op != TOKEN_GREATER && op != TOKEN_GREATER_EQUAL &&
+                op != TOKEN_AND && op != TOKEN_OR) {
                 return asm_reject(ctx, expr->token, "this binary operator");
             }
             return validate_expr(ctx, expr->as.binary.left) &&
@@ -521,17 +522,17 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
                 unsigned short_label = new_label(ctx);
                 unsigned end_label = new_label(ctx);
                 if (!emit_expr(ctx, left)) return false;
-                fputs("    test rax, rax\\n", ctx->out);
-                fprintf(ctx->out, "    %s .Llogic_short_%u\\n",
+                fputs("    test rax, rax\n", ctx->out);
+                fprintf(ctx->out, "    %s .Llogic_short_%u\n",
                         op == TOKEN_AND ? "jz" : "jnz", short_label);
                 if (!emit_expr(ctx, right)) return false;
-                fputs("    test rax, rax\\n"
-                      "    setne al\\n"
-                      "    movzx rax, al\\n", ctx->out);
-                fprintf(ctx->out, "    jmp .Llogic_end_%u\\n"
-                                  ".Llogic_short_%u:\\n"
-                                  "    mov eax, %d\\n"
-                                  ".Llogic_end_%u:\\n",
+                fputs("    test rax, rax\n"
+                      "    setne al\n"
+                      "    movzx rax, al\n", ctx->out);
+                fprintf(ctx->out, "    jmp .Llogic_end_%u\n"
+                                  ".Llogic_short_%u:\n"
+                                  "    mov eax, %d\n"
+                                  ".Llogic_end_%u:\n",
                         end_label, short_label, op == TOKEN_AND ? 0 : 1, end_label);
                 return true;
             }
