@@ -111,8 +111,8 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
         case EXPR_STRING:
             return true;
         case EXPR_NAME:
-            if (!expr->as.name.variable || expr->as.name.variable->is_global) {
-                return asm_reject(ctx, expr->token, "global variables");
+            if (!expr->as.name.variable) {
+                return asm_reject(ctx, expr->token, "unresolved variable references");
             }
             if (expr->as.name.variable->is_array) {
                 return asm_reject(ctx, expr->token, "array values");
@@ -146,10 +146,9 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
         case EXPR_ASSIGN:
             if (!expr->as.assign.target ||
                 expr->as.assign.target->kind != EXPR_NAME ||
-                !expr->as.assign.variable ||
-                expr->as.assign.variable->is_global) {
+                !expr->as.assign.variable) {
                 return asm_reject(ctx, expr->token,
-                                  "assignments except to local scalar variables");
+                                  "assignments except to named scalar variables");
             }
             return validate_expr(ctx, expr->as.assign.right);
         case EXPR_CALL:
@@ -492,8 +491,13 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             return ctx->okay;
         }
         case EXPR_NAME: {
-            size_t offset = slot_offset(ctx, expr->as.name.variable);
-            fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", offset);
+            VarDecl *variable = expr->as.name.variable;
+            if (variable->is_global) {
+                fprintf(ctx->out, "    mov rax, [rel %s]\n", variable->c_name);
+            } else {
+                size_t offset = slot_offset(ctx, variable);
+                fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", offset);
+            }
             return ctx->okay;
         }
         case EXPR_UNARY:
@@ -705,16 +709,24 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
                                   "    mov rax, [rbp - %zu]\n", inc_offset, inc_offset);
                 return ctx->okay;
             }
-            size_t offset = slot_offset(ctx, variable);
+            size_t offset = variable->is_global ? 0U : slot_offset(ctx, variable);
             if (expr->as.assign.is_compound) {
                 if (!emit_expr(ctx, expr->as.assign.right)) return false;
                 fputs("    mov r10, rax\n", ctx->out);
-                fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", offset);
+                if (variable->is_global) {
+                    fprintf(ctx->out, "    mov rax, [rel %s]\n", variable->c_name);
+                } else {
+                    fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", offset);
+                }
                 fputs("    add rax, r10\n    jo __yl_runtime_error\n", ctx->out);
             } else if (!emit_expr(ctx, expr->as.assign.right)) {
                 return false;
             }
-            fprintf(ctx->out, "    mov [rbp - %zu], rax\n", offset);
+            if (variable->is_global) {
+                fprintf(ctx->out, "    mov [rel %s], rax\n", variable->c_name);
+            } else {
+                fprintf(ctx->out, "    mov [rbp - %zu], rax\n", offset);
+            }
             return true;
         }
         case EXPR_CALL:
@@ -931,6 +943,101 @@ static bool prepare_function(AsmContext *ctx, Function *function)
     return collect_stmt_slots(ctx, function->body);
 }
 
+static bool eval_global_integer(AsmContext *ctx, Expr *expr, int64_t *value)
+{
+    if (!expr || !value) return false;
+    switch (expr->kind) {
+        case EXPR_INT: {
+            char *literal = token_copy(ctx->compiler, expr->token);
+            char *end = NULL;
+            int base = expr->token.length > 2U && literal[0] == '0' &&
+                       (literal[1] == 'x' || literal[1] == 'X') ? 16 : 10;
+            unsigned long long parsed = strtoull(literal, &end, base);
+            if (end == literal || !end || *end != '\0') return false;
+            *value = (int64_t)parsed;
+            return true;
+        }
+        case EXPR_BOOL:
+            *value = expr->token.type == TOKEN_TRUE ? 1 : 0;
+            return true;
+        case EXPR_ENUM_VALUE:
+            *value = expr->as.enum_value.variant->value;
+            return true;
+        case EXPR_CHAR: {
+            unsigned char *bytes = NULL;
+            size_t length = 0;
+            if (!decode_quoted_literal(expr->token, &bytes, &length) || length != 1U) {
+                free(bytes);
+                return false;
+            }
+            *value = (int64_t)bytes[0];
+            free(bytes);
+            return true;
+        }
+        case EXPR_UNARY:
+            if (expr->as.unary.op.type == TOKEN_MINUS) {
+                if (expr->is_min_int) {
+                    *value = INT64_MIN;
+                    return true;
+                }
+                int64_t operand = 0;
+                if (!eval_global_integer(ctx, expr->as.unary.right, &operand) ||
+                    operand == INT64_MIN) return false;
+                *value = -operand;
+                return true;
+            }
+            if (expr->as.unary.op.type == TOKEN_NOT ||
+                expr->as.unary.op.type == TOKEN_BANG) {
+                int64_t operand = 0;
+                if (!eval_global_integer(ctx, expr->as.unary.right, &operand)) return false;
+                *value = operand == 0 ? 1 : 0;
+                return true;
+            }
+            return false;
+        default:
+            return false;
+    }
+}
+
+static bool emit_global_storage(AsmContext *ctx)
+{
+    if (ctx->compiler->program->global_count == 0U) return true;
+    fputs("\nsection .data\n", ctx->out);
+    for (size_t i = 0; i < ctx->compiler->program->global_count; i++) {
+        VarDecl *var = ctx->compiler->program->globals[i];
+        if (var->is_array || var->type == TYPE_FLOAT ||
+            var->type == TYPE_OWNED_STRING || var->type == TYPE_HTTP_TASK) {
+            return asm_reject(ctx, var->token, "this global storage type");
+        }
+        fprintf(ctx->out, "align 8\n%s:\n", var->c_name);
+        if (!var->initializer) {
+            if (var->type == TYPE_STRING || var->type == TYPE_BORROWED_STRING) {
+                fputs("    dq yl_empty\n", ctx->out);
+            } else {
+                fputs("    dq 0\n", ctx->out);
+            }
+            continue;
+        }
+        if (var->type == TYPE_STRING || var->type == TYPE_BORROWED_STRING) {
+            if (var->initializer->kind != EXPR_STRING) {
+                return asm_reject(ctx, var->token,
+                                  "global strings initialized by non-literal expressions");
+            }
+            size_t id = intern_string(ctx, var->initializer);
+            fprintf(ctx->out, "    dq yl_str_%zu\n", id);
+        } else {
+            int64_t value = 0;
+            if (!eval_global_integer(ctx, var->initializer, &value)) {
+                return asm_reject(ctx, var->token,
+                                  "global initializers other than scalar constants");
+            }
+            fprintf(ctx->out, "    dq 0x%016" PRIx64 "\n", (uint64_t)value);
+        }
+    }
+    fputs("section .text\n", ctx->out);
+    return ctx->okay;
+}
+
 static bool emit_function(AsmContext *ctx, Function *function)
 {
     static const char *const argument_registers[] = {
@@ -1095,14 +1202,17 @@ bool generate_asm(Compiler *compiler, const char *path)
     ctx.compiler = compiler;
     ctx.okay = true;
 
-    if (compiler->program->global_count != 0U) {
-        Token token = compiler->program->globals[0]->token;
-        (void)asm_reject(&ctx, token, "global declarations");
-    }
     Function *main_function = find_function(compiler, "main");
     if (!main_function) {
         Token token = {0};
         (void)asm_reject(&ctx, token, "a program without function main");
+    }
+
+    for (size_t i = 0; ctx.okay && i < compiler->program->global_count; i++) {
+        VarDecl *var = compiler->program->globals[i];
+        if (var->is_array ||
+            !asm_type_supported(&ctx, var->type, var->token, false) ||
+            !validate_expr(&ctx, var->initializer)) break;
     }
 
     for (size_t i = 0; ctx.okay && i < compiler->program->function_count; i++) {
@@ -1158,6 +1268,7 @@ bool generate_asm(Compiler *compiler, const char *path)
         "    syscall\n",
         out);
 
+    if (ctx.okay && !emit_global_storage(&ctx)) ctx.okay = false;
     for (size_t i = 0; ctx.okay &&
          i < compiler->program->function_count; i++) {
         if (!emit_function(&ctx, compiler->program->functions[i])) break;
