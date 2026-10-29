@@ -6,7 +6,7 @@
 
 ## 1. Summary
 
-YLang 3.0 adopts a `let` / `let mut` binding model, deprecates the old type-first `let` declaration syntax without removing it in 2.x, and introduces two distinct error-handling mechanisms:
+YLang 3.0 adopts a `let` / `let mut` binding model, deprecates the old type-first `let` declaration syntax while retaining it during the 3.0 migration period, and introduces two distinct error-handling mechanisms:
 
 - Exceptions: `throw` and `try/catch`.
 - Explicit recoverable errors: built-in `Result<T, E>`, `Ok`, `Err`, and `?`.
@@ -94,7 +94,7 @@ Requirements:
 3. Do not silently reinterpret legacy `let Type name` as immutable.
 4. Keep source locations and stable warning codes.
 5. Add a safe migration path to `ylang fix` only when the declaration can be transformed unambiguously.
-6. Reserve removal of legacy syntax for a future major release, not 2.3.
+6. Do not remove legacy syntax during the 3.0 development cycle; consider removal only in a future major release with an explicit migration plan.
 
 Suggested diagnostic:
 
