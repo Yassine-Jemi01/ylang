@@ -1,5 +1,7 @@
 # RFC-2.3-001: Modern Bindings and Structured Error Handling
 
+> **Superseded:** this proposal is now part of YLang 3.0. See [RFC-3.0-LANGUAGE-DESIGN.md](RFC-3.0-LANGUAGE-DESIGN.md). There is no separate YLang 2.3 stable release planned.
+
 **Status:** Accepted design direction; implementation pending  
 **Target:** YLang 2.3.x  
 **Scope:** Lexer, parser, AST, semantic analysis, C backend, runtime, tests, and editor tooling
