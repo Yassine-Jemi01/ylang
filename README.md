@@ -1,6 +1,6 @@
 # YLang
 
-**A small compiled programming language with explicit types and actionable diagnostics.**
+**A practical native language for fast developer tools, desktop utilities, and 2D games.**
 
 YLang is implemented in C17. Its compiler tokenizes and parses `.yl` files, checks names, initialization and types, generates C, and invokes GCC or Clang to produce a native executable. Linux and macOS are the primary tested targets; experimental native Windows support is available for 64-bit Windows with MinGW-w64. Windows support currently has a focused CI smoke suite and is not yet a claim of complete platform parity. It is a compiled language toolchain, not an interpreter.
 
@@ -11,6 +11,14 @@ YLang **2.2.0** is the latest stable release. The documented core language and d
 - **Latest stable release: 2.2.0.** The documented core language and default C-backend workflow remain the compatibility foundation; new HTTP, async-task, debugger, and related extensions have explicit experimental boundaries.
 - HTTP/API requests, the first asynchronous HTTP-task API, environment-variable access, source-aware native debugging, editor tooling, and the refreshed documentation are included in 2.2.0. See the [2.2.0 release notes](docs/CHANGELOG-2.2.0.md), [HTTP guide](docs/HTTP.md), [debugger guide](docs/DEBUGGER.md), [security model](docs/SECURITY.md), [performance benchmark guide](docs/PERFORMANCE.md), and [release roadmap](docs/ROADMAP-2.2.0.md). The acceptance procedure remains documented in [docs/ACCEPTANCE-2.2.0.md](docs/ACCEPTANCE-2.2.0.md) and can be run with `bash tools/test-2.2-candidate.sh`.
 - Async/await currently applies only to HTTP task handles; general async functions, a built-in JSON parser/serializer, a complete VS Code Debug Adapter Protocol integration, and Windows interactive debugging are not implemented. The 2.1.0 ownership proposal and its limits remain documented in the [2.1.0 candidate notes](docs/CHANGELOG-2.1.0.md) and [memory model](docs/MEMORY-MODEL.md).
+
+## YLang 3.0 development
+
+YLang 3.0 is the next release target. The previously proposed 2.3 feature line is being folded into 3.0; no separate 2.3 stable release is planned. This development branch is marked `3.0.0-dev` and is not a release candidate.
+
+**Why YLang?** The 3.0 goal is to make native software pleasant to build: Rust-influenced clarity without copying Rust's syntax, explicit mutability and predictable memory, fast native output, a useful standard library, and first-party workflows for tools, desktop utilities, and small games. The LLVM backend, expanded NASM support, and performance goals are development work, not completed claims.
+
+Read the [unified YLang 3.0 roadmap](docs/ROADMAP-3.0.md), the [language design RFC](docs/RFC-3.0-LANGUAGE-DESIGN.md), and the [LLVM backend RFC](docs/RFC-3.0-LLVM-BACKEND.md).
 
 ## The online book
 
@@ -417,8 +425,8 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [YLang Book (online HTML)](https://yassine-jemi01.github.io/ylang/learn/index.html)
 - [Language specification](docs/language-spec.md)
 - [Architecture](docs/architecture.md)
-- [YLang 2.3 → 3.0 roadmap](docs/ROADMAP-2.3-3.0.md)
-- [YLang 2.3 language RFC](docs/RFC-2.3-001.md)
+- [YLang 3.0 roadmap](docs/ROADMAP-3.0.md)
+- [YLang 3.0 language design RFC](docs/RFC-3.0-LANGUAGE-DESIGN.md)
 - [YLang 3.0 LLVM backend RFC](docs/RFC-3.0-LLVM-BACKEND.md)
 - [YLang 2.0 design roadmap](docs/YLANG-2.0-DESIGN.md)
 - [YLang 2.0.0 release notes and compatibility policy](docs/CHANGELOG-2.0.0.md)
