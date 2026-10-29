@@ -14,6 +14,7 @@ typedef enum {
     TOKEN_NEWLINE,
 
     TOKEN_LET,
+    TOKEN_MUT,
     TOKEN_CONST,
     TOKEN_PRINT,
     TOKEN_IF,
@@ -42,6 +43,8 @@ typedef enum {
     TOKEN_LEFT_BRACKET,
     TOKEN_RIGHT_BRACKET,
     TOKEN_DOT,
+    TOKEN_COLON,
+    TOKEN_QUESTION,
 
     TOKEN_PLUS,
     TOKEN_PLUS_EQUAL,
