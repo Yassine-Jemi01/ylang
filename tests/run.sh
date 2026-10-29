@@ -1573,6 +1573,28 @@ if ./build/ylang check build/immutable-binding-error.yl > build/immutable-bindin
 fi
 grep -q 'E2022' build/immutable-binding-error.out
 
+# NASM must support initialized and mutable scalar globals.
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+    cat > build/asm-globals.yl <<'EOF'
+let BASE: int = 40;
+let mut counter: int = 1;
+let mut greeting: string = "hello";
+function main() -> int {
+    counter += 1;
+    greeting = "YLang";
+    print(BASE, counter, greeting);
+    return 0;
+}
+EOF
+    ./build/ylang build build/asm-globals.yl -o build/asm-globals-c >/dev/null 2>&1
+    ./build/ylang build-asm build/asm-globals.yl -o build/asm-globals >/dev/null
+    ./build/asm-globals-c > build/asm-globals-c.out
+    ./build/asm-globals > build/asm-globals.out
+    diff -u build/asm-globals-c.out build/asm-globals.out
+    printf '40 2 YLang\n' > build/asm-globals.expected
+    diff -u build/asm-globals.expected build/asm-globals.out
+fi
+
 # NASM logical operators must short-circuit and preserve side-effect order.
 if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
     cat > build/asm-short-circuit.yl <<'EOF'
