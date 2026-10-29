@@ -127,10 +127,6 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
             return validate_expr(ctx, expr->as.unary.right);
         case EXPR_BINARY: {
             TokenType op = expr->as.binary.op.type;
-            if (op == TOKEN_AND || op == TOKEN_OR) {
-                return asm_reject(ctx, expr->token,
-                                  "and/or expressions (short-circuit lowering is not implemented)");
-            }
             if (expr->as.binary.left &&
                 (expr->as.binary.left->type == TYPE_STRING ||
                  expr->as.binary.left->type == TYPE_BORROWED_STRING)) {
@@ -519,6 +515,26 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             Expr *left = expr->as.binary.left;
             Expr *right = expr->as.binary.right;
             TokenType op = expr->as.binary.op.type;
+
+            /* Logical operators must short-circuit; the right side may have effects. */
+            if (op == TOKEN_AND || op == TOKEN_OR) {
+                unsigned short_label = new_label(ctx);
+                unsigned end_label = new_label(ctx);
+                if (!emit_expr(ctx, left)) return false;
+                fputs("    test rax, rax\\n", ctx->out);
+                fprintf(ctx->out, "    %s .Llogic_short_%u\\n",
+                        op == TOKEN_AND ? "jz" : "jnz", short_label);
+                if (!emit_expr(ctx, right)) return false;
+                fputs("    test rax, rax\\n"
+                      "    setne al\\n"
+                      "    movzx rax, al\\n", ctx->out);
+                fprintf(ctx->out, "    jmp .Llogic_end_%u\\n"
+                                  ".Llogic_short_%u:\\n"
+                                  "    mov eax, %d\\n"
+                                  ".Llogic_end_%u:\\n",
+                        end_label, short_label, op == TOKEN_AND ? 0 : 1, end_label);
+                return true;
+            }
 
             /* Use memory operands for simple local integer arithmetic/comparisons. */
             if (is_local_scalar_name(left) && is_local_scalar_name(right) &&
