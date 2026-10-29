@@ -652,30 +652,84 @@ static Stmt *parse_block_after_open(Parser *p, Token opening)
     return block;
 }
 
+static bool next_token_is_colon(Parser *p)
+{
+    Lexer lookahead = p->lexer;
+    Token token;
+    do {
+        token = lexer_next(&lookahead);
+    } while (token.type == TOKEN_NEWLINE);
+    return token.type == TOKEN_COLON;
+}
+
 static Stmt *parse_variable(Parser *p, bool global)
 {
     Token start = p->previous;
-    bool is_const = match(p, TOKEN_CONST);
-    YType type = parse_type(p);
+    bool is_const = false;
+    bool is_new_syntax = false;
+    bool is_array = false;
+    YType type = TYPE_ERROR;
+    Token name_token = {0};
+
+    if (match(p, TOKEN_MUT)) {
+        /* New mutable binding: let mut name: Type = value; */
+        name_token = consume(p, TOKEN_IDENTIFIER,
+            "Expected a variable name after 'let mut'.",
+            "Use 'let mut count: int = 0;'.");
+        consume(p, TOKEN_COLON, "Expected ':' after the mutable binding name.",
+                "Write the type after the name, for example 'let mut count: int'.");
+        type = parse_type(p);
+        is_new_syntax = true;
+    } else if (p->current.type == TOKEN_IDENTIFIER && next_token_is_colon(p)) {
+        /* New immutable binding: let name: Type = value; */
+        name_token = consume(p, TOKEN_IDENTIFIER,
+            "Expected a binding name after 'let'.",
+            "Use 'let name: Type = value;'.");
+        consume(p, TOKEN_COLON, "Expected ':' after the binding name.",
+                "Write the type after the name, for example 'let name: string'.");
+        type = parse_type(p);
+        is_const = true;
+        is_new_syntax = true;
+    } else {
+        /* Compatibility path: let [const] Type name = value; */
+        bool legacy_const = match(p, TOKEN_CONST);
+        is_const = legacy_const;
+        type = parse_type(p);
+        name_token = consume(p, TOKEN_IDENTIFIER,
+            "Expected a variable name after the type.",
+            "Use 'let mut count: int = 0;' for mutable values or 'let name: int = 0;' for immutable values.");
+        diagnostic(p->compiler, start, "warning", "W2301",
+                   "Legacy type-first variable declaration syntax is deprecated.",
+                   legacy_const
+                       ? "Replace 'let const int LIMIT' with 'let LIMIT: int'."
+                       : "Replace 'let int count' with 'let mut count: int'.");
+    }
+
     if (type == TYPE_BORROWED_STRING) {
         diagnostic(p->compiler, p->previous, "error", "E2120",
                    "borrowed_string can only be used as a function parameter type.",
                    "Use borrowed_string in a parameter list, or use string / owned_string for stored values.");
     }
-    Token name_token = consume(p, TOKEN_IDENTIFIER,
-        "Expected a variable name after the type.",
-        "For example: let int count = 0;");
-    bool is_array = false;
-    if (match(p, TOKEN_LEFT_BRACKET)) {
+
+    if (is_new_syntax) {
+        if (match(p, TOKEN_LEFT_BRACKET)) {
+            is_array = true;
+            consume(p, TOKEN_RIGHT_BRACKET,
+                    "Array types use empty brackets after the element type.",
+                    "Use 'let mut values: int[] = [1, 2, 3];'.");
+        }
+    } else if (match(p, TOKEN_LEFT_BRACKET)) {
         is_array = true;
         consume(p, TOKEN_RIGHT_BRACKET, "Array declarations use empty brackets after the name.",
-                "Use a declaration such as 'let int values[] = [1, 2, 3];'.");
-        if (is_const) {
-            diagnostic(p->compiler, name_token, "error", "E2017",
-                       "const arrays are not supported yet.",
-                       "Use a mutable array declaration for now.");
-        }
+                "Use a declaration such as 'let mut values: int[] = [1, 2, 3];'.");
     }
+
+    if (is_array && is_const) {
+        diagnostic(p->compiler, name_token, "error", "E2017",
+                   "Immutable arrays are not supported yet.",
+                   "Use 'let mut values: Type[]' until immutable array storage is implemented.");
+    }
+
     Expr *initializer = NULL;
     if (match(p, TOKEN_EQUAL)) initializer = parse_expression(p);
     if (is_array && !initializer) {
@@ -686,12 +740,12 @@ static Stmt *parse_variable(Parser *p, bool global)
     if (!is_array && initializer && initializer->kind == EXPR_ARRAY) {
         diagnostic(p->compiler, name_token, "error", "E2019",
                    "An array literal requires an array declaration.",
-                   "Declare the variable with empty brackets after its name, such as 'let int values[] = [1, 2, 3];'.");
+                   "Declare the variable with an array type, such as 'let mut values: int[] = [1, 2, 3];'.");
     }
     if (is_const && !initializer) {
         diagnostic(p->compiler, name_token, "error", "E2003",
-                   "A const variable must be initialized at declaration.",
-                   "Give it a value, for example 'let const int limit = 10;'.");
+                   "An immutable binding must be initialized at declaration.",
+                   "Give it a value, for example 'let limit: int = 10;'.");
     }
     consume(p, TOKEN_SEMICOLON, "Expected ';' after variable declaration.",
             "The declaration may be missing ';' before this token.");
