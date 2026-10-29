@@ -1530,4 +1530,72 @@ env -u YLANG_MEMORY_STATS ./build/test-memory-stats > build/memory-stats-default
 diff -u build/memory-stats.expected build/memory-stats-default.stdout
 [ ! -s build/memory-stats-default.stderr ]
 
+# YLang 3.0 bindings: immutable by default, explicit mutability, legacy warning.
+cat > build/bindings-v3.yl <<'EOF'
+let GLOBAL_LIMIT: int = 40;
+let mut global_total: int = 1;
+
+function main() -> int {
+    let fixed: int = GLOBAL_LIMIT;
+    let mut counter: int;
+    counter = 1;
+
+    for (let mut index: int = 0; index < 3; index = index + 1) {
+        counter += 1;
+    }
+
+    // Legacy syntax remains mutable in the 3.0 transition period.
+    let int legacy = 1;
+    legacy = legacy + 1;
+
+    global_total = global_total + counter;
+    print(fixed, counter, legacy, global_total);
+    return 0;
+}
+EOF
+./build/ylang check build/bindings-v3.yl > build/bindings-v3-check.out 2>&1
+grep -q 'W2301' build/bindings-v3-check.out
+./build/ylang build build/bindings-v3.yl -o build/test-bindings-v3 >/dev/null 2>&1
+./build/test-bindings-v3 > build/bindings-v3.out
+printf '40 4 2 5\n' > build/bindings-v3.expected
+diff -u build/bindings-v3.expected build/bindings-v3.out
+
+cat > build/immutable-binding-error.yl <<'EOF'
+function main() -> int {
+    let score: int = 10;
+    score = 11;
+    return score;
+}
+EOF
+if ./build/ylang check build/immutable-binding-error.yl > build/immutable-binding-error.out 2>&1; then
+    echo "FAIL: immutable binding was reassigned" >&2
+    exit 1
+fi
+grep -q 'E2022' build/immutable-binding-error.out
+
+# NASM logical operators must short-circuit and preserve side-effect order.
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+    cat > build/asm-short-circuit.yl <<'EOF'
+function mark(int value) -> bool {
+    print(value);
+    return true;
+}
+function main() -> int {
+    let bool a = false and mark(1);
+    let bool b = true or mark(2);
+    let bool c = true and mark(3);
+    let bool d = false or mark(4);
+    print(a, b, c, d);
+    return 0;
+}
+EOF
+    ./build/ylang build build/asm-short-circuit.yl -o build/asm-short-circuit-c >/dev/null 2>&1
+    ./build/ylang build-asm build/asm-short-circuit.yl -o build/asm-short-circuit >/dev/null
+    ./build/asm-short-circuit-c > build/asm-short-circuit-c.out
+    ./build/asm-short-circuit > build/asm-short-circuit.out
+    diff -u build/asm-short-circuit-c.out build/asm-short-circuit.out
+    printf '3\n4\nfalse true true true\n' > build/asm-short-circuit.expected
+    diff -u build/asm-short-circuit.expected build/asm-short-circuit.out
+fi
+
 echo "All YLang tests passed."
