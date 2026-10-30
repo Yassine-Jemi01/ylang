@@ -11,6 +11,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+typedef struct Program Program;
+
 typedef uint32_t YLIRValue;
 #define YLIR_NO_VALUE UINT32_MAX
 
@@ -22,11 +24,12 @@ typedef enum {
 typedef enum {
     YLIR_OP_CONST_BOOL, YLIR_OP_CONST_I64, YLIR_OP_CONST_F64,
     YLIR_OP_ADD_I64, YLIR_OP_SUB_I64, YLIR_OP_MUL_I64,
-    YLIR_OP_SDIV_I64, YLIR_OP_SREM_I64,
+    YLIR_OP_SDIV_I64, YLIR_OP_SREM_I64, YLIR_OP_NEG_I64,
     YLIR_OP_EQ_I64, YLIR_OP_NE_I64, YLIR_OP_SLT_I64,
     YLIR_OP_SLE_I64, YLIR_OP_SGT_I64, YLIR_OP_SGE_I64,
     YLIR_OP_NOT_BOOL,
     YLIR_OP_ADD_F64, YLIR_OP_SUB_F64, YLIR_OP_MUL_F64, YLIR_OP_DIV_F64,
+    YLIR_OP_NEG_F64,
     YLIR_OP_PHI,
     YLIR_OP_CALL
 } YLIRInstructionKind;
@@ -131,6 +134,9 @@ bool ylang_ir_cond_branch(YLIRBasicBlock *block, YLIRValue condition,
                           size_t line, size_t column);
 bool ylang_ir_unreachable(YLIRBasicBlock *block, size_t line, size_t column);
 bool ylang_ir_verify(const YLIRModule *module, FILE *diagnostics);
+/* Lower the currently supported scalar AST subset to backend-neutral SSA IR. */
+bool ylang_ir_lower_program(const Program *program, YLIRModule *module,
+                            FILE *diagnostics);
 const char *ylang_ir_type_name(YLIRType type);
 const char *ylang_ir_instruction_name(YLIRInstructionKind kind);
 const char *ylang_ir_terminator_name(YLIRTerminatorKind kind);

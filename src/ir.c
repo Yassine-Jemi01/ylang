@@ -67,6 +67,7 @@ const char *ylang_ir_instruction_name(YLIRInstructionKind op)
         case YLIR_OP_MUL_I64: return "mul.i64";
         case YLIR_OP_SDIV_I64: return "sdiv.i64";
         case YLIR_OP_SREM_I64: return "srem.i64";
+        case YLIR_OP_NEG_I64: return "neg.i64";
         case YLIR_OP_EQ_I64: return "eq.i64";
         case YLIR_OP_NE_I64: return "ne.i64";
         case YLIR_OP_SLT_I64: return "slt.i64";
@@ -78,6 +79,7 @@ const char *ylang_ir_instruction_name(YLIRInstructionKind op)
         case YLIR_OP_SUB_F64: return "sub.f64";
         case YLIR_OP_MUL_F64: return "mul.f64";
         case YLIR_OP_DIV_F64: return "div.f64";
+        case YLIR_OP_NEG_F64: return "neg.f64";
         case YLIR_OP_PHI: return "phi";
         case YLIR_OP_CALL: return "call";
     }
@@ -255,7 +257,7 @@ bool ylang_ir_emit_op(YLIRBasicBlock *block, YLIRInstructionKind kind,
                       YLIRValue left, YLIRValue right,
                       size_t line, size_t column, YLIRValue *out)
 {
-    if (kind < YLIR_OP_ADD_I64 || kind > YLIR_OP_DIV_F64) return false;
+    if (kind < YLIR_OP_ADD_I64 || kind > YLIR_OP_NEG_F64) return false;
     YLIRInstruction inst = {
         .kind = kind, .result = YLIR_NO_VALUE, .type = YLIR_TYPE_INVALID,
         .left = left, .right = right, .source_line = line, .source_column = column
@@ -432,14 +434,14 @@ static bool result_type_for_instruction(FILE *out, const YLIRFunction *fn,
         case YLIR_OP_CONST_I64: *result_type = YLIR_TYPE_I64; break;
         case YLIR_OP_CONST_F64: *result_type = YLIR_TYPE_F64; break;
         case YLIR_OP_ADD_I64: case YLIR_OP_SUB_I64: case YLIR_OP_MUL_I64:
-        case YLIR_OP_SDIV_I64: case YLIR_OP_SREM_I64:
+        case YLIR_OP_SDIV_I64: case YLIR_OP_SREM_I64: case YLIR_OP_NEG_I64:
             *result_type = YLIR_TYPE_I64; break;
         case YLIR_OP_EQ_I64: case YLIR_OP_NE_I64: case YLIR_OP_SLT_I64:
         case YLIR_OP_SLE_I64: case YLIR_OP_SGT_I64: case YLIR_OP_SGE_I64:
         case YLIR_OP_NOT_BOOL:
             *result_type = YLIR_TYPE_BOOL; break;
         case YLIR_OP_ADD_F64: case YLIR_OP_SUB_F64:
-        case YLIR_OP_MUL_F64: case YLIR_OP_DIV_F64:
+        case YLIR_OP_MUL_F64: case YLIR_OP_DIV_F64: case YLIR_OP_NEG_F64:
             *result_type = YLIR_TYPE_F64; break;
         case YLIR_OP_PHI:
             if (!valid_type(inst->type, false))
@@ -572,6 +574,10 @@ static bool verify_instruction_operands(FILE *out, const YLIRFunction *fn,
             operand_type = YLIR_TYPE_I64; break;
         case YLIR_OP_NOT_BOOL:
             operand_type = YLIR_TYPE_BOOL; unary = true; break;
+        case YLIR_OP_NEG_I64:
+            operand_type = YLIR_TYPE_I64; unary = true; break;
+        case YLIR_OP_NEG_F64:
+            operand_type = YLIR_TYPE_F64; unary = true; break;
         case YLIR_OP_ADD_F64: case YLIR_OP_SUB_F64:
         case YLIR_OP_MUL_F64: case YLIR_OP_DIV_F64:
             operand_type = YLIR_TYPE_F64; break;

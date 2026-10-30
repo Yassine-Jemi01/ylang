@@ -19,7 +19,7 @@ else
 GAME2D_OUTPUT ?= build/dodge
 endif
 
-.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test ir-unit-test fuzz-frontend fuzz-smoke
+.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test ir-unit-test ir-lowering-unit-test fuzz-frontend fuzz-smoke
 
 all: $(BIN)
 
@@ -60,7 +60,13 @@ build/ir-unit: tests/ir_unit.c src/ir.c include/ylang/ir.h
 ir-unit-test: build/ir-unit
 	./build/ir-unit
 
-test: $(BIN) frontend-unit-test ir-unit-test
+build/ir-lowering-unit: tests/ir_lower_unit.c $(filter-out build/main.o,$(OBJ))
+	$(CC) $(CPPFLAGS) $(CFLAGS) $^ $(LDFLAGS) -o $@
+
+ir-lowering-unit-test: build/ir-lowering-unit
+	./build/ir-lowering-unit
+
+test: $(BIN) frontend-unit-test ir-unit-test ir-lowering-unit-test
 	sh tests/run.sh
 
 FUZZ_CC ?= clang
