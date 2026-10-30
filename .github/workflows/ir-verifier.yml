@@ -7,8 +7,10 @@ on:
     branches: [main]
     paths:
       - "src/ir.c"
+      - "src/ir_lower.c"
       - "include/ylang/ir.h"
       - "tests/ir_unit.c"
+      - "tests/ir_lower_unit.c"
       - "tests/run-ir-unit.sh"
       - ".github/workflows/ir-verifier.yml"
 
@@ -24,5 +26,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Compile verifier tests with strict warnings
+      - name: Compile verifier and lowering tests with strict warnings
         run: sh tests/run-ir-unit.sh
