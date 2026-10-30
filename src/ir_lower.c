@@ -145,6 +145,8 @@ static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
         if (expression->type != TYPE_INT || !expression->as.name.variable ||
             !lowerer->function)
             return lower_fail(lowerer, "only integer function parameters are supported as names");
+        if (lookup_local(lowerer, expression->as.name.variable, value_id))
+            return true;
         for (size_t i = 0; i < lowerer->function->param_count; ++i) {
             if (lowerer->function->params[i] == expression->as.name.variable) {
                 if (i >= UINT32_MAX)
@@ -153,8 +155,6 @@ static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
                 return true;
             }
         }
-        if (lookup_local(lowerer, expression->as.name.variable, value_id))
-            return true;
         return lower_fail(lowerer,
             "name is not a supported scalar function parameter or local variable");
     }
@@ -259,6 +259,8 @@ static bool lower_boolean_expr(Lowerer *lowerer, const Expr *expression,
     if (expression->kind == EXPR_NAME) {
         if (!expression->as.name.variable || !lowerer->function)
             return lower_fail(lowerer, "boolean name is not a supported function parameter");
+        if (lookup_local(lowerer, expression->as.name.variable, value_id))
+            return true;
         for (size_t i = 0; i < lowerer->function->param_count; ++i) {
             if (lowerer->function->params[i] == expression->as.name.variable &&
                 lowerer->function->params[i]->type == TYPE_BOOL &&
@@ -267,8 +269,6 @@ static bool lower_boolean_expr(Lowerer *lowerer, const Expr *expression,
                 return true;
             }
         }
-        if (lookup_local(lowerer, expression->as.name.variable, value_id))
-            return true;
         return lower_fail(lowerer,
             "name is not a supported scalar bool function parameter or local variable");
     }
@@ -508,7 +508,6 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
                           "only int and void functions are supported by the initial IR lowerer");
 
     const Stmt *root = unwrap_single_statement(function->body);
-    bool empty_body = false;
     YIRBlock *blocks = NULL;
     size_t block_count = 0;
     uint32_t next_id = (uint32_t)function->param_count;
@@ -531,17 +530,6 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
             return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                               "initial IR lowering requires an else branch when lowering if");
         }
-        bool then_empty = false, else_empty = false;
-        const Stmt *then_return =
-            find_single_return(root->as.if_stmt.then_branch, &then_empty);
-        const Stmt *else_return =
-            find_single_return(root->as.if_stmt.else_branch, &else_empty);
-        if ((!then_return && !then_empty) || (!else_return && !else_empty)) {
-            free(parameters);
-            return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
-                              "each if branch must contain exactly one return");
-        }
-
         blocks = calloc(3, sizeof(*blocks));
         if (!blocks) {
             free(parameters);
@@ -575,11 +563,11 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
         blocks[0].instruction_count = entry.count;
         next_id = entry.next_id;
 
-        if (!lower_return_block(function, then_return, then_empty, 1,
+        if (!lower_return_block(function, root->as.if_stmt.then_branch, 1,
                                 &next_id, &blocks[1], error, error_capacity)) {
             free((void *)blocks[0].instructions); free(blocks); free(parameters); return false;
         }
-        if (!lower_return_block(function, else_return, else_empty, 2,
+        if (!lower_return_block(function, root->as.if_stmt.else_branch, 2,
                                 &next_id, &blocks[2], error, error_capacity)) {
             free((void *)blocks[0].instructions);
             free((void *)blocks[1].instructions);
@@ -589,18 +577,13 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
         }
         block_count = 3;
     } else {
-        const Stmt *ret = find_single_return(root, &empty_body);
-        if (!ret && !(empty_body && function->return_type == TYPE_VOID))
-            { free(parameters); return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
-                              "initial IR lowering requires one return statement"); }
-
         blocks = calloc(1, sizeof(*blocks));
         if (!blocks) {
             free(parameters);
             return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                               "out of memory while creating IR entry block");
         }
-        if (!lower_return_block(function, ret, empty_body, 0, &next_id,
+        if (!lower_return_block(function, function->body, 0, &next_id,
                                 &blocks[0], error, error_capacity)) {
             free(blocks);
             free(parameters);
