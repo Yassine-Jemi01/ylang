@@ -1474,7 +1474,7 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                            "A deferred function must return void.",
                            "Use a cleanup function declared with -> void.");
             }
-            for (size_t i = 0; i < callee->param_count; i++) {
+            for (size_t i = 0; i < call->as.call.count && i < callee->param_count; i++) {
                 if (callee->params[i]->is_array) {
                     diagnostic(c, stmt->token, "error", "E2132",
                                "Deferred calls do not support array parameters yet.",

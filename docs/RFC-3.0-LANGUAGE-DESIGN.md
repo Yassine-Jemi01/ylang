@@ -383,3 +383,8 @@ YLang 3.0 must not claim these features complete until:
 This RFC does not require general user-defined generics, type constraints, exception inheritance, multiple catch clauses, finally, full Rust-style borrow checking, a tracing GC, a new LLVM backend, or full NASM parity.
 
 **End of RFC-3.0-LANGUAGE.**
+
+
+## Defer semantics (3.0 implementation milestone)
+
+`defer cleanup(value);` registers a direct call to a declared YLang `fn`. Arguments are evaluated from left to right when the statement is reached and captured as values. Registered calls execute in last-in, first-out order at the end of the lexical scope, including scope exit caused by `return`, `break`, or `continue`. The current implementation accepts scalar and enum arguments and requires a `void` return type; string and aggregate captures are rejected until they can be made ownership-safe. NASM currently reports an explicit unsupported-feature diagnostic; the C backend is the first implementation target. Exceptions and `Result` propagation are not yet implemented, so their interaction with `defer` remains a release requirement, not a completed behavior.

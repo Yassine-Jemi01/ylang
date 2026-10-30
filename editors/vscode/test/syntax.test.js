@@ -23,7 +23,7 @@ for (const name of includes) {
   assert.ok(repository[name], `grammar include #${name} must be defined`);
 }
 
-for (const keyword of ["fn", "struct", "enum", "match", "from", "import", "for", "while", "await"]) {
+for (const keyword of ["fn", "defer", "struct", "enum", "match", "from", "import", "for", "while", "await"]) {
   assert.ok(repository.keywords.match.includes(keyword), `missing YLang keyword: ${keyword}`);
 }
 assert.ok(repository["function-declaration"].match.includes("fn|function"), "fn and the legacy function spelling should be highlighted");

@@ -163,6 +163,70 @@ diff -u tests/expected-demo.txt build/test-demo.out
 ./build/test-evaluation-order > build/evaluation-order.out
 diff -u tests/expected-evaluation-order.txt build/evaluation-order.out
 
+# defer captures scalar arguments at registration and runs calls in LIFO order
+# on normal scope exit, return, break, and continue.
+cat > build/defer-order.yl <<'EOF'
+fn record(int value) -> void {
+    print(value);
+}
+
+fn main() -> int {
+    let mut value: int = 10;
+    defer record(value);
+    defer record(20);
+    print(0);
+
+    if (true) {
+        defer record(3);
+    }
+
+    loop() {
+        defer record(4);
+        break;
+    }
+
+    let mut index: int = 0;
+    while (index < 2) {
+        defer record(index);
+        index = index + 1;
+        continue;
+    }
+
+    value = 30;
+    return 0;
+}
+EOF
+./build/ylang check build/defer-order.yl
+./build/ylang build build/defer-order.yl -o build/test-defer-order >/dev/null
+./build/test-defer-order > build/defer-order.out
+diff -u tests/expected-defer-order.txt build/defer-order.out
+
+# defer rejects non-call expressions and functions with non-void results.
+cat > build/defer-invalid-call.yl <<'EOF'
+fn main() -> int {
+    defer 1 + 2;
+    return 0;
+}
+EOF
+if ./build/ylang check build/defer-invalid-call.yl > build/defer-invalid-call.out 2>&1; then
+    echo "FAIL: defer accepted a non-call expression" >&2
+    exit 1
+fi
+grep -q 'E2130' build/defer-invalid-call.out
+
+cat > build/defer-invalid-result.yl <<'EOF'
+fn value() -> int { return 1; }
+fn main() -> int {
+    defer value();
+    return 0;
+}
+EOF
+if ./build/ylang check build/defer-invalid-result.yl > build/defer-invalid-result.out 2>&1; then
+    echo "FAIL: defer accepted a non-void cleanup function" >&2
+    exit 1
+fi
+grep -q 'E2131' build/defer-invalid-result.out
+
 # Safe auto-fix: replace a common typo in code, but leave strings/comments alone.
 ./build/ylang fix tests/typo-print.yl -o build/typo-print-fixed.yl > build/fix.out 2> build/fix.err
 grep -q "replaced 'pritn' with 'print'" build/fix.err

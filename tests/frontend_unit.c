@@ -49,12 +49,13 @@ static int test_lexer(void)
         }
     }
 
-    Lexer function_keywords = lexer_init("fn add() {} function old() {}");
+    Lexer function_keywords = lexer_init("fn add() {} function old() {} defer cleanup()");
     const TokenType function_tokens[] = {
         TOKEN_FN, TOKEN_IDENTIFIER, TOKEN_LEFT_PAREN, TOKEN_RIGHT_PAREN,
         TOKEN_LEFT_BRACE, TOKEN_RIGHT_BRACE,
         TOKEN_FUNCTION, TOKEN_IDENTIFIER, TOKEN_LEFT_PAREN, TOKEN_RIGHT_PAREN,
-        TOKEN_LEFT_BRACE, TOKEN_RIGHT_BRACE, TOKEN_EOF
+        TOKEN_LEFT_BRACE, TOKEN_RIGHT_BRACE,
+        TOKEN_DEFER, TOKEN_IDENTIFIER, TOKEN_LEFT_PAREN, TOKEN_RIGHT_PAREN, TOKEN_EOF
     };
     for (size_t i = 0; i < sizeof(function_tokens) / sizeof(function_tokens[0]); i++) {
         Token token = lexer_next(&function_keywords);
