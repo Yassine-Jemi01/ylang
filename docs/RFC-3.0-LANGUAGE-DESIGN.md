@@ -62,7 +62,7 @@ An immutable binding cannot be used to mutate an array element or a struct field
 The existing parameter syntax remains unchanged in 3.0:
 
 ```ylang
-function add(int left, int right) -> int {
+fn add(int left, int right) -> int {
     return left + right;
 }
 ```
@@ -70,6 +70,8 @@ function add(int left, int right) -> int {
 Parameters are immutable inside the callee in the new model. A function that needs a mutable local copy must declare one explicitly. An explicit mutable-parameter syntax is deferred.
 
 ## 3. Legacy syntax and migration
+
+The old `function name(...)` declaration keyword remains temporarily accepted and emits warning `W2302`. All new examples and source code should use `fn name(...)`. The old spelling is planned for removal in a later major release, not during the 3.0 compatibility period.
 
 YLang 3.0 must continue accepting the old forms:
 
@@ -227,14 +229,14 @@ Owned payload types must remain unsupported until their move/drop behavior is de
 ### 8.1 Exceptions
 
 ```ylang
-function validate_age(int age) -> int {
+fn validate_age(int age) -> int {
     if (age < 0) {
         throw Error("Age cannot be negative");
     }
     return age;
 }
 
-function main() -> int {
+fn main() -> int {
     try {
         print(validate_age(-1));
     }
@@ -252,7 +254,7 @@ The initial Error API should expose a stable code and a message. Custom exceptio
 ### 8.2 Result
 
 ```ylang
-function divide(int a, int b) -> Result<int, Error> {
+fn divide(int a, int b) -> Result<int, Error> {
     if (b == 0) {
         return Err(Error("Division by zero"));
     }
@@ -263,7 +265,7 @@ function divide(int a, int b) -> Result<int, Error> {
 ### 8.3 Propagation
 
 ```ylang
-function read_port() -> Result<int, Error> {
+fn read_port() -> Result<int, Error> {
     let parsed: Result<int, Error> = parse_port();
     let port: int = parsed?;
     return Ok(port);
