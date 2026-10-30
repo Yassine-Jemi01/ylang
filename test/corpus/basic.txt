@@ -17,13 +17,15 @@ fn main() -> int {
     return_type: (primitive_type)
     (block
       (variable_declaration
-        type: (primitive_type)
-        name: (identifier)
-        (string))
+        (variable_binding
+          type: (primitive_type)
+          name: (identifier)
+          (string)))
       (variable_declaration
-        type: (primitive_type)
-        name: (identifier)
-        (integer))
+        (variable_binding
+          type: (primitive_type)
+          name: (identifier)
+          (integer)))
       (expression_statement
         (call_expression
           function: (identifier)
@@ -123,21 +125,17 @@ fn main() -> int {
           (integer))
         (binary_expression
           left: (identifier)
-          operator: "<"
           right: (integer))
         (assignment_expression
           left: (identifier)
-          operator: "="
           right: (binary_expression
             left: (identifier)
-            operator: "+"
-            right: (integer)))
+              right: (integer)))
         (block
           (expression_statement
             (assignment_expression
               left: (identifier)
-              operator: "+="
-              right: (identifier)))))
+                  right: (identifier)))))
       (return_statement
         (binary_expression
           left: (identifier)
