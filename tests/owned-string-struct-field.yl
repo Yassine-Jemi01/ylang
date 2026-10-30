@@ -2,6 +2,6 @@ struct Holder {
     owned_string value;
 }
 
-function main() -> int {
+fn main() -> int {
     return 0;
 }

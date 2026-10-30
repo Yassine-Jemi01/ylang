@@ -1,8 +1,8 @@
-function bad_return(owned_string value) -> owned_string {
+fn bad_return(owned_string value) -> owned_string {
     return value;
 }
 
-function main() -> int {
+fn main() -> int {
     let owned_string value = string.own("value");
     let owned_string result = bad_return(move(value));
     print(result);
