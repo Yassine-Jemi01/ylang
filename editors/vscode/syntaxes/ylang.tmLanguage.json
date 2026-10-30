@@ -84,7 +84,7 @@
       ]
     },
     "function-declaration": {
-      "match": "\\b(function)(\\s+)([A-Za-z_][A-Za-z0-9_]*)",
+      "match": "\\b(fn|function)(\\s+)([A-Za-z_][A-Za-z0-9_]*)",
       "captures": {
         "1": {
           "name": "keyword.control.ylang"
@@ -214,7 +214,7 @@
       "name": "constant.language.boolean.ylang"
     },
     "keywords": {
-      "match": "\\b(?:function|return|let|const|if|else|loop|while|for|break|continue|and|or|not|await|struct|enum|match|from|import)\\b",
+      "match": "\\b(?:fn|function|return|let|const|if|else|loop|while|for|break|continue|and|or|not|await|struct|enum|match|from|import)\\b",
       "name": "keyword.control.ylang"
     },
     "types": {
