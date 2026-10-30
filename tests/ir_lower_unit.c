@@ -440,6 +440,59 @@ static void rejects_assignment_to_const_local(void)
     assert(strstr(error,"mutable scalar")!=NULL);
 }
 
+
+static void lowers_assignment_to_parameter_as_new_ssa_value(void)
+{
+    VarDecl parameter = {.name="value",.type=TYPE_INT};
+    VarDecl *parameters[] = {&parameter};
+    Expr initial = {
+        .kind=EXPR_NAME,.type=TYPE_INT,
+        .as.name={.name="value",.variable=&parameter}
+    };
+    Expr one = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="1",.length=1},
+        .type=TYPE_INT
+    };
+    Expr sum = {
+        .kind=EXPR_BINARY,.type=TYPE_INT,
+        .as.binary={
+            .left=&initial,.right=&one,
+            .op={.type=TOKEN_PLUS,.start="+",.length=1}
+        }
+    };
+    Expr target = {
+        .kind=EXPR_NAME,.type=TYPE_INT,
+        .as.name={.name="value",.variable=&parameter}
+    };
+    Expr assignment = {
+        .kind=EXPR_ASSIGN,.type=TYPE_INT,
+        .as.assign={.target=&target,.right=&sum,.variable=&parameter}
+    };
+    Stmt assign_statement = {.kind=STMT_EXPR,.as.expression=&assignment};
+    Expr returned = {
+        .kind=EXPR_NAME,.type=TYPE_INT,
+        .as.name={.name="value",.variable=&parameter}
+    };
+    Stmt ret = {.kind=STMT_RETURN,.as.return_value=&returned};
+    Stmt *items[] = {&assign_statement,&ret};
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=2}};
+    Function function = {
+        .name="increment",
+        .params=parameters,
+        .param_count=1,
+        .return_type=TYPE_INT,
+        .body=&body
+    };
+    YIRFunction lowered;
+    char error[192];
+    assert(yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(lowered.blocks[0].instructions[1].opcode==YIR_OP_ADD_I64);
+    assert(lowered.blocks[0].instructions[2].opcode==YIR_OP_RETURN);
+    assert(lowered.blocks[0].instructions[2].lhs==3);
+    yir_destroy_function(&lowered);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
@@ -455,6 +508,7 @@ int main(void)
     lowers_local_integer_and_assignment();
     lowers_local_boolean();
     rejects_assignment_to_const_local();
+    lowers_assignment_to_parameter_as_new_ssa_value();
     puts("YLang IR lowering tests passed");
     return 0;
 }
