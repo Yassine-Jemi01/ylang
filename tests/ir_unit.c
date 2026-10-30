@@ -45,9 +45,31 @@ static void reject_wrong_return_type(void)
     char error[160]; assert(!yir_verify_function(&fn,error,sizeof(error)));
     assert(strstr(error,"wrong type")!=NULL);
 }
+
+static void reject_missing_branch_target(void)
+{
+    const YIRInstruction ins[]={ {.opcode=YIR_OP_BRANCH,.target=99} };
+    const YIRBlock block={.id=0,.instructions=ins,.instruction_count=1};
+    const YIRFunction fn={.name="bad",.return_type=YIR_TYPE_VOID,.blocks=&block,.block_count=1};
+    char error[160]; assert(!yir_verify_function(&fn,error,sizeof(error)));
+    assert(strstr(error,"target does not exist")!=NULL);
+}
+static void reject_terminator_result(void)
+{
+    const YIRInstruction ins[]={
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64},
+        {.opcode=YIR_OP_RETURN,.result_id=2,.lhs=1}
+    };
+    const YIRBlock block={.id=0,.instructions=ins,.instruction_count=2};
+    const YIRFunction fn={.name="bad",.return_type=YIR_TYPE_I64,.blocks=&block,.block_count=1};
+    char error[160]; assert(!yir_verify_function(&fn,error,sizeof(error)));
+    assert(strstr(error,"terminators cannot define")!=NULL);
+}
+
 int main(void)
 {
     valid_arithmetic_return(); reject_use_before_definition();
     reject_missing_terminator(); reject_wrong_return_type();
+    reject_missing_branch_target(); reject_terminator_result();
     puts("YLang IR verifier tests passed"); return 0;
 }
