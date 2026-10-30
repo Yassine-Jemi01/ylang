@@ -51,17 +51,17 @@ static bool emit(Lowerer *lowerer, YIRInstruction instruction,
 static bool parse_integer_literal(const Expr *expression, int64_t *value)
 {
     if (!expression || expression->kind != EXPR_INT ||
-        !expression->token.start || expression->token.length == 0)
+        !expression->token.start || expression->token.length == 0 ||
+        expression->token.length == SIZE_MAX)
         return false;
     if (expression->is_min_int) {
         *value = INT64_MIN;
         return true;
     }
-    const char *text = expression->token.start;
     size_t length = expression->token.length;
     char *copy = malloc(length + 1);
     if (!copy) return false;
-    memcpy(copy, text, length);
+    memcpy(copy, expression->token.start, length);
     copy[length] = '\0';
     int base = length > 2 && copy[0] == '0' &&
                (copy[1] == 'x' || copy[1] == 'X') ? 0 : 10;
@@ -142,18 +142,115 @@ static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
         "expression is outside the initial scalar IR lowering subset");
 }
 
-static const Stmt *find_single_return(const Stmt *statement, bool *empty_void)
+static bool lower_boolean_expr(Lowerer *lowerer, const Expr *expression,
+                               uint32_t *value_id)
 {
+    if (!expression || expression->type != TYPE_BOOL)
+        return lower_fail(lowerer, "if condition must lower to bool");
+
+    if (expression->kind == EXPR_BOOL) {
+        YIRInstruction instruction = {
+            .opcode = YIR_OP_CONST_BOOL,
+            .result_type = YIR_TYPE_BOOL,
+            .immediate = expression->token.type == TOKEN_TRUE ? 1 : 0
+        };
+        if (expression->token.type != TOKEN_TRUE &&
+            expression->token.type != TOKEN_FALSE)
+            return lower_fail(lowerer, "invalid boolean literal in IR lowering");
+        return emit(lowerer, instruction, value_id);
+    }
+
+    if (expression->kind == EXPR_BINARY) {
+        uint32_t lhs = 0, rhs = 0;
+        if (!lower_integer_expr(lowerer, expression->as.binary.left, &lhs) ||
+            !lower_integer_expr(lowerer, expression->as.binary.right, &rhs))
+            return false;
+        YIROpcode opcode;
+        switch (expression->as.binary.op.type) {
+            case TOKEN_EQUAL_EQUAL: opcode = YIR_OP_EQ_I64; break;
+            case TOKEN_BANG_EQUAL: opcode = YIR_OP_NE_I64; break;
+            case TOKEN_LESS: opcode = YIR_OP_LT_I64; break;
+            case TOKEN_LESS_EQUAL: opcode = YIR_OP_LE_I64; break;
+            case TOKEN_GREATER: opcode = YIR_OP_GT_I64; break;
+            case TOKEN_GREATER_EQUAL: opcode = YIR_OP_GE_I64; break;
+            default:
+                return lower_fail(lowerer,
+                    "comparison operator is not supported by the initial IR lowerer");
+        }
+        YIRInstruction instruction = {
+            .opcode = opcode,
+            .result_type = YIR_TYPE_BOOL,
+            .lhs = lhs,
+            .rhs = rhs
+        };
+        return emit(lowerer, instruction, value_id);
+    }
+
+    return lower_fail(lowerer,
+        "boolean expression is outside the initial scalar IR lowering subset");
+}
+
+static const Stmt *unwrap_single_statement(const Stmt *statement)
+{
+    while (statement && statement->kind == STMT_BLOCK &&
+           statement->as.block.count == 1 && statement->as.block.items)
+        statement = statement->as.block.items[0];
+    return statement;
+}
+
+static const Stmt *find_single_return(const Stmt *statement, bool *empty_body)
+{
+    statement = unwrap_single_statement(statement);
     if (!statement) return NULL;
     if (statement->kind == STMT_RETURN) return statement;
-    if (statement->kind != STMT_BLOCK) return NULL;
-    if (statement->as.block.count == 0) {
-        *empty_void = true;
+    if (statement->kind == STMT_BLOCK && statement->as.block.count == 0) {
+        *empty_body = true;
         return NULL;
     }
-    if (!statement->as.block.items || statement->as.block.count != 1)
-        return NULL;
-    return find_single_return(statement->as.block.items[0], empty_void);
+    return NULL;
+}
+
+static bool lower_return_block(const Function *function, const Stmt *ret,
+                               bool empty_body, uint32_t block_id,
+                               uint32_t *next_id, YIRBlock *out,
+                               char *error, size_t error_capacity)
+{
+    Lowerer lowerer = {
+        .next_id = *next_id,
+        .error = error,
+        .error_capacity = error_capacity
+    };
+    if (ret && ret->as.return_value) {
+        if (function->return_type != TYPE_INT) {
+            (void)lower_fail(&lowerer,
+                "void function cannot return a value in the initial IR lowerer");
+            goto failed;
+        }
+        uint32_t returned = 0;
+        if (!lower_integer_expr(&lowerer, ret->as.return_value, &returned))
+            goto failed;
+        YIRInstruction terminator = {.opcode=YIR_OP_RETURN,.lhs=returned};
+        if (!emit(&lowerer, terminator, NULL)) goto failed;
+    } else {
+        if (function->return_type != TYPE_VOID ||
+            (!ret && !empty_body)) {
+            (void)lower_fail(&lowerer,
+                "int functions and non-empty void branches require a return statement");
+            goto failed;
+        }
+        YIRInstruction terminator = {.opcode=YIR_OP_RETURN};
+        if (!emit(&lowerer, terminator, NULL)) goto failed;
+    }
+
+    out->id = block_id;
+    out->instructions = lowerer.items;
+    out->instruction_count = lowerer.count;
+    *next_id = lowerer.next_id;
+    return true;
+
+failed:
+    free(lowerer.items);
+    return false;
 }
 
 void yir_destroy_function(YIRFunction *function)
@@ -183,59 +280,84 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
         return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                           "only int and void functions are supported by the initial IR lowerer");
 
-    bool empty_void = false;
-    const Stmt *ret = find_single_return(function->body, &empty_void);
-    if (!ret && !(empty_void && function->return_type == TYPE_VOID))
-        return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
-                          "initial IR lowering requires one return statement");
+    const Stmt *root = unwrap_single_statement(function->body);
+    bool empty_body = false;
+    YIRBlock *blocks = NULL;
+    size_t block_count = 0;
+    uint32_t next_id = 0;
 
-    Lowerer lowerer = {
-        .next_id = 0,
-        .error = error,
-        .error_capacity = error_capacity
-    };
-    if (ret && ret->as.return_value) {
-        if (function->return_type != TYPE_INT)
-            return lower_fail(&lowerer,
-                "void function cannot return a value in the initial IR lowerer");
-        uint32_t returned = 0;
-        if (!lower_integer_expr(&lowerer, ret->as.return_value, &returned)) {
-            free(lowerer.items);
-            return false;
+    if (root && root->kind == STMT_IF) {
+        if (!root->as.if_stmt.else_branch)
+            return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
+                              "initial IR lowering requires an else branch when lowering if");
+        bool then_empty = false, else_empty = false;
+        const Stmt *then_return =
+            find_single_return(root->as.if_stmt.then_branch, &then_empty);
+        const Stmt *else_return =
+            find_single_return(root->as.if_stmt.else_branch, &else_empty);
+        if ((!then_return && !then_empty) || (!else_return && !else_empty))
+            return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
+                              "each if branch must contain exactly one return");
+
+        blocks = calloc(3, sizeof(*blocks));
+        if (!blocks)
+            return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
+                              "out of memory while creating IR control-flow blocks");
+
+        Lowerer entry = {.error=error,.error_capacity=error_capacity};
+        uint32_t condition = 0;
+        if (!lower_boolean_expr(&entry, root->as.if_stmt.condition, &condition)) {
+            free(entry.items); free(blocks); return false;
         }
-        YIRInstruction terminator = {
-            .opcode = YIR_OP_RETURN,
-            .lhs = returned
+        YIRInstruction branch = {
+            .opcode=YIR_OP_COND_BRANCH,
+            .lhs=condition,
+            .target=1,
+            .false_target=2
         };
-        if (!emit(&lowerer, terminator, NULL)) {
-            free(lowerer.items);
+        if (!emit(&entry, branch, NULL)) {
+            free(entry.items); free(blocks); return false;
+        }
+        blocks[0].id = 0;
+        blocks[0].instructions = entry.items;
+        blocks[0].instruction_count = entry.count;
+        next_id = entry.next_id;
+
+        if (!lower_return_block(function, then_return, then_empty, 1,
+                                &next_id, &blocks[1], error, error_capacity)) {
+            free((void *)blocks[0].instructions); free(blocks); return false;
+        }
+        if (!lower_return_block(function, else_return, else_empty, 2,
+                                &next_id, &blocks[2], error, error_capacity)) {
+            free((void *)blocks[0].instructions);
+            free((void *)blocks[1].instructions);
+            free(blocks);
             return false;
         }
+        block_count = 3;
     } else {
-        if (function->return_type != TYPE_VOID) {
-            free(lowerer.items);
-            return lower_fail(&lowerer, "int function must return a value");
-        }
-        YIRInstruction terminator = {.opcode = YIR_OP_RETURN};
-        if (!emit(&lowerer, terminator, NULL)) {
-            free(lowerer.items);
+        const Stmt *ret = find_single_return(root, &empty_body);
+        if (!ret && !(empty_body && function->return_type == TYPE_VOID))
+            return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
+                              "initial IR lowering requires one return statement");
+
+        blocks = calloc(1, sizeof(*blocks));
+        if (!blocks)
+            return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
+                              "out of memory while creating IR entry block");
+        if (!lower_return_block(function, ret, empty_body, 0, &next_id,
+                                &blocks[0], error, error_capacity)) {
+            free(blocks);
             return false;
         }
+        block_count = 1;
     }
 
-    YIRBlock *block = calloc(1, sizeof(*block));
-    if (!block) {
-        free(lowerer.items);
-        return lower_fail(&lowerer, "out of memory while creating IR entry block");
-    }
-    block->id = 0;
-    block->instructions = lowerer.items;
-    block->instruction_count = lowerer.count;
     out->name = function->name;
     out->return_type = function->return_type == TYPE_VOID ?
                        YIR_TYPE_VOID : YIR_TYPE_I64;
-    out->blocks = block;
-    out->block_count = 1;
+    out->blocks = blocks;
+    out->block_count = block_count;
 
     char verify_error[192];
     if (!yir_verify_function(out, verify_error, sizeof(verify_error))) {
