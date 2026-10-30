@@ -53,6 +53,13 @@ static bool is_function_parameter(const Lowerer *lowerer,
     return false;
 }
 
+static bool has_local(const Lowerer *lowerer, const VarDecl *variable)
+{
+    for (size_t i = 0; i < lowerer->local_count; ++i)
+        if (lowerer->locals[i].variable == variable) return true;
+    return false;
+}
+
 static bool bind_local(Lowerer *lowerer, const VarDecl *variable,
                        uint32_t value_id)
 {
@@ -411,8 +418,7 @@ static bool lower_statement(Lowerer *lowerer, const Function *function,
             if (!variable || variable->is_const || variable->is_array)
                 return lower_fail(lowerer,
                     "assignment target is not a mutable scalar local or parameter");
-            uint32_t previous_value = 0;
-            if (!lookup_local(lowerer, variable, &previous_value) &&
+            if (!has_local(lowerer, variable) &&
                 !is_function_parameter(lowerer, variable))
                 return lower_fail(lowerer,
                     "assignment target has no prior local declaration or parameter");
