@@ -14,7 +14,7 @@ YLang **2.2.0** is the latest stable release. The documented core language and d
 
 ## YLang 3.0 development
 
-YLang 3.0 is the next release target. The previously proposed 2.3 feature line is being folded into 3.0; no separate 2.3 stable release is planned. This development branch is marked `3.0.0-dev` and is not a release candidate.
+YLang 3.0 is the next release target. The previously proposed 2.3 feature line is being folded into 3.0; no separate 2.3 stable release is planned. This development branch is marked `3.0.0-dev` and is not a release candidate. New functions use `fn`; legacy `function` declarations remain accepted with warning `W2302`.
 
 **Why YLang?** The 3.0 goal is to make native software pleasant to build: Rust-influenced clarity without copying Rust's syntax, explicit mutability and predictable memory, fast native output, a useful standard library, and first-party workflows for tools, desktop utilities, and small games. The LLVM backend, expanded NASM support, and performance goals are development work, not completed claims.
 
@@ -92,7 +92,7 @@ On macOS, use `gmake` instead of `make` for these commands (Homebrew's GNU Make;
 Create `hello.yl`:
 
 ```ylang
-function main() -> int {
+fn main() -> int {
     let name: string = "YLang";
     let answer: int = 40 + 2;
     print(f"Hello from {name}!");
