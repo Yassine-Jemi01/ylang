@@ -313,22 +313,124 @@ static const Stmt *unwrap_single_statement(const Stmt *statement)
     return statement;
 }
 
-static const Stmt *find_single_return(const Stmt *statement, bool *empty_body)
+static bool lower_return_statement(Lowerer *lowerer,
+                                    const Function *function,
+                                    const Stmt *statement,
+                                    bool *terminated)
 {
-    statement = unwrap_single_statement(statement);
-    if (!statement) return NULL;
-    if (statement->kind == STMT_RETURN) return statement;
-    if (statement->kind == STMT_BLOCK && statement->as.block.count == 0) {
-        *empty_body = true;
-        return NULL;
+    if (statement->as.return_value) {
+        uint32_t returned = 0;
+        bool lowered = false;
+        if (function->return_type == TYPE_INT &&
+            statement->as.return_value->type == TYPE_INT)
+            lowered = lower_integer_expr(lowerer, statement->as.return_value,
+                                         &returned);
+        else if (function->return_type == TYPE_BOOL &&
+                 statement->as.return_value->type == TYPE_BOOL)
+            lowered = lower_boolean_expr(lowerer, statement->as.return_value,
+                                         &returned);
+        else
+            return lower_fail(lowerer,
+                "return expression type does not match the function return type");
+        if (!lowered) return false;
+        YIRInstruction terminator = {
+            .opcode=YIR_OP_RETURN,
+            .lhs=returned,
+            .source_line=statement->token.line,
+            .source_column=statement->token.column
+        };
+        if (!emit(lowerer, terminator, NULL)) return false;
+    } else {
+        if (function->return_type != TYPE_VOID)
+            return lower_fail(lowerer,
+                "non-void function must return a value");
+        YIRInstruction terminator = {
+            .opcode=YIR_OP_RETURN,
+            .source_line=statement->token.line,
+            .source_column=statement->token.column
+        };
+        if (!emit(lowerer, terminator, NULL)) return false;
     }
-    return NULL;
+    *terminated = true;
+    return true;
 }
 
-static bool lower_return_block(const Function *function, const Stmt *ret,
-                               bool empty_body, uint32_t block_id,
-                               uint32_t *next_id, YIRBlock *out,
-                               char *error, size_t error_capacity)
+static bool lower_statement(Lowerer *lowerer, const Function *function,
+                            const Stmt *statement, bool *terminated)
+{
+    if (!statement) return lower_fail(lowerer, "missing statement in IR lowering");
+    if (*terminated)
+        return lower_fail(lowerer, "statement appears after a return in IR lowering");
+
+    switch (statement->kind) {
+        case STMT_BLOCK:
+            if (statement->as.block.count && !statement->as.block.items)
+                return lower_fail(lowerer, "block statement array is missing");
+            for (size_t i = 0; i < statement->as.block.count; ++i) {
+                if (!lower_statement(lowerer, function,
+                                     statement->as.block.items[i], terminated))
+                    return false;
+            }
+            return true;
+
+        case STMT_VAR: {
+            const VarDecl *variable = statement->as.variable;
+            YIRType type;
+            if (!variable || variable->is_array ||
+                !map_scalar_type(variable->type, &type) ||
+                !variable->initializer)
+                return lower_fail(lowerer,
+                    "only initialized scalar int and bool local variables are supported");
+            uint32_t value_id = 0;
+            bool lowered = variable->type == TYPE_INT ?
+                lower_integer_expr(lowerer, variable->initializer, &value_id) :
+                lower_boolean_expr(lowerer, variable->initializer, &value_id);
+            if (!lowered) return false;
+            return bind_local(lowerer, variable, value_id);
+        }
+
+        case STMT_EXPR: {
+            const Expr *expression = statement->as.expression;
+            if (!expression || expression->kind != EXPR_ASSIGN ||
+                expression->as.assign.is_compound ||
+                !expression->as.assign.target ||
+                expression->as.assign.target->kind != EXPR_NAME)
+                return lower_fail(lowerer,
+                    "only simple assignments to scalar local names are supported");
+            const VarDecl *variable = expression->as.assign.variable;
+            if (!variable)
+                variable = expression->as.assign.target->as.name.variable;
+            if (!variable || variable->is_const || variable->is_array)
+                return lower_fail(lowerer,
+                    "assignment target is not a mutable scalar local or parameter");
+            YIRType type;
+            if (!map_scalar_type(variable->type, &type))
+                return lower_fail(lowerer,
+                    "only int and bool local assignments are supported");
+            uint32_t value_id = 0;
+            bool lowered = variable->type == TYPE_INT ?
+                lower_integer_expr(lowerer, expression->as.assign.right,
+                                   &value_id) :
+                lower_boolean_expr(lowerer, expression->as.assign.right,
+                                   &value_id);
+            if (!lowered) return false;
+            return bind_local(lowerer, variable, value_id);
+        }
+
+        case STMT_RETURN:
+            return lower_return_statement(lowerer, function, statement,
+                                          terminated);
+
+        default:
+            return lower_fail(lowerer,
+                "statement is outside the initial scalar IR lowering subset");
+    }
+}
+
+static bool lower_return_block(const Function *function, const Stmt *body,
+                               uint32_t block_id, uint32_t *next_id,
+                               YIRBlock *out, char *error,
+                               size_t error_capacity)
 {
     Lowerer lowerer = {
         .function = function,
@@ -336,39 +438,19 @@ static bool lower_return_block(const Function *function, const Stmt *ret,
         .error = error,
         .error_capacity = error_capacity
     };
-    if (ret && ret->as.return_value) {
-        uint32_t returned = 0;
-        bool lowered = false;
-        if (function->return_type == TYPE_INT &&
-            ret->as.return_value->type == TYPE_INT)
-            lowered = lower_integer_expr(&lowerer, ret->as.return_value, &returned);
-        else if (function->return_type == TYPE_BOOL &&
-                 ret->as.return_value->type == TYPE_BOOL)
-            lowered = lower_boolean_expr(&lowerer, ret->as.return_value, &returned);
-        else {
+    bool terminated = false;
+    if (!lower_statement(&lowerer, function, body, &terminated))
+        goto failed;
+    if (!terminated) {
+        if (function->return_type != TYPE_VOID) {
             (void)lower_fail(&lowerer,
-                "return expression type does not match the initial IR function return type");
-            goto failed;
-        }
-        if (!lowered) goto failed;
-        YIRInstruction terminator = {
-            .opcode=YIR_OP_RETURN,
-            .lhs=returned,
-            .source_line=ret->token.line,
-            .source_column=ret->token.column
-        };
-        if (!emit(&lowerer, terminator, NULL)) goto failed;
-    } else {
-        if (function->return_type != TYPE_VOID ||
-            (!ret && !empty_body)) {
-            (void)lower_fail(&lowerer,
-                "int functions and non-empty void branches require a return statement");
+                "non-void function path does not return a value");
             goto failed;
         }
         YIRInstruction terminator = {
             .opcode=YIR_OP_RETURN,
-            .source_line=ret ? ret->token.line : function->token.line,
-            .source_column=ret ? ret->token.column : function->token.column
+            .source_line=function->token.line,
+            .source_column=function->token.column
         };
         if (!emit(&lowerer, terminator, NULL)) goto failed;
     }
@@ -377,10 +459,12 @@ static bool lower_return_block(const Function *function, const Stmt *ret,
     out->instructions = lowerer.items;
     out->instruction_count = lowerer.count;
     *next_id = lowerer.next_id;
+    free(lowerer.locals);
     return true;
 
 failed:
     free(lowerer.items);
+    free(lowerer.locals);
     return false;
 }
 
