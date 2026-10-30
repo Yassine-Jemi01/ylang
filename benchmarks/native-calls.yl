@@ -1,0 +1,14 @@
+function accumulate(int value, int current) -> int {
+    return current + value;
+}
+
+function main() -> int {
+    let mut index: int = 0;
+    let mut total: int = 0;
+    while (index < 2000000) {
+        total = accumulate(index, total);
+        index++;
+    }
+    print(total);
+    return 0;
+}
