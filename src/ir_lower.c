@@ -8,7 +8,15 @@
 #include <string.h>
 
 typedef struct {
+    const VarDecl *variable;
+    uint32_t value_id;
+} LoweredLocal;
+
+typedef struct {
     const Function *function;
+    LoweredLocal *locals;
+    size_t local_count;
+    size_t local_capacity;
     YIRInstruction *items;
     size_t count;
     size_t capacity;
@@ -22,6 +30,44 @@ static bool lower_fail(Lowerer *lowerer, const char *message)
     if (lowerer->error && lowerer->error_capacity)
         (void)snprintf(lowerer->error, lowerer->error_capacity, "%s", message);
     return false;
+}
+
+static bool lookup_local(const Lowerer *lowerer, const VarDecl *variable,
+                         uint32_t *value_id)
+{
+    for (size_t i = 0; i < lowerer->local_count; ++i) {
+        if (lowerer->locals[i].variable == variable) {
+            *value_id = lowerer->locals[i].value_id;
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool bind_local(Lowerer *lowerer, const VarDecl *variable,
+                       uint32_t value_id)
+{
+    for (size_t i = 0; i < lowerer->local_count; ++i) {
+        if (lowerer->locals[i].variable == variable) {
+            lowerer->locals[i].value_id = value_id;
+            return true;
+        }
+    }
+    if (lowerer->local_count == lowerer->local_capacity) {
+        size_t next = lowerer->local_capacity ? lowerer->local_capacity * 2 : 8;
+        if (next < lowerer->local_capacity ||
+            next > SIZE_MAX / sizeof(*lowerer->locals))
+            return lower_fail(lowerer, "too many local bindings while lowering function");
+        LoweredLocal *locals = realloc(lowerer->locals,
+                                       next * sizeof(*lowerer->locals));
+        if (!locals)
+            return lower_fail(lowerer, "out of memory while lowering local bindings");
+        lowerer->locals = locals;
+        lowerer->local_capacity = next;
+    }
+    lowerer->locals[lowerer->local_count++] =
+        (LoweredLocal){variable, value_id};
+    return true;
 }
 
 static bool emit(Lowerer *lowerer, YIRInstruction instruction,
@@ -107,8 +153,10 @@ static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
                 return true;
             }
         }
+        if (lookup_local(lowerer, expression->as.name.variable, value_id))
+            return true;
         return lower_fail(lowerer,
-            "local variables and non-parameter names are not supported by the initial IR lowerer");
+            "name is not a supported scalar function parameter or local variable");
     }
 
     if (expression->kind == EXPR_INT) {
@@ -219,8 +267,10 @@ static bool lower_boolean_expr(Lowerer *lowerer, const Expr *expression,
                 return true;
             }
         }
+        if (lookup_local(lowerer, expression->as.name.variable, value_id))
+            return true;
         return lower_fail(lowerer,
-            "local variables and non-parameter boolean names are not supported by the initial IR lowerer");
+            "name is not a supported scalar bool function parameter or local variable");
     }
 
     if (expression->kind == EXPR_BINARY) {
