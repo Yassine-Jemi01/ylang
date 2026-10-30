@@ -153,6 +153,11 @@ bool yir_verify_function(const YIRFunction *function, char *error,
         for (size_t ii = 0; ii < block->instruction_count; ++ii) {
             const YIRInstruction *ins = &block->instructions[ii];
             bool last = ii + 1 == block->instruction_count;
+            if ((ins->source_line == 0) != (ins->source_column == 0)) {
+                (void)fail(error, error_capacity,
+                           "IR source line and column must both be present or absent");
+                goto cleanup;
+            }
             if (is_terminator(ins->opcode) != last) {
                 (void)fail(error, error_capacity,
                            "each block must end with exactly one terminator");
