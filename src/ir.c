@@ -54,6 +54,8 @@ bool yir_verify_function(const YIRFunction *function, char *error, size_t error_
             YIRType lhs_type = YIR_TYPE_VOID, rhs_type = YIR_TYPE_VOID;
             if (is_terminator(instruction->opcode) != last)
                 return fail(error, error_capacity, "each block must end with exactly one terminator");
+            if (is_terminator(instruction->opcode) && instruction->result_id != 0)
+                return fail(error, error_capacity, "terminators cannot define SSA values");
 
             switch (instruction->opcode) {
                 case YIR_OP_CONST_I64:
