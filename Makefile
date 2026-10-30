@@ -53,6 +53,13 @@ build/frontend-unit: tests/frontend_unit.c src/parser.c src/lexer.c src/arena.c 
 frontend-unit-test: build/frontend-unit
 	./build/frontend-unit
 
+build/ir-unit: tests/ir_unit.c src/ir.c include/ylang/ir.h
+	@mkdir -p build
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ir_unit.c src/ir.c $(LDFLAGS) -o $@
+
+ir-unit-test: build/ir-unit
+	./build/ir-unit
+
 test: $(BIN) frontend-unit-test
 	sh tests/run.sh
 
