@@ -170,11 +170,17 @@ fn record(int value) -> void {
     print(value);
 }
 
+fn return_early() -> void {
+    defer record(5);
+    return;
+}
+
 fn main() -> int {
     let mut value: int = 10;
     defer record(value);
     defer record(20);
     print(0);
+    return_early();
 
     if (true) {
         defer record(3);
