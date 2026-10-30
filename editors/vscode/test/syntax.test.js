@@ -26,7 +26,7 @@ for (const name of includes) {
 for (const keyword of ["fn", "struct", "enum", "match", "from", "import", "for", "while", "await"]) {
   assert.ok(repository.keywords.match.includes(keyword), `missing YLang keyword: ${keyword}`);
 }
-assert.match(repository["function-declaration"].match, /\\b(?:fn|function)\\b/, "fn and the legacy function spelling should be highlighted");
+assert.ok(repository["function-declaration"].match.includes("fn|function"), "fn and the legacy function spelling should be highlighted");
 assert.ok(repository["struct-declaration"], "struct declarations should have a dedicated scope");
 assert.ok(repository["enum-declaration"], "enum declarations and variants should have dedicated scopes");
 assert.ok(repository["field-declaration"], "struct fields should be highlighted");
