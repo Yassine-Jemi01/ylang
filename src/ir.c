@@ -82,6 +82,11 @@ const char *ylang_ir_instruction_name(YLIRInstructionKind op)
         case YLIR_OP_NEG_F64: return "neg.f64";
         case YLIR_OP_PHI: return "phi";
         case YLIR_OP_CALL: return "call";
+        case YLIR_OP_PRINT_I64: return "print.i64";
+        case YLIR_OP_PRINT_F64: return "print.f64";
+        case YLIR_OP_PRINT_BOOL: return "print.bool";
+        case YLIR_OP_PRINT_SPACE: return "print.space";
+        case YLIR_OP_PRINT_NEWLINE: return "print.newline";
     }
     return "unknown";
 }
@@ -325,6 +330,36 @@ bool ylang_ir_emit_call(YLIRBasicBlock *block, size_t callee_index,
     return okay;
 }
 
+bool ylang_ir_emit_print(YLIRBasicBlock *block, YLIRType value_type,
+                         YLIRValue value, size_t line, size_t column)
+{
+    YLIRInstructionKind kind;
+    switch (value_type) {
+        case YLIR_TYPE_I64: kind = YLIR_OP_PRINT_I64; break;
+        case YLIR_TYPE_F64: kind = YLIR_OP_PRINT_F64; break;
+        case YLIR_TYPE_BOOL: kind = YLIR_OP_PRINT_BOOL; break;
+        default: return false;
+    }
+    YLIRInstruction inst = {
+        .kind = kind, .result = YLIR_NO_VALUE, .type = YLIR_TYPE_VOID,
+        .left = value, .right = YLIR_NO_VALUE,
+        .source_line = line, .source_column = column
+    };
+    return append_void_inst(block, inst);
+}
+
+bool ylang_ir_emit_print_control(YLIRBasicBlock *block, bool newline,
+                                 size_t line, size_t column)
+{
+    YLIRInstruction inst = {
+        .kind = newline ? YLIR_OP_PRINT_NEWLINE : YLIR_OP_PRINT_SPACE,
+        .result = YLIR_NO_VALUE, .type = YLIR_TYPE_VOID,
+        .left = YLIR_NO_VALUE, .right = YLIR_NO_VALUE,
+        .source_line = line, .source_column = column
+    };
+    return append_void_inst(block, inst);
+}
+
 static bool set_term(YLIRBasicBlock *block, YLIRTerminator term)
 {
     if (!block || !block->function || block->terminator.kind != YLIR_TERM_NONE)
@@ -455,6 +490,11 @@ static bool result_type_for_instruction(FILE *out, const YLIRFunction *fn,
                                 "call references an unknown function");
             *result_type = fn->module->functions[inst->callee_index]->return_type;
             break;
+        case YLIR_OP_PRINT_I64: case YLIR_OP_PRINT_F64:
+        case YLIR_OP_PRINT_BOOL: case YLIR_OP_PRINT_SPACE:
+        case YLIR_OP_PRINT_NEWLINE:
+            *result_type = YLIR_TYPE_VOID;
+            break;
         default:
             return ir_error(out, fn, block, inst->source_line, inst->source_column,
                             "unknown instruction opcode");
@@ -473,9 +513,15 @@ static bool collect_definition(FILE *out, const YLIRFunction *fn,
     YLIRType result_type = YLIR_TYPE_INVALID;
     if (!result_type_for_instruction(out, fn, block, inst, &result_type)) return false;
     if (result_type == YLIR_TYPE_VOID) {
-        if (inst->kind != YLIR_OP_CALL || inst->result != YLIR_NO_VALUE)
+        if ((inst->kind != YLIR_OP_CALL &&
+             inst->kind != YLIR_OP_PRINT_I64 &&
+             inst->kind != YLIR_OP_PRINT_F64 &&
+             inst->kind != YLIR_OP_PRINT_BOOL &&
+             inst->kind != YLIR_OP_PRINT_SPACE &&
+             inst->kind != YLIR_OP_PRINT_NEWLINE) ||
+            inst->result != YLIR_NO_VALUE)
             return ir_error(out, fn, block, inst->source_line, inst->source_column,
-                            "void instruction must be a void call without an SSA result");
+                            "void instruction must not define an SSA result");
         return true;
     }
     if (inst->result == YLIR_NO_VALUE || inst->result >= fn->next_value_id ||
@@ -555,7 +601,7 @@ static bool verify_instruction_operands(FILE *out, const YLIRFunction *fn,
                                         const YLIRInstruction *inst, size_t order)
 {
     YLIRType operand_type = YLIR_TYPE_INVALID;
-    bool constant = false, unary = false;
+    bool constant = false, unary = false, no_operand = false;
     switch (inst->kind) {
         case YLIR_OP_CONST_BOOL:
             constant = true;
@@ -581,6 +627,15 @@ static bool verify_instruction_operands(FILE *out, const YLIRFunction *fn,
         case YLIR_OP_ADD_F64: case YLIR_OP_SUB_F64:
         case YLIR_OP_MUL_F64: case YLIR_OP_DIV_F64:
             operand_type = YLIR_TYPE_F64; break;
+        case YLIR_OP_PRINT_I64:
+            operand_type = YLIR_TYPE_I64; unary = true; break;
+        case YLIR_OP_PRINT_F64:
+            operand_type = YLIR_TYPE_F64; unary = true; break;
+        case YLIR_OP_PRINT_BOOL:
+            operand_type = YLIR_TYPE_BOOL; unary = true; break;
+        case YLIR_OP_PRINT_SPACE:
+        case YLIR_OP_PRINT_NEWLINE:
+            no_operand = true; break;
         case YLIR_OP_PHI:
             return ir_error(out, fn, block, inst->source_line, inst->source_column,
                             "internal verifier error: PHI reached ordinary operand pass");
@@ -588,10 +643,10 @@ static bool verify_instruction_operands(FILE *out, const YLIRFunction *fn,
             return ir_error(out, fn, block, inst->source_line, inst->source_column,
                             "unknown instruction opcode");
     }
-    if (constant) {
+    if (constant || no_operand) {
         if (inst->left != YLIR_NO_VALUE || inst->right != YLIR_NO_VALUE)
             return ir_error(out, fn, block, inst->source_line, inst->source_column,
-                            "constant instruction unexpectedly has operands");
+                            "constant or no-operand instruction unexpectedly has operands");
         return true;
     }
     if (!expect_value(out, fn, block, block_index, defs, dominators, block_count,

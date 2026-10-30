@@ -24,6 +24,7 @@ int main(void)
         "    } else {\n"
         "        result = result + 1;\n"
         "    }\n"
+        "    print(result, condition);\n"
         "    return result;\n"
         "}\n"
         "fn sum_to(int limit) -> int {\n"

@@ -781,8 +781,35 @@ static bool lower_statement(LowerFunction *ctx, Stmt *stmt)
             return lower_expression(ctx, stmt->as.expression, &ignored);
         }
         case STMT_PRINT:
-            lower_error(ctx, stmt->token, "print lowering requires typed runtime-call declarations");
-            return false;
+            for (size_t i = 0; i < stmt->as.print.count; i++) {
+                Expr *argument = stmt->as.print.args[i];
+                YLIRType type = lower_type(argument->type);
+                if (type != YLIR_TYPE_I64 && type != YLIR_TYPE_F64 &&
+                    type != YLIR_TYPE_BOOL) {
+                    lower_error(ctx, argument->token,
+                                "LLVM print currently supports int, float, and bool values only");
+                    return false;
+                }
+                YLIRValue value = YLIR_NO_VALUE;
+                if (!lower_expression(ctx, argument, &value) ||
+                    !ylang_ir_emit_print(ctx->block, type, value,
+                                         argument->token.line, argument->token.column)) {
+                    lower_error(ctx, argument->token, "could not lower scalar print argument");
+                    return false;
+                }
+                if (i + 1U < stmt->as.print.count &&
+                    !ylang_ir_emit_print_control(ctx->block, false,
+                                                 stmt->token.line, stmt->token.column)) {
+                    lower_error(ctx, stmt->token, "could not lower print separator");
+                    return false;
+                }
+            }
+            if (!ylang_ir_emit_print_control(ctx->block, true,
+                                             stmt->token.line, stmt->token.column)) {
+                lower_error(ctx, stmt->token, "could not lower print newline");
+                return false;
+            }
+            return true;
         case STMT_BREAK:
         case STMT_CONTINUE:
             lower_error(ctx, stmt->token, "break and continue are not in this scalar IR slice yet");
