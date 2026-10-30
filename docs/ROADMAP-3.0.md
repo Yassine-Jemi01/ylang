@@ -75,7 +75,7 @@ Prioritize these after the binding and error foundations:
 
 - Payload enums and exhaustive pattern matching.
 - General generics and type constraints.
-- `defer` for deterministic cleanup: evaluate scalar arguments immediately, run direct `fn` calls in LIFO order when the current lexical scope exits, including `return`, `break`, and `continue`. The first implementation supports scalar/enum captures and C code generation; string/aggregate captures and NASM parity remain incomplete until ownership and cleanup behavior is implemented and tested.
+- `defer` for deterministic cleanup: evaluate scalar arguments immediately, run direct `fn` calls in LIFO order when the current lexical scope exits, including `return`, `break`, and `continue`. The first implementation supports scalar/enum captures and C code generation; string/aggregate captures and NASM parity remain incomplete until ownership and cleanup behavior is implemented and tested. It rejects built-ins, non-void cleanup functions, array parameters, and string/aggregate captures with dedicated diagnostics.
 - Slices and safe dynamic collections.
 - Iterators and ergonomic `for item in collection` loops.
 - Limited type inference where it improves readability without hiding public API types.

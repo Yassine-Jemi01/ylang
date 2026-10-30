@@ -227,6 +227,19 @@ if ./build/ylang check build/defer-invalid-result.yl > build/defer-invalid-resul
 fi
 grep -q 'E2131' build/defer-invalid-result.out
 
+cat > build/defer-invalid-string.yl <<'EOF'
+fn consume(string value) -> void { print(value); }
+fn main() -> int {
+    defer consume("unsafe lifetime capture");
+    return 0;
+}
+EOF
+if ./build/ylang check build/defer-invalid-string.yl > build/defer-invalid-string.out 2>&1; then
+    echo "FAIL: defer accepted an unowned string capture" >&2
+    exit 1
+fi
+grep -q 'E2133' build/defer-invalid-string.out
+
 # Safe auto-fix: replace a common typo in code, but leave strings/comments alone.
 ./build/ylang fix tests/typo-print.yl -o build/typo-print-fixed.yl > build/fix.out 2> build/fix.err
 grep -q "replaced 'pritn' with 'print'" build/fix.err

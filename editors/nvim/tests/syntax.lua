@@ -14,6 +14,7 @@ vim.api.nvim_buf_set_lines(0, 0, -1, false, {
   '    print(env.get("API_TOKEN"));',
   "    await task;",
   "    let http_task pending = task;",
+  "    defer cleanup(1);",
   "    return 0;",
   "}",
 })
@@ -41,5 +42,6 @@ assert(group_at(9, "http") == "ylangNamespace", "HTTP namespace should be highli
 assert(group_at(10, "env") == "ylangNamespace", "environment namespace should be highlighted")
 assert(group_at(11, "await") == "ylangKeyword", "await should be highlighted as a keyword")
 assert(group_at(12, "http_task") == "ylangType", "HTTP task handles should be highlighted as a type")
+assert(group_at(13, "defer") == "ylangKeyword", "defer should be highlighted as a keyword")
 print("YLang Neovim syntax tests passed")
 vim.cmd("qa!")

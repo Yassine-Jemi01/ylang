@@ -1160,7 +1160,7 @@ static void emit_control_body(CodegenContext *ctx, Stmt *body, unsigned indent);
 
 static void codegen_fatal_out_of_memory(void)
 {
-    fputs("ylang: out of memory while preparing owned-string cleanup\n", stderr);
+    fputs("ylang: out of memory while preparing scope cleanup\n", stderr);
     exit(70);
 }
 

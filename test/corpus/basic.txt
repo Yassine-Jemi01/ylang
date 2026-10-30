@@ -2,7 +2,7 @@
 Function and types
 ==================
 
-function main() -> int {
+fn main() -> int {
     let string greeting = "Hello";
     let int answer = 42;
     print(f"Result: {answer}");
@@ -64,3 +64,24 @@ enum State {
       (identifier))
     (enum_variant
       (identifier))))
+
+==================
+Defer statement
+==================
+
+fn cleanup() -> void {
+    defer finish(1);
+}
+
+---
+
+(source_file
+  (function_declaration
+    name: (identifier)
+    return_type: (primitive_type)
+    (block
+      (defer_statement
+        (call_expression
+          function: (identifier)
+          (argument_list
+            (integer)))))))

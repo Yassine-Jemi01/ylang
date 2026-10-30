@@ -1039,13 +1039,13 @@ static YType check_expr(Checker *checker, Expr *expr)
                 } else if (near) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
-                                   "Did you mean function '%s'?", near);
+                                   "Did you mean fn '%s'?", near);
                     diagnostic(c, expr->token, "error", "E2040",
                                "Call to an unknown function.", suggestion);
                 } else {
                     diagnostic(c, expr->token, "error", "E2040",
                                "Call to an unknown function.",
-                               "Define the function with the 'function' keyword.");
+                               "Define the function with the 'fn' keyword.");
                 }
                 for (size_t i = 0; i < expr->as.call.count; i++)
                     (void)check_expr(checker, expr->as.call.args[i]);
