@@ -1,0 +1,106 @@
+#include "ylang/ir.h"
+#include "ylang/compiler.h"
+
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+
+static void lowers_integer_arithmetic_return(void)
+{
+    Expr left = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="20",.length=2},
+        .type=TYPE_INT
+    };
+    Expr right = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="22",.length=2},
+        .type=TYPE_INT
+    };
+    Expr sum = {
+        .kind=EXPR_BINARY,
+        .type=TYPE_INT,
+        .as.binary={
+            .left=&left,
+            .right=&right,
+            .op={.type=TOKEN_PLUS,.start="+",.length=1}
+        }
+    };
+    Stmt ret = {.kind=STMT_RETURN,.as.return_value=&sum};
+    Stmt *items[] = {&ret};
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=1}};
+    Function function = {
+        .name="main",.return_type=TYPE_INT,.body=&body
+    };
+
+    YIRFunction lowered;
+    char error[192];
+    assert(yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(lowered.block_count==1);
+    assert(lowered.blocks[0].instruction_count==4);
+    assert(lowered.blocks[0].instructions[2].opcode==YIR_OP_ADD_I64);
+    assert(lowered.blocks[0].instructions[3].opcode==YIR_OP_RETURN);
+    assert(yir_verify_function(&lowered,error,sizeof(error)));
+    yir_destroy_function(&lowered);
+}
+
+static void lowers_unary_negative(void)
+{
+    Expr literal = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="7",.length=1},
+        .type=TYPE_INT
+    };
+    Expr negative = {
+        .kind=EXPR_UNARY,
+        .type=TYPE_INT,
+        .as.unary={
+            .right=&literal,
+            .op={.type=TOKEN_MINUS,.start="-",.length=1}
+        }
+    };
+    Stmt ret = {.kind=STMT_RETURN,.as.return_value=&negative};
+    Stmt *items[] = {&ret};
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=1}};
+    Function function = {.name="negative",.return_type=TYPE_INT,.body=&body};
+    YIRFunction lowered;
+    char error[192];
+    assert(yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(lowered.blocks[0].instructions[1].opcode==YIR_OP_NEG_I64);
+    yir_destroy_function(&lowered);
+}
+
+static void lowers_empty_void_function(void)
+{
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=NULL,.count=0}};
+    Function function = {.name="empty",.return_type=TYPE_VOID,.body=&body};
+    YIRFunction lowered;
+    char error[192];
+    assert(yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(lowered.return_type==YIR_TYPE_VOID);
+    assert(lowered.blocks[0].instruction_count==1);
+    assert(lowered.blocks[0].instructions[0].opcode==YIR_OP_RETURN);
+    yir_destroy_function(&lowered);
+}
+
+static void rejects_unsupported_function_body(void)
+{
+    Stmt print_stmt = {.kind=STMT_PRINT};
+    Stmt *items[] = {&print_stmt};
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=1}};
+    Function function = {.name="unsupported",.return_type=TYPE_VOID,.body=&body};
+    YIRFunction lowered;
+    char error[192];
+    assert(!yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(strstr(error,"one return statement")!=NULL);
+}
+
+int main(void)
+{
+    lowers_integer_arithmetic_return();
+    lowers_unary_negative();
+    lowers_empty_void_function();
+    rejects_unsupported_function_body();
+    puts("YLang IR lowering tests passed");
+    return 0;
+}
