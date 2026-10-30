@@ -7,11 +7,11 @@ This chapter introduces the pieces that appear in many programs: functions, loca
 ## A complete small program
 
 \`\`\`ylang
-function add(int left, int right) -> int {
+fn add(int left, int right) -> int {
     return left + right;
 }
 
-function main() -> int {
+fn main() -> int {
     let int total = add(20, 22);
     print(total);
     return 0;
@@ -25,7 +25,7 @@ The first function accepts two integer parameters and returns their sum. The \`m
 A function declaration includes its name, parameter list, return type, and body:
 
 \`\`\`ylang
-function is_positive(int value) -> bool {
+fn is_positive(int value) -> bool {
     return value > 0;
 }
 \`\`\`

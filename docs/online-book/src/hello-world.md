@@ -3,7 +3,7 @@
 Create a file named `hello.yl`:
 
 ```ylang
-function main() -> int {
+fn main() -> int {
     let const string name = "YLang";
     print("Hello from", name);
     print("The answer is", 40 + 2);
