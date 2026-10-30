@@ -298,7 +298,7 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
         return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                           "function has too many parameters for the initial IR lowerer");
     for (size_t i = 0; i < function->param_count; ++i) {
-        if (function->params[i]->type != TYPE_INT)
+        if (!function->params[i] || function->params[i]->type != TYPE_INT)
             return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                               "only int function parameters are supported by the initial IR lowerer");
     }
@@ -325,22 +325,28 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
     }
 
     if (root && root->kind == STMT_IF) {
-        if (!root->as.if_stmt.else_branch)
+        if (!root->as.if_stmt.else_branch) {
+            free(parameters);
             return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                               "initial IR lowering requires an else branch when lowering if");
+        }
         bool then_empty = false, else_empty = false;
         const Stmt *then_return =
             find_single_return(root->as.if_stmt.then_branch, &then_empty);
         const Stmt *else_return =
             find_single_return(root->as.if_stmt.else_branch, &else_empty);
-        if ((!then_return && !then_empty) || (!else_return && !else_empty))
+        if ((!then_return && !then_empty) || (!else_return && !else_empty)) {
+            free(parameters);
             return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                               "each if branch must contain exactly one return");
+        }
 
         blocks = calloc(3, sizeof(*blocks));
-        if (!blocks)
+        if (!blocks) {
+            free(parameters);
             return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                               "out of memory while creating IR control-flow blocks");
+        }
 
         Lowerer entry = {
             .function=function,
