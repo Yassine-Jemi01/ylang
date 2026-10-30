@@ -26,7 +26,8 @@ typedef enum {
     YLIR_OP_EQ_I64, YLIR_OP_NE_I64, YLIR_OP_SLT_I64,
     YLIR_OP_SLE_I64, YLIR_OP_SGT_I64, YLIR_OP_SGE_I64,
     YLIR_OP_NOT_BOOL,
-    YLIR_OP_ADD_F64, YLIR_OP_SUB_F64, YLIR_OP_MUL_F64, YLIR_OP_DIV_F64
+    YLIR_OP_ADD_F64, YLIR_OP_SUB_F64, YLIR_OP_MUL_F64, YLIR_OP_DIV_F64,
+    YLIR_OP_PHI
 } YLIRInstructionKind;
 
 typedef enum {
@@ -39,12 +40,19 @@ typedef struct YLIRFunction YLIRFunction;
 typedef struct YLIRBasicBlock YLIRBasicBlock;
 
 typedef struct {
+    size_t predecessor;
+    YLIRValue value;
+} YLIRPhiIncoming;
+
+typedef struct {
     YLIRInstructionKind kind;
     YLIRValue result;
     YLIRType type;
     YLIRValue left;
     YLIRValue right;
     uint64_t immediate;
+    YLIRPhiIncoming *incoming;
+    size_t incoming_count;
     size_t source_line;
     size_t source_column;
 } YLIRInstruction;
@@ -103,6 +111,9 @@ bool ylang_ir_emit_const_f64(YLIRBasicBlock *block, double value,
 bool ylang_ir_emit_op(YLIRBasicBlock *block, YLIRInstructionKind kind,
                       YLIRValue left, YLIRValue right,
                       size_t line, size_t column, YLIRValue *out);
+bool ylang_ir_emit_phi(YLIRBasicBlock *block, YLIRType type,
+                       const YLIRPhiIncoming *incoming, size_t incoming_count,
+                       size_t line, size_t column, YLIRValue *out);
 bool ylang_ir_return(YLIRBasicBlock *block, YLIRValue value,
                      size_t line, size_t column);
 bool ylang_ir_return_void(YLIRBasicBlock *block, size_t line, size_t column);

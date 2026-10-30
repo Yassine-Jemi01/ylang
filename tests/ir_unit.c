@@ -129,11 +129,62 @@ static void test_terminator_is_final(void)
     ylang_ir_module_destroy(&m);
 }
 
-static void test_cross_block_value_requires_phi(void)
+static void test_phi_join(void)
+{
+    YLIRModule m; YLIRFunction *fn = NULL;
+    YLIRBasicBlock *entry = NULL, *yes = NULL, *no = NULL, *join = NULL;
+    const YLIRType params[] = { YLIR_TYPE_BOOL };
+    YLIRValue yes_value, no_value, selected;
+    const YLIRPhiIncoming incoming[] = {
+        { .predecessor = 1U, .value = 1U },
+        { .predecessor = 2U, .value = 2U }
+    };
+    assert(ylang_ir_module_init(&m));
+    assert(ylang_ir_add_function(&m, "select", YLIR_TYPE_I64, params, 1U, &fn));
+    assert(ylang_ir_add_block(fn, "entry", &entry));
+    assert(ylang_ir_add_block(fn, "yes", &yes));
+    assert(ylang_ir_add_block(fn, "no", &no));
+    assert(ylang_ir_add_block(fn, "join", &join));
+    assert(ylang_ir_cond_branch(entry, 0U, 1U, 2U, 1U, 1U));
+    assert(ylang_ir_emit_const_i64(yes, 10, 2U, 1U, &yes_value));
+    assert(ylang_ir_branch(yes, 3U, 2U, 5U));
+    assert(ylang_ir_emit_const_i64(no, 20, 3U, 1U, &no_value));
+    assert(ylang_ir_branch(no, 3U, 3U, 5U));
+    assert(yes_value == 1U && no_value == 2U);
+    assert(ylang_ir_emit_phi(join, YLIR_TYPE_I64, incoming, 2U, 4U, 1U, &selected));
+    assert(ylang_ir_return(join, selected, 4U, 12U));
+    assert(ylang_ir_verify(&m, stderr));
+    ylang_ir_module_destroy(&m);
+}
+
+static void test_phi_requires_every_predecessor(void)
+{
+    YLIRModule m; YLIRFunction *fn = NULL;
+    YLIRBasicBlock *entry = NULL, *yes = NULL, *no = NULL, *join = NULL;
+    const YLIRType params[] = { YLIR_TYPE_BOOL, YLIR_TYPE_I64 };
+    const YLIRPhiIncoming incoming[] = {
+        { .predecessor = 1U, .value = 1U }
+    };
+    YLIRValue result;
+    assert(ylang_ir_module_init(&m));
+    assert(ylang_ir_add_function(&m, "bad_phi", YLIR_TYPE_I64, params, 2U, &fn));
+    assert(ylang_ir_add_block(fn, "entry", &entry));
+    assert(ylang_ir_add_block(fn, "yes", &yes));
+    assert(ylang_ir_add_block(fn, "no", &no));
+    assert(ylang_ir_add_block(fn, "join", &join));
+    assert(ylang_ir_cond_branch(entry, 0U, 1U, 2U, 1U, 1U));
+    assert(ylang_ir_branch(yes, 3U, 2U, 1U));
+    assert(ylang_ir_branch(no, 3U, 3U, 1U));
+    assert(ylang_ir_emit_phi(join, YLIR_TYPE_I64, incoming, 1U, 4U, 1U, &result));
+    assert(ylang_ir_return(join, result, 4U, 8U));
+    assert(!ylang_ir_verify(&m, NULL));
+    ylang_ir_module_destroy(&m);
+}
+
+static void test_cross_block_dominated_value(void)
 {
     YLIRModule m; YLIRFunction *fn = NULL;
     YLIRBasicBlock *entry = NULL, *later = NULL; YLIRValue v;
-    FILE *out = tmpfile(); assert(out);
     assert(ylang_ir_module_init(&m));
     assert(ylang_ir_add_function(&m, "cross", YLIR_TYPE_I64, NULL, 0U, &fn));
     assert(ylang_ir_add_block(fn, "entry", &entry));
@@ -141,8 +192,8 @@ static void test_cross_block_value_requires_phi(void)
     assert(ylang_ir_emit_const_i64(entry, 5, 1U, 1U, &v));
     assert(ylang_ir_branch(entry, 1U, 1U, 5U));
     assert(ylang_ir_return(later, v, 2U, 1U));
-    assert(!ylang_ir_verify(&m, out));
-    fclose(out); ylang_ir_module_destroy(&m);
+    assert(ylang_ir_verify(&m, stderr));
+    ylang_ir_module_destroy(&m);
 }
 
 int main(void)
@@ -155,7 +206,9 @@ int main(void)
     test_bad_operand_type();
     test_bad_return_and_branch();
     test_terminator_is_final();
-    test_cross_block_value_requires_phi();
+    test_phi_join();
+    test_phi_requires_every_predecessor();
+    test_cross_block_dominated_value();
     puts("YLang typed IR tests passed");
     return 0;
 }

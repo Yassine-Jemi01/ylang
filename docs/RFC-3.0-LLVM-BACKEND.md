@@ -1,6 +1,6 @@
 # RFC-3.0-001: Complete LLVM Backend
 
-**Status:** A backend-neutral IR core and verifier are implemented; AST lowering and LLVM code generation are not implemented  
+**Status:** A backend-neutral IR core, PHI nodes, and control-flow dominance verifier are implemented; AST lowering and LLVM code generation are not implemented  
 **Target release:** YLang 3.0.0  
 **Primary goal:** A production-quality native backend that lowers checked YLang programs to LLVM IR and emits native object files without generating C as the program's intermediate representation.
 
@@ -91,7 +91,7 @@ The IR must represent:
 - Exception edges and Result control flow.
 - Runtime and external function declarations.
 
-The first typed IR foundation is implemented in `include/ylang/ir.h` and `src/ir.c`. It defines typed SSA values, scalar constants and arithmetic/comparison operations, functions and basic blocks, and explicit return/branch terminators. Its independent verifier checks value definitions, operand/result types, block terminators, return types, and branch targets. This first slice intentionally rejects values flowing between blocks until explicit PHI nodes and dominance analysis are implemented. AST lowering, globals, calls, memory operations, ownership operations, and LLVM emission remain future steps.
+The first typed IR foundation is implemented in `include/ylang/ir.h` and `src/ir.c`. It defines typed SSA values, scalar constants and arithmetic/comparison operations, functions and basic blocks, and explicit return/branch terminators. Its independent verifier checks value definitions, operand/result types, block terminators, return types, branch targets, predecessor-specific PHI inputs, and SSA dominance across reachable control-flow blocks. AST lowering, globals, calls, memory operations, ownership operations, and LLVM emission remain future steps.
 
 The IR verifier must reject malformed control flow, mismatched types, invalid terminators, unresolved symbols, and ownership states that cannot be represented safely.
 

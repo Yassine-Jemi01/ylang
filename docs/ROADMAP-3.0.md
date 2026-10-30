@@ -255,7 +255,8 @@ The 3.0 release must not be declared complete until the optimized backend demons
 ### M4 — Backend-neutral typed IR
 - [x] Define the first backend-neutral typed SSA IR core: scalar types, values, functions, blocks, arithmetic/comparison instructions, and explicit terminators.
 - [x] Implement an independent verifier for SSA definitions, typed operands/results, returns, and branch targets.
-- [ ] Add PHI nodes, dominance/CFG verification, globals, calls, memory operations, and source metadata.
+- [x] Add PHI nodes, predecessor validation, and dominator-based cross-block SSA verification.
+- [ ] Add globals, calls, memory operations, and complete source metadata.
 - [ ] Lower the resolved YLang frontend into IR.
 - [ ] Keep semantics out of backend-specific code.
 

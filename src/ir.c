@@ -78,6 +78,7 @@ const char *ylang_ir_instruction_name(YLIRInstructionKind op)
         case YLIR_OP_SUB_F64: return "sub.f64";
         case YLIR_OP_MUL_F64: return "mul.f64";
         case YLIR_OP_DIV_F64: return "div.f64";
+        case YLIR_OP_PHI: return "phi";
     }
     return "unknown";
 }
@@ -112,6 +113,8 @@ void ylang_ir_module_destroy(YLIRModule *module)
             YLIRBasicBlock *block = fn->blocks[j];
             if (!block) continue;
             free(block->name);
+            for (size_t k = 0; k < block->instruction_count; k++)
+                free(block->instructions[k].incoming);
             free(block->instructions);
             free(block);
         }
@@ -245,6 +248,30 @@ bool ylang_ir_emit_op(YLIRBasicBlock *block, YLIRInstructionKind kind,
     return append_inst(block, inst, out);
 }
 
+bool ylang_ir_emit_phi(YLIRBasicBlock *block, YLIRType type,
+                       const YLIRPhiIncoming *incoming, size_t incoming_count,
+                       size_t line, size_t column, YLIRValue *out)
+{
+    if (out) *out = YLIR_NO_VALUE;
+    if (!block || !block->function || !valid_type(type, false) ||
+        !incoming || incoming_count == 0U ||
+        incoming_count > SIZE_MAX / sizeof(*incoming)) return false;
+    YLIRPhiIncoming *copy = malloc(incoming_count * sizeof(*copy));
+    if (!copy) return false;
+    memcpy(copy, incoming, incoming_count * sizeof(*copy));
+    YLIRInstruction inst = {
+        .kind = YLIR_OP_PHI, .result = YLIR_NO_VALUE, .type = type,
+        .left = YLIR_NO_VALUE, .right = YLIR_NO_VALUE,
+        .incoming = copy, .incoming_count = incoming_count,
+        .source_line = line, .source_column = column
+    };
+    if (!append_inst(block, inst, out)) {
+        free(copy);
+        return false;
+    }
+    return true;
+}
+
 static bool set_term(YLIRBasicBlock *block, YLIRTerminator term)
 {
     if (!block || !block->function || block->terminator.kind != YLIR_TERM_NONE)
@@ -318,75 +345,73 @@ static bool ir_error(FILE *out, const YLIRFunction *fn,
 
 static bool expect_value(FILE *out, const YLIRFunction *fn,
                          const YLIRBasicBlock *block, size_t block_index,
-                         const YLIRDefinition *defs, YLIRValue value,
-                         YLIRType type, size_t order, size_t line, size_t column)
+                         const YLIRDefinition *defs, const uint8_t *dominators,
+                         size_t block_count, YLIRValue value, YLIRType type,
+                         size_t order, size_t line, size_t column)
 {
     if (value == YLIR_NO_VALUE || value >= fn->next_value_id)
         return ir_error(out, fn, block, line, column, "invalid SSA value ID");
     const YLIRDefinition *def = &defs[value];
     if (!def->defined)
         return ir_error(out, fn, block, line, column, "value used before definition");
-    if (def->block_index >= 0 &&
-        ((size_t)def->block_index != block_index || def->instruction_index >= order))
-        return ir_error(out, fn, block, line, column,
-                        "cross-block values and forward references require PHI nodes");
+    if (def->block_index >= 0) {
+        size_t def_block = (size_t)def->block_index;
+        if (def_block == block_index) {
+            if (def->instruction_index >= order)
+                return ir_error(out, fn, block, line, column,
+                                "value used before its definition in this block");
+        } else if (def_block >= block_count ||
+                   !dominators[block_index * block_count + def_block]) {
+            return ir_error(out, fn, block, line, column,
+                            "value definition does not dominate its use");
+        }
+    }
     if (def->type != type)
         return ir_error(out, fn, block, line, column, "operand type mismatch");
     return true;
 }
 
-static bool verify_inst(FILE *out, const YLIRFunction *fn,
-                        const YLIRBasicBlock *block, size_t block_index,
-                        YLIRDefinition *defs, const YLIRInstruction *inst,
-                        size_t order)
+static bool result_type_for_instruction(FILE *out, const YLIRFunction *fn,
+                                        const YLIRBasicBlock *block,
+                                        const YLIRInstruction *inst,
+                                        YLIRType *result_type)
 {
-    YLIRType operand_type = YLIR_TYPE_INVALID, result_type = YLIR_TYPE_INVALID;
-    bool unary = false, constant = false;
     switch (inst->kind) {
-        case YLIR_OP_CONST_BOOL:
-            result_type = YLIR_TYPE_BOOL; constant = true;
-            if (inst->immediate > 1U)
-                return ir_error(out, fn, block, inst->source_line, inst->source_column,
-                                "boolean constants must be zero or one");
-            break;
-        case YLIR_OP_CONST_I64: result_type = YLIR_TYPE_I64; constant = true; break;
-        case YLIR_OP_CONST_F64: result_type = YLIR_TYPE_F64; constant = true; break;
+        case YLIR_OP_CONST_BOOL: *result_type = YLIR_TYPE_BOOL; break;
+        case YLIR_OP_CONST_I64: *result_type = YLIR_TYPE_I64; break;
+        case YLIR_OP_CONST_F64: *result_type = YLIR_TYPE_F64; break;
         case YLIR_OP_ADD_I64: case YLIR_OP_SUB_I64: case YLIR_OP_MUL_I64:
         case YLIR_OP_SDIV_I64: case YLIR_OP_SREM_I64:
-            operand_type = YLIR_TYPE_I64; result_type = YLIR_TYPE_I64; break;
+            *result_type = YLIR_TYPE_I64; break;
         case YLIR_OP_EQ_I64: case YLIR_OP_NE_I64: case YLIR_OP_SLT_I64:
         case YLIR_OP_SLE_I64: case YLIR_OP_SGT_I64: case YLIR_OP_SGE_I64:
-            operand_type = YLIR_TYPE_I64; result_type = YLIR_TYPE_BOOL; break;
         case YLIR_OP_NOT_BOOL:
-            operand_type = YLIR_TYPE_BOOL; result_type = YLIR_TYPE_BOOL;
-            unary = true; break;
+            *result_type = YLIR_TYPE_BOOL; break;
         case YLIR_OP_ADD_F64: case YLIR_OP_SUB_F64:
         case YLIR_OP_MUL_F64: case YLIR_OP_DIV_F64:
-            operand_type = YLIR_TYPE_F64; result_type = YLIR_TYPE_F64; break;
+            *result_type = YLIR_TYPE_F64; break;
+        case YLIR_OP_PHI:
+            if (!valid_type(inst->type, false))
+                return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                "PHI has invalid or void type");
+            *result_type = inst->type; break;
         default:
             return ir_error(out, fn, block, inst->source_line, inst->source_column,
                             "unknown instruction opcode");
     }
-    if (inst->type != result_type)
+    if (inst->type != *result_type)
         return ir_error(out, fn, block, inst->source_line, inst->source_column,
                         "instruction result type does not match opcode");
-    if (constant) {
-        if (inst->left != YLIR_NO_VALUE || inst->right != YLIR_NO_VALUE)
-            return ir_error(out, fn, block, inst->source_line, inst->source_column,
-                            "constant instruction unexpectedly has operands");
-    } else {
-        if (!expect_value(out, fn, block, block_index, defs, inst->left,
-                          operand_type, order, inst->source_line, inst->source_column))
-            return false;
-        if (unary) {
-            if (inst->right != YLIR_NO_VALUE)
-                return ir_error(out, fn, block, inst->source_line, inst->source_column,
-                                "unary instruction has an unexpected second operand");
-        } else if (!expect_value(out, fn, block, block_index, defs, inst->right,
-                                 operand_type, order, inst->source_line, inst->source_column)) {
-            return false;
-        }
-    }
+    return true;
+}
+
+static bool collect_definition(FILE *out, const YLIRFunction *fn,
+                               const YLIRBasicBlock *block, size_t block_index,
+                               YLIRDefinition *defs, const YLIRInstruction *inst,
+                               size_t order)
+{
+    YLIRType result_type = YLIR_TYPE_INVALID;
+    if (!result_type_for_instruction(out, fn, block, inst, &result_type)) return false;
     if (inst->result == YLIR_NO_VALUE || inst->result >= fn->next_value_id ||
         inst->result < fn->parameter_count || defs[inst->result].defined)
         return ir_error(out, fn, block, inst->source_line, inst->source_column,
@@ -398,9 +423,125 @@ static bool verify_inst(FILE *out, const YLIRFunction *fn,
     return true;
 }
 
-static bool verify_term(FILE *out, const YLIRFunction *fn,
-                        const YLIRBasicBlock *block, size_t block_index,
-                        const YLIRDefinition *defs)
+static bool verify_phi(FILE *out, const YLIRFunction *fn,
+                       const YLIRBasicBlock *block, size_t block_index,
+                       const YLIRDefinition *defs, const uint8_t *preds,
+                       const uint8_t *reachable, const uint8_t *dominators,
+                       size_t block_count, const YLIRInstruction *inst)
+{
+    if (!inst->incoming || inst->incoming_count == 0U ||
+        inst->left != YLIR_NO_VALUE || inst->right != YLIR_NO_VALUE)
+        return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                        "malformed PHI incoming list or ordinary operands");
+    uint8_t *seen = calloc(block_count, sizeof(*seen));
+    if (!seen)
+        return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                        "out of memory verifying PHI");
+    size_t expected = 0U;
+    for (size_t p = 0; p < block_count; p++)
+        if (reachable[p] && preds[block_index * block_count + p]) expected++;
+    if (inst->incoming_count != expected) {
+        free(seen);
+        return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                        "PHI must have one incoming value per reachable predecessor");
+    }
+    for (size_t i = 0; i < inst->incoming_count; i++) {
+        const YLIRPhiIncoming *in = &inst->incoming[i];
+        const size_t pred = in->predecessor;
+        if (pred >= block_count || !reachable[pred] ||
+            !preds[block_index * block_count + pred] || seen[pred]) {
+            free(seen);
+            return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                            "PHI input must name a unique reachable predecessor");
+        }
+        seen[pred] = 1U;
+        if (in->value == YLIR_NO_VALUE || in->value >= fn->next_value_id ||
+            !defs[in->value].defined || defs[in->value].type != inst->type) {
+            free(seen);
+            return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                            "PHI input is undefined or has an incompatible type");
+        }
+        const int32_t defined_in = defs[in->value].block_index;
+        if (defined_in >= 0) {
+            const size_t def_block = (size_t)defined_in;
+            if (def_block == pred) {
+                if (defs[in->value].instruction_index >= fn->blocks[pred]->instruction_count) {
+                    free(seen);
+                    return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                    "PHI input is unavailable at predecessor exit");
+                }
+            } else if (def_block >= block_count ||
+                       !dominators[pred * block_count + def_block]) {
+                free(seen);
+                return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                "PHI input definition does not dominate its predecessor");
+            }
+        }
+    }
+    free(seen);
+    return true;
+}
+
+static bool verify_instruction_operands(FILE *out, const YLIRFunction *fn,
+                                        const YLIRBasicBlock *block, size_t block_index,
+                                        const YLIRDefinition *defs,
+                                        const uint8_t *dominators, size_t block_count,
+                                        const YLIRInstruction *inst, size_t order)
+{
+    YLIRType operand_type = YLIR_TYPE_INVALID;
+    bool constant = false, unary = false;
+    switch (inst->kind) {
+        case YLIR_OP_CONST_BOOL:
+            constant = true;
+            if (inst->immediate > 1U)
+                return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                "boolean constants must be zero or one");
+            break;
+        case YLIR_OP_CONST_I64: case YLIR_OP_CONST_F64:
+            constant = true; break;
+        case YLIR_OP_ADD_I64: case YLIR_OP_SUB_I64:
+        case YLIR_OP_MUL_I64: case YLIR_OP_SDIV_I64:
+        case YLIR_OP_SREM_I64: case YLIR_OP_EQ_I64:
+        case YLIR_OP_NE_I64: case YLIR_OP_SLT_I64:
+        case YLIR_OP_SLE_I64: case YLIR_OP_SGT_I64:
+        case YLIR_OP_SGE_I64:
+            operand_type = YLIR_TYPE_I64; break;
+        case YLIR_OP_NOT_BOOL:
+            operand_type = YLIR_TYPE_BOOL; unary = true; break;
+        case YLIR_OP_ADD_F64: case YLIR_OP_SUB_F64:
+        case YLIR_OP_MUL_F64: case YLIR_OP_DIV_F64:
+            operand_type = YLIR_TYPE_F64; break;
+        case YLIR_OP_PHI:
+            return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                            "internal verifier error: PHI reached ordinary operand pass");
+        default:
+            return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                            "unknown instruction opcode");
+    }
+    if (constant) {
+        if (inst->left != YLIR_NO_VALUE || inst->right != YLIR_NO_VALUE)
+            return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                            "constant instruction unexpectedly has operands");
+        return true;
+    }
+    if (!expect_value(out, fn, block, block_index, defs, dominators, block_count,
+                      inst->left, operand_type, order,
+                      inst->source_line, inst->source_column)) return false;
+    if (unary) {
+        if (inst->right != YLIR_NO_VALUE)
+            return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                            "unary instruction has an unexpected second operand");
+        return true;
+    }
+    return expect_value(out, fn, block, block_index, defs, dominators, block_count,
+                        inst->right, operand_type, order,
+                        inst->source_line, inst->source_column);
+}
+
+static bool verify_terminator(FILE *out, const YLIRFunction *fn,
+                              const YLIRBasicBlock *block, size_t block_index,
+                              const YLIRDefinition *defs, const uint8_t *dominators,
+                              size_t block_count)
 {
     const YLIRTerminator *term = &block->terminator;
     switch (term->kind) {
@@ -408,8 +549,8 @@ static bool verify_term(FILE *out, const YLIRFunction *fn,
             if (fn->return_type == YLIR_TYPE_VOID)
                 return ir_error(out, fn, block, term->source_line, term->source_column,
                                 "void function must use return.void");
-            return expect_value(out, fn, block, block_index, defs, term->value,
-                                fn->return_type, block->instruction_count,
+            return expect_value(out, fn, block, block_index, defs, dominators, block_count,
+                                term->value, fn->return_type, block->instruction_count,
                                 term->source_line, term->source_column);
         case YLIR_TERM_RETURN_VOID:
             if (fn->return_type != YLIR_TYPE_VOID)
@@ -417,13 +558,12 @@ static bool verify_term(FILE *out, const YLIRFunction *fn,
                                 "non-void function must return a value");
             return true;
         case YLIR_TERM_BRANCH:
-            if (term->target >= fn->block_count)
-                return ir_error(out, fn, block, term->source_line, term->source_column,
-                                "branch target block does not exist");
-            return true;
+            return term->target < fn->block_count ||
+                ir_error(out, fn, block, term->source_line, term->source_column,
+                         "branch target block does not exist");
         case YLIR_TERM_COND_BRANCH:
-            if (!expect_value(out, fn, block, block_index, defs, term->value,
-                              YLIR_TYPE_BOOL, block->instruction_count,
+            if (!expect_value(out, fn, block, block_index, defs, dominators, block_count,
+                              term->value, YLIR_TYPE_BOOL, block->instruction_count,
                               term->source_line, term->source_column)) return false;
             if (term->target >= fn->block_count || term->false_target >= fn->block_count)
                 return ir_error(out, fn, block, term->source_line, term->source_column,
@@ -446,50 +586,312 @@ static bool verify_function(FILE *out, const YLIRFunction *fn)
         (fn->block_count && !fn->blocks) ||
         fn->block_count > (size_t)INT32_MAX)
         return ir_error(out, fn, NULL, 0U, 0U, "invalid function signature or storage");
-    if (!fn->block_count)
-        return ir_error(out, fn, NULL, 0U, 0U, "function has no basic blocks");
+    const size_t n = fn->block_count;
+    if (!n) return ir_error(out, fn, NULL, 0U, 0U, "function has no basic blocks");
     if (fn->next_value_id < fn->parameter_count)
         return ir_error(out, fn, NULL, 0U, 0U, "SSA counter precedes parameter IDs");
-
-    size_t count = (size_t)fn->next_value_id;
-    if (count > SIZE_MAX / sizeof(YLIRDefinition))
+    if (n > SIZE_MAX / n || n > SIZE_MAX / sizeof(size_t))
+        return ir_error(out, fn, NULL, 0U, 0U, "control-flow graph is too large");
+    const size_t matrix_size = n * n;
+    const size_t value_count = (size_t)fn->next_value_id;
+    if (value_count > SIZE_MAX / sizeof(YLIRDefinition))
         return ir_error(out, fn, NULL, 0U, 0U, "SSA definition table too large");
-    YLIRDefinition *defs = calloc(count, sizeof(*defs));
-    if (!defs && count)
-        return ir_error(out, fn, NULL, 0U, 0U, "out of memory verifying SSA values");
-    for (size_t i = 0; i < fn->parameter_count; i++) {
-        if (!valid_type(fn->parameter_types[i], false)) {
-            free(defs);
+    YLIRDefinition *defs = calloc(value_count, sizeof(*defs));
+    uint8_t *preds = calloc(matrix_size, sizeof(*preds));
+    uint8_t *dom = calloc(matrix_size, sizeof(*dom));
+    uint8_t *reachable = calloc(n, sizeof(*reachable));
+    size_t *queue = malloc(n * sizeof(*queue));
+    if ((value_count && !defs) || !preds || !dom || !reachable || !queue) {
+        free(defs); free(preds); free(dom); free(reachable); free(queue);
+        return ir_error(out, fn, NULL, 0U, 0U, "out of memory verifying function");
+    }
+    for (size_t p = 0; p < fn->parameter_count; p++) {
+        if (!valid_type(fn->parameter_types[p], false)) {
+            free(defs); free(preds); free(dom); free(reachable); free(queue);
             return ir_error(out, fn, NULL, 0U, 0U, "invalid parameter type");
         }
-        defs[i] = (YLIRDefinition){ true, -1, 0U, fn->parameter_types[i] };
+        defs[p] = (YLIRDefinition){ true, -1, 0U, fn->parameter_types[p] };
     }
-    for (size_t b = 0; b < fn->block_count; b++) {
+
+    /* Verify block storage and collect predecessor edges from each terminator. */
+    for (size_t b = 0; b < n; b++) {
         const YLIRBasicBlock *block = fn->blocks[b];
         if (!block || !block->name || block->function != fn ||
             (block->instruction_count && !block->instructions)) {
-            free(defs);
+            free(defs); free(preds); free(dom); free(reachable); free(queue);
             return ir_error(out, fn, block, 0U, 0U, "invalid basic-block storage or owner");
         }
         for (size_t prior = 0; prior < b; prior++) {
-            if (fn->blocks[prior] && strcmp(fn->blocks[prior]->name, block->name) == 0) {
-                free(defs);
+            if (strcmp(fn->blocks[prior]->name, block->name) == 0) {
+                free(defs); free(preds); free(dom); free(reachable); free(queue);
                 return ir_error(out, fn, block, 0U, 0U, "duplicate basic-block name");
             }
         }
-        for (size_t i = 0; i < block->instruction_count; i++) {
-            if (!verify_inst(out, fn, block, b, defs, &block->instructions[i], i)) {
-                free(defs); return false;
+        const YLIRTerminator *term = &block->terminator;
+        if (term->kind == YLIR_TERM_BRANCH) {
+            if (term->target >= n) {
+                free(defs); free(preds); free(dom); free(reachable); free(queue);
+                return ir_error(out, fn, block, term->source_line, term->source_column,
+                                "branch target block does not exist");
             }
-        }
-        if (!verify_term(out, fn, block, b, defs)) {
-            free(defs); return false;
+            preds[term->target * n + b] = 1U;
+        } else if (term->kind == YLIR_TERM_COND_BRANCH) {
+            if (term->target >= n || term->false_target >= n) {
+                free(defs); free(preds); free(dom); free(reachable); free(queue);
+                return ir_error(out, fn, block, term->source_line, term->source_column,
+                                "conditional branch target block does not exist");
+            }
+            preds[term->target * n + b] = 1U;
+            preds[term->false_target * n + b] = 1U;
+        } else if (term->kind != YLIR_TERM_RETURN &&
+                   term->kind != YLIR_TERM_RETURN_VOID &&
+                   term->kind != YLIR_TERM_UNREACHABLE &&
+                   term->kind != YLIR_TERM_NONE) {
+            free(defs); free(preds); free(dom); free(reachable); free(queue);
+            return ir_error(out, fn, block, term->source_line, term->source_column,
+                            "unknown terminator");
         }
     }
-    free(defs);
+
+    /* Reachability starts at block zero. Unreachable blocks are verified locally. */
+    size_t read_index = 0U, write_index = 0U;
+    reachable[0] = 1U; queue[write_index++] = 0U;
+    while (read_index < write_index) {
+        size_t from = queue[read_index++];
+        const YLIRTerminator *term = &fn->blocks[from]->terminator;
+        if (term->kind == YLIR_TERM_BRANCH || term->kind == YLIR_TERM_COND_BRANCH) {
+            size_t target = term->target;
+            if (!reachable[target]) { reachable[target] = 1U; queue[write_index++] = target; }
+        }
+        if (term->kind == YLIR_TERM_COND_BRANCH) {
+            size_t target = term->false_target;
+            if (!reachable[target]) { reachable[target] = 1U; queue[write_index++] = target; }
+        }
+    }
+
+    /* Iterative dominator sets. Disconnected blocks only dominate themselves. */
+    for (size_t b = 0; b < n; b++) {
+        if (!reachable[b] || b == 0U) dom[b * n + b] = 1U;
+        else for (size_t k = 0; k < n; k++) dom[b * n + k] = 1U;
+    }
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        for (size_t b = 1U; b < n; b++) {
+            if (!reachable[b]) continue;
+            bool has_pred = false;
+            for (size_t p = 0; p < n; p++)
+                if (reachable[p] && preds[b * n + p]) has_pred = true;
+            if (!has_pred) {
+                free(defs); free(preds); free(dom); free(reachable); free(queue);
+                return ir_error(out, fn, fn->blocks[b], 0U, 0U,
+                                "reachable block has no reachable predecessor");
+            }
+            for (size_t k = 0; k < n; k++) {
+                bool value = true;
+                for (size_t p = 0; p < n; p++) {
+                    if (reachable[p] && preds[b * n + p] && !dom[p * n + k]) {
+                        value = false; break;
+                    }
+                }
+                if (k == b) value = true;
+                if (dom[b * n + k] != (uint8_t)value) {
+                    dom[b * n + k] = (uint8_t)value; changed = true;
+                }
+            }
+        }
+    }
+
+    /* Collect all definitions first, allowing uses in dominated successor blocks. */
+    for (size_t b = 0; b < n; b++) {
+        const YLIRBasicBlock *block = fn->blocks[b];
+        for (size_t i = 0; i < block->instruction_count; i++) {
+            const YLIRInstruction *inst = &block->instructions[i];
+            YLIRType result_type = YLIR_TYPE_INVALID;
+            if (inst->kind == YLIR_OP_PHI) {
+                if (!valid_type(inst->type, false)) {
+                    free(defs); free(preds); free(dom); free(reachable); free(queue);
+                    return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                    "PHI has invalid or void result type");
+                }
+                result_type = inst->type;
+            } else {
+                switch (inst->kind) {
+                    case YLIR_OP_CONST_BOOL: result_type = YLIR_TYPE_BOOL; break;
+                    case YLIR_OP_CONST_I64: result_type = YLIR_TYPE_I64; break;
+                    case YLIR_OP_CONST_F64: result_type = YLIR_TYPE_F64; break;
+                    case YLIR_OP_ADD_I64: case YLIR_OP_SUB_I64: case YLIR_OP_MUL_I64:
+                    case YLIR_OP_SDIV_I64: case YLIR_OP_SREM_I64:
+                        result_type = YLIR_TYPE_I64; break;
+                    case YLIR_OP_EQ_I64: case YLIR_OP_NE_I64: case YLIR_OP_SLT_I64:
+                    case YLIR_OP_SLE_I64: case YLIR_OP_SGT_I64: case YLIR_OP_SGE_I64:
+                    case YLIR_OP_NOT_BOOL:
+                        result_type = YLIR_TYPE_BOOL; break;
+                    case YLIR_OP_ADD_F64: case YLIR_OP_SUB_F64:
+                    case YLIR_OP_MUL_F64: case YLIR_OP_DIV_F64:
+                        result_type = YLIR_TYPE_F64; break;
+                    default:
+                        free(defs); free(preds); free(dom); free(reachable); free(queue);
+                        return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                        "unknown instruction opcode");
+                }
+                if (inst->type != result_type) {
+                    free(defs); free(preds); free(dom); free(reachable); free(queue);
+                    return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                    "instruction result type does not match opcode");
+                }
+            }
+            if (inst->result == YLIR_NO_VALUE || inst->result >= fn->next_value_id ||
+                inst->result < fn->parameter_count || defs[inst->result].defined) {
+                free(defs); free(preds); free(dom); free(reachable); free(queue);
+                return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                "invalid or duplicate instruction result ID");
+            }
+            defs[inst->result] = (YLIRDefinition){
+                .defined = true, .block_index = (int32_t)b,
+                .instruction_index = i, .type = result_type
+            };
+        }
+    }
+    for (size_t id = fn->parameter_count; id < fn->next_value_id; id++) {
+        if (!defs[id].defined) {
+            free(defs); free(preds); free(dom); free(reachable); free(queue);
+            return ir_error(out, fn, NULL, 0U, 0U, "SSA value ID was allocated but never defined");
+        }
+    }
+
+    /* Verify PHIs and regular operands after all definitions and dominators exist. */
+    for (size_t b = 0; b < n; b++) {
+        const YLIRBasicBlock *block = fn->blocks[b];
+        bool saw_regular_instruction = false;
+        for (size_t i = 0; i < block->instruction_count; i++) {
+            const YLIRInstruction *inst = &block->instructions[i];
+            if (inst->kind == YLIR_OP_PHI) {
+                if (saw_regular_instruction) {
+                    free(defs); free(preds); free(dom); free(reachable); free(queue);
+                    return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                    "PHI instructions must appear before ordinary instructions");
+                }
+                if (!inst->incoming || inst->incoming_count == 0U ||
+                    inst->left != YLIR_NO_VALUE || inst->right != YLIR_NO_VALUE) {
+                    free(defs); free(preds); free(dom); free(reachable); free(queue);
+                    return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                    "malformed PHI incoming list");
+                }
+                uint8_t *seen = calloc(n, sizeof(*seen));
+                if (!seen) {
+                    free(defs); free(preds); free(dom); free(reachable); free(queue);
+                    return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                    "out of memory verifying PHI");
+                }
+                size_t expected = 0U;
+                for (size_t p = 0; p < n; p++)
+                    if (reachable[p] && preds[b * n + p]) expected++;
+                if (inst->incoming_count != expected) {
+                    free(seen); free(defs); free(preds); free(dom); free(reachable); free(queue);
+                    return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                    "PHI must have one incoming value per reachable predecessor");
+                }
+                for (size_t j = 0; j < inst->incoming_count; j++) {
+                    const YLIRPhiIncoming *in = &inst->incoming[j];
+                    size_t pred = in->predecessor;
+                    if (pred >= n || !reachable[pred] ||
+                        !preds[b * n + pred] || seen[pred]) {
+                        free(seen); free(defs); free(preds); free(dom); free(reachable); free(queue);
+                        return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                        "PHI input must name a unique reachable predecessor");
+                    }
+                    seen[pred] = 1U;
+                    if (in->value == YLIR_NO_VALUE || in->value >= fn->next_value_id ||
+                        !defs[in->value].defined || defs[in->value].type != inst->type) {
+                        free(seen); free(defs); free(preds); free(dom); free(reachable); free(queue);
+                        return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                        "PHI input is undefined or has the wrong type");
+                    }
+                    int32_t def_idx = defs[in->value].block_index;
+                    if (def_idx >= 0) {
+                        size_t def_block = (size_t)def_idx;
+                        if (def_block == pred) {
+                            if (defs[in->value].instruction_index >=
+                                fn->blocks[pred]->instruction_count) {
+                                free(seen); free(defs); free(preds); free(dom); free(reachable); free(queue);
+                                return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                                "PHI value unavailable at predecessor exit");
+                            }
+                        } else if (!dom[pred * n + def_block]) {
+                            free(seen); free(defs); free(preds); free(dom); free(reachable); free(queue);
+                            return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                            "PHI value definition does not dominate predecessor");
+                        }
+                    }
+                }
+                free(seen);
+                continue;
+            }
+            saw_regular_instruction = true;
+            YLIRType operand_type = YLIR_TYPE_INVALID;
+            bool constant = false, unary = false;
+            switch (inst->kind) {
+                case YLIR_OP_CONST_BOOL:
+                    constant = true;
+                    if (inst->immediate > 1U) {
+                        free(defs); free(preds); free(dom); free(reachable); free(queue);
+                        return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                        "boolean constants must be zero or one");
+                    }
+                    break;
+                case YLIR_OP_CONST_I64: case YLIR_OP_CONST_F64:
+                    constant = true; break;
+                case YLIR_OP_ADD_I64: case YLIR_OP_SUB_I64:
+                case YLIR_OP_MUL_I64: case YLIR_OP_SDIV_I64:
+                case YLIR_OP_SREM_I64: case YLIR_OP_EQ_I64:
+                case YLIR_OP_NE_I64: case YLIR_OP_SLT_I64:
+                case YLIR_OP_SLE_I64: case YLIR_OP_SGT_I64:
+                case YLIR_OP_SGE_I64:
+                    operand_type = YLIR_TYPE_I64; break;
+                case YLIR_OP_NOT_BOOL:
+                    operand_type = YLIR_TYPE_BOOL; unary = true; break;
+                case YLIR_OP_ADD_F64: case YLIR_OP_SUB_F64:
+                case YLIR_OP_MUL_F64: case YLIR_OP_DIV_F64:
+                    operand_type = YLIR_TYPE_F64; break;
+                default:
+                    free(defs); free(preds); free(dom); free(reachable); free(queue);
+                    return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                    "unknown instruction opcode");
+            }
+            if (constant) {
+                if (inst->left != YLIR_NO_VALUE || inst->right != YLIR_NO_VALUE) {
+                    free(defs); free(preds); free(dom); free(reachable); free(queue);
+                    return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                    "constant instruction unexpectedly has operands");
+                }
+            } else {
+                if (!expect_value(out, fn, block, b, defs, dom, n, inst->left,
+                                  operand_type, i, inst->source_line, inst->source_column)) {
+                    free(defs); free(preds); free(dom); free(reachable); free(queue);
+                    return false;
+                }
+                if (unary) {
+                    if (inst->right != YLIR_NO_VALUE) {
+                        free(defs); free(preds); free(dom); free(reachable); free(queue);
+                        return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                        "unary instruction has unexpected second operand");
+                    }
+                } else if (!expect_value(out, fn, block, b, defs, dom, n, inst->right,
+                                         operand_type, i, inst->source_line, inst->source_column)) {
+                    free(defs); free(preds); free(dom); free(reachable); free(queue);
+                    return false;
+                }
+            }
+        }
+        if (!verify_terminator(out, fn, block, b, defs, dom, n)) {
+            free(defs); free(preds); free(dom); free(reachable); free(queue);
+            return false;
+        }
+    }
+    free(defs); free(preds); free(dom); free(reachable); free(queue);
     return true;
 }
-
 bool ylang_ir_verify(const YLIRModule *module, FILE *diagnostics)
 {
     if (!module || (module->function_count && !module->functions))
