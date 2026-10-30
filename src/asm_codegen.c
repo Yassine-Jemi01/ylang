@@ -42,6 +42,7 @@ typedef struct {
     AsmVarSlot *slots;
     size_t slot_count;
     size_t slot_capacity;
+    size_t slot_words;
     size_t temporary_depth;
     Function *function;
     AsmLoop *loop;
@@ -143,14 +144,23 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
             return validate_expr(ctx, expr->as.binary.left) &&
                    validate_expr(ctx, expr->as.binary.right);
         }
-        case EXPR_ASSIGN:
-            if (!expr->as.assign.target ||
-                expr->as.assign.target->kind != EXPR_NAME ||
-                !expr->as.assign.variable) {
-                return asm_reject(ctx, expr->token,
-                                  "assignments except to named scalar variables");
+        case EXPR_ASSIGN: {
+            Expr *target = expr->as.assign.target;
+            VarDecl *variable = expr->as.assign.variable;
+            if (!target || !variable) {
+                return asm_reject(ctx, expr->token, "unresolved assignment targets");
             }
-            return validate_expr(ctx, expr->as.assign.right);
+            if (target->kind == EXPR_NAME && !variable->is_array) {
+                return validate_expr(ctx, expr->as.assign.right);
+            }
+            if (target->kind == EXPR_INDEX && variable->is_array &&
+                target->as.index.variable == variable) {
+                return validate_expr(ctx, target->as.index.index) &&
+                       validate_expr(ctx, expr->as.assign.right);
+            }
+            return asm_reject(ctx, expr->token,
+                              "assignments except to scalar variables or indexed fixed arrays");
+        }
         case EXPR_CALL:
             if (strncmp(expr->as.call.name, "gui.", 4) == 0) {
                 return asm_reject(ctx, expr->token, "GUI calls (use the C backend with SDL2)");
@@ -171,8 +181,15 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
         case EXPR_FSTRING:
             return asm_reject(ctx, expr->token, "f-strings");
         case EXPR_ARRAY:
+            return asm_reject(ctx, expr->token,
+                              "array literals outside fixed-array declarations");
         case EXPR_INDEX:
-            return asm_reject(ctx, expr->token, "arrays and array indexing");
+            if (!expr->as.index.variable || !expr->as.index.variable->is_array ||
+                !expr->as.index.target || expr->as.index.target->kind != EXPR_NAME) {
+                return asm_reject(ctx, expr->token,
+                                  "indexing anything other than a named fixed array");
+            }
+            return validate_expr(ctx, expr->as.index.index);
         case EXPR_STRUCT_INIT:
         case EXPR_MEMBER:
             return asm_reject(ctx, expr->token, "struct values (not yet supported by the NASM backend)");
@@ -191,13 +208,24 @@ static bool validate_stmt(AsmContext *ctx, Stmt *stmt)
                 if (!validate_stmt(ctx, stmt->as.block.items[i])) return false;
             }
             return true;
-        case STMT_VAR:
-            if (stmt->as.variable->is_array) {
-                return asm_reject(ctx, stmt->token, "array declarations");
+        case STMT_VAR: {
+            VarDecl *variable = stmt->as.variable;
+            if (!asm_type_supported(ctx, variable->type, stmt->token, false))
+                return false;
+            if (variable->is_array) {
+                if (variable->array_length == 0U ||
+                    !variable->initializer ||
+                    variable->initializer->kind != EXPR_ARRAY ||
+                    variable->initializer->as.array.count != variable->array_length) {
+                    return asm_reject(ctx, stmt->token,
+                                      "fixed arrays without a non-empty literal initializer");
+                }
+                return validate_expr_list(ctx,
+                    variable->initializer->as.array.items,
+                    variable->initializer->as.array.count);
             }
-            if (!asm_type_supported(ctx, stmt->as.variable->type,
-                                    stmt->token, false)) return false;
-            return validate_expr(ctx, stmt->as.variable->initializer);
+            return validate_expr(ctx, variable->initializer);
+        }
         case STMT_PRINT:
             return validate_expr_list(ctx, stmt->as.print.args,
                                       stmt->as.print.count);
@@ -257,7 +285,15 @@ static bool add_slot(AsmContext *ctx, VarDecl *variable)
         ctx->slots = grown;
         ctx->slot_capacity = next;
     }
-    ctx->slots[ctx->slot_count] = (AsmVarSlot){ variable, ctx->slot_count };
+    const size_t words = variable->is_array ? variable->array_length : 1U;
+    if (words == 0U || words > SIZE_MAX - ctx->slot_words ||
+        ctx->slot_words + words > SIZE_MAX / 8U) {
+        fputs("ylang: NASM stack frame is too large for fixed arrays.\n", stderr);
+        ctx->okay = false;
+        return false;
+    }
+    ctx->slots[ctx->slot_count] = (AsmVarSlot){ variable, ctx->slot_words };
+    ctx->slot_words += words;
     ctx->slot_count++;
     return true;
 }
@@ -303,12 +339,64 @@ static bool collect_stmt_slots(AsmContext *ctx, Stmt *stmt)
 static size_t slot_offset(AsmContext *ctx, VarDecl *variable)
 {
     for (size_t i = 0; i < ctx->slot_count; i++) {
-        if (ctx->slots[i].variable == variable) return (ctx->slots[i].slot + 1U) * 8U;
+        if (ctx->slots[i].variable == variable) {
+            return (ctx->slots[i].slot + 1U) * 8U;
+        }
     }
     fprintf(stderr, "ylang: internal error: no NASM stack slot for variable '%s'.\n",
             variable && variable->name ? variable->name : "<unknown>");
     ctx->okay = false;
-    return 8;
+    return 8U;
+}
+
+static size_t array_base_offset(AsmContext *ctx, VarDecl *variable)
+{
+    for (size_t i = 0; i < ctx->slot_count; i++) {
+        if (ctx->slots[i].variable == variable && variable->is_array &&
+            variable->array_length <= SIZE_MAX - ctx->slots[i].slot &&
+            ctx->slots[i].slot + variable->array_length <= SIZE_MAX / 8U) {
+            return (ctx->slots[i].slot + variable->array_length) * 8U;
+        }
+    }
+    fprintf(stderr, "ylang: internal error: no NASM array storage for variable '%s'.\n",
+            variable && variable->name ? variable->name : "<unknown>");
+    ctx->okay = false;
+    return 8U;
+}
+
+static bool validate_array_element_type(AsmContext *ctx, VarDecl *variable)
+{
+    if (!variable || !variable->is_array || variable->array_length == 0U)
+        return asm_reject(ctx, variable ? variable->token : (Token){0},
+                          "empty or invalid fixed arrays");
+    if (variable->type == TYPE_FLOAT || variable->type == TYPE_OWNED_STRING ||
+        variable->type == TYPE_HTTP_TASK || variable->type == TYPE_VOID ||
+        variable->type == TYPE_ERROR) {
+        return asm_reject(ctx, variable->token,
+                          "fixed arrays of float, owned_string, or runtime handle values");
+    }
+    return true;
+}
+
+static bool emit_array_bounds_check(AsmContext *ctx, VarDecl *variable)
+{
+    if (!variable || variable->array_length == 0U ||
+        variable->array_length > (size_t)INT64_MAX) {
+        return asm_reject(ctx, variable ? variable->token : (Token){0},
+                          "arrays with an invalid length");
+    }
+    fputs("    test r10, r10\n"
+          "    js __yl_array_bounds_error\n", ctx->out);
+    fprintf(ctx->out, "    cmp r10, %zu\n"
+                      "    jae __yl_array_bounds_error\n",
+            variable->array_length);
+    if (variable->is_global) {
+        fprintf(ctx->out, "    lea r11, [rel %s]\n", variable->c_name);
+    } else {
+        size_t base = array_base_offset(ctx, variable);
+        fprintf(ctx->out, "    lea r11, [rbp - %zu]\n", base);
+    }
+    return ctx->okay;
 }
 
 static unsigned new_label(AsmContext *ctx)
@@ -986,6 +1074,7 @@ static bool prepare_function(AsmContext *ctx, Function *function)
     ctx->slots = NULL;
     ctx->slot_count = 0;
     ctx->slot_capacity = 0;
+    ctx->slot_words = 0;
     ctx->temporary_depth = 0;
     ctx->loop = NULL;
     ctx->function = function;
@@ -1101,7 +1190,10 @@ static bool emit_function(AsmContext *ctx, Function *function)
     };
     if (!prepare_function(ctx, function)) return false;
 
-    size_t raw_frame_size = ctx->slot_count * 8U;
+    if (ctx->slot_words > (SIZE_MAX - 15U) / 8U) {
+        return asm_reject(ctx, function->token, "an unaddressable stack frame");
+    }
+    size_t raw_frame_size = ctx->slot_words * 8U;
     size_t frame_size = (raw_frame_size + 15U) & ~(size_t)15U;
     fprintf(ctx->out, "\n%s:\n    push rbp\n    mov rbp, rsp\n",
             function->c_name);
