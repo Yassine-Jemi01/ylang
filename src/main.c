@@ -32,7 +32,8 @@ static void usage(FILE *stream)
         "  emit-asm Emit experimental Linux x86-64 NASM assembly for the supported subset.\n"
         "  emit-llvm Emit verified LLVM IR for the currently supported scalar subset.\n"
         "  build-llvm Build the scalar LLVM subset with Clang (Linux x86-64).\n"
-        "  emit-obj Emit a scalar LLVM object file with Clang (Linux x86-64).\n"        "  fix     Apply high-confidence safe fixes to a new source file.\n",
+        "  emit-obj Emit a scalar LLVM object file with Clang (Linux x86-64).\n"
+        "  fix     Apply high-confidence safe fixes to a new source file.\n",
         stream);
 }
 
