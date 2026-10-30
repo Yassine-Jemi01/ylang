@@ -220,6 +220,45 @@ static void lowers_integer_function_parameters(void)
     yir_destroy_function(&lowered);
 }
 
+
+static void lowers_boolean_literal_condition(void)
+{
+    Expr condition = {
+        .kind=EXPR_BOOL,
+        .token={.type=TOKEN_TRUE,.start="true",.length=4},
+        .type=TYPE_BOOL
+    };
+    Expr yes = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="3",.length=1},
+        .type=TYPE_INT
+    };
+    Expr no = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="4",.length=1},
+        .type=TYPE_INT
+    };
+    Stmt then_return = {.kind=STMT_RETURN,.as.return_value=&yes};
+    Stmt else_return = {.kind=STMT_RETURN,.as.return_value=&no};
+    Stmt conditional = {
+        .kind=STMT_IF,
+        .as.if_stmt={
+            .condition=&condition,
+            .then_branch=&then_return,
+            .else_branch=&else_return
+        }
+    };
+    Stmt *items[] = {&conditional};
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=1}};
+    Function function = {.name="bool_condition",.return_type=TYPE_INT,.body=&body};
+    YIRFunction lowered;
+    char error[192];
+    assert(yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(lowered.blocks[0].instructions[0].opcode==YIR_OP_CONST_BOOL);
+    assert(lowered.blocks[0].instructions[0].immediate==1);
+    yir_destroy_function(&lowered);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
@@ -229,6 +268,7 @@ int main(void)
     lowers_if_else_returns();
     rejects_if_without_else();
     lowers_integer_function_parameters();
+    lowers_boolean_literal_condition();
     puts("YLang IR lowering tests passed");
     return 0;
 }
