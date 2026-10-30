@@ -1,4 +1,4 @@
-function make_early() -> owned_string {
+fn make_early() -> owned_string {
     let owned_string outer = string.own("outer");
     if (true) {
         let owned_string inner = string.own("returned");
@@ -7,7 +7,7 @@ function make_early() -> owned_string {
     return move(outer);
 }
 
-function main() -> int {
+fn main() -> int {
     let owned_string result = make_early();
     print(result);
     return 0;

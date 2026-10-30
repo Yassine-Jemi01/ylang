@@ -1,6 +1,6 @@
 enum OwnerChoice { First, Second }
 
-function emit_choice(OwnerChoice choice) -> int {
+fn emit_choice(OwnerChoice choice) -> int {
     match (choice) {
         OwnerChoice.First -> {
             let owned_string first_value = string.own("first-arm");
@@ -14,7 +14,7 @@ function emit_choice(OwnerChoice choice) -> int {
     return 0;
 }
 
-function emit_branch(int selection) -> int {
+fn emit_branch(int selection) -> int {
     if (selection == 1) {
         let owned_string then_value = string.own("then-branch");
         print(then_value);
@@ -25,7 +25,7 @@ function emit_branch(int selection) -> int {
     return 0;
 }
 
-function main() -> int {
+fn main() -> int {
     emit_branch(1);
     emit_branch(0);
     emit_choice(OwnerChoice.First);

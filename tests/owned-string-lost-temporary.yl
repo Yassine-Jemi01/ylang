@@ -1,4 +1,4 @@
-function main() -> int {
+fn main() -> int {
     let owned_string source = string.own("value");
     let bool same = owned_string.concat(source, "!") == "value";
     print(same);

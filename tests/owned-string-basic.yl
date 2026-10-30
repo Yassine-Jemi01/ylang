@@ -1,19 +1,19 @@
-function return_owner(owned_string value) -> owned_string {
+fn return_owner(owned_string value) -> owned_string {
     return move(value);
 }
 
-function make_local_owner() -> owned_string {
+fn make_local_owner() -> owned_string {
     let owned_string abandoned = string.own("discard-me");
     let owned_string result = string.own("local");
     return move(result);
 }
 
-function consume_owned(owned_string value) -> int {
+fn consume_owned(owned_string value) -> int {
     print(value);
     return 0;
 }
 
-function main() -> int {
+fn main() -> int {
     let owned_string source = string.own("alpha");
     let owned_string combined = owned_string.concat(source, "beta");
     print(source, combined);

@@ -1,4 +1,4 @@
-function main() -> int {
+fn main() -> int {
     let owned_string first = string.own("value");
     let owned_string second = first;
     print(second);
