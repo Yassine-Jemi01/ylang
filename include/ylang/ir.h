@@ -60,6 +60,12 @@ typedef struct {
     size_t block_count;
 } YIRFunction;
 
+struct Function;
+/* Lowers the currently supported scalar-return subset of a checked AST. */
+bool yir_lower_function(const struct Function *function, YIRFunction *out,
+                        char *error, size_t error_capacity);
+void yir_destroy_function(YIRFunction *function);
+
 /* Writes a NUL-terminated explanation on failure when a buffer is supplied. */
 bool yir_verify_function(const YIRFunction *function, char *error,
                          size_t error_capacity);
