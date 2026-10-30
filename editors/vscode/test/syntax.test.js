@@ -23,13 +23,15 @@ for (const name of includes) {
   assert.ok(repository[name], `grammar include #${name} must be defined`);
 }
 
-for (const keyword of ["struct", "enum", "match", "from", "import", "for", "while", "await"]) {
+for (const keyword of ["fn", "function", "mut", "struct", "enum", "match", "from", "import", "for", "while", "await"]) {
   assert.ok(repository.keywords.match.includes(keyword), `missing YLang 2.0 keyword: ${keyword}`);
 }
 assert.ok(repository["struct-declaration"], "struct declarations should have a dedicated scope");
 assert.ok(repository["enum-declaration"], "enum declarations and variants should have dedicated scopes");
 assert.ok(repository["field-declaration"], "struct fields should be highlighted");
 assert.ok(repository["variable-declaration"], "typed variable declarations should be highlighted");
+assert.match(repository["function-declaration"].match, /function\\|fn/, "both fn and legacy function declarations should be highlighted");
+assert.match(repository["variable-declaration"].match, /const\\|mut/, "const and explicit mut modifiers should be highlighted");
 assert.ok(repository.namespace.match.includes("gui"), "built-in namespaces should be highlighted");
 assert.ok(repository.namespace.match.includes("http"), "HTTP namespace should be highlighted");
 assert.ok(repository.namespace.match.includes("env"), "environment namespace should be highlighted");
@@ -41,4 +43,4 @@ assert.match(repository.operators.match, /->/, "match-arm/function-return arrows
 assert.ok(grammar.patterns.some((pattern) => pattern.include === "#struct-declaration"));
 assert.ok(grammar.patterns.some((pattern) => pattern.include === "#enum-declaration"));
 
-console.log("VS Code YLang 2.0 syntax grammar tests passed");
+console.log("VS Code YLang 3.0 syntax grammar tests passed");
