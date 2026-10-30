@@ -144,7 +144,7 @@ static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
     if (expression->kind == EXPR_NAME) {
         if (expression->type != TYPE_INT || !expression->as.name.variable ||
             !lowerer->function)
-            return lower_fail(lowerer, "only integer function parameters are supported as names");
+            return lower_fail(lowerer, "integer names must refer to scalar parameters or initialized locals");
         if (lookup_local(lowerer, expression->as.name.variable, value_id))
             return true;
         for (size_t i = 0; i < lowerer->function->param_count; ++i) {
@@ -505,7 +505,7 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
         function->return_type != TYPE_BOOL &&
         function->return_type != TYPE_VOID)
         return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
-                          "only int and void functions are supported by the initial IR lowerer");
+                          "only int, bool, and void functions are supported by the initial IR lowerer");
 
     const Stmt *root = unwrap_single_statement(function->body);
     YIRBlock *blocks = NULL;
