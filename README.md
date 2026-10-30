@@ -16,7 +16,9 @@ YLang **2.2.0** is the latest stable release. The documented core language and d
 
 YLang 3.0 is the next release target. The previously proposed 2.3 feature line is being folded into 3.0; no separate 2.3 stable release is planned. This development branch is marked `3.0.0-dev` and is not a release candidate. New functions use `fn`; legacy `function` declarations remain accepted with warning `W2302`.
 
-**Why YLang?** The 3.0 goal is to make native software pleasant to build: Rust-influenced clarity without copying Rust's syntax, explicit mutability and predictable memory, fast native output, a useful standard library, and first-party workflows for tools, desktop utilities, and small games. The LLVM backend, expanded NASM support, and performance goals are development work, not completed claims.
+**Why YLang?** The 3.0 goal is to make native software pleasant to build: Rust-influenced clarity without copying Rust's syntax, explicit mutability and predictable memory, fast native output, a useful standard library, and first-party workflows for tools, desktop utilities, and small games.
+
+Two release commitments are explicit: **Windows x86-64 with MinGW-w64 becomes an officially supported, fully tested platform**, and **every subsystem currently marked experimental must graduate to a stable, documented, tested contract before 3.0 ships**. This includes modules/imports, structs/enums, GUI/Game2D, NASM's documented Linux x86-64 subset, HTTP/HTTP-task async, ownership, the CLI debugger, Nix packaging, and YSPM packaging. The current implementations remain experimental until their 3.0 acceptance gates pass; this paragraph describes the release goal, not completed support.
 
 Read the [unified YLang 3.0 roadmap](docs/ROADMAP-3.0.md), the [language design RFC](docs/RFC-3.0-LANGUAGE-DESIGN.md), and the [LLVM backend RFC](docs/RFC-3.0-LLVM-BACKEND.md).
 
