@@ -375,9 +375,8 @@ static bool lower_statement(Lowerer *lowerer, const Function *function,
 
         case STMT_VAR: {
             const VarDecl *variable = statement->as.variable;
-            YIRType type;
             if (!variable || variable->is_array ||
-                !map_scalar_type(variable->type, &type) ||
+                (variable->type != TYPE_INT && variable->type != TYPE_BOOL) ||
                 !variable->initializer)
                 return lower_fail(lowerer,
                     "only initialized scalar int and bool local variables are supported");
@@ -403,8 +402,7 @@ static bool lower_statement(Lowerer *lowerer, const Function *function,
             if (!variable || variable->is_const || variable->is_array)
                 return lower_fail(lowerer,
                     "assignment target is not a mutable scalar local or parameter");
-            YIRType type;
-            if (!map_scalar_type(variable->type, &type))
+            if (variable->type != TYPE_INT && variable->type != TYPE_BOOL)
                 return lower_fail(lowerer,
                     "only int and bool local assignments are supported");
             uint32_t value_id = 0;
@@ -495,9 +493,9 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
         return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                           "function has too many parameters for the initial IR lowerer");
     for (size_t i = 0; i < function->param_count; ++i) {
-        YIRType parameter_type;
         if (!function->params[i] || function->params[i]->is_array ||
-            !map_scalar_type(function->params[i]->type, &parameter_type))
+            (function->params[i]->type != TYPE_INT &&
+             function->params[i]->type != TYPE_BOOL))
             return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                               "only scalar int and bool function parameters are supported by the initial IR lowerer");
     }
