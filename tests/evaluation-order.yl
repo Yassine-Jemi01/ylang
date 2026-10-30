@@ -5,21 +5,21 @@ struct Pair {
     int second;
 }
 
-function next() -> int {
+fn next() -> int {
     counter += 1;
     return counter;
 }
 
-function pair(int first, int second) -> int {
+fn pair(int first, int second) -> int {
     return first * 10 + second;
 }
 
-function shadow_parameter(int value) -> int {
+fn shadow_parameter(int value) -> int {
     let int value = 7;
     return value;
 }
 
-function main() -> int {
+fn main() -> int {
     counter = 0;
     print(pair(next(), next()));
 
