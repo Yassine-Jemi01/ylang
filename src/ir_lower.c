@@ -49,6 +49,19 @@ static bool emit(Lowerer *lowerer, YIRInstruction instruction,
     return true;
 }
 
+static bool map_scalar_type(YType type, YIRType *ir_type)
+{
+    if (type == TYPE_INT) {
+        *ir_type = YIR_TYPE_I64;
+        return true;
+    }
+    if (type == TYPE_BOOL) {
+        *ir_type = YIR_TYPE_BOOL;
+        return true;
+    }
+    return false;
+}
+
 static bool parse_integer_literal(const Expr *expression, int64_t *value)
 {
     if (!expression || expression->kind != EXPR_INT ||
@@ -195,6 +208,21 @@ static bool lower_boolean_expr(Lowerer *lowerer, const Expr *expression,
         return emit(lowerer, instruction, value_id);
     }
 
+    if (expression->kind == EXPR_NAME) {
+        if (!expression->as.name.variable || !lowerer->function)
+            return lower_fail(lowerer, "boolean name is not a supported function parameter");
+        for (size_t i = 0; i < lowerer->function->param_count; ++i) {
+            if (lowerer->function->params[i] == expression->as.name.variable &&
+                lowerer->function->params[i]->type == TYPE_BOOL &&
+                !lowerer->function->params[i]->is_array) {
+                *value_id = (uint32_t)i + 1U;
+                return true;
+            }
+        }
+        return lower_fail(lowerer,
+            "local variables and non-parameter boolean names are not supported by the initial IR lowerer");
+    }
+
     if (expression->kind == EXPR_BINARY) {
         uint32_t lhs = 0, rhs = 0;
         if (!lower_integer_expr(lowerer, expression->as.binary.left, &lhs) ||
@@ -259,14 +287,20 @@ static bool lower_return_block(const Function *function, const Stmt *ret,
         .error_capacity = error_capacity
     };
     if (ret && ret->as.return_value) {
-        if (function->return_type != TYPE_INT) {
+        uint32_t returned = 0;
+        bool lowered = false;
+        if (function->return_type == TYPE_INT &&
+            ret->as.return_value->type == TYPE_INT)
+            lowered = lower_integer_expr(&lowerer, ret->as.return_value, &returned);
+        else if (function->return_type == TYPE_BOOL &&
+                 ret->as.return_value->type == TYPE_BOOL)
+            lowered = lower_boolean_expr(&lowerer, ret->as.return_value, &returned);
+        else {
             (void)lower_fail(&lowerer,
-                "void function cannot return a value in the initial IR lowerer");
+                "return expression type does not match the initial IR function return type");
             goto failed;
         }
-        uint32_t returned = 0;
-        if (!lower_integer_expr(&lowerer, ret->as.return_value, &returned))
-            goto failed;
+        if (!lowered) goto failed;
         YIRInstruction terminator = {
             .opcode=YIR_OP_RETURN,
             .lhs=returned,
@@ -327,12 +361,14 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
         return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                           "function has too many parameters for the initial IR lowerer");
     for (size_t i = 0; i < function->param_count; ++i) {
-        if (!function->params[i] || function->params[i]->type != TYPE_INT ||
-            function->params[i]->is_array)
+        YIRType parameter_type;
+        if (!function->params[i] || function->params[i]->is_array ||
+            !map_scalar_type(function->params[i]->type, &parameter_type))
             return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
-                              "only scalar int function parameters are supported by the initial IR lowerer");
+                              "only scalar int and bool function parameters are supported by the initial IR lowerer");
     }
     if (function->return_type != TYPE_INT &&
+        function->return_type != TYPE_BOOL &&
         function->return_type != TYPE_VOID)
         return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                           "only int and void functions are supported by the initial IR lowerer");
@@ -350,7 +386,8 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
                               "out of memory while lowering function parameters");
         for (size_t i = 0; i < function->param_count; ++i) {
             parameters[i].id = (uint32_t)i + 1U;
-            parameters[i].type = YIR_TYPE_I64;
+            (void)map_scalar_type(function->params[i]->type,
+                                  &parameters[i].type);
         }
     }
 
@@ -439,8 +476,8 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
     }
 
     out->name = function->name;
-    out->return_type = function->return_type == TYPE_VOID ?
-                       YIR_TYPE_VOID : YIR_TYPE_I64;
+    if (!map_scalar_type(function->return_type, &out->return_type))
+        out->return_type = YIR_TYPE_VOID;
     out->parameters = parameters;
     out->parameter_count = function->param_count;
     out->blocks = blocks;
