@@ -16,7 +16,7 @@ Status: standalone typed SSA verifier plus an initial scalar AST lowering slice.
 
 Types: `void`, `bool`, `i64`, `f64`, and opaque `ptr`.
 
-Operations currently implemented: `const.i64`, `add.i64`, `sub.i64`, `mul.i64`, `eq.i64`, `br`, `cond_br`, and `return`.
+Operations currently implemented: `const.i64`, `const.bool`, `add.i64`, `sub.i64`, `mul.i64`, `eq.i64`, `ne.i64`, `lt.i64`, `le.i64`, `gt.i64`, `ge.i64`, `br`, `cond_br`, and `return`.
 
 Branch and conditional-branch terminators may carry typed edge arguments. Those arguments initialize the target block's parameters, providing the SSA merge mechanism for control-flow joins.
 
@@ -41,8 +41,8 @@ This IR is not ready to replace the current AST-to-C path. Function signatures a
 
 ## AST lowering scope
 
-`yir_lower_function` currently accepts only parameterless functions whose body contains exactly one return statement, or an empty body for a void function. Integer expressions are limited to integer literals, unary minus, and `+`, `-`, and `*`. Unsupported statements and expressions fail explicitly; they are not silently translated. The resulting function is immediately passed through the verifier. `yir_destroy_function` releases the allocated IR storage.
+`yir_lower_function` currently accepts parameterless `int` and `void` functions. It lowers a single return statement, an empty void body, or a simple `if/else` whose branches each return. Integer expressions are limited to integer literals, negative integer literals, and `+`, `-`, and `*`. Conditions support boolean literals and integer comparisons (`==`, `!=`, `<`, `<=`, `>`, `>=`). Unsupported statements and expressions fail explicitly; they are not silently translated. The resulting function is immediately passed through the verifier. `yir_destroy_function` releases the allocated IR storage.
 
 ## Build and tests
 
-Run `make ir-unit-test ir-lower-unit-test` or `sh tests/run-ir-unit.sh`. Verifier tests cover arithmetic and return, same-block ordering, cross-block dominance, unreachable blocks, invalid joins, and typed block-parameter joins. Lowering tests cover integer arithmetic returns, unary negation, empty void functions, and explicit rejection of unsupported bodies.
+Run `make ir-unit-test ir-lower-unit-test` or `sh tests/run-ir-unit.sh`. Verifier tests cover arithmetic and return, same-block ordering, cross-block dominance, unreachable blocks, invalid joins, and typed block-parameter joins. Lowering tests cover integer arithmetic returns, negative literals, empty void functions, if/else returns, integer comparison conditions, and explicit rejection of unsupported bodies.
