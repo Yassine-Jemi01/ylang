@@ -158,6 +158,12 @@ fi
 ./build/test-fn-keyword > build/fn-keyword.out
 diff -u tests/expected-fn-keyword.txt build/fn-keyword.out
 
+# Explicit mut is the preferred 3.0 spelling; legacy mutable let remains compatible.
+./build/ylang check tests/explicit-mut.yl >/dev/null
+./build/ylang build tests/explicit-mut.yl -o build/test-explicit-mut >/dev/null
+./build/test-explicit-mut > build/explicit-mut.out
+diff -u tests/expected-explicit-mut.txt build/explicit-mut.out
+
 ./build/ylang check examples/demo.yl
 ./build/ylang build examples/demo.yl -o build/test-demo >/dev/null
 ./build/test-demo > build/test-demo.out
