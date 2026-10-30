@@ -261,13 +261,12 @@ static void test_calls_and_signatures(void)
     YLIRFunction *add = NULL, *main_fn = NULL, *consume = NULL;
     YLIRBasicBlock *add_entry = NULL, *main_entry = NULL, *consume_entry = NULL;
     const YLIRType add_params[] = { YLIR_TYPE_I64, YLIR_TYPE_I64 };
-    const YLIRType consume_params[] = { YLIR_TYPE_I64 };
     YLIRValue sum, result, a, b, void_out = 0U;
     assert(ylang_ir_module_init(&m));
     assert(ylang_ir_add_function(&m, "add", YLIR_TYPE_I64, add_params, 2U, &add));
     assert(ylang_ir_add_function(&m, "main", YLIR_TYPE_I64, NULL, 0U, &main_fn));
     assert(ylang_ir_add_function(&m, "consume", YLIR_TYPE_VOID,
-                                 consume_params, 1U, &consume));
+                                 NULL, 0U, &consume));
     assert(ylang_ir_add_block(add, "entry", &add_entry));
     assert(ylang_ir_add_block(main_fn, "entry", &main_entry));
     assert(ylang_ir_add_block(consume, "entry", &consume_entry));
@@ -277,10 +276,9 @@ static void test_calls_and_signatures(void)
     assert(ylang_ir_emit_const_i64(main_entry, 22, 1U, 5U, &b));
     const YLIRValue args[] = { a, b };
     assert(ylang_ir_emit_call(main_entry, 0U, args, 2U, 1U, 10U, &result));
-    const YLIRValue consume_args[] = { result };
-    assert(ylang_ir_emit_call(consume_entry, 2U, consume_args, 1U, 1U, 1U, &void_out));
+    assert(ylang_ir_emit_call(main_entry, 2U, NULL, 0U, 1U, 15U, &void_out));
     assert(void_out == YLIR_NO_VALUE);
-    assert(ylang_ir_return_void(consume_entry, 1U, 10U));
+    assert(ylang_ir_return_void(consume_entry, 1U, 1U));
     assert(ylang_ir_return(main_entry, result, 2U, 1U));
     assert(ylang_ir_verify(&m, stderr));
     ylang_ir_module_destroy(&m);
