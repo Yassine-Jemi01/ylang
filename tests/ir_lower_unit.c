@@ -320,6 +320,64 @@ static void lowers_boolean_function_parameter_and_return(void)
     yir_destroy_function(&lowered);
 }
 
+
+static void lowers_local_integer_and_assignment(void)
+{
+    Expr initial = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="40",.length=2,.line=1,.column=13},
+        .type=TYPE_INT
+    };
+    VarDecl local = {.name="answer",.type=TYPE_INT,.initializer=&initial};
+    Stmt declaration = {.kind=STMT_VAR,.as.variable=&local};
+
+    Expr current = {
+        .kind=EXPR_NAME,.type=TYPE_INT,
+        .as.name={.name="answer",.variable=&local}
+    };
+    Expr increment = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="2",.length=1,.line=2,.column=17},
+        .type=TYPE_INT
+    };
+    Expr sum = {
+        .kind=EXPR_BINARY,.type=TYPE_INT,
+        .as.binary={
+            .left=&current,.right=&increment,
+            .op={.type=TOKEN_PLUS,.start="+",.length=1,.line=2,.column=15}
+        }
+    };
+    Expr target = {
+        .kind=EXPR_NAME,.type=TYPE_INT,
+        .as.name={.name="answer",.variable=&local}
+    };
+    Expr assignment = {
+        .kind=EXPR_ASSIGN,.type=TYPE_INT,
+        .as.assign={
+            .target=&target,.right=&sum,.variable=&local,.is_compound=false
+        }
+    };
+    Stmt assign_statement = {
+        .kind=STMT_EXPR,.as.expression=&assignment
+    };
+    Expr returned = {
+        .kind=EXPR_NAME,.type=TYPE_INT,
+        .as.name={.name="answer",.variable=&local}
+    };
+    Stmt ret = {.kind=STMT_RETURN,.as.return_value=&returned};
+    Stmt *items[] = {&declaration,&assign_statement,&ret};
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=3}};
+    Function function = {.name="main",.return_type=TYPE_INT,.body=&body};
+    YIRFunction lowered;
+    char error[192];
+    assert(yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(lowered.blocks[0].instruction_count==4);
+    assert(lowered.blocks[0].instructions[2].opcode==YIR_OP_ADD_I64);
+    assert(lowered.blocks[0].instructions[3].opcode==YIR_OP_RETURN);
+    assert(lowered.blocks[0].instructions[3].lhs==3);
+    yir_destroy_function(&lowered);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
@@ -332,6 +390,7 @@ int main(void)
     lowers_integer_function_parameters();
     lowers_boolean_literal_condition();
     lowers_boolean_function_parameter_and_return();
+    lowers_local_integer_and_assignment();
     puts("YLang IR lowering tests passed");
     return 0;
 }
