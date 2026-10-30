@@ -60,8 +60,15 @@ typedef struct {
 } YIRBlock;
 
 typedef struct {
+    uint32_t id;
+    YIRType type;
+} YIRFunctionParameter;
+
+typedef struct {
     const char *name;
     YIRType return_type;
+    const YIRFunctionParameter *parameters;
+    size_t parameter_count;
     const YIRBlock *blocks;
     size_t block_count;
 } YIRFunction;
