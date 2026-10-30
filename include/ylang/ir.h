@@ -20,6 +20,12 @@ typedef enum {
     YIR_OP_SUB_I64,
     YIR_OP_MUL_I64,
     YIR_OP_EQ_I64,
+    YIR_OP_NE_I64,
+    YIR_OP_LT_I64,
+    YIR_OP_LE_I64,
+    YIR_OP_GT_I64,
+    YIR_OP_GE_I64,
+    YIR_OP_CONST_BOOL,
     YIR_OP_BRANCH,
     YIR_OP_COND_BRANCH,
     YIR_OP_RETURN
