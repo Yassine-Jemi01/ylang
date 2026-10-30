@@ -253,10 +253,11 @@ The 3.0 release must not be declared complete until the optimized backend demons
 - [ ] Publish a test-enforced capability matrix.
 
 ### M4 — Backend-neutral typed IR
-- Define IR types, values, blocks, instructions, terminators, and source metadata.
-- Implement lowering from the resolved frontend.
-- Build an independent IR verifier.
-- Keep semantics out of backend-specific code.
+- [x] Define the first backend-neutral typed SSA IR core: scalar types, values, functions, blocks, arithmetic/comparison instructions, and explicit terminators.
+- [x] Implement an independent verifier for SSA definitions, typed operands/results, returns, and branch targets.
+- [ ] Add PHI nodes, dominance/CFG verification, globals, calls, memory operations, and source metadata.
+- [ ] Lower the resolved YLang frontend into IR.
+- [ ] Keep semantics out of backend-specific code.
 
 ### M5 — LLVM executable prototype
 - Select and isolate an LLVM API boundary.
