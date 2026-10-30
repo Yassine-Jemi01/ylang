@@ -76,7 +76,7 @@ struct Expr {
         struct { Expr *left; Expr *right; Token op; } binary;
         struct { Expr *target; Expr *right; VarDecl *variable; bool is_compound; } assign;
         struct { char *name; VarDecl *variable; } name;
-        struct { EnumDecl *enumeration; EnumVariant *variant; } enum_value;
+        struct { EnumDecl *enumeration; EnumVariant *variant; Expr *payload; } enum_value;
         struct { StructDecl *structure; Expr **args; size_t count; } struct_init;
         struct { Expr *target; char *name; StructField *field; } member;
         struct { char *name; Expr **args; size_t count; Function *function; } call;
@@ -157,12 +157,16 @@ struct EnumVariant {
     char *name;
     int64_t value;
     EnumDecl *enumeration;
+    bool has_payload;
+    YType payload_type;
 };
 
 struct EnumDecl {
     Token token;
     char *name;
+    char *c_name;
     YType type;
+    bool has_payload;
     EnumVariant **variants;
     size_t variant_count;
     Module *module;
@@ -171,6 +175,7 @@ struct EnumDecl {
 struct MatchArm {
     Token token;
     EnumVariant *variant;
+    VarDecl *payload_binding;
     Stmt *body;
 };
 

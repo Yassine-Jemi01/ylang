@@ -433,6 +433,37 @@ static Expr *parse_primary(Parser *p)
                     value->as.enum_value.enumeration = enumeration;
                     value->as.enum_value.variant = variant;
                     value->type = enumeration->type;
+                    if (match(p, TOKEN_LEFT_PAREN)) {
+                        Expr *payload = NULL;
+                        if (p->current.type != TOKEN_RIGHT_PAREN &&
+                            p->current.type != TOKEN_EOF) {
+                            payload = parse_expression(p);
+                            if (match(p, TOKEN_COMMA)) {
+                                diagnostic(p->compiler, p->previous, "error", "E2141",
+                                           "Enum payload constructors accept exactly one value.",
+                                           "Pass one value inside the variant parentheses.");
+                                while (p->current.type != TOKEN_RIGHT_PAREN &&
+                                       p->current.type != TOKEN_EOF) {
+                                    (void)parse_expression(p);
+                                    if (!match(p, TOKEN_COMMA)) break;
+                                }
+                            }
+                        }
+                        consume(p, TOKEN_RIGHT_PAREN,
+                                "Expected ')' after the enum payload value.",
+                                "Close the enum constructor with ')'.");
+                        if (!variant->has_payload) {
+                            diagnostic(p->compiler, member, "error", "E2141",
+                                       "This enum variant does not carry a payload.",
+                                       "Remove the parentheses or declare a payload type for this variant.");
+                        } else {
+                            value->as.enum_value.payload = payload;
+                        }
+                    } else if (variant->has_payload) {
+                        diagnostic(p->compiler, member, "error", "E2142",
+                                   "This enum variant requires a payload value.",
+                                   "Construct it with the declared payload, for example Value.Number(42).");
+                    }
                     return value;
                 }
                 expr->as.name.name = name;
@@ -806,6 +837,20 @@ static Stmt *parse_match_after_keyword(Parser *p, Token token)
                        "Use a pattern such as Direction.North -> { ... }.");
         } else {
             arm->variant = pattern->as.enum_value.variant;
+            if (arm->variant && arm->variant->has_payload) {
+                Expr *binding = pattern->as.enum_value.payload;
+                if (!binding || binding->kind != EXPR_NAME) {
+                    diagnostic(p->compiler, arm_token, "error", "E2143",
+                               "A payload match arm must bind its value to a name.",
+                               "Use a pattern such as Message.Text(text) -> { ... }.");
+                } else {
+                    arm->payload_binding = new_var(
+                        p->compiler, binding->token, binding->as.name.name,
+                        arm->variant->payload_type, BINDING_IMMUTABLE, false, NULL);
+                    arm->payload_binding->initialized = true;
+                    arm->payload_binding->module = p->compiler->current_module;
+                }
+            }
         }
         consume(p, TOKEN_ARROW, "Expected '->' after the match variant.",
                 "Use EnumName.Variant -> { ... }.");
@@ -1025,6 +1070,10 @@ static EnumDecl *parse_enum(Parser *p, Token enum_token)
     enumeration->name = (char *)name;
     enumeration->type = (YType)(TYPE_ENUM_BASE + p->compiler->enum_count);
     enumeration->module = p->compiler->current_module;
+    size_t enum_c_name_size = strlen(name) + 48U;
+    enumeration->c_name = arena_alloc(&p->compiler->arena, enum_c_name_size);
+    (void)snprintf(enumeration->c_name, enum_c_name_size, "yl_enum_%zu_%s",
+                   p->compiler->enum_count, name);
     append_ptr(p->compiler, (void ***)&p->compiler->enums,
                &p->compiler->enum_count, enumeration);
 
@@ -1047,6 +1096,24 @@ static EnumDecl *parse_enum(Parser *p, Token enum_token)
             variant->name = variant_name;
             variant->value = (int64_t)enumeration->variant_count;
             variant->enumeration = enumeration;
+            if (match(p, TOKEN_LEFT_PAREN)) {
+                Token payload_type_token = p->current;
+                YType payload_type = parse_type(p);
+                consume(p, TOKEN_RIGHT_PAREN,
+                        "Expected ')' after the enum payload type.",
+                        "A payload variant accepts exactly one type, for example Some(int).");
+                if (payload_type != TYPE_INT && payload_type != TYPE_FLOAT &&
+                    payload_type != TYPE_BOOL && payload_type != TYPE_CHAR &&
+                    payload_type != TYPE_STRING) {
+                    diagnostic(p->compiler, payload_type_token, "error", "E2140",
+                               "This enum payload type is not supported.",
+                               "Payload variants currently accept int, float, bool, char, or string values.");
+                } else {
+                    variant->has_payload = true;
+                    variant->payload_type = payload_type;
+                    enumeration->has_payload = true;
+                }
+            }
             append_ptr(p->compiler, (void ***)&enumeration->variants,
                        &enumeration->variant_count, variant);
         }
