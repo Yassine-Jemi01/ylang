@@ -1,4 +1,4 @@
-function main() -> int {
+fn main() -> int {
     while (42) {
         break;
     }

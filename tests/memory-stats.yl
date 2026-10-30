@@ -1,4 +1,4 @@
-function main() -> int {
+fn main() -> int {
     let int value = 42;
     let string message = f"value={value}";
     print(message);

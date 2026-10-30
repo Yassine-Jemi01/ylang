@@ -1,4 +1,4 @@
-function main() -> int {
+fn main() -> int {
     gui.draw_rect(0, 0, 20, 20, 255, 0, "blue");
     return 0;
 }
