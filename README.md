@@ -93,8 +93,8 @@ Create `hello.yl`:
 
 ```ylang
 function main() -> int {
-    let const string name = "YLang";
-    let int answer = 40 + 2;
+    let name: string = "YLang";
+    let answer: int = 40 + 2;
     print(f"Hello from {name}!");
     print("Answer:", answer);
     return 0;
