@@ -1,6 +1,6 @@
 # RFC-3.0-001: Complete LLVM Backend
 
-**Status:** A backend-neutral IR core, PHI nodes, and control-flow dominance verifier are implemented; AST lowering and LLVM code generation are not implemented  
+**Status:** Scalar typed AST lowering, a textual LLVM emitter, and an experimental Clang-backed executable path are implemented; complete LLVM language coverage and target-machine object emission remain in progress  
 **Target release:** YLang 3.0.0  
 **Primary goal:** A production-quality native backend that lowers checked YLang programs to LLVM IR and emits native object files without generating C as the program's intermediate representation.
 
