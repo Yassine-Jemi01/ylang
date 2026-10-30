@@ -44,6 +44,15 @@ static bool lookup_local(const Lowerer *lowerer, const VarDecl *variable,
     return false;
 }
 
+static bool is_function_parameter(const Lowerer *lowerer,
+                                     const VarDecl *variable)
+{
+    if (!lowerer->function || !variable) return false;
+    for (size_t i = 0; i < lowerer->function->param_count; ++i)
+        if (lowerer->function->params[i] == variable) return true;
+    return false;
+}
+
 static bool bind_local(Lowerer *lowerer, const VarDecl *variable,
                        uint32_t value_id)
 {
@@ -402,6 +411,11 @@ static bool lower_statement(Lowerer *lowerer, const Function *function,
             if (!variable || variable->is_const || variable->is_array)
                 return lower_fail(lowerer,
                     "assignment target is not a mutable scalar local or parameter");
+            uint32_t previous_value = 0;
+            if (!lookup_local(lowerer, variable, &previous_value) &&
+                !is_function_parameter(lowerer, variable))
+                return lower_fail(lowerer,
+                    "assignment target has no prior local declaration or parameter");
             if (variable->type != TYPE_INT && variable->type != TYPE_BOOL)
                 return lower_fail(lowerer,
                     "only int and bool local assignments are supported");
