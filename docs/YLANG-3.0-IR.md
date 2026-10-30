@@ -1,6 +1,6 @@
 # YLang 3.0 Typed IR — Verifier Contract
 
-Status: standalone typed SSA verifier plus an initial scalar AST lowering slice. The lowerer currently handles simple int/bool-return functions with scalar int/bool parameters, integer literals, negative integer literals, integer arithmetic, boolean conditions, and a limited if/else return form, plus empty void functions. It does not yet lower general programs, and LLVM, NASM, and C code generation do not consume this IR yet.
+Status: standalone typed SSA verifier plus an initial scalar AST lowering slice. The lowerer currently handles simple int/bool-return functions with scalar int/bool parameters, integer literals, negative integer literals, scalar local declarations and simple assignments, integer arithmetic, boolean conditions, and a limited if/else return form, plus empty void functions. It does not yet lower general programs, and LLVM, NASM, and C code generation do not consume this IR yet.
 
 ## Design constraints
 
@@ -43,8 +43,8 @@ This IR is not ready to replace the current AST-to-C path. Full calling-conventi
 
 ## AST lowering scope
 
-`yir_lower_function` currently accepts `int`, `bool`, and `void` functions with zero or more scalar `int` or `bool` parameters. It lowers a single return statement, an empty void body, or a simple `if/else` whose branches each return. Integer expressions are limited to integer literals, negative integer literals, and `+`, `-`, and `*`. Conditions support boolean literals and integer comparisons (`==`, `!=`, `<`, `<=`, `>`, `>=`). Unsupported statements and expressions fail explicitly; they are not silently translated. The resulting function is immediately passed through the verifier. `yir_destroy_function` releases the allocated IR storage.
+`yir_lower_function` currently accepts `int`, `bool`, and `void` functions with zero or more scalar `int` or `bool` parameters. It lowers scalar initialized locals, simple name assignments, a return sequence, an empty void body, or a simple `if/else` whose branches each return. Integer expressions are limited to integer literals, negative integer literals, and `+`, `-`, and `*`. Conditions support boolean literals and integer comparisons (`==`, `!=`, `<`, `<=`, `>`, `>=`). Unsupported statements and expressions fail explicitly; they are not silently translated. The resulting function is immediately passed through the verifier. `yir_destroy_function` releases the allocated IR storage.
 
 ## Build and tests
 
-Run `make ir-unit-test ir-lower-unit-test` or `sh tests/run-ir-unit.sh`. Verifier tests cover arithmetic and return, same-block ordering, cross-block dominance, unreachable blocks, invalid joins, and typed block-parameter joins. Lowering tests cover integer arithmetic returns, integer and boolean function parameters, negative literals, empty void functions, if/else returns, boolean and integer comparison conditions, and explicit rejection of unsupported bodies.
+Run `make ir-unit-test ir-lower-unit-test` or `sh tests/run-ir-unit.sh`. Verifier tests cover arithmetic and return, same-block ordering, cross-block dominance, unreachable blocks, invalid joins, and typed block-parameter joins. Lowering tests cover integer arithmetic returns, scalar locals and assignments, immutable assignment rejection, integer and boolean function parameters, negative literals, empty void functions, if/else returns, boolean and integer comparison conditions, and explicit rejection of unsupported bodies.
