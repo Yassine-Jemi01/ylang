@@ -26,6 +26,7 @@ typedef enum {
     YIR_OP_GT_I64,
     YIR_OP_GE_I64,
     YIR_OP_CONST_BOOL,
+    YIR_OP_NOT_BOOL,
     YIR_OP_BRANCH,
     YIR_OP_COND_BRANCH,
     YIR_OP_RETURN
