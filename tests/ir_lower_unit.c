@@ -66,7 +66,8 @@ static void lowers_unary_negative(void)
     YIRFunction lowered;
     char error[192];
     assert(yir_lower_function(&function,&lowered,error,sizeof(error)));
-    assert(lowered.blocks[0].instructions[1].opcode==YIR_OP_NEG_I64);
+    assert(lowered.blocks[0].instructions[0].opcode==YIR_OP_CONST_I64);
+    assert(lowered.blocks[0].instructions[0].immediate==-7);
     yir_destroy_function(&lowered);
 }
 
