@@ -245,6 +245,37 @@ static void reject_missing_block_argument(void)
     assert(strstr(error,"argument count")!=NULL);
 }
 
+
+static void accept_function_parameter_return(void)
+{
+    const YIRFunctionParameter params[] = {
+        {.id=1,.type=YIR_TYPE_I64}
+    };
+    const YIRInstruction ins[] = { {.opcode=YIR_OP_RETURN,.lhs=1} };
+    const YIRBlock block = {.id=0,.instructions=ins,.instruction_count=1};
+    const YIRFunction fn = {
+        .name="identity",.return_type=YIR_TYPE_I64,
+        .parameters=params,.parameter_count=1,.blocks=&block,.block_count=1
+    };
+    char error[160]; assert(yir_verify_function(&fn,error,sizeof(error)));
+}
+
+static void reject_duplicate_function_parameter_ids(void)
+{
+    const YIRFunctionParameter params[] = {
+        {.id=1,.type=YIR_TYPE_I64},
+        {.id=1,.type=YIR_TYPE_I64}
+    };
+    const YIRInstruction ins[] = { {.opcode=YIR_OP_RETURN} };
+    const YIRBlock block = {.id=0,.instructions=ins,.instruction_count=1};
+    const YIRFunction fn = {
+        .name="duplicate_parameters",.return_type=YIR_TYPE_VOID,
+        .parameters=params,.parameter_count=2,.blocks=&block,.block_count=1
+    };
+    char error[160]; assert(!yir_verify_function(&fn,error,sizeof(error)));
+    assert(strstr(error,"function parameters")!=NULL);
+}
+
 int main(void)
 {
     valid_arithmetic_return(); reject_use_before_definition();
@@ -253,6 +284,8 @@ int main(void)
     reject_duplicate_ssa_across_blocks(); reject_invalid_return_type();
     accept_value_from_dominating_block(); reject_value_not_dominating_join();
     reject_unreachable_block();
+    accept_function_parameter_return();
+    reject_duplicate_function_parameter_ids();
     accept_block_parameter_join(); reject_block_parameter_type_mismatch();
     reject_entry_block_parameters(); reject_missing_block_argument();
     puts("YLang IR verifier tests passed"); return 0;
