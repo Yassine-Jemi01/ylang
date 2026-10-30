@@ -378,6 +378,68 @@ static void lowers_local_integer_and_assignment(void)
     yir_destroy_function(&lowered);
 }
 
+
+static void lowers_local_boolean(void)
+{
+    Expr initial = {
+        .kind=EXPR_BOOL,
+        .token={.type=TOKEN_TRUE,.start="true",.length=4},
+        .type=TYPE_BOOL
+    };
+    VarDecl local = {.name="ready",.type=TYPE_BOOL,.initializer=&initial};
+    Stmt declaration = {.kind=STMT_VAR,.as.variable=&local};
+    Expr returned = {
+        .kind=EXPR_NAME,.type=TYPE_BOOL,
+        .as.name={.name="ready",.variable=&local}
+    };
+    Stmt ret = {.kind=STMT_RETURN,.as.return_value=&returned};
+    Stmt *items[] = {&declaration,&ret};
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=2}};
+    Function function = {.name="ready",.return_type=TYPE_BOOL,.body=&body};
+    YIRFunction lowered;
+    char error[192];
+    assert(yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(lowered.blocks[0].instructions[0].opcode==YIR_OP_CONST_BOOL);
+    assert(lowered.blocks[0].instructions[1].opcode==YIR_OP_RETURN);
+    assert(lowered.blocks[0].instructions[1].lhs==1);
+    yir_destroy_function(&lowered);
+}
+
+static void rejects_assignment_to_const_local(void)
+{
+    Expr initial = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="1",.length=1},
+        .type=TYPE_INT
+    };
+    VarDecl local = {
+        .name="fixed",.type=TYPE_INT,.is_const=true,.initializer=&initial
+    };
+    Stmt declaration = {.kind=STMT_VAR,.as.variable=&local};
+    Expr value = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="2",.length=1},
+        .type=TYPE_INT
+    };
+    Expr target = {
+        .kind=EXPR_NAME,.type=TYPE_INT,
+        .as.name={.name="fixed",.variable=&local}
+    };
+    Expr assignment = {
+        .kind=EXPR_ASSIGN,.type=TYPE_INT,
+        .as.assign={.target=&target,.right=&value,.variable=&local}
+    };
+    Stmt assign_statement = {.kind=STMT_EXPR,.as.expression=&assignment};
+    Stmt ret = {.kind=STMT_RETURN,.as.return_value=&target};
+    Stmt *items[] = {&declaration,&assign_statement,&ret};
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=3}};
+    Function function = {.name="const_local",.return_type=TYPE_INT,.body=&body};
+    YIRFunction lowered;
+    char error[192];
+    assert(!yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(strstr(error,"mutable scalar")!=NULL);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
@@ -391,6 +453,8 @@ int main(void)
     lowers_boolean_literal_condition();
     lowers_boolean_function_parameter_and_return();
     lowers_local_integer_and_assignment();
+    lowers_local_boolean();
+    rejects_assignment_to_const_local();
     puts("YLang IR lowering tests passed");
     return 0;
 }
