@@ -641,34 +641,76 @@ int ylang_run(const char *command, const char *input_path,
             free(source);
             return 73;
         }
-        size_t path_size = strlen(temporary_directory) + sizeof("/generated.ll");
-        char *llvm_path = malloc(path_size);
-        if (!llvm_path) {
+        size_t llvm_path_size = strlen(temporary_directory) + sizeof("/generated.ll");
+        size_t object_path_size = strlen(target) + sizeof(".tmp.XXXXXX");
+        char *llvm_path = malloc(llvm_path_size);
+        char *object_path = malloc(object_path_size);
+        if (!llvm_path || !object_path) {
             fputs("ylang: out of memory preparing LLVM object emission.\n", stderr);
+            free(llvm_path);
+            free(object_path);
             (void)rmdir(temporary_directory);
             free(temporary_directory);
             arena_destroy(&compiler.arena);
             free(source);
             return 70;
         }
-        (void)snprintf(llvm_path, path_size, "%s/generated.ll", temporary_directory);
+        (void)snprintf(llvm_path, llvm_path_size, "%s/generated.ll", temporary_directory);
+        (void)snprintf(object_path, object_path_size, "%s.tmp.XXXXXX", target);
+
+        /*
+         * Stage beside the destination so rename() is atomic on the same
+         * filesystem. A failed compile must never truncate or delete an
+         * existing object at the requested output path.
+         */
+        int object_fd = mkstemp(object_path);
+        if (object_fd < 0) {
+            fprintf(stderr, "ylang: cannot create temporary object beside '%s': %s\n",
+                    target, strerror(errno));
+            free(llvm_path);
+            free(object_path);
+            (void)rmdir(temporary_directory);
+            free(temporary_directory);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 73;
+        }
+        if (close(object_fd) != 0) {
+            fprintf(stderr, "ylang: cannot close temporary object: %s\n", strerror(errno));
+            (void)unlink(object_path);
+            free(llvm_path);
+            free(object_path);
+            (void)rmdir(temporary_directory);
+            free(temporary_directory);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 74;
+        }
 
         int result = 1;
         if (generate_llvm_ir(&compiler, llvm_path)) {
             char *clang_args[] = {
                 (char *)cc, "-x", "ir", "-c", "-O0", llvm_path,
-                "-o", (char *)target, NULL
+                "-o", object_path, NULL
             };
             result = run_external(clang_args);
-            if (result == 0) printf("Generated LLVM object (Clang): %s\n", target);
-            else {
-                (void)unlink(target);
+            if (result == 0) {
+                if (rename(object_path, target) == 0) {
+                    printf("Generated LLVM object (Clang): %s\n", target);
+                } else {
+                    fprintf(stderr, "ylang: cannot publish object '%s': %s\n",
+                            target, strerror(errno));
+                    result = 74;
+                }
+            } else {
                 fprintf(stderr, "ylang: Clang LLVM object emission failed (exit %d).\n",
                         result);
             }
         }
+        (void)unlink(object_path);
         (void)unlink(llvm_path);
         (void)rmdir(temporary_directory);
+        free(object_path);
         free(llvm_path);
         free(temporary_directory);
         arena_destroy(&compiler.arena);
