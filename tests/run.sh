@@ -897,9 +897,9 @@ EOF
         diff -u build/llvm-scalar.expected build/llvm-scalar.out
 
         # Emit a relocatable LLVM object independently, then link it with Clang.
-        ./build/ylang emit-obj build/llvm-scalar.yl -o build/llvm-scalar.o >/dev/null
-        test -s build/llvm-scalar.o
-        clang build/llvm-scalar.o -o build/llvm-scalar-object
+        ./build/ylang emit-obj build/llvm-scalar.yl -o "build/llvm scalar.o" --cc clang >/dev/null
+        test -s "build/llvm scalar.o"
+        clang "build/llvm scalar.o" -o build/llvm-scalar-object
         if ./build/llvm-scalar-object > build/llvm-scalar-object.out; then
             llvm_object_status=0
         else
