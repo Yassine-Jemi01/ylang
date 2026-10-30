@@ -46,6 +46,23 @@ bool yir_verify_function(const YIRFunction *function, char *error, size_t error_
             if (function->blocks[prior].id == block->id)
                 return fail(error, error_capacity, "basic block IDs must be unique");
 
+        /* SSA identifiers are function-wide, even while cross-block uses are
+         * deliberately forbidden by this initial IR contract. */
+        for (size_t prior_block = 0; prior_block < bi; ++prior_block) {
+            const YIRBlock *prior = &function->blocks[prior_block];
+            for (size_t prior_instruction = 0;
+                 prior_instruction < prior->instruction_count; ++prior_instruction) {
+                uint32_t prior_id = prior->instructions[prior_instruction].result_id;
+                if (!prior_id) continue;
+                for (size_t current_instruction = 0;
+                     current_instruction < block->instruction_count; ++current_instruction) {
+                    if (block->instructions[current_instruction].result_id == prior_id)
+                        return fail(error, error_capacity,
+                                    "SSA result IDs must be unique across the function");
+                }
+            }
+        }
+
         LocalValue values[4096];
         size_t value_count = 0;
         for (size_t ii = 0; ii < block->instruction_count; ++ii) {
