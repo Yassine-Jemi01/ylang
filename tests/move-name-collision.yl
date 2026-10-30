@@ -1,8 +1,8 @@
-function move(int value) -> int {
+fn move(int value) -> int {
     return value + 1;
 }
 
-function main() -> int {
+fn main() -> int {
     print(move(41));
     return 0;
 }
