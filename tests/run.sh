@@ -1890,6 +1890,39 @@ EOF
     diff -u build/asm-globals.expected build/asm-globals.out
 fi
 
+# NASM fixed arrays support local/global storage, reads, writes, and runtime bounds checks.
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+    cat > build/asm-arrays.yl <<'EOF'
+let BASE_VALUES: int[] = [4, 6, 8];
+let mut global_values: int[] = [1, 2, 3];
+fn main() -> int {
+    let mut values: int[] = [10, 20, 30];
+    let index: int = 1;
+    values[index] += 2;
+    global_values[0] = global_values[0] + 5;
+    print(values[0], values[1], values[2], BASE_VALUES[1], global_values[0]);
+    return 0;
+}
+EOF
+    ./build/ylang build build/asm-arrays.yl -o build/asm-arrays-c >/dev/null 2>&1
+    ./build/ylang build-asm build/asm-arrays.yl -o build/asm-arrays >/dev/null
+    ./build/asm-arrays-c > build/asm-arrays-c.out
+    ./build/asm-arrays > build/asm-arrays.out
+    diff -u build/asm-arrays-c.out build/asm-arrays.out
+    printf '10 22 30 6 6\n' > build/asm-arrays.expected
+    diff -u build/asm-arrays.expected build/asm-arrays.out
+
+    ./build/ylang build-asm tests/array-out-of-bounds.yl -o build/asm-array-oob >/dev/null
+    if ./build/asm-array-oob > build/asm-array-oob.out 2>&1; then
+        echo "FAIL: NASM array bounds check did not trap" >&2
+        exit 1
+    else
+        array_status=$?
+        [ "$array_status" -eq 70 ]
+    fi
+    grep -q 'array index out of bounds' build/asm-array-oob.out
+fi
+
 # NASM logical operators must short-circuit and preserve side-effect order.
 if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
     cat > build/asm-short-circuit.yl <<'EOF'
