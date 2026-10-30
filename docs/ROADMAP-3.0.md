@@ -46,12 +46,12 @@ score += count;
 
 The initial compiler slice is implemented on the 3.0 development branch. Immutable arrays and immutable aggregate mutation are still unsupported; the compiler must reject them rather than silently allow mutation.
 
-### 2.2 Functions: keep YLang recognizable
+### 2.2 Function declarations
 
-Keep the `function` keyword and arrow return type, rather than copying Rust's `fn` syntax exactly:
+Use `fn` with YLang's typed parameters and arrow return type. The old `function` spelling remains accepted during the 3.0 migration period with deprecation warning `W2302`; new code uses `fn`.
 
 ```ylang
-function distance(int x, int y) -> float {
+fn distance(int x, int y) -> float {
     return math.sqrt(
         to_float(x * x + y * y)
     );
