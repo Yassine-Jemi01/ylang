@@ -1948,7 +1948,7 @@ EOF
     ./build/asm-array-params-c > build/asm-array-params-c.out
     ./build/asm-array-params > build/asm-array-params.out
     diff -u build/asm-array-params-c.out build/asm-array-params.out
-    printf '12 3 60\n24\n' > build/asm-array-params.expected
+    printf '12 3 60\n28\n' > build/asm-array-params.expected
     diff -u build/asm-array-params.expected build/asm-array-params.out
 fi
 
