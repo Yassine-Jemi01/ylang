@@ -165,17 +165,40 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
             if (strncmp(expr->as.call.name, "gui.", 4) == 0) {
                 return asm_reject(ctx, expr->token, "GUI calls (use the C backend with SDL2)");
             }
+            if (strcmp(expr->as.call.name, "length") == 0) {
+                if (expr->as.call.count != 1U ||
+                    !expr->as.call.args[0] ||
+                    expr->as.call.args[0]->kind != EXPR_NAME) {
+                    return asm_reject(ctx, expr->token,
+                                      "length calls other than length(array_name)");
+                }
+                VarDecl *array = expr->as.call.args[0]->as.name.variable;
+                return validate_array_element_type(ctx, array);
+            }
             if (!expr->as.call.function) {
                 return asm_reject(ctx, expr->token,
                                   "standard-library and conversion calls");
             }
-            for (size_t i = 0; i < expr->as.call.function->param_count; i++) {
-                if (expr->as.call.function->params[i]->is_array) {
-                    return asm_reject(ctx, expr->token, "array parameters");
+            if (expr->as.call.count != expr->as.call.function->param_count) {
+                return asm_reject(ctx, expr->token, "calls with mismatched argument counts");
+            }
+            for (size_t i = 0; i < expr->as.call.count; i++) {
+                VarDecl *parameter = expr->as.call.function->params[i];
+                Expr *argument = expr->as.call.args[i];
+                if (parameter->is_array) {
+                    if (!argument || argument->kind != EXPR_NAME ||
+                        !argument->as.name.variable ||
+                        !argument->as.name.variable->is_array ||
+                        argument->as.name.variable->type != parameter->type ||
+                        !validate_array_element_type(ctx, argument->as.name.variable)) {
+                        return asm_reject(ctx, argument ? argument->token : expr->token,
+                                          "array arguments that are not compatible named arrays");
+                    }
+                } else if (!validate_expr(ctx, argument)) {
+                    return false;
                 }
             }
-            return validate_expr_list(ctx, expr->as.call.args,
-                                      expr->as.call.count);
+            return true;
         case EXPR_FLOAT:
             return asm_reject(ctx, expr->token, "float literals");
         case EXPR_FSTRING:
@@ -540,26 +563,78 @@ static bool emit_condition_false_jump(AsmContext *ctx, Expr *condition,
     return true;
 }
 
+static bool emit_array_pointer(AsmContext *ctx, VarDecl *variable)
+{
+    if (!variable || !variable->is_array)
+        return asm_reject(ctx, variable ? variable->token : (Token){0},
+                          "an invalid array value");
+    if (variable->is_global) {
+        fprintf(ctx->out, "    lea rax, [rel %s]\n", variable->c_name);
+    } else if (variable->array_length == 0U) {
+        size_t offset = slot_offset(ctx, variable);
+        fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", offset);
+    } else {
+        size_t offset = array_base_offset(ctx, variable);
+        fprintf(ctx->out, "    lea rax, [rbp - %zu]\n", offset);
+    }
+    return ctx->okay;
+}
+
+static bool emit_array_length(AsmContext *ctx, VarDecl *variable)
+{
+    if (!variable || !variable->is_array)
+        return asm_reject(ctx, variable ? variable->token : (Token){0},
+                          "an invalid array length request");
+    if (variable->array_length != 0U) {
+        fprintf(ctx->out, "    mov rax, %zu\n", variable->array_length);
+    } else {
+        size_t offset = array_parameter_length_offset(ctx, variable);
+        fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", offset);
+    }
+    return ctx->okay;
+}
+
 static bool emit_call(AsmContext *ctx, Expr *expr)
 {
     static const char *const argument_registers[] = {
         "rdi", "rsi", "rdx", "rcx", "r8", "r9"
     };
-    const size_t argument_count = expr->as.call.count;
-    if (argument_count > SIZE_MAX / 8U ||
-        ctx->temporary_depth > SIZE_MAX - argument_count * 8U) {
+    Function *function = expr->as.call.function;
+    if (!function || expr->as.call.count != function->param_count)
+        return asm_reject(ctx, expr->token, "a call without a resolved matching signature");
+
+    size_t abi_argument_count = 0U;
+    for (size_t i = 0; i < function->param_count; i++) {
+        size_t pieces = function->params[i]->is_array ? 2U : 1U;
+        if (abi_argument_count > SIZE_MAX - pieces)
+            return asm_reject(ctx, expr->token, "calls with too many ABI arguments");
+        abi_argument_count += pieces;
+    }
+    if (abi_argument_count > SIZE_MAX / 8U ||
+        ctx->temporary_depth > SIZE_MAX - abi_argument_count * 8U) {
         return asm_reject(ctx, expr->token, "calls with an unaddressable argument list");
     }
 
-    /* Evaluate every argument left-to-right before arranging the SysV ABI. */
-    for (size_t i = 0; i < argument_count; i++) {
-        if (!emit_expr(ctx, expr->as.call.args[i])) return false;
-        fputs("    push rax\n", ctx->out);
-        ctx->temporary_depth += 8U;
+    /* Evaluate each YLang argument left-to-right, expanding arrays to pointer + length. */
+    for (size_t i = 0; i < function->param_count; i++) {
+        Expr *argument = expr->as.call.args[i];
+        if (function->params[i]->is_array) {
+            VarDecl *array = argument->as.name.variable;
+            if (!emit_array_pointer(ctx, array)) return false;
+            fputs("    push rax\n", ctx->out);
+            ctx->temporary_depth += 8U;
+            if (!emit_array_length(ctx, array)) return false;
+            fputs("    push rax\n", ctx->out);
+            ctx->temporary_depth += 8U;
+        } else {
+            if (!emit_expr(ctx, argument)) return false;
+            fputs("    push rax\n", ctx->out);
+            ctx->temporary_depth += 8U;
+        }
     }
 
     const size_t stack_argument_count =
-        argument_count > 6U ? argument_count - 6U : 0U;
+        abi_argument_count > 6U ? abi_argument_count - 6U : 0U;
     const size_t stack_bytes = stack_argument_count * 8U;
     if (ctx->temporary_depth > SIZE_MAX - stack_bytes) {
         return asm_reject(ctx, expr->token, "calls with an unaddressable stack argument area");
@@ -576,7 +651,7 @@ static bool emit_call(AsmContext *ctx, Expr *expr)
         return asm_reject(ctx, expr->token, "calls with an unaddressable alignment area");
     }
     const size_t outgoing_size = stack_bytes + padding;
-    const size_t argument_bytes = argument_count * 8U;
+    const size_t argument_bytes = abi_argument_count * 8U;
     if (outgoing_size > SIZE_MAX - argument_bytes) {
         return asm_reject(ctx, expr->token, "calls with an unaddressable cleanup area");
     }
@@ -585,10 +660,10 @@ static bool emit_call(AsmContext *ctx, Expr *expr)
         fprintf(ctx->out, "    sub rsp, %zu\n", outgoing_size);
     }
 
-    /* Copy arguments 7..N to the caller's stack area in source order. */
-    for (size_t i = 6U; i < argument_count; i++) {
+    /* Copy ABI arguments 7..N to the caller's stack area in source order. */
+    for (size_t i = 6U; i < abi_argument_count; i++) {
         const size_t source_offset =
-            outgoing_size + (argument_count - 1U - i) * 8U;
+            outgoing_size + (abi_argument_count - 1U - i) * 8U;
         const size_t destination_offset = (i - 6U) * 8U;
         fprintf(ctx->out,
                 "    mov rax, [rsp + %zu]\n"
@@ -596,24 +671,24 @@ static bool emit_call(AsmContext *ctx, Expr *expr)
                 source_offset, destination_offset);
     }
 
-    /* Load arguments 1..6 from their saved values without disturbing rsp. */
+    /* Load ABI arguments 1..6 from their saved values without disturbing rsp. */
     const size_t register_argument_count =
-        argument_count < 6U ? argument_count : 6U;
+        abi_argument_count < 6U ? abi_argument_count : 6U;
     for (size_t i = 0; i < register_argument_count; i++) {
         const size_t source_offset =
-            outgoing_size + (argument_count - 1U - i) * 8U;
+            outgoing_size + (abi_argument_count - 1U - i) * 8U;
         fprintf(ctx->out, "    mov %s, [rsp + %zu]\n",
                 argument_registers[i], source_offset);
     }
 
-    fprintf(ctx->out, "    call %s\n", expr->as.call.function->c_name);
+    fprintf(ctx->out, "    call %s\n", function->c_name);
 
     if (cleanup_bytes > 0U) {
         fprintf(ctx->out, "    add rsp, %zu\n", cleanup_bytes);
     }
     ctx->temporary_depth -= argument_bytes;
 
-    if (expr->as.call.function->return_type == TYPE_VOID) {
+    if (function->return_type == TYPE_VOID) {
         fputs("    xor eax, eax\n", ctx->out);
     }
     return true;
@@ -937,6 +1012,11 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             return true;
         }
         case EXPR_CALL:
+            if (strcmp(expr->as.call.name, "length") == 0 &&
+                expr->as.call.count == 1U &&
+                expr->as.call.args[0]->kind == EXPR_NAME) {
+                return emit_array_length(ctx, expr->as.call.args[0]->as.name.variable);
+            }
             return emit_call(ctx, expr);
         case EXPR_FLOAT:
         case EXPR_FSTRING:
