@@ -60,9 +60,9 @@ build/ir-unit: tests/ir_unit.c src/ir.c include/ylang/ir.h
 ir-unit-test: build/ir-unit
 	./build/ir-unit
 
-build/ir-lower-unit: tests/ir_lower_unit.c src/ir_lower.c src/ir.c src/internal.h include/ylang/ir.h include/ylang/compiler.h
+build/ir-lower-unit: tests/ir_lower_unit.c src/ir_lower.c src/ir.c src/internal.h src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c src/sema.c include/ylang/ir.h include/ylang/compiler.h
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) -Isrc $(CFLAGS) tests/ir_lower_unit.c src/ir_lower.c src/ir.c $(LDFLAGS) -o $@
+	$(CC) $(CPPFLAGS) -Isrc $(CFLAGS) tests/ir_lower_unit.c src/ir_lower.c src/ir.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c src/sema.c $(LDFLAGS) -o $@
 
 ir-lower-unit-test: build/ir-lower-unit
 	./build/ir-lower-unit
