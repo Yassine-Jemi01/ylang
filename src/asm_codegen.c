@@ -213,13 +213,7 @@ static bool validate_stmt(AsmContext *ctx, Stmt *stmt)
             if (!asm_type_supported(ctx, variable->type, stmt->token, false))
                 return false;
             if (variable->is_array) {
-                if (variable->array_length == 0U ||
-                    !variable->initializer ||
-                    variable->initializer->kind != EXPR_ARRAY ||
-                    variable->initializer->as.array.count != variable->array_length) {
-                    return asm_reject(ctx, stmt->token,
-                                      "fixed arrays without a non-empty literal initializer");
-                }
+                if (!validate_array_declaration(ctx, variable)) return false;
                 return validate_expr_list(ctx,
                     variable->initializer->as.array.items,
                     variable->initializer->as.array.count);
@@ -285,7 +279,8 @@ static bool add_slot(AsmContext *ctx, VarDecl *variable)
         ctx->slots = grown;
         ctx->slot_capacity = next;
     }
-    const size_t words = variable->is_array ? variable->array_length : 1U;
+    const size_t words = variable->is_array ?
+        (variable->array_length == 0U ? 2U : variable->array_length) : 1U;
     if (words == 0U || words > SIZE_MAX - ctx->slot_words ||
         ctx->slot_words + words > SIZE_MAX / 8U) {
         fputs("ylang: NASM stack frame is too large for fixed arrays.\n", stderr);
@@ -366,35 +361,71 @@ static size_t array_base_offset(AsmContext *ctx, VarDecl *variable)
 
 static bool validate_array_element_type(AsmContext *ctx, VarDecl *variable)
 {
-    if (!variable || !variable->is_array || variable->array_length == 0U)
+    if (!variable || !variable->is_array)
         return asm_reject(ctx, variable ? variable->token : (Token){0},
-                          "empty or invalid fixed arrays");
+                          "an invalid array type");
     if (variable->type == TYPE_FLOAT || variable->type == TYPE_OWNED_STRING ||
         variable->type == TYPE_HTTP_TASK || variable->type == TYPE_VOID ||
         variable->type == TYPE_ERROR) {
         return asm_reject(ctx, variable->token,
-                          "fixed arrays of float, owned_string, or runtime handle values");
+                          "arrays of float, owned_string, or runtime handle values");
     }
     return true;
 }
 
+static bool validate_array_declaration(AsmContext *ctx, VarDecl *variable)
+{
+    if (!validate_array_element_type(ctx, variable)) return false;
+    if (variable->array_length == 0U || !variable->initializer ||
+        variable->initializer->kind != EXPR_ARRAY ||
+        variable->initializer->as.array.count != variable->array_length) {
+        return asm_reject(ctx, variable->token,
+                          "fixed arrays without a non-empty literal initializer");
+    }
+    return true;
+}
+
+static size_t array_parameter_length_offset(AsmContext *ctx, VarDecl *variable)
+{
+    for (size_t i = 0; i < ctx->slot_count; i++) {
+        if (ctx->slots[i].variable == variable && variable->is_array &&
+            variable->array_length == 0U &&
+            ctx->slots[i].slot <= SIZE_MAX / 8U - 2U) {
+            return (ctx->slots[i].slot + 2U) * 8U;
+        }
+    }
+    fprintf(stderr, "ylang: internal error: no NASM array-length slot for '%s'.\n",
+            variable && variable->name ? variable->name : "<unknown>");
+    ctx->okay = false;
+    return 16U;
+}
+
 static bool emit_array_bounds_check(AsmContext *ctx, VarDecl *variable)
 {
-    if (!variable || variable->array_length == 0U ||
+    if (!variable || !variable->is_array ||
         variable->array_length > (size_t)INT64_MAX) {
         return asm_reject(ctx, variable ? variable->token : (Token){0},
                           "arrays with an invalid length");
     }
     fputs("    test r10, r10\n"
           "    js __yl_array_bounds_error\n", ctx->out);
-    fprintf(ctx->out, "    cmp r10, %zu\n"
-                      "    jae __yl_array_bounds_error\n",
-            variable->array_length);
-    if (variable->is_global) {
-        fprintf(ctx->out, "    lea r11, [rel %s]\n", variable->c_name);
+    if (variable->array_length == 0U) {
+        size_t length_offset = array_parameter_length_offset(ctx, variable);
+        fprintf(ctx->out, "    cmp r10, [rbp - %zu]\n"
+                          "    jae __yl_array_bounds_error\n",
+                length_offset);
+        size_t pointer_offset = slot_offset(ctx, variable);
+        fprintf(ctx->out, "    mov r11, [rbp - %zu]\n", pointer_offset);
     } else {
-        size_t base = array_base_offset(ctx, variable);
-        fprintf(ctx->out, "    lea r11, [rbp - %zu]\n", base);
+        fprintf(ctx->out, "    cmp r10, %zu\n"
+                          "    jae __yl_array_bounds_error\n",
+                variable->array_length);
+        if (variable->is_global) {
+            fprintf(ctx->out, "    lea r11, [rel %s]\n", variable->c_name);
+        } else {
+            size_t base = array_base_offset(ctx, variable);
+            fprintf(ctx->out, "    lea r11, [rbp - %zu]\n", base);
+        }
     }
     return ctx->okay;
 }
@@ -1129,9 +1160,6 @@ static bool prepare_function(AsmContext *ctx, Function *function)
     ctx->function = function;
 
     for (size_t i = 0; i < function->param_count; i++) {
-        if (function->params[i]->is_array) {
-            return asm_reject(ctx, function->token, "array parameters");
-        }
         if (!add_slot(ctx, function->params[i])) return false;
     }
     return collect_stmt_slots(ctx, function->body);
@@ -1204,12 +1232,7 @@ static bool emit_global_storage(AsmContext *ctx)
             return asm_reject(ctx, var->token, "this global storage type");
         }
         if (var->is_array) {
-            if (!validate_array_element_type(ctx, var) ||
-                !var->initializer || var->initializer->kind != EXPR_ARRAY ||
-                var->initializer->as.array.count != var->array_length) {
-                return asm_reject(ctx, var->token,
-                                  "global arrays without a fixed literal initializer");
-            }
+            if (!validate_array_declaration(ctx, var)) return false;
             fprintf(ctx->out, "align 8\n%s:\n", var->c_name);
             for (size_t element = 0; element < var->array_length; element++) {
                 Expr *item = var->initializer->as.array.items[element];
@@ -1477,13 +1500,11 @@ bool generate_asm(Compiler *compiler, const char *path)
         if (!asm_type_supported(&ctx, function->return_type,
                                 function->token, true)) break;
         for (size_t j = 0; j < function->param_count; j++) {
-            if (function->params[j]->is_array) {
-                (void)asm_reject(&ctx, function->params[j]->token,
-                                 "array parameters");
-                break;
-            }
-            if (!asm_type_supported(&ctx, function->params[j]->type,
-                                    function->params[j]->token, false)) break;
+            VarDecl *parameter = function->params[j];
+            if (!asm_type_supported(&ctx, parameter->type,
+                                    parameter->token, false)) break;
+            if (parameter->is_array &&
+                !validate_array_element_type(&ctx, parameter)) break;
         }
         if (!ctx.okay || !validate_stmt(&ctx, function->body)) break;
     }
