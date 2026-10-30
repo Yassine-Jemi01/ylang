@@ -84,7 +84,7 @@
       ]
     },
     "function-declaration": {
-      "match": "\\b(function)(\\s+)([A-Za-z_][A-Za-z0-9_]*)",
+      "match": "\\b(function|fn)(\\s+)([A-Za-z_][A-Za-z0-9_]*)",
       "captures": {
         "1": {
           "name": "keyword.control.ylang"
@@ -343,7 +343,7 @@
       ]
     },
     "variable-declaration": {
-      "match": "\\b(let)(\\s+)(const\\s+)?([A-Za-z_][A-Za-z0-9_]*)(\\s+)([A-Za-z_][A-Za-z0-9_]*)(\\s*\\[\\])?",
+      "match": "\\b(let)(\\s+)((?:const|mut)\\s+)?([A-Za-z_][A-Za-z0-9_]*)(\\s+)([A-Za-z_][A-Za-z0-9_]*)(\\s*\\[\\])?",
       "captures": {
         "1": {
           "name": "keyword.declaration.variable.ylang"
