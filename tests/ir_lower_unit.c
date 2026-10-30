@@ -507,6 +507,34 @@ static void lowers_assignment_to_parameter_as_new_ssa_value(void)
     yir_destroy_function(&lowered);
 }
 
+
+static void rejects_global_assignment_as_local_ssa(void)
+{
+    VarDecl global = {.name="counter",.type=TYPE_INT,.is_global=true};
+    Expr value = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="2",.length=1},
+        .type=TYPE_INT
+    };
+    Expr target = {
+        .kind=EXPR_NAME,.type=TYPE_INT,
+        .as.name={.name="counter",.variable=&global}
+    };
+    Expr assignment = {
+        .kind=EXPR_ASSIGN,.type=TYPE_INT,
+        .as.assign={.target=&target,.right=&value,.variable=&global}
+    };
+    Stmt assign_statement = {.kind=STMT_EXPR,.as.expression=&assignment};
+    Stmt ret = {.kind=STMT_RETURN,.as.return_value=&value};
+    Stmt *items[] = {&assign_statement,&ret};
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=2}};
+    Function function = {.name="global_write",.return_type=TYPE_INT,.body=&body};
+    YIRFunction lowered;
+    char error[192];
+    assert(!yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(strstr(error,"prior local declaration")!=NULL);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
@@ -523,6 +551,7 @@ int main(void)
     lowers_local_boolean();
     rejects_assignment_to_const_local();
     lowers_assignment_to_parameter_as_new_ssa_value();
+    rejects_global_assignment_as_local_ssa();
     puts("YLang IR lowering tests passed");
     return 0;
 }
