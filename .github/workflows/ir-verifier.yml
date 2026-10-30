@@ -12,6 +12,10 @@ on:
       - "tests/run-ir-unit.sh"
       - ".github/workflows/ir-verifier.yml"
 
+concurrency:
+  group: ylang-3-ir-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
