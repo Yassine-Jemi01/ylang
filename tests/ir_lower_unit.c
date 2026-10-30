@@ -14,6 +14,8 @@ static int fail(const char *message)
 int main(void)
 {
     const char *source =
+        "let BASE: int = 10;\n"
+        "let mut GLOBAL_COUNT: int = 1;\n"
         "fn add(int left, int right) -> int {\n"
         "    return left + right;\n"
         "}\n"
@@ -36,8 +38,12 @@ int main(void)
         "    }\n"
         "    return total;\n"
         "}\n"
+        "fn update_global() -> int {\n"
+        "    GLOBAL_COUNT += 2;\n"
+        "    return BASE + GLOBAL_COUNT;\n"
+        "}\n"
         "fn main() -> int {\n"
-        "    return choose(true, add(2, 3), sum_to(5));\n"
+        "    return choose(true, add(2, 3), sum_to(5)) + update_global();\n"
         "}\n";
 
     Compiler compiler;
@@ -57,7 +63,7 @@ int main(void)
         arena_destroy(&compiler.arena);
         return fail("scalar functions, branch PHIs, loop PHIs, and calls must lower");
     }
-    if (module.function_count != 4U ||
+    if (module.function_count != 5U || module.global_count != 2U ||
         module.functions[0]->block_count != 1U ||
         module.functions[1]->block_count < 4U ||
         module.functions[2]->block_count < 4U ||

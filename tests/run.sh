@@ -896,7 +896,29 @@ EOF
         printf '21 true 2.5\n' > build/llvm-scalar.expected
         diff -u build/llvm-scalar.expected build/llvm-scalar.out
 
-        cat > build/llvm-overflow.yl <<'EOF'
+                cat > build/llvm-globals.yl <<'EOF'
+let BASE: int = 10;
+let mut COUNTER: int = 5;
+fn calculate() -> int {
+    COUNTER += 2;
+    return BASE + COUNTER;
+}
+fn main() -> int {
+    let result: int = calculate();
+    print(BASE, result, COUNTER);
+    return result;
+}
+EOF
+        ./build/ylang build build/llvm-globals.yl -o build/llvm-globals-c >/dev/null
+        ./build/ylang build-llvm build/llvm-globals.yl -o build/llvm-globals >/dev/null
+        ./build/llvm-globals-c > build/llvm-globals-c.out
+        if ./build/llvm-globals > build/llvm-globals.out; then llvm_status=0; else llvm_status=$?; fi
+        [ "$llvm_status" -eq 17 ]
+        diff -u build/llvm-globals-c.out build/llvm-globals.out
+        printf '10 17 7\n' > build/llvm-globals.expected
+        diff -u build/llvm-globals.expected build/llvm-globals.out
+
+cat > build/llvm-overflow.yl <<'EOF'
 fn main() -> int {
     let maximum: int = 9223372036854775807;
     return maximum + 1;
