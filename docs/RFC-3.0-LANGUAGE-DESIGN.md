@@ -1,6 +1,6 @@
 # YLang 3.0 Language RFC: Modern Bindings and Structured Error Handling
 
-**Status:** Accepted design direction; implementation in progress  
+**Status:** Partially implemented; remaining language features are design-only until compiler, runtime, and backend tests land  
 **Target:** YLang 3.0.x  
 **Scope:** Lexer, parser, AST, semantic analysis, C backend, runtime, tests, and editor tooling
 
@@ -111,13 +111,13 @@ Current files:
 - `include/ylang/lexer.h`
 - `src/lexer.c`
 
-Add tokens:
-- `TOKEN_MUT`
-- `TOKEN_COLON`
-- `TOKEN_QUESTION`
-- `TOKEN_THROW`
+Current branch status:
+- `TOKEN_MUT`, `TOKEN_COLON`, and `TOKEN_QUESTION` are already present in the lexer.
+- `TOKEN_THROW` is not yet present.
+- `TOKEN_TRY` and `TOKEN_CATCH` are recognized by the lexer but are not executable language constructs.
+- `TOKEN_CONST` remains for legacy declarations.
 
-Retain `TOKEN_TRY` and `TOKEN_CATCH`; they are already recognized by the lexer but are not executable language constructs yet. Retain `TOKEN_CONST` during the compatibility period.
+Do not add syntax highlighting for `?` as a standalone Tree-sitter node until the grammar contains a real postfix propagation rule. The lexer token alone does not make Result propagation available.
 
 Lexer tests must cover token types, ordering, line/column positions, malformed punctuation, and keyword boundaries.
 
@@ -145,11 +145,10 @@ The type grammar must support the existing scalar and user-defined types plus ar
 
 For `for` initializers, support both `let mut i: int = 0` and the legacy form, with the same warning policy.
 
-Add statement grammar for:
+Still to implement in both compiler grammar and Tree-sitter:
 - `try { ... } catch (Error error) { ... }`
 - `throw expression;`
-
-Add postfix parsing for `?`. It must bind more tightly than binary operators and be rejected outside a valid Result context by semantic analysis.
+- Postfix `?`, binding more tightly than binary operators and rejected outside a valid Result context.
 
 Extend match patterns for `Ok(payload)` and `Err(payload)` without weakening exhaustive matching for existing enums.
 
