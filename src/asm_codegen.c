@@ -1564,6 +1564,17 @@ static void emit_runtime(AsmContext *ctx)
 bool generate_asm(Compiler *compiler, const char *path)
 {
     if (!compiler || !compiler->program || !path) return false;
+    for (size_t i = 0; i < compiler->enum_count; i++) {
+        EnumDecl *enumeration = compiler->enums[i];
+        if (enumeration->has_payload) {
+            fprintf(stderr,
+                    "ylang: NASM backend does not support payload-bearing enum '%s' yet (%s:%zu:%zu).\n",
+                    enumeration->name,
+                    compiler->filename ? compiler->filename : "<source>",
+                    enumeration->token.line, enumeration->token.column);
+            return false;
+        }
+    }
     AsmContext ctx;
     memset(&ctx, 0, sizeof(ctx));
     ctx.compiler = compiler;

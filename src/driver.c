@@ -580,6 +580,29 @@ int ylang_run(const char *command, const char *input_path,
         return 1;
     }
 
+    bool has_payload_enums = false;
+    for (size_t i = 0; i < compiler.enum_count; i++) {
+        if (compiler.enums[i]->has_payload) {
+            has_payload_enums = true;
+            break;
+        }
+    }
+    if (has_payload_enums &&
+        (strcmp(command, "build-asm") == 0 || strcmp(command, "emit-asm") == 0)) {
+        fputs("ylang: payload-bearing enums are not supported by the NASM backend yet; use the C backend.\n", stderr);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return 64;
+    }
+    if (has_payload_enums &&
+        (strcmp(command, "emit-llvm") == 0 || strcmp(command, "emit-obj") == 0 ||
+         strcmp(command, "build-llvm") == 0)) {
+        fputs("ylang: payload-bearing enums are not supported by the LLVM backend yet; use the C backend.\n", stderr);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return 64;
+    }
+
     if (strcmp(command, "check") == 0) {
         printf("YLang check: no errors found (%s).\n", input_path);
         arena_destroy(&compiler.arena);
