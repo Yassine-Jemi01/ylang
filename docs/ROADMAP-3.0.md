@@ -266,8 +266,9 @@ The 3.0 release must not be declared complete until the optimized backend demons
 - [x] Emit verified textual LLVM IR for the initial scalar subset.
 - [x] Add explicit `emit-llvm` and experimental Linux x86-64 `build-llvm` commands using Clang.
 - [x] Lower checked integer overflow and division failures to the YLang runtime failure path.
+- [x] Add a Linux x86-64 scalar `emit-obj` prototype using Clang to compile textual LLVM IR into a relocatable object; link and run it in differential tests.
 - [ ] Select and isolate a stable LLVM API boundary and target-machine implementation.
-- [ ] Emit native objects through LLVM and link the complete YLang runtime.
+- [ ] Replace the Clang-mediated object prototype with LLVM target-machine emission and link the complete YLang runtime.
 - [ ] Add debug metadata and target detection.
 
 ### M6 — LLVM language coverage
