@@ -8,6 +8,7 @@ typedef struct {
     YIRType type;
     size_t block_index;
     size_t instruction_index;
+    bool is_parameter;
 } ValueDef;
 
 static bool fail(char *error, size_t capacity, const char *message)
@@ -59,6 +60,7 @@ static bool check_operand(const ValueDef *values, size_t value_count,
         !dominators[use_block * block_count + definition->block_index])
         return false;
     return definition->block_index != use_block ||
+           definition->is_parameter ||
            definition->instruction_index < use_instruction;
 }
 
@@ -77,22 +79,31 @@ bool yir_verify_function(const YIRFunction *function, char *error,
         return fail(error, error_capacity, "function has too many basic blocks");
 
     size_t instruction_capacity = 0;
+    size_t parameter_capacity = 0;
     for (size_t bi = 0; bi < block_count; ++bi) {
         const YIRBlock *block = &function->blocks[bi];
         if (!block->instructions || block->instruction_count == 0)
             return fail(error, error_capacity,
                         "basic block must contain instructions");
-        if (block->instruction_count > SIZE_MAX - instruction_capacity)
+        if (block->instruction_count > SIZE_MAX - instruction_capacity ||
+            block->parameter_count > SIZE_MAX - parameter_capacity)
             return fail(error, error_capacity,
-                        "function has too many IR instructions");
+                        "function has too many IR values");
+        if (block->parameter_count && !block->parameters)
+            return fail(error, error_capacity,
+                        "block parameters require a parameter array");
         instruction_capacity += block->instruction_count;
+        parameter_capacity += block->parameter_count;
         for (size_t prior = 0; prior < bi; ++prior)
             if (function->blocks[prior].id == block->id)
                 return fail(error, error_capacity,
                             "basic block IDs must be unique");
     }
 
-    ValueDef *values = calloc(instruction_capacity, sizeof(*values));
+    if (parameter_capacity > SIZE_MAX - instruction_capacity)
+        return fail(error, error_capacity, "function has too many IR values");
+    const size_t value_capacity = instruction_capacity + parameter_capacity;
+    ValueDef *values = calloc(value_capacity, sizeof(*values));
     bool *edges = calloc(block_count * block_count, sizeof(*edges));
     bool *reachable = calloc(block_count, sizeof(*reachable));
     bool *dominators = calloc(block_count * block_count, sizeof(*dominators));
@@ -106,6 +117,19 @@ bool yir_verify_function(const YIRFunction *function, char *error,
     size_t value_count = 0;
     for (size_t bi = 0; bi < block_count; ++bi) {
         const YIRBlock *block = &function->blocks[bi];
+        for (size_t pi = 0; pi < block->parameter_count; ++pi) {
+            const YIRBlockParameter *parameter = &block->parameters[pi];
+            if (!parameter->id || !valid_type(parameter->type) ||
+                parameter->type == YIR_TYPE_VOID ||
+                find_value(values, value_count, parameter->id)) {
+                (void)fail(error, error_capacity,
+                           "block parameters require unique IDs and valid non-void types");
+                goto cleanup;
+            }
+            values[value_count++] = (ValueDef){
+                parameter->id, parameter->type, bi, 0, true
+            };
+        }
         for (size_t ii = 0; ii < block->instruction_count; ++ii) {
             const YIRInstruction *ins = &block->instructions[ii];
             bool last = ii + 1 == block->instruction_count;
@@ -132,7 +156,7 @@ bool yir_verify_function(const YIRFunction *function, char *error,
                     goto cleanup;
                 }
                 values[value_count++] = (ValueDef){
-                    ins->result_id, ins->result_type, bi, ii
+                    ins->result_id, ins->result_type, bi, ii, false
                 };
             }
         }
@@ -161,6 +185,26 @@ bool yir_verify_function(const YIRFunction *function, char *error,
                 goto cleanup;
             }
             edges[bi * block_count + target] = true;
+        }
+        if (term->opcode != YIR_OP_BRANCH &&
+            term->opcode != YIR_OP_COND_BRANCH &&
+            (term->argument_count || term->false_argument_count ||
+             term->arguments || term->false_arguments)) {
+            (void)fail(error, error_capacity,
+                       "only branch terminators may carry block arguments");
+            goto cleanup;
+        }
+        if ((term->argument_count && !term->arguments) ||
+            (term->false_argument_count && !term->false_arguments)) {
+            (void)fail(error, error_capacity,
+                       "branch argument counts require argument arrays");
+            goto cleanup;
+        }
+        if (term->opcode != YIR_OP_COND_BRANCH &&
+            (term->false_argument_count || term->false_arguments)) {
+            (void)fail(error, error_capacity,
+                       "unconditional branches cannot carry false-edge arguments");
+            goto cleanup;
         }
     }
 
@@ -270,6 +314,59 @@ bool yir_verify_function(const YIRFunction *function, char *error,
                 (void)fail(error, error_capacity,
                     "invalid opcode, result, operand type, definition order, or SSA dominance");
                 goto cleanup;
+            }
+        }
+
+        const YIRInstruction *term =
+            &block->instructions[block->instruction_count - 1];
+        if (term->opcode == YIR_OP_BRANCH ||
+            term->opcode == YIR_OP_COND_BRANCH) {
+            size_t target_index = 0;
+            const YIRBlock *target = find_block(function, term->target,
+                                                &target_index);
+            if (!target || term->argument_count != target->parameter_count) {
+                (void)fail(error, error_capacity,
+                           "branch argument count does not match target block parameters");
+                goto cleanup;
+            }
+            for (size_t ai = 0; ai < target->parameter_count; ++ai) {
+                const ValueDef *argument =
+                    find_value(values, value_count, term->arguments[ai]);
+                if (!argument || argument->type != target->parameters[ai].type ||
+                    !check_operand(values, value_count, dominators,
+                                   block_count, bi,
+                                   block->instruction_count - 1,
+                                   term->arguments[ai], target->parameters[ai].type)) {
+                    (void)fail(error, error_capacity,
+                               "branch argument type or SSA dominance mismatch");
+                    goto cleanup;
+                }
+            }
+            if (term->opcode == YIR_OP_COND_BRANCH) {
+                target = find_block(function, term->false_target,
+                                    &target_index);
+                if (!target ||
+                    term->false_argument_count != target->parameter_count) {
+                    (void)fail(error, error_capacity,
+                               "false branch argument count does not match target block parameters");
+                    goto cleanup;
+                }
+                for (size_t ai = 0; ai < target->parameter_count; ++ai) {
+                    const ValueDef *argument =
+                        find_value(values, value_count,
+                                   term->false_arguments[ai]);
+                    if (!argument ||
+                        argument->type != target->parameters[ai].type ||
+                        !check_operand(values, value_count, dominators,
+                                       block_count, bi,
+                                       block->instruction_count - 1,
+                                       term->false_arguments[ai],
+                                       target->parameters[ai].type)) {
+                        (void)fail(error, error_capacity,
+                                   "false branch argument type or SSA dominance mismatch");
+                        goto cleanup;
+                    }
+                }
             }
         }
     }
