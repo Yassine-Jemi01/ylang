@@ -731,7 +731,7 @@ static Stmt *parse_variable(Parser *p, bool global)
 
     Expr *initializer = NULL;
     if (match(p, TOKEN_EQUAL)) initializer = parse_expression(p);
-    if (is_array && (!initializer || initializer->kind != EXPR_ARRAY)) {
+    if (is_array && !initializer) {
         diagnostic(p->compiler, name_token, "error", "E2018",
                    "An array declaration requires an array literal initializer.",
                    "Initialize it with an array literal, for example [1, 2, 3].");
