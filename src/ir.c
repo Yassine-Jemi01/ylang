@@ -35,7 +35,8 @@ bool yir_verify_function(const YIRFunction *function, char *error, size_t error_
     if (error && error_capacity) error[0] = '\0';
     if (!function || !function->blocks || function->block_count == 0)
         return fail(error, error_capacity, "function must contain at least one block");
-    if (function->return_type > YIR_TYPE_PTR)
+    if ((int)function->return_type < (int)YIR_TYPE_VOID ||
+        (int)function->return_type > (int)YIR_TYPE_PTR)
         return fail(error, error_capacity, "function has an invalid return type");
 
     for (size_t bi = 0; bi < function->block_count; ++bi) {
