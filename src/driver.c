@@ -613,13 +613,13 @@ int ylang_run(const char *command, const char *input_path,
 
     if (strcmp(command, "emit-obj") == 0) {
 #if !defined(__linux__) || !defined(__x86_64__)
-        fputs("ylang: emit-obj currently supports Linux x86-64 only.\\n", stderr);
+        fputs("ylang: emit-obj currently supports Linux x86-64 only.\n", stderr);
         arena_destroy(&compiler.arena);
         free(source);
         return 64;
 #else
         if (!cc || strcmp(cc, "clang") != 0) {
-            fputs("ylang: emit-obj requires Clang; use --cc clang.\\n", stderr);
+            fputs("ylang: emit-obj requires Clang; use --cc clang.\n", stderr);
             arena_destroy(&compiler.arena);
             free(source);
             return 64;
@@ -627,7 +627,7 @@ int ylang_run(const char *command, const char *input_path,
         const char *target = output_path ? output_path : "build/ylang-generated.o";
         if (!output_path &&
             ylang_mkdir("build", 0755) != 0 && errno != EEXIST) {
-            fprintf(stderr, "ylang: cannot create build directory: %s\\n", strerror(errno));
+            fprintf(stderr, "ylang: cannot create build directory: %s\n", strerror(errno));
             arena_destroy(&compiler.arena);
             free(source);
             return 73;
@@ -635,7 +635,7 @@ int ylang_run(const char *command, const char *input_path,
 
         char *temporary_directory = create_temporary_directory("ylang-llvm-object");
         if (!temporary_directory) {
-            fprintf(stderr, "ylang: cannot create temporary LLVM directory: %s\\n",
+            fprintf(stderr, "ylang: cannot create temporary LLVM directory: %s\n",
                     strerror(errno));
             arena_destroy(&compiler.arena);
             free(source);
@@ -644,7 +644,7 @@ int ylang_run(const char *command, const char *input_path,
         size_t path_size = strlen(temporary_directory) + sizeof("/generated.ll");
         char *llvm_path = malloc(path_size);
         if (!llvm_path) {
-            fputs("ylang: out of memory preparing LLVM object emission.\\n", stderr);
+            fputs("ylang: out of memory preparing LLVM object emission.\n", stderr);
             (void)rmdir(temporary_directory);
             free(temporary_directory);
             arena_destroy(&compiler.arena);
@@ -660,10 +660,10 @@ int ylang_run(const char *command, const char *input_path,
                 "-o", (char *)target, NULL
             };
             result = run_external(clang_args);
-            if (result == 0) printf("Generated LLVM object (Clang): %s\\n", target);
+            if (result == 0) printf("Generated LLVM object (Clang): %s\n", target);
             else {
                 (void)unlink(target);
-                fprintf(stderr, "ylang: Clang LLVM object emission failed (exit %d).\\n",
+                fprintf(stderr, "ylang: Clang LLVM object emission failed (exit %d).\n",
                         result);
             }
         }
