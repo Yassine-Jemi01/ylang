@@ -247,7 +247,8 @@ The 3.0 release must not be declared complete until the optimized backend demons
 - [x] Add scalar globals and short-circuit boolean logic.
 - [x] Implement System V AMD64 stack-passed scalar arguments and 16-byte call alignment.
 - [x] Add C/NASM parity coverage for globals, short-circuit side effects, and eight-argument nested calls.
-- [ ] Add arrays, indexing, array parameters, and bounds checks.
+- [x] Add fixed-size local/global arrays, indexed reads/writes, negative and upper bounds checks, and array-parameter pointer/length ABI lowering with C/NASM parity tests.
+- [ ] Extend NASM arrays to floating-point and ownership-bearing element types; arrays still cannot be returned or nested.
 - [ ] Add floating point, strings, and standard-library lowering.
 - [ ] Publish a test-enforced capability matrix.
 

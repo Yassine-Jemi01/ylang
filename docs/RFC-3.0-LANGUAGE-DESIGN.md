@@ -48,7 +48,7 @@ let mut values: float[] = [1.0, 2.0, 3.0];
 values[0] = 5.0;
 ```
 
-Immutable arrays are valid read-only values in the C reference backend. Mutable arrays allow element assignment. Mutation through an array index or a nested struct-field path requires a mutable root binding. Whole-array reassignment remains unsupported. The NASM backend may reject arrays until its array capability milestone is complete.
+Immutable arrays are valid read-only values in the C reference backend. Mutable arrays allow element assignment. Mutation through an array index or a nested struct-field path requires a mutable root binding. Whole-array reassignment remains unsupported. The NASM backend supports fixed-size local/global arrays and array parameters for its supported scalar element types. It lowers array parameters as pointer-plus-length ABI pieces, supports forwarding them between functions, and checks signed indices against runtime lengths. Floating-point, owned-string, struct, returned, and nested arrays remain unsupported.
 
 ### 2.4 Globals
 

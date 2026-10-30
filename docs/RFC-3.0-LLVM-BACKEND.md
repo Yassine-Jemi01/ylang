@@ -9,7 +9,7 @@
 At the time this RFC is prepared:
 - The compiler frontend and semantic analysis are written in C17.
 - The established backend walks the checked program and emits C; GCC or Clang then produces the executable.
-- The experimental NASM backend covers a deliberately restricted Linux x86-64 subset.
+- The experimental NASM backend covers a deliberately restricted Linux x86-64 subset, including fixed-size scalar arrays and pointer-plus-length array parameters for the supported element types.
 - The backend roadmap describes a backend-neutral typed IR as a prerequisite.
 - No complete LLVM code-generation backend is present in the repository's main branch.
 

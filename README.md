@@ -156,12 +156,23 @@ The benchmark reports minimum, median, mean, and 95th-percentile latency.
 Its timing includes process launch and exit, so a median below 1 ms is a
 machine-dependent target rather than a guaranteed performance claim.
 
-This backend is currently limited to Linux x86-64 scalar programs using
-`int`, `bool`, `char`, and `string`, local variables, user-defined
-functions with up to six scalar parameters, integer expressions, branches,
-loops, returns, and `print`. Global declarations, arrays, floats, f-strings,
-string comparisons, short-circuit `and`/`or`, and standard-library calls
-are not supported yet. The established C backend remains the default. A backend-neutral IR and general-purpose native backend are future work; see the [backend roadmap](docs/BACKEND-ROADMAP.md).
+The experimental NASM backend targets Linux x86-64. It supports scalar `int`,
+`bool`, `char`, `string`, and unit-enum values; scalar globals; fixed-size
+local and global arrays of supported scalar types; indexed reads and writes;
+runtime bounds checks; and read-only array parameters passed as a pointer plus
+length according to the System V AMD64 ABI. Array parameters can be forwarded
+to other YLang functions, and `length(array)` works for both fixed arrays and
+array parameters. Scalar and expanded array arguments follow left-to-right
+evaluation order and support stack-passed arguments beyond the six integer
+registers. The backend also supports integer expressions, branches, loops,
+short-circuit `and`/`or`, returns, and `print`.
+
+NASM still rejects floating-point values, owned strings, f-strings, string
+comparisons, structs, GUI/HTTP and most standard-library calls, and `defer`.
+Arrays cannot be returned, nested, or mutated through immutable bindings;
+array parameters are immutable inside the callee. The established C backend
+remains the default and reference backend. A backend-neutral IR and LLVM
+backend are future work; see the [backend roadmap](docs/BACKEND-ROADMAP.md).
 
 ## Structs (experimental)
 
