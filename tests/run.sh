@@ -864,6 +864,70 @@ if ./build/ylang check tests/array-mixed-types.yl > build/array-mixed-types.out 
 fi
 grep -q 'All array elements must have the same type' build/array-mixed-types.out
 
+# Experimental LLVM scalar backend: control flow, PHIs, calls and checked arithmetic.
+if command -v clang >/dev/null 2>&1; then
+    cat > build/llvm-scalar.yl <<'EOF'
+fn add(int left, int right) -> int {
+    return left + right;
+}
+fn main() -> int {
+    let mut index: int = 0;
+    let mut total: int = 0;
+    while (index < 7) {
+        total += index;
+        index += 1;
+    }
+    if (total == 21) {
+        return add(total, 21);
+    } else {
+        return 1;
+    }
+}
+EOF
+    ./build/ylang emit-llvm build/llvm-scalar.yl -o build/llvm-scalar.ll >/dev/null
+    grep -q 'define i32 @main' build/llvm-scalar.ll
+    grep -q 'llvm.sadd.with.overflow.i64' build/llvm-scalar.ll
+
+    if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
+        ./build/ylang build-llvm build/llvm-scalar.yl -o build/llvm-scalar >/dev/null
+        if ./build/llvm-scalar; then llvm_status=0; else llvm_status=$?; fi
+        [ "$llvm_status" -eq 42 ]
+
+        cat > build/llvm-overflow.yl <<'EOF'
+fn main() -> int {
+    let maximum: int = 9223372036854775807;
+    return maximum + 1;
+}
+EOF
+        ./build/ylang build-llvm build/llvm-overflow.yl -o build/llvm-overflow >/dev/null
+        if ./build/llvm-overflow > build/llvm-overflow.out 2>&1; then
+            echo "FAIL: LLVM backend did not trap signed integer overflow" >&2
+            exit 1
+        else
+            llvm_status=$?
+            [ "$llvm_status" -eq 70 ]
+        fi
+        grep -q 'YLang runtime error' build/llvm-overflow.out
+
+        cat > build/llvm-division-zero.yl <<'EOF'
+fn main() -> int {
+    let numerator: int = 10;
+    let denominator: int = 0;
+    return numerator / denominator;
+}
+EOF
+        ./build/ylang build-llvm build/llvm-division-zero.yl -o build/llvm-division-zero >/dev/null
+        if ./build/llvm-division-zero > build/llvm-division-zero.out 2>&1; then
+            echo "FAIL: LLVM backend did not trap division by zero" >&2
+            exit 1
+        else
+            llvm_status=$?
+            [ "$llvm_status" -eq 70 ]
+        fi
+        grep -q 'YLang runtime error' build/llvm-division-zero.out
+    fi
+fi
+
 # Native optimization levels are selectable without changing source code.
 YLANG_OPT_LEVEL=3 ./build/ylang build examples/loops.yl -o build/test-loops-o3 >/dev/null
 ./build/test-loops-o3 > build/loops-o3.out

@@ -559,6 +559,12 @@ int ylang_run(const char *command, const char *input_path,
         } else if (strcmp(command, "emit-asm") == 0) {
             fprintf(stderr, "ylang: emit-asm failed with %u error(s); no assembly was generated.\n",
                     compiler.error_count);
+        } else if (strcmp(command, "emit-llvm") == 0) {
+            fprintf(stderr, "ylang: emit-llvm failed with %u error(s); no LLVM IR was generated.\n",
+                    compiler.error_count);
+        } else if (strcmp(command, "build-llvm") == 0) {
+            fprintf(stderr, "ylang: build-llvm failed with %u error(s); no executable was produced.\n",
+                    compiler.error_count);
         } else if (strcmp(command, "build-asm") == 0) {
             fprintf(stderr, "ylang: build-asm failed with %u error(s); no executable was produced.\n",
                     compiler.error_count);
@@ -576,6 +582,88 @@ int ylang_run(const char *command, const char *input_path,
         arena_destroy(&compiler.arena);
         free(source);
         return 0;
+    }
+
+    if (strcmp(command, "emit-llvm") == 0) {
+        const char *llvm_path = output_path;
+        if (!llvm_path) {
+            if (ylang_mkdir("build", 0755) != 0 && errno != EEXIST) {
+                fprintf(stderr, "ylang: cannot create build directory: %s\n", strerror(errno));
+                arena_destroy(&compiler.arena);
+                free(source);
+                return 73;
+            }
+            llvm_path = "build/ylang-generated.ll";
+        }
+        if (paths_refer_same_file(input_path, llvm_path)) {
+            fputs("ylang: LLVM output path refers to the source file; refusing to overwrite it.\n", stderr);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 64;
+        }
+        bool okay = generate_llvm_ir(&compiler, llvm_path);
+        if (okay) printf("Generated LLVM IR: %s\n", llvm_path);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return okay ? 0 : 1;
+    }
+
+    if (strcmp(command, "build-llvm") == 0) {
+#if !defined(__linux__) || !defined(__x86_64__)
+        fputs("ylang: build-llvm currently supports Linux x86-64 only.\n", stderr);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return 64;
+#else
+        if (!cc || strcmp(cc, "clang") != 0) {
+            fputs("ylang: build-llvm requires Clang; use --cc clang.\n", stderr);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 64;
+        }
+        const char *target = output_path ? output_path : "a.out";
+        if (paths_refer_same_file(input_path, target)) {
+            fputs("ylang: build-llvm output path refers to the source file; refusing to overwrite it.\n", stderr);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 64;
+        }
+        char *temporary_directory = create_temporary_directory("ylang-llvm-build");
+        if (!temporary_directory) {
+            fprintf(stderr, "ylang: cannot create temporary LLVM build directory: %s\n",
+                    strerror(errno));
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 73;
+        }
+        size_t path_size = strlen(temporary_directory) + sizeof("/generated.ll");
+        char *llvm_path = malloc(path_size);
+        if (!llvm_path) {
+            fputs("ylang: out of memory preparing LLVM build.\n", stderr);
+            (void)rmdir(temporary_directory);
+            free(temporary_directory);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 70;
+        }
+        (void)snprintf(llvm_path, path_size, "%s/generated.ll", temporary_directory);
+        int result = 1;
+        if (generate_llvm_ir(&compiler, llvm_path)) {
+            char *clang_args[] = {
+                (char *)cc, "-x", "ir", "-O0", llvm_path, "-o", (char *)target, NULL
+            };
+            result = run_external(clang_args);
+            if (result == 0) printf("Build succeeded (LLVM + Clang): %s\n", target);
+            else fprintf(stderr, "ylang: Clang LLVM build failed (exit %d).\n", result);
+        }
+        (void)unlink(llvm_path);
+        (void)rmdir(temporary_directory);
+        free(llvm_path);
+        free(temporary_directory);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return result;
+#endif
     }
 
     if (strcmp(command, "build-asm") == 0) {
