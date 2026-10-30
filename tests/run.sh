@@ -1969,6 +1969,26 @@ EOF
     diff -u build/asm-array-params-c.out build/asm-array-params.out
     printf '12 3 60\n28\n' > build/asm-array-params.expected
     diff -u build/asm-array-params.expected build/asm-array-params.out
+
+    cat > build/asm-array-param-oob.yl <<'EOF'
+fn read_past_end(int items[]) -> int {
+    return items[length(items)];
+}
+fn main() -> int {
+    let values: int[] = [1, 2, 3];
+    print(read_past_end(values));
+    return 0;
+}
+EOF
+    ./build/ylang build-asm build/asm-array-param-oob.yl -o build/asm-array-param-oob >/dev/null
+    if ./build/asm-array-param-oob > build/asm-array-param-oob.out 2>&1; then
+        echo "FAIL: NASM array parameter bounds check did not trap" >&2
+        exit 1
+    else
+        array_status=$?
+        [ "$array_status" -eq 70 ]
+    fi
+    grep -q 'array index out of bounds' build/asm-array-param-oob.out
 fi
 
 # NASM logical operators must short-circuit and preserve side-effect order.
