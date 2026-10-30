@@ -114,8 +114,10 @@ static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
 
     if (expression->kind == EXPR_BINARY) {
         uint32_t lhs = 0, rhs = 0;
-        if (expression->type != TYPE_INT ||
-            !lower_integer_expr(lowerer, expression->as.binary.left, &lhs) ||
+        if (expression->type != TYPE_INT)
+            return lower_fail(lowerer,
+                "only integer arithmetic expressions are supported by the initial IR lowerer");
+        if (!lower_integer_expr(lowerer, expression->as.binary.left, &lhs) ||
             !lower_integer_expr(lowerer, expression->as.binary.right, &rhs))
             return false;
         YIROpcode opcode;
@@ -149,7 +151,8 @@ static const Stmt *find_single_return(const Stmt *statement, bool *empty_void)
         *empty_void = true;
         return NULL;
     }
-    if (statement->as.block.count != 1) return NULL;
+    if (!statement->as.block.items || statement->as.block.count != 1)
+        return NULL;
     return find_single_return(statement->as.block.items[0], empty_void);
 }
 
