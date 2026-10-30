@@ -1,8 +1,8 @@
-function accumulate(int value, int current) -> int {
+fn accumulate(int value, int current) -> int {
     return current + value;
 }
 
-function main() -> int {
+fn main() -> int {
     let mut index: int = 0;
     let mut total: int = 0;
     while (index < 2000000) {
