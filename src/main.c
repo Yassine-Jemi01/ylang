@@ -14,6 +14,7 @@ static void usage(FILE *stream)
         "Usage:\n"
         "  ylang check <file.yl>\n"
         "  ylang build <file.yl> [-o executable] [--cc gcc|clang]\n"
+        "  ylang run <file.yl> [--cc gcc|clang]\n"
         "  ylang debug <file.yl> [-o executable] [--cc gcc|clang]\n"
         "  ylang build-asm <file.yl> [-o executable]\n"
         "  ylang emit-c <file.yl> [-o generated.c]\n"
@@ -26,7 +27,8 @@ static void usage(FILE *stream)
         "Commands:\n"
         "  check   Parse the source and validate types without producing a binary.\n"
         "  build   Generate C and invoke GCC or Clang to create a native executable.\n"
-        "  debug   Build with debug symbols and launch GDB (Linux) or LLDB (macOS).\n"
+        "  run     Build in a temporary directory, run the program, and remove build artifacts.\n"
+        "  debug   Build with debug symbols and launch GDB (Linux/Windows) or LLDB (macOS).\n"
         "  build-asm Build the supported subset with NASM and ld (Linux x86-64).\n"
         "  emit-c  Write the generated C source for inspection.\n"
         "  emit-asm Emit experimental Linux x86-64 NASM assembly for the supported subset.\n"
@@ -53,7 +55,7 @@ int main(int argc, char **argv)
     }
     const char *command = argv[1];
     if (strcmp(command, "check") != 0 && strcmp(command, "build") != 0 &&
-        strcmp(command, "debug") != 0 && strcmp(command, "emit-c") != 0 &&
+        strcmp(command, "debug") != 0 && strcmp(command, "run") != 0 && strcmp(command, "emit-c") != 0 &&
         strcmp(command, "emit-asm") != 0 && strcmp(command, "emit-llvm") != 0 &&
         strcmp(command, "build-llvm") != 0 && strcmp(command, "emit-obj") != 0 &&
         strcmp(command, "build-asm") != 0 &&
@@ -92,8 +94,8 @@ int main(int argc, char **argv)
             return 64;
         }
     }
-    if (strcmp(command, "check") == 0 && output) {
-        fputs("ylang: check does not accept -o\n", stderr);
+    if ((strcmp(command, "check") == 0 || strcmp(command, "run") == 0) && output) {
+        fprintf(stderr, "ylang: %s does not accept -o\n", command);
         return 64;
     }
     if (strcmp(command, "fix") == 0 && !output) {

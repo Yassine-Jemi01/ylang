@@ -109,6 +109,16 @@ Then run:
 ./build/ylang check hello.yl
 ./build/ylang build hello.yl -o hello
 ./hello
+
+To build and execute a program in one command without leaving a generated C file or
+executable in the project directory, use:
+
+```sh
+./build/ylang run hello.yl
+```
+
+`run` uses a temporary build directory, forwards standard input/output, removes its
+temporary files after the process exits, and returns the program's exit status.
 ```
 
 To select Clang for the generated program:

@@ -878,9 +878,11 @@ int ylang_run(const char *command, const char *input_path,
     }
 
     const bool emit_c_command = strcmp(command, "emit-c") == 0;
+    const bool run_mode = strcmp(command, "run") == 0;
     const char *c_path = output_path;
     const char *native_target = output_path ? output_path : "a.out";
-    if (!emit_c_command && paths_refer_same_file(input_path, native_target)) {
+    if (!emit_c_command && !run_mode &&
+        paths_refer_same_file(input_path, native_target)) {
         fprintf(stderr,
                 "ylang: input '%s' and output '%s' refer to the same file; refusing to overwrite source.\n",
                 input_path, native_target);
@@ -950,28 +952,61 @@ int ylang_run(const char *command, const char *input_path,
         printf("Generated C source: %s\n", c_path);
     } else {
         const char *target = native_target;
+        char *run_target = NULL;
         bool debug_mode = strcmp(command, "debug") == 0;
-        result = run_native_compiler(cc ? cc : "gcc", c_path, target,
-                                     compiler.uses_gui, debug_mode, compiler.uses_http);
-        if (result == 0) {
-            printf("Build succeeded: %s\n", target);
-            if (debug_mode) {
+        if (run_mode) {
 #ifdef _WIN32
-                char *debugger_args[] = { "gdb", "-q", "--args", (char *)target, NULL };
-                result = run_external(debugger_args);
-#elif defined(__APPLE__)
-                char *debugger_args[] = { "lldb", "--", (char *)target, NULL };
-                result = run_external(debugger_args);
+            const char *executable_name = "/program.exe";
 #else
-                char *debugger_args[] = { "gdb", "-q", "--args", (char *)target, NULL };
-                result = run_external(debugger_args);
+            const char *executable_name = "/program";
 #endif
+            size_t target_size = strlen(temporary_directory) + strlen(executable_name) + 1U;
+            run_target = malloc(target_size);
+            if (!run_target) {
+                fputs("ylang: out of memory while preparing run target.\n", stderr);
+                (void)unlink(c_path);
+                (void)rmdir(temporary_directory);
+                free(generated_path);
+                free(temporary_directory);
+                arena_destroy(&compiler.arena);
+                free(source);
+                return 70;
+            }
+            (void)snprintf(run_target, target_size, "%s%s",
+                           temporary_directory, executable_name);
+            target = run_target;
+        }
+
+        int build_result = run_native_compiler(cc ? cc : "gcc", c_path, target,
+                                               compiler.uses_gui, debug_mode,
+                                               compiler.uses_http);
+        result = build_result;
+        if (build_result == 0) {
+            if (run_mode) {
+                char *program_args[] = { (char *)target, NULL };
+                result = run_external(program_args);
+            } else {
+                printf("Build succeeded: %s\n", target);
+                if (debug_mode) {
+#ifdef _WIN32
+                    char *debugger_args[] = { "gdb", "-q", "--args", (char *)target, NULL };
+                    result = run_external(debugger_args);
+#elif defined(__APPLE__)
+                    char *debugger_args[] = { "lldb", "--", (char *)target, NULL };
+                    result = run_external(debugger_args);
+#else
+                    char *debugger_args[] = { "gdb", "-q", "--args", (char *)target, NULL };
+                    result = run_external(debugger_args);
+#endif
+                }
             }
         } else {
-            fprintf(stderr, "ylang: native compilation failed (exit %d).\n", result);
+            fprintf(stderr, "ylang: native compilation failed (exit %d).\n", build_result);
         }
         (void)unlink(c_path);
+        if (run_mode && run_target) (void)unlink(run_target);
         (void)rmdir(temporary_directory);
+        free(run_target);
     }
 
     free(generated_path);

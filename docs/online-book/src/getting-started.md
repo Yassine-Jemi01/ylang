@@ -102,6 +102,8 @@ The compiler's help output should list the available commands. The everyday work
 \`\`\`sh
 ./build/ylang check path/to/program.yl
 ./build/ylang build path/to/program.yl -o program
+
+./build/ylang run path/to/program.yl
 \`\`\`
 
 Replace the example path with an actual \`.yl\` file. The first command checks the source; the second creates a native executable through the default C backend.

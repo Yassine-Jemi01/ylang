@@ -8,12 +8,36 @@ EXPECTED_VERSION=$(cat VERSION)
 ./build/ylang --version | grep -Fq "$EXPECTED_VERSION"
 ./build/ylang --help > build/help.out
 grep -q 'ylang check' build/help.out
+grep -q 'ylang run' build/help.out
 grep -q 'ylang debug' build/help.out
 grep -Fq "YLang v${EXPECTED_VERSION} — compiled language toolchain" build/help.out
 ./build/ylang check examples/type-conversions.yl >/dev/null
 ./build/ylang build examples/type-conversions.yl -o build/test-type-conversions >/dev/null
 ./build/test-type-conversions > build/type-conversions.out
 diff -u tests/expected-type-conversions.txt build/type-conversions.out
+
+# The run command builds in a temporary directory and returns the program's exit code.
+mkdir -p "build/run command"
+cat > "build/run command/exit-status.yl" <<'EOF'
+fn main() -> int {
+    print("run command works");
+    return 23;
+}
+EOF
+if ./build/ylang run "build/run command/exit-status.yl" > "build/run command/output.txt"; then
+    echo "FAIL: run did not propagate the program's non-zero exit status" >&2
+    exit 1
+else
+    run_status=$?
+    [ "$run_status" -eq 23 ]
+fi
+printf 'run command works\n' > "build/run command/expected.txt"
+diff -u "build/run command/expected.txt" "build/run command/output.txt"
+if ./build/ylang run examples/hello.yl -o build/run-command-output > build/run-command-invalid.out 2>&1; then
+    echo "FAIL: run accepted an output path" >&2
+    exit 1
+fi
+grep -q 'run does not accept -o' build/run-command-invalid.out
 
 # String and character escapes must have the same byte semantics in generated C.
 ./build/ylang check tests/escape-parity.yl >/dev/null
