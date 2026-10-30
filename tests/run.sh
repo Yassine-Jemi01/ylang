@@ -31,7 +31,7 @@ diff -u tests/expected-trigraph-parity.txt build/trigraph-parity.out
 
 # F-strings use the same escape decoder and unknown-escape fallback.
 cat > build/fstring-escape.yl <<'EOF'
-function main() -> int {
+fn main() -> int {
     print(f"hex \x4142");
     print(f"unknown \q");
     print(f"brace \{x\}");
@@ -100,7 +100,7 @@ fi
 grep -q 'requires -o' build/fix-missing-output.out
 
 # Embedded NUL bytes must not silently truncate source parsing.
-printf 'function main() -> int { return 0; }\000function main() -> int { return 1; }\n' > build/embedded-nul.yl
+printf 'fn main() -> int { return 0; }\000fn main() -> int { return 1; }\n' > build/embedded-nul.yl
 if ./build/ylang check build/embedded-nul.yl > build/embedded-nul.out 2>&1; then
     echo "FAIL: source containing an embedded NUL byte was accepted" >&2
     exit 1
@@ -109,7 +109,7 @@ grep -q 'contains a NUL byte' build/embedded-nul.out
 
 # Excessively nested expressions must fail with a parser diagnostic, not a crash.
 {
-    printf 'function main() -> int { return '
+    printf 'fn main() -> int { return '
     depth=0
     while [ "$depth" -lt 1000 ]; do
         printf '('
@@ -136,7 +136,7 @@ grep -q 'E1017' build/deep-expression-nesting.out
 
 # print() must keep its own stable diagnostic code.
 cat > build/empty-print.yl <<'EOF'
-function main() -> int {
+fn main() -> int {
     print();
     return 0;
 }
@@ -195,7 +195,7 @@ diff -u tests/expected-conditions.txt build/test-conditions.out
 
 # Definite initialization merges nested if/else paths, but not a one-sided assignment.
 cat > build/branch-init-nested.yl <<'EOF'
-function main() -> int {
+fn main() -> int {
     let int score;
     if (true) {
         if (false) {
@@ -213,7 +213,7 @@ EOF
 ./build/ylang check build/branch-init-nested.yl >/dev/null
 
 cat > build/branch-init-missing-else.yl <<'EOF'
-function main() -> int {
+fn main() -> int {
     let int score;
     if (true) {
         score = 10;
@@ -299,7 +299,7 @@ fi
 if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists sdl2; then
     cat > build/game2d-collision.yl <<'EOF'
 from game2d.yl import game2d_rects_overlap, game2d_point_in_rect;
-function main() -> int {
+fn main() -> int {
     print(game2d_rects_overlap(0, 0, 10, 10, 5, 5, 10, 10));
     print(game2d_rects_overlap(0, 0, 10, 10, 10, 0, 4, 4));
     print(game2d_rects_overlap(0, 0, 0, 10, 5, 5, 10, 10));
@@ -322,7 +322,7 @@ cat > build/global-negative-initializers.yl <<'EOF'
 let int global_negative = -5;
 let int global_minimum = -9223372036854775808;
 let int values[] = [-1, -2];
-function main() -> int {
+fn main() -> int {
     print(global_negative, global_minimum, values[0]);
     return 0;
 }
@@ -336,7 +336,7 @@ diff -u build/global-negative-initializers.expected build/global-negative-initia
 # Struct equality is rejected by sema rather than passed to the generated-C compiler.
 cat > build/struct-equality-error.yl <<'EOF'
 struct Point { int x; int y; }
-function main() -> int {
+fn main() -> int {
     let Point left = Point(1, 2);
     let Point right = Point(1, 2);
     if (left == right) { print("same"); }
@@ -363,7 +363,7 @@ fi
 cat > build/enum-type-mismatch.yl <<'EOF'
 enum Direction { North, East }
 enum Color { Red, Blue }
-function main() -> int {
+fn main() -> int {
     let Direction facing = Color.Red;
     return 0;
 }
@@ -383,7 +383,7 @@ fi
 
 # Chained postfix syntax is parsed as a single expression; semantic errors stay focused.
 cat > build/postfix-index-member.yl <<'EOF'
-function main() -> int {
+fn main() -> int {
     let int arr[] = [1, 2];
     print(arr[1].x);
     return 0;
@@ -401,7 +401,7 @@ if grep -q 'E1002' build/postfix-index-member.out; then
 fi
 
 cat > build/postfix-chain.yl <<'EOF'
-function main() -> int {
+fn main() -> int {
     let int a = 1;
     print(a.b.c);
     return 0;
@@ -420,7 +420,7 @@ fi
 
 # Distinct semantic failures should have distinct stable diagnostic codes.
 cat > build/invalid-increment-target.yl <<'EOF'
-function main() -> int {
+fn main() -> int {
     print(1++);
     return 0;
 }
@@ -435,7 +435,7 @@ cat > build/array-argument-type.yl <<'EOF'
 function total(int values[]) -> int {
     return length(values);
 }
-function main() -> int {
+fn main() -> int {
     let int scalar = 1;
     total(scalar);
     return 0;
@@ -448,7 +448,7 @@ fi
 grep -q 'E2094' build/array-argument-type.out
 
 cat > build/plus-equal-bool.yl <<'EOF'
-function main() -> int {
+fn main() -> int {
     let bool enabled = true;
     enabled += false;
     return 0;
@@ -461,7 +461,7 @@ fi
 grep -q 'E2095' build/plus-equal-bool.out
 
 cat > build/length-non-array.yl <<'EOF'
-function main() -> int {
+fn main() -> int {
     let int value = 5;
     print(length(value));
     return 0;
@@ -474,7 +474,7 @@ fi
 grep -q 'E2096' build/length-non-array.out
 
 cat > build/math-wrong-arity.yl <<'EOF'
-function main() -> int {
+fn main() -> int {
     let float value = math.sqrt();
     print(value);
     return 0;
@@ -487,7 +487,7 @@ fi
 grep -q 'E2097' build/math-wrong-arity.out
 
 cat > build/math-non-float.yl <<'EOF'
-function main() -> int {
+fn main() -> int {
     let float value = math.sqrt(9);
     print(value);
     return 0;
@@ -503,7 +503,7 @@ cat > build/array-element-type.yl <<'EOF'
 function total(int values[]) -> int {
     return length(values);
 }
-function main() -> int {
+fn main() -> int {
     let string names[] = ["Ada"];
     total(names);
     return 0;
@@ -521,7 +521,7 @@ enum Direction { North, East, South, West }
 function is_east(Direction direction) -> bool {
     return direction == Direction.East;
 }
-function main() -> int {
+fn main() -> int {
     let Direction facing = Direction.North;
     if (facing == Direction.North) { print("north"); }
     if (is_east(Direction.East)) { print("east"); }
@@ -547,7 +547,7 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
 fi
 cat > build/enum-non-exhaustive.yl <<'EOF'
 enum Direction { North, East, South }
-function main() -> int {
+fn main() -> int {
     let Direction facing = Direction.North;
     match (facing) {
         Direction.North -> { print("north"); }
@@ -564,7 +564,7 @@ grep -q 'E2063' build/enum-non-exhaustive.out
 cat > build/enum-mismatch.yl <<'EOF'
 enum Direction { North, East }
 enum Color { Red, Blue }
-function main() -> int {
+fn main() -> int {
     let Direction direction = Color.Red;
     return 0;
 }
@@ -575,7 +575,7 @@ if ./build/ylang check build/enum-mismatch.yl > build/enum-mismatch.out 2>&1; th
 fi
 cat > build/enum-unknown-variant.yl <<'EOF'
 enum Direction { North, East }
-function main() -> int {
+fn main() -> int {
     let Direction direction = Direction.West;
     return 0;
 }
@@ -596,7 +596,7 @@ diff -u build/enums-example.expected build/enums-example.out
 cat > build/enum-wrong-match-type.yl <<'EOF'
 enum Direction { North, East }
 enum Color { Red, Blue }
-function main() -> int {
+fn main() -> int {
     let Direction facing = Direction.North;
     match (facing) {
         Color.Red -> { print("red"); }
@@ -613,7 +613,7 @@ grep -q 'E2058' build/enum-wrong-match-type.out
 
 cat > build/enum-duplicate-arm.yl <<'EOF'
 enum Direction { North, East }
-function main() -> int {
+fn main() -> int {
     let Direction facing = Direction.North;
     match (facing) {
         Direction.North -> { print("north"); }
@@ -639,7 +639,7 @@ diff -u build/structs-example.expected build/structs-example.out
 # Mutable struct field assignment: update one field without changing the others.
 cat > build/struct-field-assignment.yl <<'EOF'
 struct Point { int x; int y; }
-function main() -> int {
+fn main() -> int {
     let Point p = Point(2, 7);
     p.x = 12;
     p.x += 3;
@@ -658,7 +658,7 @@ diff -u build/struct-field-assignment.expected build/struct-field-assignment.out
 cat > build/nested-struct-field-assignment.yl <<'EOF'
 struct Position { int x; int y; }
 struct Hero { Position pos; int hp; }
-function main() -> int {
+fn main() -> int {
     let Hero hero = Hero(Position(2, 7), 100);
     hero.pos.x = 9;
     hero.pos.y += 3;
@@ -677,7 +677,7 @@ diff -u build/nested-struct-field-assignment.expected build/nested-struct-field-
 cat > build/nested-struct-field-type-error.yl <<'EOF'
 struct Position { int x; int y; }
 struct Hero { Position pos; }
-function main() -> int {
+fn main() -> int {
     let Hero hero = Hero(Position(2, 7));
     hero.pos.x = "wrong";
     return 0;
@@ -691,7 +691,7 @@ grep -q 'E2001' build/nested-struct-field-type-error.out
 
 cat > build/struct-wrong-field-type.yl <<'EOF'
 struct Point { int x; string label; }
-function main() -> int {
+fn main() -> int {
     let Point p = Point("wrong", "origin");
     print(p.x);
     return 0;
@@ -705,7 +705,7 @@ grep -q 'E2075' build/struct-wrong-field-type.out
 
 cat > build/struct-unknown-field.yl <<'EOF'
 struct Point { int x; int y; }
-function main() -> int {
+fn main() -> int {
     let Point p = Point(1, 2);
     print(p.z);
     return 0;
@@ -719,7 +719,7 @@ grep -q 'E2077' build/struct-unknown-field.out
 
 cat > build/struct-arity-error.yl <<'EOF'
 struct Point { int x; int y; }
-function main() -> int {
+fn main() -> int {
     let Point p = Point(1);
     print(p.x);
     return 0;
@@ -844,12 +844,12 @@ while [ "$i" -lt 1000 ]; do
     printf 'let int global_%s = %s;\n' "$i" "$i" >> build/many-globals.yl
     i=$((i + 1))
 done
-printf 'function main() -> int { return 0; }\n' >> build/many-globals.yl
+printf 'fn main() -> int { return 0; }\n' >> build/many-globals.yl
 ./build/ylang check build/many-globals.yl >/dev/null
 
 # Refuse attempts to overwrite an input file through output commands.
 cat > build/same-path.yl <<'EOF'
-function main() -> int {
+fn main() -> int {
     return 0;
 }
 EOF
@@ -880,7 +880,7 @@ grep -q 'This parameter expects an array argument' build/array-param-type-error.
 cat > build/literals-comments.yl <<'EOF'
 /* Block comments may
    span multiple lines. */
-function main() -> int {
+fn main() -> int {
     let int hex = 0xFF;
     let float scientific = 1e3;
     let float tiny = 2.5e-4;
@@ -893,7 +893,7 @@ EOF
 ./build/test-literals-comments > build/literals-comments.out
 grep -q '255 1000 0.00025' build/literals-comments.out
 cat > build/unterminated-comment.yl <<'EOF'
-function main() -> int {
+fn main() -> int {
     /* never closed
     return 0;
 }
@@ -906,7 +906,7 @@ grep -q 'Unterminated block comment' build/unterminated-comment.out
 
 # Compound addition and postfix increment.
 cat > build/compound-operators.yl <<'EOF'
-function main() -> int {
+fn main() -> int {
     let int count = 2;
     count += 3;
     count++;
@@ -955,7 +955,7 @@ from "./data.yl" import system_data(), system_prefix, imported_counter, bump_cou
 function m1_private_helper() -> string {
     return "root-collision-test";
 }
-function main() -> int {
+fn main() -> int {
     print(system_data(), system_prefix);
     print(m1_private_helper());
     print(bump_counter(3), imported_counter);
@@ -977,7 +977,7 @@ function imported_value() -> int {
 EOF
 cat > build/imports/diagnostic-main.yl <<'EOF'
 from "./diagnostic-module.yl" import imported_value;
-function main() -> int {
+fn main() -> int {
     return imported_value();
 }
 EOF
@@ -996,7 +996,7 @@ fi
 # Names from a module remain private unless imported.
 cat > build/imports/private-name.yl <<'EOF'
 from "./data.yl" import system_data;
-function main() -> int {
+fn main() -> int {
     print(private_helper());
     return 0;
 }
@@ -1010,7 +1010,7 @@ grep -q 'Call to an unknown function' build/imports/private-name.out
 # Missing imported names and import cycles must produce diagnostics.
 cat > build/imports/missing-name.yl <<'EOF'
 from "./data.yl" import does_not_exist;
-function main() -> int { return 0; }
+fn main() -> int { return 0; }
 EOF
 if ./build/ylang check build/imports/missing-name.yl > build/imports/missing-name.out 2>&1; then
     echo "FAIL: an unknown imported symbol was accepted" >&2
@@ -1021,7 +1021,7 @@ grep -q 'E1024' build/imports/missing-name.out
 cat > build/imports/duplicate-import.yl <<'EOF'
 from "./data.yl" import system_data;
 from "./suffix.yl" import system_data;
-function main() -> int { return 0; }
+fn main() -> int { return 0; }
 EOF
 if ./build/ylang check build/imports/duplicate-import.yl > build/imports/duplicate-import.out 2>&1; then
     echo "FAIL: the same imported name was accepted twice" >&2
@@ -1031,7 +1031,7 @@ grep -q 'E1025' build/imports/duplicate-import.out
 
 cat > build/imports/missing-file.yl <<'EOF'
 from "./not-here.yl" import missing;
-function main() -> int { return 0; }
+fn main() -> int { return 0; }
 EOF
 if ./build/ylang check build/imports/missing-file.yl > build/imports/missing-file.out 2>&1; then
     echo "FAIL: a missing imported file was accepted" >&2
@@ -1040,12 +1040,12 @@ fi
 grep -q 'E1022' build/imports/missing-file.out
 
 cat > build/imports/contains-main.yl <<'EOF'
-function main() -> int { return 0; }
+fn main() -> int { return 0; }
 function helper() -> int { return 1; }
 EOF
 cat > build/imports/import-main.yl <<'EOF'
 from "./contains-main.yl" import helper;
-function main() -> int { return helper(); }
+fn main() -> int { return helper(); }
 EOF
 if ./build/ylang check build/imports/import-main.yl > build/imports/import-main.out 2>&1; then
     echo "FAIL: imported module entry point was accepted" >&2
@@ -1056,7 +1056,7 @@ grep -q 'E1026' build/imports/import-main.out
 cat > build/imports/cycle-a.yl <<'EOF'
 from "./cycle-b.yl" import cycle_b;
 function cycle_a() -> int { return 1; }
-function main() -> int { return cycle_b(); }
+fn main() -> int { return cycle_b(); }
 EOF
 cat > build/imports/cycle-b.yl <<'EOF'
 from "./cycle-a.yl" import cycle_a;
@@ -1081,7 +1081,7 @@ EOF
 cat > build/imports/repeated.yl <<'EOF'
 from "./reusable.yl" import reusable_one;
 from "./reusable.yl" import reusable_two, reusable_counter, increment_reusable;
-function main() -> int {
+fn main() -> int {
     print(reusable_one(), reusable_two());
     print(reusable_counter);
     print(increment_reusable(4));
@@ -1099,7 +1099,7 @@ function spaced_import() -> string { return "path with spaces"; }
 EOF
 cat > build/imports/spaced-path.yl <<'EOF'
 from "./string tools.yl" import spaced_import();
-function main() -> int {
+fn main() -> int {
     print(spaced_import());
     return 0;
 }
@@ -1112,7 +1112,7 @@ diff -u build/spaced-import.expected build/spaced-import.out
 # Dotted filenames and YLANG_PATH support reusable local libraries.
 cat > build/imports/dotted-path.yl <<'EOF'
 from reusable.yl import reusable_one;
-function main() -> int {
+fn main() -> int {
     print(reusable_one());
     return 0;
 }
@@ -1128,7 +1128,7 @@ function library_value() -> int { return 314; }
 EOF
 cat > build/imports/library-main.yl <<'EOF'
 from mathlib.yl import library_value;
-function main() -> int {
+fn main() -> int {
     print(library_value());
     return 0;
 }
@@ -1146,7 +1146,7 @@ EOF
 cat > build/imports/repeated-asm.yl <<'EOF'
 from "./reusable-functions.yl" import reusable_one;
 from "./reusable-functions.yl" import reusable_two;
-function main() -> int {
+fn main() -> int {
     print(reusable_one(), reusable_two());
     return 0;
 }
@@ -1180,7 +1180,7 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
 
     # Empty string literals must emit exactly one terminator and print a blank line.
     cat > build/asm-empty-string.yl <<'EOF'
-function main() -> int {
+fn main() -> int {
     print("");
     return 0;
 }
@@ -1270,7 +1270,7 @@ grep -q 'ylgui_api_draw_rect' build/dodge-generated.c
 grep -q 'game2d_rects_overlap' build/dodge-generated.c
 
 cat > build/gui-key-type-error.yl <<'EOF'
-function main() -> int {
+fn main() -> int {
     gui.key_down(123);
     return 0;
 }
@@ -1535,7 +1535,7 @@ cat > build/bindings-v3.yl <<'EOF'
 let GLOBAL_LIMIT: int = 40;
 let mut global_total: int = 1;
 
-function main() -> int {
+fn main() -> int {
     let fixed: int = GLOBAL_LIMIT;
     let mut counter: int;
     counter = 1;
@@ -1560,8 +1560,18 @@ grep -q 'W2301' build/bindings-v3-check.out
 printf '40 4 2 5\n' > build/bindings-v3.expected
 diff -u build/bindings-v3.expected build/bindings-v3.out
 
-cat > build/immutable-binding-error.yl <<'EOF'
+# New function declarations use fn; the legacy spelling remains accepted with W2302.
+cat > build/legacy-function.yl <<'EOF'
 function main() -> int {
+    return 0;
+}
+EOF
+./build/ylang check build/legacy-function.yl > build/legacy-function-check.out 2>&1
+grep -q 'W2302' build/legacy-function-check.out
+
+
+cat > build/immutable-binding-error.yl <<'EOF'
+fn main() -> int {
     let score: int = 10;
     score = 11;
     return score;
@@ -1579,7 +1589,7 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
 let BASE: int = 40;
 let mut counter: int = 1;
 let mut greeting: string = "hello";
-function main() -> int {
+fn main() -> int {
     counter += 1;
     greeting = "YLang";
     print(BASE, counter, greeting);
@@ -1602,7 +1612,7 @@ function mark(int value) -> bool {
     print(value);
     return true;
 }
-function main() -> int {
+fn main() -> int {
     let bool a = false and mark(1);
     let bool b = true or mark(2);
     let bool c = true and mark(3);
@@ -1630,7 +1640,7 @@ function emit_value(int value) -> int {
 function sum_eight(int a, int b, int c, int d, int e, int f, int g, int h) -> int {
     return a + b + c + d + e + f + g + h;
 }
-function main() -> int {
+fn main() -> int {
     print(sum_eight(
         emit_value(1), emit_value(2), emit_value(3), emit_value(4),
         emit_value(5), emit_value(6), emit_value(7), emit_value(8)
