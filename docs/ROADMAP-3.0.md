@@ -135,16 +135,15 @@ Implemented on the development branch:
 - System V AMD64 integer-class argument passing: the first six arguments use registers and additional scalar arguments use the caller's stack area with 16-byte call-site alignment.
 - Differential coverage for globals, short-circuit evaluation, and nested calls with eight arguments.
 
-Remaining limitations include floating-point values and formatting, arrays and bounds checks, f-strings, string comparisons, structs, owned strings, general standard-library calls, and GUI/network APIs.
+The current branch now also supports fixed-size local/global arrays, indexed reads and writes, negative/upper-bound traps, and pointer-plus-length array parameters, with C/NASM parity coverage. Remaining limitations include floating-point values and formatting, f-strings, string comparisons, structs, owned strings, payload enums, broad standard-library calls, and GUI/network APIs.
 
 Next priorities:
-1. Fixed-size arrays, array indexing, array parameters, and bounds-check parity.
-2. Floating-point arithmetic and formatting using the x86-64 SSE2 ABI.
-3. String comparisons, formatting, and UTF-8-safe runtime helpers.
+1. Floating-point arithmetic, argument passing, and formatting using the x86-64 SSE2 ABI.
+2. String comparisons, formatting, and UTF-8-safe runtime helpers.
+3. Struct values, payload enums, and stable module/import parity.
 4. More standard-library operations with explicit runtime contracts.
-5. Struct values, payload enums, and module/import parity.
-6. Ownership-aware cleanup and error propagation only after the runtime semantics are defined.
-7. Precise unsupported-feature diagnostics for anything that remains outside the backend subset.
+5. Ownership-aware cleanup and error propagation after runtime semantics are defined.
+6. Complete the test-enforced capability matrix and precise rejection diagnostics for constructs outside the NASM subset.
 
 Every expanded feature requires C/NASM differential tests for standard output, error behavior, and exit status. Do not mark a feature supported because assembly emission alone succeeds; the assembled executable must run correctly.
 
