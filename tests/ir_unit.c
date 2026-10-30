@@ -86,11 +86,21 @@ static void reject_duplicate_ssa_across_blocks(void)
     assert(strstr(error,"unique across the function")!=NULL);
 }
 
+
+static void reject_invalid_return_type(void)
+{
+    const YIRInstruction ins[]={ {.opcode=YIR_OP_RETURN} };
+    const YIRBlock block={.id=0,.instructions=ins,.instruction_count=1};
+    const YIRFunction fn={.name="bad",.return_type=(YIRType)-1,.blocks=&block,.block_count=1};
+    char error[160]; assert(!yir_verify_function(&fn,error,sizeof(error)));
+    assert(strstr(error,"invalid return type")!=NULL);
+}
+
 int main(void)
 {
     valid_arithmetic_return(); reject_use_before_definition();
     reject_missing_terminator(); reject_wrong_return_type();
     reject_missing_branch_target(); reject_terminator_result();
-    reject_duplicate_ssa_across_blocks();
+    reject_duplicate_ssa_across_blocks(); reject_invalid_return_type();
     puts("YLang IR verifier tests passed"); return 0;
 }
