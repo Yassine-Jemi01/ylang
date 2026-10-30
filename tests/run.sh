@@ -179,6 +179,19 @@ diff -u tests/expected-typo-print.txt build/test-typo-print.out
 ./build/ylang fix tests/declared-pritn.yl -o build/declared-pritn-fixed.yl > build/declared-fix.out 2>&1
 cmp tests/declared-pritn.yl build/declared-pritn-fixed.yl
 
+# The same safe-fix protection applies to legacy function declarations.
+cat > build/legacy-declared-pritn.yl <<'EOF'
+function pritn(int value) -> int {
+    return value;
+}
+function main() -> int {
+    print(pritn(16));
+    return 0;
+}
+EOF
+./build/ylang fix build/legacy-declared-pritn.yl -o build/legacy-declared-pritn-fixed.yl >/dev/null 2>&1
+cmp build/legacy-declared-pritn.yl build/legacy-declared-pritn-fixed.yl
+
 ./build/ylang build examples/types.yl -o build/test-types >/dev/null
 ./build/test-types > build/test-types.out
 diff -u tests/expected-types.txt build/test-types.out

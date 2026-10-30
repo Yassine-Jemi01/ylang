@@ -84,7 +84,8 @@ static int run_safe_fixes(const char *source, const char *input_path,
 
     bool declares_pritn = false;
     for (size_t i = 0; i + 1 < tokens.count; i++) {
-        if (tokens.items[i].type == TOKEN_FUNCTION &&
+        if ((tokens.items[i].type == TOKEN_FN ||
+             tokens.items[i].type == TOKEN_FUNCTION) &&
             tokens.items[i + 1].type == TOKEN_IDENTIFIER &&
             token_spells(&tokens.items[i + 1], "pritn")) {
             declares_pritn = true;
