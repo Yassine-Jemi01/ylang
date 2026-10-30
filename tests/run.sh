@@ -878,7 +878,7 @@ fn main() -> int {
         index += 1;
     }
     if (total == 21) {
-        print(total);
+        print(total, true, 2.5);
         return add(total, 21);
     } else {
         return 1;
@@ -893,7 +893,7 @@ EOF
         ./build/ylang build-llvm build/llvm-scalar.yl -o build/llvm-scalar >/dev/null
         if ./build/llvm-scalar > build/llvm-scalar.out; then llvm_status=0; else llvm_status=$?; fi
         [ "$llvm_status" -eq 42 ]
-        printf '21\n' > build/llvm-scalar.expected
+        printf '21 true 2.5\n' > build/llvm-scalar.expected
         diff -u build/llvm-scalar.expected build/llvm-scalar.out
 
         cat > build/llvm-overflow.yl <<'EOF'
