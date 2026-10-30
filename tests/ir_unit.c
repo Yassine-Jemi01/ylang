@@ -158,6 +158,8 @@ int main(void)
     valid_arithmetic_return(); reject_use_before_definition();
     reject_missing_terminator(); reject_wrong_return_type();
     reject_missing_branch_target(); reject_terminator_result();
-    reject_duplicate_ssa_across_blocks(); reject_invalid_return_type();\n    accept_value_from_dominating_block(); reject_value_not_dominating_join();\n    reject_unreachable_block();
+    reject_duplicate_ssa_across_blocks(); reject_invalid_return_type();
+    accept_value_from_dominating_block(); reject_value_not_dominating_join();
+    reject_unreachable_block();
     puts("YLang IR verifier tests passed"); return 0;
 }
