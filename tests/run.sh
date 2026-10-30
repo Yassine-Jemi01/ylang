@@ -908,6 +908,22 @@ EOF
         [ "$llvm_object_status" -eq 42 ]
         diff -u build/llvm-scalar.expected build/llvm-scalar-object.out
 
+        # Unsupported lowering must preserve an existing object at the output path.
+        cat > build/llvm-object-unsupported.yl <<'EOF'
+fn main() -> int {
+    let message: string = "not in the scalar LLVM subset";
+    print(message);
+    return 0;
+}
+EOF
+        printf 'preserve-existing-object\n' > build/llvm-object-preserve.o
+        printf 'preserve-existing-object\n' > build/llvm-object-preserve.expected
+        if ./build/ylang emit-obj build/llvm-object-unsupported.yl -o build/llvm-object-preserve.o > build/llvm-object-unsupported.out 2>&1; then
+            echo "FAIL: unsupported string lowering produced an LLVM object" >&2
+            exit 1
+        fi
+        diff -u build/llvm-object-preserve.expected build/llvm-object-preserve.o
+
                 cat > build/llvm-globals.yl <<'EOF'
 let BASE: int = 10;
 let ENABLED: bool = true;
