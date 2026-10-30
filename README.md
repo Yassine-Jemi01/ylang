@@ -174,7 +174,7 @@ Typed unit enums and exhaustive `match` statements are available as an experimen
 ```yl
 enum Direction { North, East, South, West }
 
-function main() -> int {
+fn main() -> int {
     let Direction facing = Direction.North;
     match (facing) {
         Direction.North -> { print("north"); }
@@ -195,7 +195,7 @@ YLang can import named functions and global variables from another source file. 
 ```yl
 from "./math_tools.yl" import double_value;
 
-function main() -> int {
+fn main() -> int {
     print(double_value(21));
     return 0;
 }
@@ -280,11 +280,11 @@ YSPM manages Linux system packages, not project-local YLang module dependencies.
 let const int MAX = 100;
 let int count = 0;
 
-function add(int a, int b) -> int {
+fn add(int a, int b) -> int {
     return a + b;
 }
 
-function main() -> int {
+fn main() -> int {
     let string product = "YLang";
     print(f"Welcome to {product}");
     print("Sum:", add(10, 20));
@@ -320,7 +320,7 @@ Fixed-size arrays use an inferred length, homogeneous initializers, and bounds-c
 ```ylang
 let int scores[] = [10, 20, 30];
 
-function main() -> int {
+fn main() -> int {
     scores[1] = 42;
     print(scores[0], scores[1], scores[2]);
     return 0;
