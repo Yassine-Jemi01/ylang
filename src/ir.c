@@ -1,8 +1,14 @@
 #include "ylang/ir.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
-typedef struct { uint32_t id; YIRType type; } LocalValue;
+typedef struct {
+    uint32_t id;
+    YIRType type;
+    size_t block_index;
+    size_t instruction_index;
+} ValueDef;
 
 static bool fail(char *error, size_t capacity, const char *message)
 {
@@ -10,122 +16,266 @@ static bool fail(char *error, size_t capacity, const char *message)
     return false;
 }
 
-static const YIRBlock *find_block(const YIRFunction *function, uint32_t id)
+static const YIRBlock *find_block(const YIRFunction *function, uint32_t id,
+                                  size_t *index)
 {
-    for (size_t i = 0; i < function->block_count; ++i)
-        if (function->blocks[i].id == id) return &function->blocks[i];
-    return NULL;
-}
-
-static bool find_value(const LocalValue *values, size_t count, uint32_t id, YIRType *type)
-{
-    for (size_t i = 0; i < count; ++i) {
-        if (values[i].id == id) { if (type) *type = values[i].type; return true; }
+    for (size_t i = 0; i < function->block_count; ++i) {
+        if (function->blocks[i].id == id) {
+            if (index) *index = i;
+            return &function->blocks[i];
+        }
     }
-    return false;
+    return NULL;
 }
 
 static bool is_terminator(YIROpcode opcode)
 {
-    return opcode == YIR_OP_BRANCH || opcode == YIR_OP_COND_BRANCH || opcode == YIR_OP_RETURN;
+    return opcode == YIR_OP_BRANCH || opcode == YIR_OP_COND_BRANCH ||
+           opcode == YIR_OP_RETURN;
 }
 
-bool yir_verify_function(const YIRFunction *function, char *error, size_t error_capacity)
+static bool valid_type(YIRType type)
+{
+    return (int)type >= (int)YIR_TYPE_VOID &&
+           (int)type <= (int)YIR_TYPE_PTR;
+}
+
+static const ValueDef *find_value(const ValueDef *values, size_t count,
+                                  uint32_t id)
+{
+    for (size_t i = 0; i < count; ++i)
+        if (values[i].id == id) return &values[i];
+    return NULL;
+}
+
+static bool check_operand(const ValueDef *values, size_t value_count,
+                          const bool *dominators, size_t block_count,
+                          size_t use_block, size_t use_instruction,
+                          uint32_t id, YIRType expected)
+{
+    const ValueDef *definition = find_value(values, value_count, id);
+    if (!definition || definition->type != expected ||
+        definition->block_index >= block_count ||
+        !dominators[use_block * block_count + definition->block_index])
+        return false;
+    return definition->block_index != use_block ||
+           definition->instruction_index < use_instruction;
+}
+
+bool yir_verify_function(const YIRFunction *function, char *error,
+                         size_t error_capacity)
 {
     if (error && error_capacity) error[0] = '\0';
     if (!function || !function->blocks || function->block_count == 0)
-        return fail(error, error_capacity, "function must contain at least one block");
-    if ((int)function->return_type < (int)YIR_TYPE_VOID ||
-        (int)function->return_type > (int)YIR_TYPE_PTR)
+        return fail(error, error_capacity,
+                    "function must contain at least one block");
+    if (!valid_type(function->return_type))
         return fail(error, error_capacity, "function has an invalid return type");
 
-    for (size_t bi = 0; bi < function->block_count; ++bi) {
+    const size_t block_count = function->block_count;
+    if (block_count > SIZE_MAX / block_count)
+        return fail(error, error_capacity, "function has too many basic blocks");
+
+    size_t instruction_capacity = 0;
+    for (size_t bi = 0; bi < block_count; ++bi) {
         const YIRBlock *block = &function->blocks[bi];
         if (!block->instructions || block->instruction_count == 0)
-            return fail(error, error_capacity, "basic block must contain instructions");
+            return fail(error, error_capacity,
+                        "basic block must contain instructions");
+        if (block->instruction_count > SIZE_MAX - instruction_capacity)
+            return fail(error, error_capacity,
+                        "function has too many IR instructions");
+        instruction_capacity += block->instruction_count;
         for (size_t prior = 0; prior < bi; ++prior)
             if (function->blocks[prior].id == block->id)
-                return fail(error, error_capacity, "basic block IDs must be unique");
+                return fail(error, error_capacity,
+                            "basic block IDs must be unique");
+    }
 
-        /* SSA identifiers are function-wide, even while cross-block uses are
-         * deliberately forbidden by this initial IR contract. */
-        for (size_t prior_block = 0; prior_block < bi; ++prior_block) {
-            const YIRBlock *prior = &function->blocks[prior_block];
-            for (size_t prior_instruction = 0;
-                 prior_instruction < prior->instruction_count; ++prior_instruction) {
-                uint32_t prior_id = prior->instructions[prior_instruction].result_id;
-                if (!prior_id) continue;
-                for (size_t current_instruction = 0;
-                     current_instruction < block->instruction_count; ++current_instruction) {
-                    if (block->instructions[current_instruction].result_id == prior_id)
-                        return fail(error, error_capacity,
-                                    "SSA result IDs must be unique across the function");
-                }
-            }
-        }
+    ValueDef *values = calloc(instruction_capacity, sizeof(*values));
+    bool *edges = calloc(block_count * block_count, sizeof(*edges));
+    bool *reachable = calloc(block_count, sizeof(*reachable));
+    bool *dominators = calloc(block_count * block_count, sizeof(*dominators));
+    size_t *queue = calloc(block_count, sizeof(*queue));
+    if (!values || !edges || !reachable || !dominators || !queue) {
+        free(values); free(edges); free(reachable); free(dominators); free(queue);
+        return fail(error, error_capacity, "out of memory while verifying IR");
+    }
 
-        LocalValue values[4096];
-        size_t value_count = 0;
+    bool ok = false;
+    size_t value_count = 0;
+    for (size_t bi = 0; bi < block_count; ++bi) {
+        const YIRBlock *block = &function->blocks[bi];
         for (size_t ii = 0; ii < block->instruction_count; ++ii) {
-            const YIRInstruction *instruction = &block->instructions[ii];
+            const YIRInstruction *ins = &block->instructions[ii];
             bool last = ii + 1 == block->instruction_count;
-            YIRType lhs_type = YIR_TYPE_VOID, rhs_type = YIR_TYPE_VOID;
-            if (is_terminator(instruction->opcode) != last)
-                return fail(error, error_capacity, "each block must end with exactly one terminator");
-            if (is_terminator(instruction->opcode) && instruction->result_id != 0)
-                return fail(error, error_capacity, "terminators cannot define SSA values");
-
-            switch (instruction->opcode) {
-                case YIR_OP_CONST_I64:
-                    if (!instruction->result_id || instruction->result_type != YIR_TYPE_I64)
-                        return fail(error, error_capacity, "const.i64 requires a nonzero i64 result");
-                    break;
-                case YIR_OP_ADD_I64: case YIR_OP_SUB_I64: case YIR_OP_MUL_I64:
-                    if (!instruction->result_id || instruction->result_type != YIR_TYPE_I64 ||
-                        !find_value(values, value_count, instruction->lhs, &lhs_type) ||
-                        !find_value(values, value_count, instruction->rhs, &rhs_type) ||
-                        lhs_type != YIR_TYPE_I64 || rhs_type != YIR_TYPE_I64)
-                        return fail(error, error_capacity, "integer arithmetic requires earlier i64 operands and an i64 result");
-                    break;
-                case YIR_OP_EQ_I64:
-                    if (!instruction->result_id || instruction->result_type != YIR_TYPE_BOOL ||
-                        !find_value(values, value_count, instruction->lhs, &lhs_type) ||
-                        !find_value(values, value_count, instruction->rhs, &rhs_type) ||
-                        lhs_type != YIR_TYPE_I64 || rhs_type != YIR_TYPE_I64)
-                        return fail(error, error_capacity, "eq.i64 requires earlier i64 operands and a bool result");
-                    break;
-                case YIR_OP_BRANCH:
-                    if (!find_block(function, instruction->target))
-                        return fail(error, error_capacity, "branch target does not exist");
-                    break;
-                case YIR_OP_COND_BRANCH:
-                    if (!find_value(values, value_count, instruction->lhs, &lhs_type) || lhs_type != YIR_TYPE_BOOL ||
-                        !find_block(function, instruction->target) || !find_block(function, instruction->false_target))
-                        return fail(error, error_capacity, "conditional branch requires an earlier bool and two valid targets");
-                    break;
-                case YIR_OP_RETURN:
-                    if (function->return_type == YIR_TYPE_VOID) {
-                        if (instruction->lhs != 0)
-                            return fail(error, error_capacity, "void return cannot carry a value");
-                    } else if (!instruction->lhs ||
-                               !find_value(values, value_count, instruction->lhs, &lhs_type) ||
-                               lhs_type != function->return_type) {
-                        return fail(error, error_capacity, "return value is missing or has the wrong type");
-                    }
-                    break;
-                default:
-                    return fail(error, error_capacity, "unknown IR opcode");
+            if (is_terminator(ins->opcode) != last) {
+                (void)fail(error, error_capacity,
+                           "each block must end with exactly one terminator");
+                goto cleanup;
             }
-
-            if (instruction->result_id) {
-                for (size_t vi = 0; vi < value_count; ++vi)
-                    if (values[vi].id == instruction->result_id)
-                        return fail(error, error_capacity, "SSA result IDs must be unique within a block");
-                if (value_count == sizeof(values) / sizeof(values[0]))
-                    return fail(error, error_capacity, "basic block exceeds verifier limit (4096 values)");
-                values[value_count++] = (LocalValue){instruction->result_id, instruction->result_type};
+            if (is_terminator(ins->opcode) && ins->result_id != 0) {
+                (void)fail(error, error_capacity,
+                           "terminators cannot define SSA values");
+                goto cleanup;
+            }
+            if (!is_terminator(ins->opcode) && ins->result_id != 0) {
+                if (!valid_type(ins->result_type) ||
+                    ins->result_type == YIR_TYPE_VOID) {
+                    (void)fail(error, error_capacity,
+                               "SSA results must have a valid non-void type");
+                    goto cleanup;
+                }
+                if (find_value(values, value_count, ins->result_id)) {
+                    (void)fail(error, error_capacity,
+                               "SSA result IDs must be unique across the function");
+                    goto cleanup;
+                }
+                values[value_count++] = (ValueDef){
+                    ins->result_id, ins->result_type, bi, ii
+                };
             }
         }
     }
-    return true;
+
+    /* Build the control-flow graph and reject missing destinations early. */
+    for (size_t bi = 0; bi < block_count; ++bi) {
+        const YIRBlock *block = &function->blocks[bi];
+        const YIRInstruction *term =
+            &block->instructions[block->instruction_count - 1];
+        if (term->opcode == YIR_OP_BRANCH ||
+            term->opcode == YIR_OP_COND_BRANCH) {
+            size_t target = 0;
+            if (!find_block(function, term->target, &target)) {
+                (void)fail(error, error_capacity,
+                           "branch target does not exist");
+                goto cleanup;
+            }
+            edges[bi * block_count + target] = true;
+        }
+        if (term->opcode == YIR_OP_COND_BRANCH) {
+            size_t target = 0;
+            if (!find_block(function, term->false_target, &target)) {
+                (void)fail(error, error_capacity,
+                           "conditional branch target does not exist");
+                goto cleanup;
+            }
+            edges[bi * block_count + target] = true;
+        }
+    }
+
+    /* The first block is the function entry. Every block must be reachable. */
+    size_t head = 0, tail = 0;
+    reachable[0] = true;
+    queue[tail++] = 0;
+    while (head < tail) {
+        size_t from = queue[head++];
+        for (size_t to = 0; to < block_count; ++to) {
+            if (edges[from * block_count + to] && !reachable[to]) {
+                reachable[to] = true;
+                queue[tail++] = to;
+            }
+        }
+    }
+    for (size_t bi = 0; bi < block_count; ++bi) {
+        if (!reachable[bi]) {
+            (void)fail(error, error_capacity,
+                       "all basic blocks must be reachable from the entry block");
+            goto cleanup;
+        }
+    }
+
+    /* Iterative classical dominator computation over the reachable CFG. */
+    for (size_t bi = 0; bi < block_count; ++bi)
+        for (size_t d = 0; d < block_count; ++d)
+            dominators[bi * block_count + d] = bi == 0 ? d == 0 : true;
+
+    bool changed;
+    do {
+        changed = false;
+        for (size_t bi = 1; bi < block_count; ++bi) {
+            bool *row = &dominators[bi * block_count];
+            for (size_t d = 0; d < block_count; ++d) {
+                bool next = true;
+                bool has_predecessor = false;
+                for (size_t pred = 0; pred < block_count; ++pred) {
+                    if (!edges[pred * block_count + bi]) continue;
+                    has_predecessor = true;
+                    next = next && dominators[pred * block_count + d];
+                }
+                next = has_predecessor && (d == bi || next);
+                if (row[d] != next) {
+                    row[d] = next;
+                    changed = true;
+                }
+            }
+        }
+    } while (changed);
+
+    /* Validate operation contracts and SSA use dominance. */
+    for (size_t bi = 0; bi < block_count; ++bi) {
+        const YIRBlock *block = &function->blocks[bi];
+        for (size_t ii = 0; ii < block->instruction_count; ++ii) {
+            const YIRInstruction *ins = &block->instructions[ii];
+            bool operands_ok = true;
+            switch (ins->opcode) {
+                case YIR_OP_CONST_I64:
+                    operands_ok = ins->result_id != 0 &&
+                                  ins->result_type == YIR_TYPE_I64;
+                    break;
+                case YIR_OP_ADD_I64:
+                case YIR_OP_SUB_I64:
+                case YIR_OP_MUL_I64:
+                    operands_ok = ins->result_id != 0 &&
+                        ins->result_type == YIR_TYPE_I64 &&
+                        check_operand(values, value_count, dominators,
+                                      block_count, bi, ii, ins->lhs,
+                                      YIR_TYPE_I64) &&
+                        check_operand(values, value_count, dominators,
+                                      block_count, bi, ii, ins->rhs,
+                                      YIR_TYPE_I64);
+                    break;
+                case YIR_OP_EQ_I64:
+                    operands_ok = ins->result_id != 0 &&
+                        ins->result_type == YIR_TYPE_BOOL &&
+                        check_operand(values, value_count, dominators,
+                                      block_count, bi, ii, ins->lhs,
+                                      YIR_TYPE_I64) &&
+                        check_operand(values, value_count, dominators,
+                                      block_count, bi, ii, ins->rhs,
+                                      YIR_TYPE_I64);
+                    break;
+                case YIR_OP_BRANCH:
+                    operands_ok = true;
+                    break;
+                case YIR_OP_COND_BRANCH:
+                    operands_ok = check_operand(values, value_count,
+                        dominators, block_count, bi, ii, ins->lhs,
+                        YIR_TYPE_BOOL);
+                    break;
+                case YIR_OP_RETURN:
+                    if (function->return_type == YIR_TYPE_VOID) {
+                        operands_ok = ins->lhs == 0;
+                    } else {
+                        operands_ok = check_operand(values, value_count,
+                            dominators, block_count, bi, ii, ins->lhs,
+                            function->return_type);
+                    }
+                    break;
+                default:
+                    operands_ok = false;
+                    break;
+            }
+            if (!operands_ok) {
+                (void)fail(error, error_capacity,
+                    "invalid opcode, result, operand type, definition order, or SSA dominance");
+                goto cleanup;
+            }
+        }
+    }
+
+    ok = true;
+cleanup:
+    free(values); free(edges); free(reachable); free(dominators); free(queue);
+    return ok;
 }
