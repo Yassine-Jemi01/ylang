@@ -298,9 +298,10 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
         return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                           "function has too many parameters for the initial IR lowerer");
     for (size_t i = 0; i < function->param_count; ++i) {
-        if (!function->params[i] || function->params[i]->type != TYPE_INT)
+        if (!function->params[i] || function->params[i]->type != TYPE_INT ||
+            function->params[i]->is_array)
             return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
-                              "only int function parameters are supported by the initial IR lowerer");
+                              "only scalar int function parameters are supported by the initial IR lowerer");
     }
     if (function->return_type != TYPE_INT &&
         function->return_type != TYPE_VOID)
