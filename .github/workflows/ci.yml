@@ -130,6 +130,7 @@ jobs:
           test "$output" = "native Windows input"
       - name: Verify the Windows run command cleans up and propagates exit status
         run: |
+          mkdir -p "build/windows smoke"
           cat > "build/windows smoke/run-exit.yl" <<'EOF'
           fn main() -> int {
               print("Windows run command");
