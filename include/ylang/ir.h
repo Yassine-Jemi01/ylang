@@ -3,8 +3,8 @@
 /*
  * Backend-neutral typed YLang IR.
  * Values are function-local SSA IDs. Parameter IDs are [0, parameter_count);
- * instruction IDs follow. Until PHI nodes and dominance analysis exist,
- * operands may only use parameters or earlier definitions in the same block.
+ * instruction IDs follow. PHI inputs name predecessor blocks explicitly;
+ * ordinary operands must be dominated by their definitions.
  */
 #include <stdbool.h>
 #include <stddef.h>
