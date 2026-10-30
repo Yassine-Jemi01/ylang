@@ -33,7 +33,8 @@ typedef enum {
     YLIR_OP_PHI,
     YLIR_OP_CALL,
     YLIR_OP_PRINT_I64, YLIR_OP_PRINT_F64, YLIR_OP_PRINT_BOOL,
-    YLIR_OP_PRINT_SPACE, YLIR_OP_PRINT_NEWLINE
+    YLIR_OP_PRINT_SPACE, YLIR_OP_PRINT_NEWLINE,
+    YLIR_OP_LOAD_GLOBAL, YLIR_OP_STORE_GLOBAL
 } YLIRInstructionKind;
 
 typedef enum {
@@ -67,6 +68,13 @@ typedef struct {
 } YLIRInstruction;
 
 typedef struct {
+    char *name;
+    YLIRType type;
+    uint64_t initial_bits;
+    bool is_mutable;
+} YLIRGlobal;
+
+typedef struct {
     YLIRTerminatorKind kind;
     YLIRValue value;
     size_t target;
@@ -97,6 +105,9 @@ struct YLIRFunction {
 };
 
 struct YLIRModule {
+    YLIRGlobal *globals;
+    size_t global_count;
+    size_t global_capacity;
     YLIRFunction **functions;
     size_t function_count;
     size_t function_capacity;
@@ -104,6 +115,12 @@ struct YLIRModule {
 
 bool ylang_ir_module_init(YLIRModule *module);
 void ylang_ir_module_destroy(YLIRModule *module);
+bool ylang_ir_add_global(YLIRModule *module, const char *name, YLIRType type,
+                         uint64_t initial_bits, bool is_mutable);
+bool ylang_ir_emit_load_global(YLIRBasicBlock *block, size_t global_index,
+                               size_t line, size_t column, YLIRValue *out);
+bool ylang_ir_emit_store_global(YLIRBasicBlock *block, size_t global_index,
+                                YLIRValue value, size_t line, size_t column);
 bool ylang_ir_add_function(YLIRModule *module, const char *name,
                            YLIRType return_type,
                            const YLIRType *parameter_types,

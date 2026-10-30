@@ -87,6 +87,8 @@ const char *ylang_ir_instruction_name(YLIRInstructionKind op)
         case YLIR_OP_PRINT_BOOL: return "print.bool";
         case YLIR_OP_PRINT_SPACE: return "print.space";
         case YLIR_OP_PRINT_NEWLINE: return "print.newline";
+        case YLIR_OP_LOAD_GLOBAL: return "load.global";
+        case YLIR_OP_STORE_GLOBAL: return "store.global";
     }
     return "unknown";
 }
@@ -114,6 +116,9 @@ bool ylang_ir_module_init(YLIRModule *module)
 void ylang_ir_module_destroy(YLIRModule *module)
 {
     if (!module) return;
+    for (size_t i = 0; i < module->global_count; i++)
+        free(module->globals[i].name);
+    free(module->globals);
     for (size_t i = 0; i < module->function_count; i++) {
         YLIRFunction *fn = module->functions[i];
         if (!fn) continue;
@@ -135,6 +140,69 @@ void ylang_ir_module_destroy(YLIRModule *module)
     }
     free(module->functions);
     memset(module, 0, sizeof(*module));
+}
+
+static bool valid_symbol_name(const char *name)
+{
+    if (!name || !*name) return false;
+    unsigned char ch = (unsigned char)name[0];
+    if (!((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || ch == '_'))
+        return false;
+    for (size_t i = 1; name[i]; i++) {
+        ch = (unsigned char)name[i];
+        if (!((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') ||
+              (ch >= '0' && ch <= '9') || ch == '_')) return false;
+    }
+    return true;
+}
+
+bool ylang_ir_add_global(YLIRModule *module, const char *name, YLIRType type,
+                         uint64_t initial_bits, bool is_mutable)
+{
+    if (!module || !valid_symbol_name(name) || !valid_type(type, false))
+        return false;
+    for (size_t i = 0; i < module->global_count; i++)
+        if (strcmp(module->globals[i].name, name) == 0) return false;
+    for (size_t i = 0; i < module->function_count; i++)
+        if (strcmp(module->functions[i]->name, name) == 0) return false;
+    if (module->global_count == module->global_capacity &&
+        !grow_vector((void **)&module->globals, &module->global_capacity,
+                     sizeof(*module->globals))) return false;
+    char *copy = copy_text(name);
+    if (!copy) return false;
+    module->globals[module->global_count++] = (YLIRGlobal){
+        .name = copy, .type = type, .initial_bits = initial_bits,
+        .is_mutable = is_mutable
+    };
+    return true;
+}
+
+bool ylang_ir_emit_load_global(YLIRBasicBlock *block, size_t global_index,
+                               size_t line, size_t column, YLIRValue *out)
+{
+    if (!block || !block->function || !block->function->module ||
+        global_index >= block->function->module->global_count) return false;
+    YLIRInstruction inst = {
+        .kind = YLIR_OP_LOAD_GLOBAL, .result = YLIR_NO_VALUE,
+        .type = block->function->module->globals[global_index].type,
+        .left = YLIR_NO_VALUE, .right = YLIR_NO_VALUE,
+        .immediate = global_index, .source_line = line, .source_column = column
+    };
+    return append_inst(block, inst, out);
+}
+
+bool ylang_ir_emit_store_global(YLIRBasicBlock *block, size_t global_index,
+                                YLIRValue value, size_t line, size_t column)
+{
+    if (!block || !block->function || !block->function->module ||
+        global_index >= block->function->module->global_count ||
+        !block->function->module->globals[global_index].is_mutable) return false;
+    YLIRInstruction inst = {
+        .kind = YLIR_OP_STORE_GLOBAL, .result = YLIR_NO_VALUE,
+        .type = YLIR_TYPE_VOID, .left = value, .right = YLIR_NO_VALUE,
+        .immediate = global_index, .source_line = line, .source_column = column
+    };
+    return append_void_inst(block, inst);
 }
 
 bool ylang_ir_add_function(YLIRModule *module, const char *name,
@@ -490,6 +558,19 @@ static bool result_type_for_instruction(FILE *out, const YLIRFunction *fn,
                                 "call references an unknown function");
             *result_type = fn->module->functions[inst->callee_index]->return_type;
             break;
+        case YLIR_OP_LOAD_GLOBAL:
+            if (!fn->module || inst->immediate >= fn->module->global_count)
+                return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                "global load references an unknown global");
+            *result_type = fn->module->globals[inst->immediate].type;
+            break;
+        case YLIR_OP_STORE_GLOBAL:
+            if (!fn->module || inst->immediate >= fn->module->global_count ||
+                !fn->module->globals[inst->immediate].is_mutable)
+                return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                "global store references an unknown or immutable global");
+            *result_type = YLIR_TYPE_VOID;
+            break;
         case YLIR_OP_PRINT_I64: case YLIR_OP_PRINT_F64:
         case YLIR_OP_PRINT_BOOL: case YLIR_OP_PRINT_SPACE:
         case YLIR_OP_PRINT_NEWLINE:
@@ -514,6 +595,7 @@ static bool collect_definition(FILE *out, const YLIRFunction *fn,
     if (!result_type_for_instruction(out, fn, block, inst, &result_type)) return false;
     if (result_type == YLIR_TYPE_VOID) {
         if ((inst->kind != YLIR_OP_CALL &&
+             inst->kind != YLIR_OP_STORE_GLOBAL &&
              inst->kind != YLIR_OP_PRINT_I64 &&
              inst->kind != YLIR_OP_PRINT_F64 &&
              inst->kind != YLIR_OP_PRINT_BOOL &&
@@ -636,6 +718,18 @@ static bool verify_instruction_operands(FILE *out, const YLIRFunction *fn,
         case YLIR_OP_PRINT_SPACE:
         case YLIR_OP_PRINT_NEWLINE:
             no_operand = true; break;
+        case YLIR_OP_LOAD_GLOBAL:
+            if (!fn->module || inst->immediate >= fn->module->global_count)
+                return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                "global load references an unknown global");
+            no_operand = true; break;
+        case YLIR_OP_STORE_GLOBAL:
+            if (!fn->module || inst->immediate >= fn->module->global_count ||
+                !fn->module->globals[inst->immediate].is_mutable)
+                return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                "global store references an unknown or immutable global");
+            operand_type = fn->module->globals[inst->immediate].type;
+            unary = true; break;
         case YLIR_OP_PHI:
             return ir_error(out, fn, block, inst->source_line, inst->source_column,
                             "internal verifier error: PHI reached ordinary operand pass");
@@ -1043,8 +1137,18 @@ static bool verify_function(FILE *out, const YLIRFunction *fn)
 }
 bool ylang_ir_verify(const YLIRModule *module, FILE *diagnostics)
 {
-    if (!module || (module->function_count && !module->functions))
+    if (!module || (module->function_count && !module->functions) ||
+        (module->global_count && !module->globals))
         return ir_error(diagnostics, NULL, NULL, 0U, 0U, "invalid module storage");
+    for (size_t i = 0; i < module->global_count; i++) {
+        const YLIRGlobal *global = &module->globals[i];
+        if (!global->name || !valid_symbol_name(global->name) ||
+            !valid_type(global->type, false))
+            return ir_error(diagnostics, NULL, NULL, 0U, 0U, "module contains an invalid global");
+        for (size_t j = 0; j < i; j++)
+            if (strcmp(global->name, module->globals[j].name) == 0)
+                return ir_error(diagnostics, NULL, NULL, 0U, 0U, "duplicate global name");
+    }
     for (size_t i = 0; i < module->function_count; i++) {
         const YLIRFunction *fn = module->functions[i];
         if (!fn || !fn->name)
@@ -1055,6 +1159,9 @@ bool ylang_ir_verify(const YLIRModule *module, FILE *diagnostics)
             if (strcmp(fn->name, module->functions[j]->name) == 0)
                 return ir_error(diagnostics, fn, NULL, 0U, 0U, "duplicate function name");
         }
+        for (size_t g = 0; g < module->global_count; g++)
+            if (strcmp(fn->name, module->globals[g].name) == 0)
+                return ir_error(diagnostics, fn, NULL, 0U, 0U, "global/function symbol collision");
         if (!verify_function(diagnostics, fn)) return false;
     }
     return true;
