@@ -669,12 +669,12 @@ static Stmt *parse_variable(Parser *p, bool global)
     }
     Token name_token = consume(p, TOKEN_IDENTIFIER,
         "Expected a variable name after the type.",
-        "For example: let int count = 0;");
+        "For example: let mut int count = 0;");
     bool is_array = false;
     if (match(p, TOKEN_LEFT_BRACKET)) {
         is_array = true;
         consume(p, TOKEN_RIGHT_BRACKET, "Array declarations use empty brackets after the name.",
-                "Use a declaration such as 'let int values[] = [1, 2, 3];'.");
+                "Use a declaration such as 'let mut int values[] = [1, 2, 3];'.");
         if (is_const) {
             diagnostic(p->compiler, name_token, "error", "E2017",
                        "const arrays are not supported yet.",
@@ -691,7 +691,7 @@ static Stmt *parse_variable(Parser *p, bool global)
     if (!is_array && initializer && initializer->kind == EXPR_ARRAY) {
         diagnostic(p->compiler, name_token, "error", "E2019",
                    "An array literal requires an array declaration.",
-                   "Declare the variable with empty brackets after its name, such as 'let int values[] = [1, 2, 3];'.");
+                   "Declare the variable with empty brackets after its name, such as 'let mut int values[] = [1, 2, 3];'.");
     }
     if (is_const && !initializer) {
         diagnostic(p->compiler, name_token, "error", "E2003",
