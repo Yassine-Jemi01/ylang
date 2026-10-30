@@ -77,6 +77,7 @@ jobs:
             mingw-w64-x86_64-SDL2
             mingw-w64-x86_64-curl
             mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-gdb
             make
             python
       - name: Verify generated runtime template
@@ -131,17 +132,20 @@ jobs:
         run: |
           export YLANG_TEST_API_KEY=test-token
           python tests/run_http_integration.py
-      - name: Reject unsupported Windows interactive debugger cleanly
+      - name: Launch the native Windows debugger through MinGW-w64 GDB
         run: |
-          if ./build/ylang.exe debug tests/debug-source-map.yl -o build/windows-smoke/debug-unsupported.exe > build/windows-smoke/debug.out 2>&1; then
-            echo "FAIL: Windows interactive debugger unexpectedly claimed support" >&2
-            exit 1
-          else
-            status=$?
-            test "$status" -eq 64
-          fi
-          grep -q "interactive debugging is not implemented on Windows" build/windows-smoke/debug.out
-          test ! -e build/windows-smoke/debug-unsupported.exe
+          mkdir -p "build/windows debugger"
+          cat > "build/windows debugger/debug.yl" <<'EOF'
+          fn main() -> int {
+              let int answer: int = 40 + 2;
+              print(answer);
+              return 0;
+          }
+          EOF
+          printf 'quit\n' | ./build/ylang.exe debug "build/windows debugger/debug.yl" -o "build/windows debugger/debug.exe" > "build/windows debugger/debug.out" 2>&1
+          test -f "build/windows debugger/debug.exe"
+          grep -Fq "Build succeeded: build/windows debugger/debug.exe" "build/windows debugger/debug.out"
+          grep -Fq "Reading symbols from" "build/windows debugger/debug.out"
 
   yspm-package-smoke:
     name: Build and inspect YLang .yspkg package

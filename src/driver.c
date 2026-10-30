@@ -957,8 +957,8 @@ int ylang_run(const char *command, const char *input_path,
             printf("Build succeeded: %s\n", target);
             if (debug_mode) {
 #ifdef _WIN32
-                fputs("ylang: the interactive debug command is not yet supported on Windows; use a Linux GDB or macOS LLDB build.\n", stderr);
-                result = 64;
+                char *debugger_args[] = { "gdb", "-q", "--args", (char *)target, NULL };
+                result = run_external(debugger_args);
 #elif defined(__APPLE__)
                 char *debugger_args[] = { "lldb", "--", (char *)target, NULL };
                 result = run_external(debugger_args);

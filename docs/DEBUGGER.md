@@ -6,7 +6,7 @@
 
 - Linux: GCC or Clang and GDB.
 - macOS: Clang and LLDB from Xcode Command Line Tools.
-- Windows: the interactive `ylang debug` command is not implemented yet.
+- Windows: MinGW-w64 GCC and GDB from the MSYS2 MINGW64 environment; both must be available on `PATH`.
 
 ## Start a debug session
 
@@ -17,7 +17,7 @@ make
 ./build/ylang debug examples/hello.yl -o build/hello-debug
 ```
 
-The command performs the normal semantic checks, generates C with YLang source-line directives, compiles with `-O0`, full debug symbols, and frame pointers, then opens GDB (Linux) or LLDB (macOS). The ordinary `ylang build` optimization settings are unchanged.
+The command performs the normal semantic checks, generates C with YLang source-line directives, compiles with `-O0`, full debug symbols, and frame pointers, then opens GDB on Linux and MinGW-w64 Windows, or LLDB on macOS. The ordinary `ylang build` optimization settings are unchanged.
 
 ## GDB commands
 
@@ -55,7 +55,7 @@ Adjust the source filename and line for the program being debugged.
 - Locals may use generated C names; scope and optimized-out values may not always resemble a higher-level language debugger.
 - The generated program uses the C backend. The NASM backend has no matching source-level debug contract.
 - The VS Code command starts an interactive debugger in the integrated terminal. Breakpoint gutter integration, a dedicated Variables/Call Stack UI, and Debug Adapter Protocol support are future work.
-- The Windows interactive debugger path is not implemented. Do not infer macOS/Windows parity from Linux test results.
+- Windows debugger support is scoped to the documented MSYS2 MINGW64 + MinGW-w64 GDB toolchain. MSVC and Windows ARM64 are not covered by this support path.
 - Debugging executes the target with the current user's privileges; it is not a sandbox.
 
 Report failures with the platform, GDB/LLDB version, exact command, a small `.yl` reproducer, and the output.

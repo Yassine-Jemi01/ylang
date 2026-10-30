@@ -81,7 +81,7 @@ The initial GUI runtime supports one active window, event polling, keyboard/mous
 - The current Windows path is not yet stable; the existing CI job is a smoke suite, not full regression or feature-parity coverage.
 - MSVC is not supported by this build recipe; use the documented MinGW-w64 GCC toolchain.
 - NASM is intentionally Linux x86-64-only and supports a narrower, explicitly documented subset.
-- Some developer tests, debugger workflows, and installation scripts still need Windows-specific implementation and validation.
+- The interactive C-backend debugger now launches MinGW-w64 GDB; remaining editor/debug-adapter workflows and installation scripts still need Windows-specific implementation and validation.
 - System-wide Windows packaging and clean install/upgrade/uninstall tests are not complete.
 
 ## YLang 3.0 stable-support acceptance
@@ -92,7 +92,7 @@ Before this page can describe Windows support as stable, the 3.0 release candida
 - Native build/run tests for compiler-generated executables, imports, paths with spaces, environment variables, standard streams, process exit codes, and filesystem behavior.
 - SDL2 GUI/Game2D and libcurl HTTP build/runtime tests using the documented MSYS2 packages.
 - Ownership cleanup, error handling, and runtime tests on Windows, including sanitizer-equivalent checks where available.
-- Interactive CLI debugging through the documented Windows GDB setup.
+- Interactive CLI debugging through the documented MSYS2 MINGW64 / MinGW-w64 GDB setup, including a debugger launch test with a source and output path containing spaces.
 - LLVM object generation and native linking for the supported Windows target.
 - Installation, upgrade, removal, and documentation checks from a clean Windows environment.
 
