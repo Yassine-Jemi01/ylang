@@ -5,7 +5,7 @@ endif
 syn case match
 
 " Core declarations and control flow, including YLang 2.0 constructs.
-syn keyword ylangKeyword fn function return let const if else loop while for break continue and or not await
+syn keyword ylangKeyword fn function defer return let const if else loop while for break continue and or not await
 syn keyword ylangDeclaration struct enum match from import
 syn keyword ylangBoolean true false
 syn keyword ylangType int float bool char string void http_task

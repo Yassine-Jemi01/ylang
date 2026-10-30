@@ -1481,10 +1481,15 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                                "Pass scalar values to the deferred cleanup function.");
                     break;
                 }
-                if (callee->params[i]->type == TYPE_OWNED_STRING) {
+                YType argument_type = call->as.call.args[i]->type;
+                if (argument_type == TYPE_STRING ||
+                    argument_type == TYPE_BORROWED_STRING ||
+                    argument_type == TYPE_OWNED_STRING ||
+                    argument_type == TYPE_HTTP_TASK ||
+                    argument_type >= TYPE_STRUCT_BASE) {
                     diagnostic(c, stmt->token, "error", "E2133",
-                               "Deferred calls cannot capture owned_string parameters yet.",
-                               "Use a scalar or borrowed value until ownership-aware defer capture is implemented.");
+                               "defer currently captures only scalar values.",
+                               "Pass an int, float, bool, char, or enum value; string and aggregate captures need ownership-aware support.");
                     break;
                 }
             }

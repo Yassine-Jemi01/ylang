@@ -1353,7 +1353,7 @@ static void register_deferred_call(CodegenContext *ctx, Stmt *stmt,
     if (ctx->scope_count == 0U || !stmt->as.defer_call ||
         stmt->as.defer_call->kind != EXPR_CALL ||
         !stmt->as.defer_call->as.call.function) {
-        fputs("ylang: internal error: invalid deferred call reached code generation.\\n", stderr);
+        fputs("ylang: internal error: invalid deferred call reached code generation.\n", stderr);
         exit(70);
     }
 
@@ -1397,7 +1397,7 @@ static void register_deferred_call(CodegenContext *ctx, Stmt *stmt,
                 c_base_type(ctx->compiler, call->as.call.args[i]->type),
                 deferred.argument_names[i]);
         emit_expr_to_file(ctx->out, call->as.call.args[i]);
-        fputs(";\\n", ctx->out);
+        fputs(";\n", ctx->out);
     }
 
     frame->defers[frame->defer_count++] = deferred;
