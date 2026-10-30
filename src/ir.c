@@ -92,6 +92,9 @@ bool yir_verify_function(const YIRFunction *function, char *error,
         if (block->parameter_count && !block->parameters)
             return fail(error, error_capacity,
                         "block parameters require a parameter array");
+        if (bi == 0 && block->parameter_count)
+            return fail(error, error_capacity,
+                        "entry block parameters are unsupported until function parameters are modeled");
         instruction_capacity += block->instruction_count;
         parameter_capacity += block->parameter_count;
         for (size_t prior = 0; prior < bi; ++prior)
