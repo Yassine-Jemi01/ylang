@@ -1327,6 +1327,10 @@ static void emit_runtime(AsmContext *ctx)
     static const unsigned char runtime_error_bytes[] = {
         'Y','L','a','n','g',' ','r','u','n','t','i','m','e',' ','e','r','r','o','r','\n'
     };
+    static const unsigned char array_bounds_error_bytes[] = {
+        'Y','L','a','n','g',' ','r','u','n','t','i','m','e',' ','e','r','r','o','r',':',' ',
+        'a','r','r','a','y',' ','i','n','d','e','x',' ','o','u','t',' ','o','f',' ','b','o','u','n','d','s','\n'
+    };
 
     fputs("\nsection .rodata\n", ctx->out);
     for (size_t i = 0; i < ctx->string_count; i++) {
@@ -1342,6 +1346,8 @@ static void emit_runtime(AsmContext *ctx)
     emit_bytes(ctx->out, "yl_newline", newline_bytes, sizeof(newline_bytes), true);
     emit_bytes(ctx->out, "yl_runtime_error_text", runtime_error_bytes,
                sizeof(runtime_error_bytes), false);
+    emit_bytes(ctx->out, "yl_array_bounds_error_text", array_bounds_error_bytes,
+               sizeof(array_bounds_error_bytes), false);
 
     fputs(
         "\nsection .text\n"
@@ -1419,6 +1425,19 @@ static void emit_runtime(AsmContext *ctx)
         "    mov edi, 2\n"
         "    lea rsi, [rel yl_runtime_error_text]\n"
         "    mov edx, 20\n"
+        "    syscall\n"
+        "    mov eax, 60\n"
+        "    mov edi, 70\n"
+        "    syscall\n",
+        ctx->out);
+    fputs(
+        "\n__yl_array_bounds_error:\n"
+        "    mov eax, 1\n"
+        "    mov edi, 2\n"
+        "    lea rsi, [rel yl_array_bounds_error_text]\n",
+        ctx->out);
+    fprintf(ctx->out, "    mov edx, %zu\n", sizeof(array_bounds_error_bytes));
+    fputs(
         "    syscall\n"
         "    mov eax, 60\n"
         "    mov edi, 70\n"
