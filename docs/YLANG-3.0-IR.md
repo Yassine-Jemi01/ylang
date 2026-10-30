@@ -41,7 +41,7 @@ This IR is not ready to replace the current AST-to-C path. Full calling-conventi
 
 ## AST lowering scope
 
-`yir_lower_function` currently accepts `int` and `void` functions with zero or more `int` parameters. It lowers a single return statement, an empty void body, or a simple `if/else` whose branches each return. Integer expressions are limited to integer literals, negative integer literals, and `+`, `-`, and `*`. Conditions support boolean literals and integer comparisons (`==`, `!=`, `<`, `<=`, `>`, `>=`). Unsupported statements and expressions fail explicitly; they are not silently translated. The resulting function is immediately passed through the verifier. `yir_destroy_function` releases the allocated IR storage.
+`yir_lower_function` currently accepts `int` and `void` functions with zero or more scalar `int` parameters. It lowers a single return statement, an empty void body, or a simple `if/else` whose branches each return. Integer expressions are limited to integer literals, negative integer literals, and `+`, `-`, and `*`. Conditions support boolean literals and integer comparisons (`==`, `!=`, `<`, `<=`, `>`, `>=`). Unsupported statements and expressions fail explicitly; they are not silently translated. The resulting function is immediately passed through the verifier. `yir_destroy_function` releases the allocated IR storage.
 
 ## Build and tests
 
