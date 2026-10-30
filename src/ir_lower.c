@@ -70,6 +70,95 @@ static char *lower_token_text(Token token)
     return text;
 }
 
+
+static size_t find_global_index(const Program *program, const VarDecl *variable)
+{
+    if (!program || !variable) return SIZE_MAX;
+    for (size_t i = 0; i < program->global_count; i++)
+        if (program->globals[i] == variable) return i;
+    return SIZE_MAX;
+}
+
+static bool lower_global_constant(Expr *expr, YLIRType type, uint64_t *bits)
+{
+    if (!bits) return false;
+    if (!expr) {
+        *bits = 0U;
+        return true;
+    }
+    if (expr->is_min_int) {
+        if (type != YLIR_TYPE_I64) return false;
+        *bits = (uint64_t)INT64_MIN;
+        return true;
+    }
+    switch (expr->kind) {
+        case EXPR_INT: {
+            char *literal = lower_token_text(expr->token);
+            if (!literal) return false;
+            char *end = NULL;
+            int base = expr->token.length > 2U && literal[0] == '0' &&
+                (literal[1] == 'x' || literal[1] == 'X') ? 16 : 10;
+            errno = 0;
+            long long value = strtoll(literal, &end, base);
+            bool okay = errno != ERANGE && end != literal && end && *end == '\0';
+            free(literal);
+            if (!okay || type != YLIR_TYPE_I64) return false;
+            *bits = (uint64_t)(int64_t)value;
+            return true;
+        }
+        case EXPR_FLOAT: {
+            char *literal = lower_token_text(expr->token);
+            if (!literal) return false;
+            char *end = NULL;
+            errno = 0;
+            double value = strtod(literal, &end);
+            bool okay = errno != ERANGE && end != literal && end && *end == '\0';
+            free(literal);
+            if (!okay || type != YLIR_TYPE_F64) return false;
+            memcpy(bits, &value, sizeof(value));
+            return true;
+        }
+        case EXPR_BOOL:
+            if (type != YLIR_TYPE_BOOL) return false;
+            *bits = expr->token.type == TOKEN_TRUE ? 1U : 0U;
+            return true;
+        case EXPR_ENUM_VALUE:
+            if (type != YLIR_TYPE_I64) return false;
+            *bits = (uint64_t)expr->as.enum_value.variant->value;
+            return true;
+        case EXPR_UNARY: {
+            uint64_t operand = 0U;
+            if (!lower_global_constant(expr->as.unary.right, type, &operand))
+                return false;
+            switch (expr->as.unary.op.type) {
+                case TOKEN_MINUS:
+                    if (type == YLIR_TYPE_I64) {
+                        int64_t value = (int64_t)operand;
+                        if (value == INT64_MIN) return false;
+                        *bits = (uint64_t)(-value);
+                        return true;
+                    }
+                    if (type == YLIR_TYPE_F64) {
+                        double value = 0.0;
+                        memcpy(&value, &operand, sizeof(value));
+                        value = -value;
+                        memcpy(bits, &value, sizeof(value));
+                        return true;
+                    }
+                    return false;
+                case TOKEN_NOT: case TOKEN_BANG:
+                    if (type != YLIR_TYPE_BOOL) return false;
+                    *bits = operand == 0U ? 1U : 0U;
+                    return true;
+                default:
+                    return false;
+            }
+        }
+        default:
+            return false;
+    }
+}
+
 static bool block_index(const YLIRFunction *function,
                         const YLIRBasicBlock *block, size_t *index)
 {
@@ -327,8 +416,38 @@ static bool lower_assignment(LowerFunction *ctx, Expr *expr, YLIRValue *out)
         return false;
     }
     if (variable->is_global) {
-        lower_error(ctx, expr->token, "global variable access requires IR memory operations");
-        return false;
+        size_t global_index = find_global_index(ctx->program->source_program, variable);
+        YLIRType type = lower_type(variable->type);
+        if (global_index == SIZE_MAX || type == YLIR_TYPE_INVALID) {
+            lower_error(ctx, expr->token, "global assignment has an unsupported declaration");
+            return false;
+        }
+        YLIRValue right = YLIR_NO_VALUE;
+        if (expr->as.assign.is_compound) {
+            YLIRValue previous = YLIR_NO_VALUE;
+            if (!ylang_ir_emit_load_global(ctx->block, global_index,
+                                           expr->token.line, expr->token.column,
+                                           &previous)) {
+                lower_error(ctx, expr->token, "could not load global for compound assignment");
+                return false;
+            }
+            if (!lower_expression(ctx, expr->as.assign.right, &right)) return false;
+            YLIRValue sum = YLIR_NO_VALUE;
+            YLIRInstructionKind op = type == YLIR_TYPE_F64
+                ? YLIR_OP_ADD_F64 : YLIR_OP_ADD_I64;
+            if (!emit_op(ctx, op, previous, right, expr->token, &sum)) return false;
+            right = sum;
+        } else if (!lower_expression(ctx, expr->as.assign.right, &right)) {
+            return false;
+        }
+        if (!ylang_ir_emit_store_global(ctx->block, global_index, right,
+                                        expr->token.line, expr->token.column)) {
+            lower_error(ctx, expr->token,
+                        "could not store global (it may be immutable or have an unsupported type)");
+            return false;
+        }
+        *out = right;
+        return true;
     }
     LowerBinding *binding = find_binding(ctx, variable);
     YLIRValue previous = binding ? binding->value : YLIR_NO_VALUE;
@@ -401,9 +520,19 @@ static bool lower_expression(LowerFunction *ctx, Expr *expr, YLIRValue *out)
             return emit_i64(ctx, expr->as.enum_value.variant->value, expr->token, out);
         case EXPR_NAME: {
             VarDecl *variable = expr->as.name.variable;
-            if (!variable || variable->is_global) {
-                lower_error(ctx, expr->token, "global or unresolved name requires IR memory support");
+            if (!variable) {
+                lower_error(ctx, expr->token, "unresolved variable name in IR lowering");
                 return false;
+            }
+            if (variable->is_global) {
+                size_t index = find_global_index(ctx->program->source_program, variable);
+                if (index == SIZE_MAX ||
+                    !ylang_ir_emit_load_global(ctx->block, index,
+                                               expr->token.line, expr->token.column, out)) {
+                    lower_error(ctx, expr->token, "could not load global variable");
+                    return false;
+                }
+                return true;
             }
             LowerBinding *binding = find_binding(ctx, variable);
             if (!binding) {
@@ -882,10 +1011,9 @@ bool ylang_ir_lower_program(const Program *program, YLIRModule *module,
                             FILE *diagnostics)
 {
     if (!program || !module || !program->functions ||
-        program->function_count == 0U || program->global_count != 0U) {
+        program->function_count == 0U) {
         if (diagnostics)
-            fputs("YLang IR lowering: requires functions and rejects global declarations in this milestone.\n",
-                  diagnostics);
+            fputs("YLang IR lowering: requires at least one function.\n", diagnostics);
         return false;
     }
     if (!ylang_ir_module_init(module)) return false;
@@ -896,7 +1024,24 @@ bool ylang_ir_lower_program(const Program *program, YLIRModule *module,
         .okay = true
     };
 
-    for (size_t i = 0; i < program->function_count; i++) {
+    for (size_t i = 0; i < program->global_count && lower.okay; i++) {
+        VarDecl *source = program->globals[i];
+        YLIRType type = lower_type(source->type);
+        uint64_t initial_bits = 0U;
+        if (source->is_array || type == YLIR_TYPE_INVALID ||
+            (source->initializer &&
+             !lower_global_constant(source->initializer, type, &initial_bits)) ||
+            !ylang_ir_add_global(module, source->c_name, type, initial_bits,
+                                 source->mutability == BINDING_MUTABLE)) {
+            fprintf(lower.diagnostics,
+                    "%s:%zu:%zu: LLVM IR lowering: global '%s' needs a supported scalar constant initializer and unique symbol\n",
+                    program->module && program->module->path ? program->module->path : "<source>",
+                    source->token.line, source->token.column, source->name);
+            lower.okay = false;
+            break;
+        }
+    }
+    for (size_t i = 0; i < program->function_count && lower.okay; i++) {
         Function *source = program->functions[i];
         YLIRType result = source->return_type == TYPE_VOID
             ? YLIR_TYPE_VOID : lower_type(source->return_type);
