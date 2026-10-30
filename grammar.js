@@ -34,7 +34,7 @@ module.exports = grammar({
     ),
 
     function_declaration: $ => seq(
-      "function", field("name", $.identifier),
+      choice("fn", "function"), field("name", $.identifier),
       "(", optional($.parameter_list), ")",
       optional(seq("->", field("return_type", $._type))),
       $.block
@@ -52,7 +52,7 @@ module.exports = grammar({
     ),
     enum_variant: $ => $.identifier,
     variable_declaration: $ => seq(
-      "let", optional("const"), field("type", $._type),
+      "let", optional(choice("const", "mut")), field("type", $._type),
       field("name", $.identifier), optional("[]"),
       optional(seq("=", $._expression)), ";"
     ),
