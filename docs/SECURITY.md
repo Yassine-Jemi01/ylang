@@ -25,7 +25,7 @@ Do not commit real API keys, print them in diagnostic output, or include them in
 
 - `ylang build`, `ylang debug`, and the native executable run code on the host with the invoking user's normal permissions.
 - Debugging is not a privilege boundary or sandbox. GDB/LLDB can inspect process state according to the user's operating-system permissions.
-- The experimental debugger is implemented for the C backend on Linux (GDB) and macOS (LLDB). Windows interactive debugging and the NASM source-debugging path are not implemented.
+- The experimental source debugger currently uses the C backend: GDB on Linux and on the documented MSYS2 MINGW64 / MinGW-w64 Windows toolchain, and LLDB on macOS. The NASM source-debugging path is not implemented.
 - Generated C and compiler diagnostics are developer tools, not a guarantee that arbitrary programs are memory-safe. YLang does not claim Rust-level memory safety; continue running regression tests, sanitizers, and fuzzing on supported environments.
 
 For a security report, include the affected commit, OS/toolchain, exact compiler command, minimal reproducible source, and whether the issue reproduces with a non-privileged account. Do not post live credentials or private user data in an issue.

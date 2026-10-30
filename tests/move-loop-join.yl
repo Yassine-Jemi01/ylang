@@ -1,4 +1,4 @@
-function main() -> int {
+fn main() -> int {
     let string source = string.concat("Y", "Lang");
     while (false) {
         let string destination = move(source);

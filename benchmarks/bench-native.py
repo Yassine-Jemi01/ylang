@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Reproducible end-to-end benchmark for the YLang C backend.
+"""Reproducible native-backend benchmark for YLang C and NASM builds.
 
 Measures compile latency, executable launch+runtime latency, and binary size.
-It reports measurements instead of imposing a universal speed target: compare
-runs on the same machine, C compiler, optimization level, and workload.
+Use the same host, workload, and run settings when comparing backends.
 """
 from __future__ import annotations
 
@@ -12,6 +11,7 @@ import math
 import os
 import platform
 import statistics
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -29,7 +29,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path, help="YLang source file to compile and run")
     parser.add_argument("--compiler", type=Path, default=ROOT / "build" / "ylang", help="YLang compiler executable")
-    parser.add_argument("--cc", choices=("gcc", "clang"), default="gcc", help="native C compiler")
+    parser.add_argument("--backend", choices=("c", "nasm"), default="c", help="backend to benchmark")
+    parser.add_argument("--cc", choices=("gcc", "clang"), default="gcc", help="native C compiler (C backend only)")
     parser.add_argument("--runs", type=int, default=10, help="measured repetitions (default: 10)")
     parser.add_argument("--warmup", type=int, default=2, help="warm-up repetitions (default: 2)")
     parser.add_argument("--expected-output", help="exact stdout expected from the program, including newlines")
@@ -42,6 +43,11 @@ def parse_args() -> argparse.Namespace:
         parser.error("--warmup must be zero or greater")
     if args.expected_output is not None and args.expected_file is not None:
         parser.error("use either --expected-output or --expected-file, not both")
+    if args.backend == "nasm":
+        if not sys.platform.startswith("linux") or platform.machine().lower() not in ("x86_64", "amd64"):
+            parser.error("the NASM backend benchmark currently supports Linux x86-64 only")
+        if shutil.which("nasm") is None or shutil.which("ld") is None:
+            parser.error("--backend nasm requires nasm and ld on PATH")
     return args
 
 
@@ -96,7 +102,11 @@ def main() -> int:
         run_samples: list[int] = []
         for iteration in range(args.warmup + args.runs):
             start = time.perf_counter_ns()
-            run([str(compiler), "build", str(source), "-o", str(executable), "--cc", args.cc], cwd=ROOT)
+            if args.backend == "c":
+                compile_command = [str(compiler), "build", str(source), "-o", str(executable), "--cc", args.cc]
+            else:
+                compile_command = [str(compiler), "build-asm", str(source), "-o", str(executable)]
+            run(compile_command, cwd=ROOT)
             compile_elapsed = time.perf_counter_ns() - start
             check_start = time.perf_counter_ns()
             result = run([str(executable)], cwd=source.parent)
@@ -112,11 +122,18 @@ def main() -> int:
 
         print("YLang native backend benchmark")
         version_output = run([str(compiler), "--version"], cwd=ROOT).stdout.strip()
-        native_cc_version = run([args.cc, "--version"], cwd=ROOT).stdout.splitlines()[0]
         print(f"YLang version: {version_output}")
+        print(f"Backend: {args.backend}")
         print(f"Host: {platform.platform()}")
-        print(f"Native C compiler: {native_cc_version}")
-        print(f"YLANG_OPT_LEVEL: {os.environ.get('YLANG_OPT_LEVEL', 'default')}")
+        if args.backend == "c":
+            native_cc_version = run([args.cc, "--version"], cwd=ROOT).stdout.splitlines()[0]
+            print(f"Native C compiler: {native_cc_version}")
+        else:
+            nasm_version = run(["nasm", "-v"], cwd=ROOT).stdout.strip()
+            linker_version = run(["ld", "--version"], cwd=ROOT).stdout.splitlines()[0]
+            print(f"Assembler: {nasm_version}")
+            print(f"Linker: {linker_version}")
+        print(f"YLANG_OPT_LEVEL: {os.environ.get('YLANG_OPT_LEVEL', 'backend default')}")
         print(f"Source: {source}")
         print(f"Measured runs: {args.runs}; warm-ups: {args.warmup}")
         print(f"Compile median: {median_ms(compile_samples):.3f} ms")

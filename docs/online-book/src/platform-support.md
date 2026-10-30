@@ -18,9 +18,11 @@ GUI/Game2D programs need SDL2 development files and \`pkg-config\`. Verify the n
 
 ## Windows
 
-The initial native path targets 64-bit Windows with MinGW-w64 from the MSYS2 MINGW64 environment. CI tests compilation, a native executable, relative imports, standard input, and SDL2 build/link. MSVC is not supported by this first milestone, and full Windows feature parity is not claimed.
+The current native path targets 64-bit Windows with MinGW-w64 from the MSYS2 MINGW64 environment. CI currently tests compilation, a native executable, relative imports, standard input, and SDL2 build/link. This is not yet the complete 3.0 support promise.
 
-Read the [Windows Setup](reference/WINDOWS.md) guide for toolchain commands and current restrictions. A program that builds on Linux may depend on an unsupported feature or library on Windows, so validate the subset your project uses rather than assuming complete portability.
+**YLang 3.0 target:** Windows x86-64 with MinGW-w64 GCC becomes an officially supported, fully tested platform. The release gate includes the full applicable compiler suite, native linking and execution, imports/path handling, filesystem/process/stdio/environment behavior, HTTP and SDL2 integrations, ownership cleanup, CLI debugging, and LLVM native output. MSVC and Windows ARM64 are not promised unless independently validated.
+
+Read the [Windows Setup](reference/WINDOWS.md) guide for toolchain commands and current restrictions. A program that builds on Linux may depend on an unsupported feature or library on Windows until the 3.0 gates pass.
 
 ## Backend coverage is separate from OS support
 

@@ -1,4 +1,4 @@
-function main() -> int {
+fn main() -> int {
     let int x = 4 / 0;
     print(x);
     return 0;

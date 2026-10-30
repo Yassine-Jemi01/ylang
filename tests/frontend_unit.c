@@ -31,6 +31,41 @@ static int test_lexer(void)
         }
     }
 
+    Lexer modern_bindings = lexer_init(
+        "let mut count: int = 0; let name: string = \"YLang\"; value?");
+    const TokenType binding_tokens[] = {
+        TOKEN_LET, TOKEN_MUT, TOKEN_IDENTIFIER, TOKEN_COLON, TOKEN_IDENTIFIER,
+        TOKEN_EQUAL, TOKEN_NUMBER, TOKEN_SEMICOLON,
+        TOKEN_LET, TOKEN_IDENTIFIER, TOKEN_COLON, TOKEN_IDENTIFIER,
+        TOKEN_EQUAL, TOKEN_STRING, TOKEN_SEMICOLON,
+        TOKEN_IDENTIFIER, TOKEN_QUESTION, TOKEN_EOF
+    };
+    for (size_t i = 0; i < sizeof(binding_tokens) / sizeof(binding_tokens[0]); i++) {
+        Token token = lexer_next(&modern_bindings);
+        if (token.type != binding_tokens[i]) {
+            fprintf(stderr, "modern binding token %zu: expected %s, got %s\n",
+                    i, token_type_name(binding_tokens[i]), token_type_name(token.type));
+            return 1;
+        }
+    }
+
+    Lexer function_keywords = lexer_init("fn add() {} function old() {} defer cleanup()");
+    const TokenType function_tokens[] = {
+        TOKEN_FN, TOKEN_IDENTIFIER, TOKEN_LEFT_PAREN, TOKEN_RIGHT_PAREN,
+        TOKEN_LEFT_BRACE, TOKEN_RIGHT_BRACE,
+        TOKEN_FUNCTION, TOKEN_IDENTIFIER, TOKEN_LEFT_PAREN, TOKEN_RIGHT_PAREN,
+        TOKEN_LEFT_BRACE, TOKEN_RIGHT_BRACE,
+        TOKEN_DEFER, TOKEN_IDENTIFIER, TOKEN_LEFT_PAREN, TOKEN_RIGHT_PAREN, TOKEN_EOF
+    };
+    for (size_t i = 0; i < sizeof(function_tokens) / sizeof(function_tokens[0]); i++) {
+        Token token = lexer_next(&function_keywords);
+        if (token.type != function_tokens[i]) {
+            fprintf(stderr, "function keyword token %zu: expected %s, got %s\n",
+                    i, token_type_name(function_tokens[i]), token_type_name(token.type));
+            return 1;
+        }
+    }
+
     Lexer hex_character = lexer_init("'\\x42'");
     Token character = lexer_next(&hex_character);
     if (character.type != TOKEN_CHAR || character.length != 6U) {
@@ -190,13 +225,19 @@ static int test_escape_decoding(void)
 static int test_parser(void)
 {
     const char *source =
-        "let int base = 2;\n"
+        "let mut base: int = 2;\n"
+        "let answer: int = 42;\n"
+        "let mut offset: int = 1;\n"
         "enum Direction { North, East }\n"
         "struct Point { int x; int y; }\n"
-        "function main() -> int {\n"
-        "    let Point p = Point(base, 3);\n"
-        "    return p.x;\n"
-        "}\n";
+        "fn main() -> int {\n"
+        "    let p: Point = Point(base, 3);\n"
+        "    let name: string = \"YLang\";\n"
+        "    let mut count: int = 0;\n"
+        "    count = count + offset;\n"
+        "    return p.x + count;\n"
+        "}\n"
+        "function legacy() -> int { return 0; }\n";
     Compiler compiler = {0};
     compiler.filename = "frontend-unit.yl";
     compiler.source = (char *)source;
@@ -204,12 +245,13 @@ static int test_parser(void)
 
     Program *program = parse_program(&compiler);
     const int failed = compiler.had_error || !program ||
-                       program->global_count != 1 ||
-                       program->function_count != 1 ||
+                       program->global_count != 3 ||
+                       program->function_count != 2 ||
+                       compiler.warning_count != 1 ||
                        compiler.enum_count != 1 ||
                        compiler.struct_count != 1;
     arena_destroy(&compiler.arena);
-    if (failed) return fail("valid global, enum, struct, and function declarations should parse");
+    if (failed) return fail("fn parses cleanly and legacy function parses with one W2302 warning");
     return 0;
 }
 

@@ -1,8 +1,8 @@
-function consume_legacy(string value) -> int {
+fn consume_legacy(string value) -> int {
     return string.length(value);
 }
 
-function main() -> int {
+fn main() -> int {
     let owned_string owner = string.own("safe");
     consume_legacy(owner);
     return 0;

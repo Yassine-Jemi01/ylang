@@ -84,7 +84,8 @@ static int run_safe_fixes(const char *source, const char *input_path,
 
     bool declares_pritn = false;
     for (size_t i = 0; i + 1 < tokens.count; i++) {
-        if (tokens.items[i].type == TOKEN_FUNCTION &&
+        if ((tokens.items[i].type == TOKEN_FN ||
+             tokens.items[i].type == TOKEN_FUNCTION) &&
             tokens.items[i + 1].type == TOKEN_IDENTIFIER &&
             token_spells(&tokens.items[i + 1], "pritn")) {
             declares_pritn = true;
@@ -558,6 +559,15 @@ int ylang_run(const char *command, const char *input_path,
         } else if (strcmp(command, "emit-asm") == 0) {
             fprintf(stderr, "ylang: emit-asm failed with %u error(s); no assembly was generated.\n",
                     compiler.error_count);
+        } else if (strcmp(command, "emit-llvm") == 0) {
+            fprintf(stderr, "ylang: emit-llvm failed with %u error(s); no LLVM IR was generated.\n",
+                    compiler.error_count);
+        } else if (strcmp(command, "emit-obj") == 0) {
+            fprintf(stderr, "ylang: emit-obj failed with %u error(s); no object file was generated.\n",
+                    compiler.error_count);
+        } else if (strcmp(command, "build-llvm") == 0) {
+            fprintf(stderr, "ylang: build-llvm failed with %u error(s); no executable was produced.\n",
+                    compiler.error_count);
         } else if (strcmp(command, "build-asm") == 0) {
             fprintf(stderr, "ylang: build-asm failed with %u error(s); no executable was produced.\n",
                     compiler.error_count);
@@ -570,11 +580,224 @@ int ylang_run(const char *command, const char *input_path,
         return 1;
     }
 
+    bool has_payload_enums = false;
+    for (size_t i = 0; i < compiler.enum_count; i++) {
+        if (compiler.enums[i]->has_payload) {
+            has_payload_enums = true;
+            break;
+        }
+    }
+    if (has_payload_enums &&
+        (strcmp(command, "build-asm") == 0 || strcmp(command, "emit-asm") == 0)) {
+        fputs("ylang: payload-bearing enums are not supported by the NASM backend yet; use the C backend.\n", stderr);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return 64;
+    }
+    if (has_payload_enums &&
+        (strcmp(command, "emit-llvm") == 0 || strcmp(command, "emit-obj") == 0 ||
+         strcmp(command, "build-llvm") == 0)) {
+        fputs("ylang: payload-bearing enums are not supported by the LLVM backend yet; use the C backend.\n", stderr);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return 64;
+    }
+
     if (strcmp(command, "check") == 0) {
         printf("YLang check: no errors found (%s).\n", input_path);
         arena_destroy(&compiler.arena);
         free(source);
         return 0;
+    }
+
+    if (strcmp(command, "emit-llvm") == 0) {
+        const char *llvm_path = output_path;
+        if (!llvm_path) {
+            if (ylang_mkdir("build", 0755) != 0 && errno != EEXIST) {
+                fprintf(stderr, "ylang: cannot create build directory: %s\n", strerror(errno));
+                arena_destroy(&compiler.arena);
+                free(source);
+                return 73;
+            }
+            llvm_path = "build/ylang-generated.ll";
+        }
+        if (paths_refer_same_file(input_path, llvm_path)) {
+            fputs("ylang: LLVM output path refers to the source file; refusing to overwrite it.\n", stderr);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 64;
+        }
+        bool okay = generate_llvm_ir(&compiler, llvm_path);
+        if (okay) printf("Generated LLVM IR: %s\n", llvm_path);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return okay ? 0 : 1;
+    }
+
+    if (strcmp(command, "emit-obj") == 0) {
+#if !defined(__linux__) || !defined(__x86_64__)
+        fputs("ylang: emit-obj currently supports Linux x86-64 only.\n", stderr);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return 64;
+#else
+        if (!cc || strcmp(cc, "clang") != 0) {
+            fputs("ylang: emit-obj requires Clang; use --cc clang.\n", stderr);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 64;
+        }
+        const char *target = output_path ? output_path : "build/ylang-generated.o";
+        if (!output_path &&
+            ylang_mkdir("build", 0755) != 0 && errno != EEXIST) {
+            fprintf(stderr, "ylang: cannot create build directory: %s\n", strerror(errno));
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 73;
+        }
+
+        char *temporary_directory = create_temporary_directory("ylang-llvm-object");
+        if (!temporary_directory) {
+            fprintf(stderr, "ylang: cannot create temporary LLVM directory: %s\n",
+                    strerror(errno));
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 73;
+        }
+        size_t llvm_path_size = strlen(temporary_directory) + sizeof("/generated.ll");
+        size_t object_path_size = strlen(target) + sizeof(".tmp.XXXXXX");
+        char *llvm_path = malloc(llvm_path_size);
+        char *object_path = malloc(object_path_size);
+        if (!llvm_path || !object_path) {
+            fputs("ylang: out of memory preparing LLVM object emission.\n", stderr);
+            free(llvm_path);
+            free(object_path);
+            (void)rmdir(temporary_directory);
+            free(temporary_directory);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 70;
+        }
+        (void)snprintf(llvm_path, llvm_path_size, "%s/generated.ll", temporary_directory);
+        (void)snprintf(object_path, object_path_size, "%s.tmp.XXXXXX", target);
+
+        /*
+         * Stage beside the destination so rename() is atomic on the same
+         * filesystem. A failed compile must never truncate or delete an
+         * existing object at the requested output path.
+         */
+        int object_fd = mkstemp(object_path);
+        if (object_fd < 0) {
+            fprintf(stderr, "ylang: cannot create temporary object beside '%s': %s\n",
+                    target, strerror(errno));
+            free(llvm_path);
+            free(object_path);
+            (void)rmdir(temporary_directory);
+            free(temporary_directory);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 73;
+        }
+        if (close(object_fd) != 0) {
+            fprintf(stderr, "ylang: cannot close temporary object: %s\n", strerror(errno));
+            (void)unlink(object_path);
+            free(llvm_path);
+            free(object_path);
+            (void)rmdir(temporary_directory);
+            free(temporary_directory);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 74;
+        }
+
+        int result = 1;
+        if (generate_llvm_ir(&compiler, llvm_path)) {
+            char *clang_args[] = {
+                (char *)cc, "-x", "ir", "-c", "-O0", llvm_path,
+                "-o", object_path, NULL
+            };
+            result = run_external(clang_args);
+            if (result == 0) {
+                if (rename(object_path, target) == 0) {
+                    printf("Generated LLVM object (Clang): %s\n", target);
+                } else {
+                    fprintf(stderr, "ylang: cannot publish object '%s': %s\n",
+                            target, strerror(errno));
+                    result = 74;
+                }
+            } else {
+                fprintf(stderr, "ylang: Clang LLVM object emission failed (exit %d).\n",
+                        result);
+            }
+        }
+        (void)unlink(object_path);
+        (void)unlink(llvm_path);
+        (void)rmdir(temporary_directory);
+        free(object_path);
+        free(llvm_path);
+        free(temporary_directory);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return result;
+#endif
+    }
+
+    if (strcmp(command, "build-llvm") == 0) {
+#if !defined(__linux__) || !defined(__x86_64__)
+        fputs("ylang: build-llvm currently supports Linux x86-64 only.\n", stderr);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return 64;
+#else
+        if (!cc || strcmp(cc, "clang") != 0) {
+            fputs("ylang: build-llvm requires Clang; use --cc clang.\n", stderr);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 64;
+        }
+        const char *target = output_path ? output_path : "a.out";
+        if (paths_refer_same_file(input_path, target)) {
+            fputs("ylang: build-llvm output path refers to the source file; refusing to overwrite it.\n", stderr);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 64;
+        }
+        char *temporary_directory = create_temporary_directory("ylang-llvm-build");
+        if (!temporary_directory) {
+            fprintf(stderr, "ylang: cannot create temporary LLVM build directory: %s\n",
+                    strerror(errno));
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 73;
+        }
+        size_t path_size = strlen(temporary_directory) + sizeof("/generated.ll");
+        char *llvm_path = malloc(path_size);
+        if (!llvm_path) {
+            fputs("ylang: out of memory preparing LLVM build.\n", stderr);
+            (void)rmdir(temporary_directory);
+            free(temporary_directory);
+            arena_destroy(&compiler.arena);
+            free(source);
+            return 70;
+        }
+        (void)snprintf(llvm_path, path_size, "%s/generated.ll", temporary_directory);
+        int result = 1;
+        if (generate_llvm_ir(&compiler, llvm_path)) {
+            char *clang_args[] = {
+                (char *)cc, "-x", "ir", "-O0", llvm_path, "-o", (char *)target, NULL
+            };
+            result = run_external(clang_args);
+            if (result == 0) printf("Build succeeded (LLVM + Clang): %s\n", target);
+            else fprintf(stderr, "ylang: Clang LLVM build failed (exit %d).\n", result);
+        }
+        (void)unlink(llvm_path);
+        (void)rmdir(temporary_directory);
+        free(llvm_path);
+        free(temporary_directory);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return result;
+#endif
     }
 
     if (strcmp(command, "build-asm") == 0) {
@@ -678,9 +901,11 @@ int ylang_run(const char *command, const char *input_path,
     }
 
     const bool emit_c_command = strcmp(command, "emit-c") == 0;
+    const bool run_mode = strcmp(command, "run") == 0;
     const char *c_path = output_path;
     const char *native_target = output_path ? output_path : "a.out";
-    if (!emit_c_command && paths_refer_same_file(input_path, native_target)) {
+    if (!emit_c_command && !run_mode &&
+        paths_refer_same_file(input_path, native_target)) {
         fprintf(stderr,
                 "ylang: input '%s' and output '%s' refer to the same file; refusing to overwrite source.\n",
                 input_path, native_target);
@@ -750,28 +975,61 @@ int ylang_run(const char *command, const char *input_path,
         printf("Generated C source: %s\n", c_path);
     } else {
         const char *target = native_target;
+        char *run_target = NULL;
         bool debug_mode = strcmp(command, "debug") == 0;
-        result = run_native_compiler(cc ? cc : "gcc", c_path, target,
-                                     compiler.uses_gui, debug_mode, compiler.uses_http);
-        if (result == 0) {
-            printf("Build succeeded: %s\n", target);
-            if (debug_mode) {
+        if (run_mode) {
 #ifdef _WIN32
-                fputs("ylang: the interactive debug command is not yet supported on Windows; use a Linux GDB or macOS LLDB build.\n", stderr);
-                result = 64;
-#elif defined(__APPLE__)
-                char *debugger_args[] = { "lldb", "--", (char *)target, NULL };
-                result = run_external(debugger_args);
+            const char *executable_name = "/program.exe";
 #else
-                char *debugger_args[] = { "gdb", "-q", "--args", (char *)target, NULL };
-                result = run_external(debugger_args);
+            const char *executable_name = "/program";
 #endif
+            size_t target_size = strlen(temporary_directory) + strlen(executable_name) + 1U;
+            run_target = malloc(target_size);
+            if (!run_target) {
+                fputs("ylang: out of memory while preparing run target.\n", stderr);
+                (void)unlink(c_path);
+                (void)rmdir(temporary_directory);
+                free(generated_path);
+                free(temporary_directory);
+                arena_destroy(&compiler.arena);
+                free(source);
+                return 70;
+            }
+            (void)snprintf(run_target, target_size, "%s%s",
+                           temporary_directory, executable_name);
+            target = run_target;
+        }
+
+        int build_result = run_native_compiler(cc ? cc : "gcc", c_path, target,
+                                               compiler.uses_gui, debug_mode,
+                                               compiler.uses_http);
+        result = build_result;
+        if (build_result == 0) {
+            if (run_mode) {
+                char *program_args[] = { (char *)target, NULL };
+                result = run_external(program_args);
+            } else {
+                printf("Build succeeded: %s\n", target);
+                if (debug_mode) {
+#ifdef _WIN32
+                    char *debugger_args[] = { "gdb", "-q", "--args", (char *)target, NULL };
+                    result = run_external(debugger_args);
+#elif defined(__APPLE__)
+                    char *debugger_args[] = { "lldb", "--", (char *)target, NULL };
+                    result = run_external(debugger_args);
+#else
+                    char *debugger_args[] = { "gdb", "-q", "--args", (char *)target, NULL };
+                    result = run_external(debugger_args);
+#endif
+                }
             }
         } else {
-            fprintf(stderr, "ylang: native compilation failed (exit %d).\n", result);
+            fprintf(stderr, "ylang: native compilation failed (exit %d).\n", build_result);
         }
         (void)unlink(c_path);
+        if (run_mode && run_target) (void)unlink(run_target);
         (void)rmdir(temporary_directory);
+        free(run_target);
     }
 
     free(generated_path);

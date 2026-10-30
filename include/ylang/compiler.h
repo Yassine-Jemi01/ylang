@@ -76,7 +76,7 @@ struct Expr {
         struct { Expr *left; Expr *right; Token op; } binary;
         struct { Expr *target; Expr *right; VarDecl *variable; bool is_compound; } assign;
         struct { char *name; VarDecl *variable; } name;
-        struct { EnumDecl *enumeration; EnumVariant *variant; } enum_value;
+        struct { EnumDecl *enumeration; EnumVariant *variant; Expr *payload; } enum_value;
         struct { StructDecl *structure; Expr **args; size_t count; } struct_init;
         struct { Expr *target; char *name; StructField *field; } member;
         struct { char *name; Expr **args; size_t count; Function *function; } call;
@@ -96,17 +96,24 @@ typedef enum {
     STMT_FOR,
     STMT_BREAK,
     STMT_CONTINUE,
+    STMT_DEFER,
     STMT_RETURN,
     STMT_MATCH,
     STMT_EXPR
 } StmtKind;
+
+typedef enum {
+    BINDING_IMMUTABLE,
+    BINDING_MUTABLE
+} BindingMutability;
 
 struct VarDecl {
     Token token;
     char *name;
     char *c_name;
     YType type;
-    bool is_const;
+    BindingMutability mutability;
+    bool used_legacy_syntax;
     bool initialized;
     bool moved; /* True after ownership is explicitly transferred with move(name). */
     bool is_global;
@@ -129,6 +136,7 @@ struct Stmt {
         struct { Stmt *initializer; Expr *condition; Expr *increment; Stmt *body; } for_stmt;
         struct { Expr *value; MatchArm **arms; size_t arm_count; } match_stmt;
         Expr *return_value;
+        Expr *defer_call;
         Expr *expression;
     } as;
 };
@@ -149,12 +157,16 @@ struct EnumVariant {
     char *name;
     int64_t value;
     EnumDecl *enumeration;
+    bool has_payload;
+    YType payload_type;
 };
 
 struct EnumDecl {
     Token token;
     char *name;
+    char *c_name;
     YType type;
+    bool has_payload;
     EnumVariant **variants;
     size_t variant_count;
     Module *module;
@@ -163,6 +175,7 @@ struct EnumDecl {
 struct MatchArm {
     Token token;
     EnumVariant *variant;
+    VarDecl *payload_binding;
     Stmt *body;
 };
 

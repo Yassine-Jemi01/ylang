@@ -1,6 +1,6 @@
 # YLang
 
-**A small compiled programming language with explicit types and actionable diagnostics.**
+**A practical native language for fast developer tools, desktop utilities, and 2D games.**
 
 YLang is implemented in C17. Its compiler tokenizes and parses `.yl` files, checks names, initialization and types, generates C, and invokes GCC or Clang to produce a native executable. Linux and macOS are the primary tested targets; experimental native Windows support is available for 64-bit Windows with MinGW-w64. Windows support currently has a focused CI smoke suite and is not yet a claim of complete platform parity. It is a compiled language toolchain, not an interpreter.
 
@@ -11,6 +11,16 @@ YLang **2.2.0** is the latest stable release. The documented core language and d
 - **Latest stable release: 2.2.0.** The documented core language and default C-backend workflow remain the compatibility foundation; new HTTP, async-task, debugger, and related extensions have explicit experimental boundaries.
 - HTTP/API requests, the first asynchronous HTTP-task API, environment-variable access, source-aware native debugging, editor tooling, and the refreshed documentation are included in 2.2.0. See the [2.2.0 release notes](docs/CHANGELOG-2.2.0.md), [HTTP guide](docs/HTTP.md), [debugger guide](docs/DEBUGGER.md), [security model](docs/SECURITY.md), [performance benchmark guide](docs/PERFORMANCE.md), and [release roadmap](docs/ROADMAP-2.2.0.md). The acceptance procedure remains documented in [docs/ACCEPTANCE-2.2.0.md](docs/ACCEPTANCE-2.2.0.md) and can be run with `bash tools/test-2.2-candidate.sh`.
 - Async/await currently applies only to HTTP task handles; general async functions, a built-in JSON parser/serializer, a complete VS Code Debug Adapter Protocol integration, and Windows interactive debugging are not implemented. The 2.1.0 ownership proposal and its limits remain documented in the [2.1.0 candidate notes](docs/CHANGELOG-2.1.0.md) and [memory model](docs/MEMORY-MODEL.md).
+
+## YLang 3.0 development
+
+YLang 3.0 is the next release target. The previously proposed 2.3 feature line is being folded into 3.0; no separate 2.3 stable release is planned. This development branch is marked `3.0.0-dev` and is not a release candidate. New functions use `fn`; legacy `function` declarations remain accepted with warning `W2302`.
+
+**Why YLang?** The 3.0 goal is to make native software pleasant to build: Rust-influenced clarity without copying Rust's syntax, explicit mutability and predictable memory, fast native output, a useful standard library, and first-party workflows for tools, desktop utilities, and small games.
+
+Two release commitments are explicit: **Windows x86-64 with MinGW-w64 becomes an officially supported, fully tested platform**, and **every subsystem currently marked experimental must graduate to a stable, documented, tested contract before 3.0 ships**. This includes modules/imports, structs/enums, GUI/Game2D, NASM's documented Linux x86-64 subset, HTTP/HTTP-task async, ownership, the CLI debugger, Nix packaging, and YSPM packaging. The current implementations remain experimental until their 3.0 acceptance gates pass; this paragraph describes the release goal, not completed support.
+
+Read the [unified YLang 3.0 roadmap](docs/ROADMAP-3.0.md), the [language design RFC](docs/RFC-3.0-LANGUAGE-DESIGN.md), and the [LLVM backend RFC](docs/RFC-3.0-LLVM-BACKEND.md).
 
 ## The online book
 
@@ -84,9 +94,9 @@ On macOS, use `gmake` instead of `make` for these commands (Homebrew's GNU Make;
 Create `hello.yl`:
 
 ```ylang
-function main() -> int {
-    let const string name = "YLang";
-    let int answer = 40 + 2;
+fn main() -> int {
+    let name: string = "YLang";
+    let answer: int = 40 + 2;
     print(f"Hello from {name}!");
     print("Answer:", answer);
     return 0;
@@ -100,6 +110,16 @@ Then run:
 ./build/ylang build hello.yl -o hello
 ./hello
 ```
+
+To build and execute a program in one command without leaving a generated C file or
+executable in the project directory, use:
+
+```sh
+./build/ylang run hello.yl
+```
+
+`run` uses a temporary build directory, forwards standard input/output, removes its
+temporary files after the process exits, and returns the program's exit status.
 
 To select Clang for the generated program:
 
@@ -148,12 +168,36 @@ The benchmark reports minimum, median, mean, and 95th-percentile latency.
 Its timing includes process launch and exit, so a median below 1 ms is a
 machine-dependent target rather than a guaranteed performance claim.
 
-This backend is currently limited to Linux x86-64 scalar programs using
-`int`, `bool`, `char`, and `string`, local variables, user-defined
-functions with up to six scalar parameters, integer expressions, branches,
-loops, returns, and `print`. Global declarations, arrays, floats, f-strings,
-string comparisons, short-circuit `and`/`or`, and standard-library calls
-are not supported yet. The established C backend remains the default. A backend-neutral IR and general-purpose native backend are future work; see the [backend roadmap](docs/BACKEND-ROADMAP.md).
+The experimental NASM backend targets Linux x86-64. It supports scalar `int`,
+`bool`, `char`, `string`, and unit-enum values; scalar globals; fixed-size
+local and global arrays of supported scalar types; indexed reads and writes;
+runtime bounds checks; and read-only array parameters passed as a pointer plus
+length according to the System V AMD64 ABI. Array parameters can be forwarded
+to other YLang functions, and `length(array)` works for both fixed arrays and
+array parameters. Scalar and expanded array arguments follow left-to-right
+evaluation order and support stack-passed arguments beyond the six integer
+registers. The backend also supports integer expressions, branches, loops,
+short-circuit `and`/`or`, returns, and `print`.
+
+NASM still rejects floating-point values, owned strings, f-strings, string
+comparisons, structs, GUI/HTTP and most standard-library calls, and `defer`.
+Arrays cannot be returned, nested, or mutated through immutable bindings;
+array parameters are immutable inside the callee. The established C backend
+remains the default and reference backend. The 3.0 development branch now has a
+backend-neutral scalar SSA IR and verifier, plus an experimental LLVM path for
+scalar integers, floats, booleans, calls, control flow, globals, and printing:
+
+```sh
+./build/ylang emit-llvm app.yl -o app.ll
+./build/ylang build-llvm app.yl -o app --cc clang
+./build/ylang emit-obj app.yl -o app.o --cc clang
+```
+
+These LLVM commands currently target Linux x86-64 and use Clang to compile the
+textual IR. `emit-obj` is a relocatable-object prototype, not direct LLVM
+TargetMachine emission. Arrays, strings, structs, ownership, exceptions,
+`Result`/`Option`, and the full standard library are not yet supported by this
+LLVM subset. See the [3.0 roadmap](docs/ROADMAP-3.0.md) and [LLVM backend RFC](docs/RFC-3.0-LLVM-BACKEND.md).
 
 ## Structs (experimental)
 
@@ -166,7 +210,7 @@ Typed unit enums and exhaustive `match` statements are available as an experimen
 ```yl
 enum Direction { North, East, South, West }
 
-function main() -> int {
+fn main() -> int {
     let Direction facing = Direction.North;
     match (facing) {
         Direction.North -> { print("north"); }
@@ -187,7 +231,7 @@ YLang can import named functions and global variables from another source file. 
 ```yl
 from "./math_tools.yl" import double_value;
 
-function main() -> int {
+fn main() -> int {
     print(double_value(21));
     return 0;
 }
@@ -269,15 +313,15 @@ YSPM manages Linux system packages, not project-local YLang module dependencies.
 ## Language overview
 
 ```ylang
-let const int MAX = 100;
-let int count = 0;
+let MAX: int = 100;
+let mut count: int = 0;
 
-function add(int a, int b) -> int {
+fn add(int a, int b) -> int {
     return a + b;
 }
 
-function main() -> int {
-    let string product = "YLang";
+fn main() -> int {
+    let product: string = "YLang";
     print(f"Welcome to {product}");
     print("Sum:", add(10, 20));
 
@@ -303,16 +347,16 @@ See [`docs/language-spec.md`](docs/language-spec.md) for the complete supported 
 YLang includes a checked `math` namespace for floating-point functions:
 
 ```ylang
-let float root = math.sqrt(81.0);
-let float power = math.pow(2.0, 8.0);
+let root: float = math.sqrt(81.0);
+let power: float = math.pow(2.0, 8.0);
 ```
 
 Fixed-size arrays use an inferred length, homogeneous initializers, and bounds-checked indexing. Functions can accept arrays with `int values[]`; `length(values)` returns the array length, including for parameters:
 
 ```ylang
-let int scores[] = [10, 20, 30];
+let mut scores: int[] = [10, 20, 30];
 
-function main() -> int {
+fn main() -> int {
     scores[1] = 42;
     print(scores[0], scores[1], scores[2]);
     return 0;
@@ -324,7 +368,7 @@ Explicit conversions include `to_float(int)`, range-checked `to_int(float)`, and
 
 ## Supported language features
 
-- Explicit declarations (`let type name`) and constants (`let const type name`)
+- Immutable declarations (`let name: Type`) and explicit mutable declarations (`let mut name: Type`)
 - `int` (signed 64-bit), `float` (64-bit), `bool`, single-byte `char`, `string`, and `void` return types
 - Functions and return statements
 - `if` / `else if` / `else`, `loop()`, `while`, C-style `for`, `break`, and `continue`
@@ -417,6 +461,9 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [YLang Book (online HTML)](https://yassine-jemi01.github.io/ylang/learn/index.html)
 - [Language specification](docs/language-spec.md)
 - [Architecture](docs/architecture.md)
+- [YLang 3.0 roadmap](docs/ROADMAP-3.0.md)
+- [YLang 3.0 language design RFC](docs/RFC-3.0-LANGUAGE-DESIGN.md)
+- [YLang 3.0 LLVM backend RFC](docs/RFC-3.0-LLVM-BACKEND.md)
 - [YLang 2.0 design roadmap](docs/YLANG-2.0-DESIGN.md)
 - [YLang 2.0.0 release notes and compatibility policy](docs/CHANGELOG-2.0.0.md)
 - [VS Code YLang 2.0 syntax highlighting, compiler diagnostics, and Code Runner setup](editors/vscode/README.md)

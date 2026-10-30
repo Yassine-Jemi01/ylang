@@ -18,7 +18,7 @@ YLang is a compiled language. `ylang check` parses and performs semantic checks.
 
 ## 2. Source form and statements
 
-Statements end with `;`, blocks use `{` and `}`, and comments use `//` through the end of a line or `/* ... */` across lines. Block comments cannot be nested and must be closed. Keywords are lowercase and case-sensitive. Source files are text and embedded NUL bytes are rejected before lexing. Each source file passed to the CLI is compiled as one program. A program must define `function main() -> int` or `function main() -> void`, with no parameters.
+Statements end with `;`, blocks use `{` and `}`, and comments use `//` through the end of a line or `/* ... */` across lines. Block comments cannot be nested and must be closed. Keywords are lowercase and case-sensitive. Source files are text and embedded NUL bytes are rejected before lexing. Each source file passed to the CLI is compiled as one program. A program must define `fn main() -> int` or `fn main() -> void`, with no parameters.
 
 ## 3. Variables and constants
 
@@ -57,11 +57,11 @@ Unit enums are supported as named, distinct types:
 ```yl
 enum Direction { North, East, South, West }
 
-function is_east(Direction direction) -> bool {
+fn is_east(Direction direction) -> bool {
     return direction == Direction.East;
 }
 
-function main() -> int {
+fn main() -> int {
     let Direction facing = Direction.North;
     if (is_east(Direction.East)) { print("east"); }
     if (facing == Direction.North) { print("north"); }
@@ -141,7 +141,7 @@ YLang supports fixed-size arrays with an explicit element type and an initialize
 ```ylang
 let int scores[] = [10, 20, 30];
 
-function main() -> int {
+fn main() -> int {
     scores[1] = 42;
     print(scores[0], scores[1], scores[2]);
     return 0;
@@ -202,13 +202,13 @@ The compiler emits releases on normal scope exit and before `return`, `break`, a
 The experimental `borrowed_string` type can be used for function parameters that read text without taking ownership:
 
 ```yl
-function report(borrowed_string text) -> int {
+fn report(borrowed_string text) -> int {
     print(text);
     print(string.length(text));
     return 0;
 }
 
-function main() -> int {
+fn main() -> int {
     let owned_string message = string.own("hello");
     report(message); // message remains owned by main
     return 0;
@@ -275,11 +275,11 @@ Conditions must be boolean. `loop()` repeats indefinitely until `break` executes
 ## 9. Functions
 
 ```ylang
-function add(int left, int right) -> int {
+fn add(int left, int right) -> int {
     return left + right;
 }
 
-function main() -> int {
+fn main() -> int {
     print(add(20, 22));
     return 0;
 }
@@ -294,7 +294,7 @@ A source file can import named functions or global variables from another `.yl` 
 ```ylang
 from "./system_data.yl" import system_data, system_prefix;
 
-function main() -> int {
+fn main() -> int {
     print(system_data(), system_prefix);
     return 0;
 }

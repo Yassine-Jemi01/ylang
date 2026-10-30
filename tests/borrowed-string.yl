@@ -1,18 +1,18 @@
-function inspect(borrowed_string text) -> int {
+fn inspect(borrowed_string text) -> int {
     print(text);
     print(string.length(text));
     return 0;
 }
 
-function relay(borrowed_string text) -> int {
+fn relay(borrowed_string text) -> int {
     return inspect(text);
 }
 
-function clone_view(borrowed_string text) -> owned_string {
+fn clone_view(borrowed_string text) -> owned_string {
     return string.own(text);
 }
 
-function main() -> int {
+fn main() -> int {
     let owned_string owner = string.own("Borrowed");
     relay(owner);
     let owned_string copy = clone_view(owner);

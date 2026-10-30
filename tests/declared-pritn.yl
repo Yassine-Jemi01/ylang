@@ -1,8 +1,8 @@
-function pritn(int value) -> int {
+fn pritn(int value) -> int {
     return value;
 }
 
-function main() -> int {
+fn main() -> int {
     print(pritn(16));
     return 0;
 }

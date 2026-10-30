@@ -8,11 +8,11 @@ struct Point {
     int y;
 }
 
-function shift(Point p, int dx) -> Point {
+fn shift(Point p, int dx) -> Point {
     return Point(p.x + dx, p.y);
 }
 
-function main() -> int {
+fn main() -> int {
     let Point p = shift(Point(2, 7), 3);
     print(p.x, ",", p.y);
     return 0;

@@ -1,4 +1,4 @@
-function main() -> int {
+fn main() -> int {
     let string port = io.read_line();
     let string base = string.concat("http://127.0.0.1:", port);
 

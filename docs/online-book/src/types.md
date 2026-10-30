@@ -21,13 +21,13 @@ Choose a type based on the value's meaning, not only on what makes an assignment
 A declaration states the type at the point where a value is introduced:
 
 \`\`\`ylang
-let int count = 12;
-let float ratio = 0.5;
-let bool enabled = true;
-let const string label = "items";
+let count: int = 12;
+let ratio: float = 0.5;
+let enabled: bool = true;
+let label: string = "items";
 \`\`\`
 
-These examples illustrate the purpose of typed declarations; use the specification and compiler to confirm the exact forms supported by the version you are using.
+These examples use YLang 3.0's immutable-by-default declaration syntax. Use `let mut name: Type` when a binding needs to be reassigned.
 
 A type mismatch is not necessarily a compiler obstacle to work around. It may reveal that the program is mixing two different concepts. Before converting a value, ask whether the operation makes sense for the domain.
 

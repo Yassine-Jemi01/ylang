@@ -1,15 +1,15 @@
 let string saved = "initial";
 
-function capture_legacy(string value) -> int {
+fn capture_legacy(string value) -> int {
     saved = value;
     return 0;
 }
 
-function unsafe_forward(borrowed_string value) -> int {
+fn unsafe_forward(borrowed_string value) -> int {
     return capture_legacy(value);
 }
 
-function main() -> int {
+fn main() -> int {
     let owned_string owner = string.own("temporary");
     unsafe_forward(owner);
     return 0;

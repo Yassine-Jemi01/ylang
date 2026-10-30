@@ -1,4 +1,4 @@
-function main() -> int {
+fn main() -> int {
     let int score;
     if (true) {
         score = 10;

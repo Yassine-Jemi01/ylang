@@ -111,8 +111,10 @@ static void synchronize(Parser *p)
 {
     while (p->current.type != TOKEN_EOF) {
         if (p->previous.type == TOKEN_SEMICOLON ||
-            p->current.type == TOKEN_FUNCTION || p->current.type == TOKEN_LET ||
-            p->current.type == TOKEN_IF || p->current.type == TOKEN_RETURN) {
+            p->current.type == TOKEN_FN || p->current.type == TOKEN_FUNCTION ||
+            p->current.type == TOKEN_LET ||
+            p->current.type == TOKEN_IF || p->current.type == TOKEN_DEFER ||
+            p->current.type == TOKEN_RETURN) {
             return;
         }
         advance_parser(p);
@@ -137,16 +139,18 @@ static Stmt *new_stmt(Compiler *c, StmtKind kind, Token token)
 }
 
 static VarDecl *new_var(Compiler *c, Token token, char *name, YType type,
-                        bool is_const, bool is_global, Expr *initializer)
+                        BindingMutability mutability, bool is_global,
+                        Expr *initializer)
 {
     VarDecl *var = arena_alloc(&c->arena, sizeof(*var));
     var->token = token;
     var->name = name;
     var->type = type;
-    var->is_const = is_const;
+    var->mutability = mutability;
     var->is_global = is_global;
     var->initializer = initializer;
-    var->initialized = initializer != NULL || (is_global && !is_const);
+    var->initialized = initializer != NULL ||
+                       (is_global && mutability == BINDING_MUTABLE);
     size_t variable_id = ++c->next_var_id;
     size_t name_length = strlen(name);
     int prefix_length = snprintf(NULL, 0, "yl_v_%zu_", variable_id);
@@ -429,6 +433,37 @@ static Expr *parse_primary(Parser *p)
                     value->as.enum_value.enumeration = enumeration;
                     value->as.enum_value.variant = variant;
                     value->type = enumeration->type;
+                    if (match(p, TOKEN_LEFT_PAREN)) {
+                        Expr *payload = NULL;
+                        if (p->current.type != TOKEN_RIGHT_PAREN &&
+                            p->current.type != TOKEN_EOF) {
+                            payload = parse_expression(p);
+                            if (match(p, TOKEN_COMMA)) {
+                                diagnostic(p->compiler, p->previous, "error", "E2141",
+                                           "Enum payload constructors accept exactly one value.",
+                                           "Pass one value inside the variant parentheses.");
+                                while (p->current.type != TOKEN_RIGHT_PAREN &&
+                                       p->current.type != TOKEN_EOF) {
+                                    (void)parse_expression(p);
+                                    if (!match(p, TOKEN_COMMA)) break;
+                                }
+                            }
+                        }
+                        consume(p, TOKEN_RIGHT_PAREN,
+                                "Expected ')' after the enum payload value.",
+                                "Close the enum constructor with ')'.");
+                        if (!variant->has_payload) {
+                            diagnostic(p->compiler, member, "error", "E2141",
+                                       "This enum variant does not carry a payload.",
+                                       "Remove the parentheses or declare a payload type for this variant.");
+                        } else {
+                            value->as.enum_value.payload = payload;
+                        }
+                    } else if (variant->has_payload) {
+                        diagnostic(p->compiler, member, "error", "E2142",
+                                   "This enum variant requires a payload value.",
+                                   "Construct it with the declared payload, for example Value.Number(42).");
+                    }
                     return value;
                 }
                 expr->as.name.name = name;
@@ -652,53 +687,105 @@ static Stmt *parse_block_after_open(Parser *p, Token opening)
     return block;
 }
 
+static bool next_token_is_colon(Parser *p)
+{
+    Lexer lookahead = p->lexer;
+    Token token;
+    do {
+        token = lexer_next(&lookahead);
+    } while (token.type == TOKEN_NEWLINE);
+    return token.type == TOKEN_COLON;
+}
+
 static Stmt *parse_variable(Parser *p, bool global)
 {
     Token start = p->previous;
-    bool is_const = match(p, TOKEN_CONST);
-    YType type = parse_type(p);
+    BindingMutability mutability = BINDING_MUTABLE;
+    bool used_legacy_syntax = false;
+    bool is_new_syntax = false;
+    bool is_array = false;
+    YType type = TYPE_ERROR;
+    Token name_token = {0};
+
+    if (match(p, TOKEN_MUT)) {
+        name_token = consume(p, TOKEN_IDENTIFIER,
+            "Expected a variable name after 'let mut'.",
+            "Use 'let mut count: int = 0;'.");
+        consume(p, TOKEN_COLON, "Expected ':' after the mutable binding name.",
+                "Write the type after the name, for example 'let mut count: int'.");
+        type = parse_type(p);
+        mutability = BINDING_MUTABLE;
+        is_new_syntax = true;
+    } else if (p->current.type == TOKEN_IDENTIFIER && next_token_is_colon(p)) {
+        name_token = consume(p, TOKEN_IDENTIFIER,
+            "Expected a binding name after 'let'.",
+            "Use 'let name: Type = value;'.");
+        consume(p, TOKEN_COLON, "Expected ':' after the binding name.",
+                "Write the type after the name, for example 'let name: string'.");
+        type = parse_type(p);
+        mutability = BINDING_IMMUTABLE;
+        is_new_syntax = true;
+    } else {
+        bool legacy_const = match(p, TOKEN_CONST);
+        mutability = legacy_const ? BINDING_IMMUTABLE : BINDING_MUTABLE;
+        used_legacy_syntax = true;
+        type = parse_type(p);
+        name_token = consume(p, TOKEN_IDENTIFIER,
+            "Expected a variable name after the type.",
+            "Use 'let mut count: int = 0;' for mutable values or 'let name: int = 0;'.");
+        diagnostic(p->compiler, start, "warning", "W2301",
+                   "Legacy type-first variable declaration syntax is deprecated.",
+                   legacy_const
+                       ? "Replace 'let const int LIMIT' with 'let LIMIT: int'."
+                       : "Replace 'let int count' with 'let mut count: int'.");
+    }
+
     if (type == TYPE_BORROWED_STRING) {
         diagnostic(p->compiler, p->previous, "error", "E2120",
                    "borrowed_string can only be used as a function parameter type.",
                    "Use borrowed_string in a parameter list, or use string / owned_string for stored values.");
     }
-    Token name_token = consume(p, TOKEN_IDENTIFIER,
-        "Expected a variable name after the type.",
-        "For example: let int count = 0;");
-    bool is_array = false;
-    if (match(p, TOKEN_LEFT_BRACKET)) {
-        is_array = true;
-        consume(p, TOKEN_RIGHT_BRACKET, "Array declarations use empty brackets after the name.",
-                "Use a declaration such as 'let int values[] = [1, 2, 3];'.");
-        if (is_const) {
-            diagnostic(p->compiler, name_token, "error", "E2017",
-                       "const arrays are not supported yet.",
-                       "Use a mutable array declaration for now.");
+
+    if (is_new_syntax) {
+        if (match(p, TOKEN_LEFT_BRACKET)) {
+            is_array = true;
+            consume(p, TOKEN_RIGHT_BRACKET,
+                    "Array types use empty brackets after the element type.",
+                    "Use 'let mut values: int[] = [1, 2, 3];'.");
         }
+    } else if (match(p, TOKEN_LEFT_BRACKET)) {
+        is_array = true;
+        consume(p, TOKEN_RIGHT_BRACKET,
+                "Array declarations use empty brackets after the name.",
+                "Use a declaration such as 'let mut values: int[] = [1, 2, 3];'.");
     }
+
     Expr *initializer = NULL;
     if (match(p, TOKEN_EQUAL)) initializer = parse_expression(p);
     if (is_array && !initializer) {
         diagnostic(p->compiler, name_token, "error", "E2018",
-                   "An array declaration requires an initializer in this release.",
+                   "An array declaration requires an array literal initializer.",
                    "Initialize it with an array literal, for example [1, 2, 3].");
     }
     if (!is_array && initializer && initializer->kind == EXPR_ARRAY) {
         diagnostic(p->compiler, name_token, "error", "E2019",
                    "An array literal requires an array declaration.",
-                   "Declare the variable with empty brackets after its name, such as 'let int values[] = [1, 2, 3];'.");
+                   "Declare the variable with an array type, such as 'let mut values: int[] = [1, 2, 3];'.");
     }
-    if (is_const && !initializer) {
+    if (mutability == BINDING_IMMUTABLE && !initializer) {
         diagnostic(p->compiler, name_token, "error", "E2003",
-                   "A const variable must be initialized at declaration.",
-                   "Give it a value, for example 'let const int limit = 10;'.");
+                   "An immutable binding must be initialized at declaration.",
+                   "Give it a value, for example 'let limit: int = 10;'.");
     }
     consume(p, TOKEN_SEMICOLON, "Expected ';' after variable declaration.",
             "The declaration may be missing ';' before this token.");
-    VarDecl *var = new_var(p->compiler, name_token, token_copy(p->compiler, name_token),
-                           type, is_const, global, initializer);
+    VarDecl *var = new_var(p->compiler, name_token,
+                           token_copy(p->compiler, name_token),
+                           type, mutability, global, initializer);
+    var->used_legacy_syntax = used_legacy_syntax;
     var->is_array = is_array;
-    var->array_length = is_array && initializer && initializer->kind == EXPR_ARRAY ?
+    var->array_length = is_array && initializer &&
+                        initializer->kind == EXPR_ARRAY ?
                         initializer->as.array.count : 0;
     Stmt *stmt = new_stmt(p->compiler, STMT_VAR, start);
     stmt->as.variable = var;
@@ -750,6 +837,20 @@ static Stmt *parse_match_after_keyword(Parser *p, Token token)
                        "Use a pattern such as Direction.North -> { ... }.");
         } else {
             arm->variant = pattern->as.enum_value.variant;
+            if (arm->variant && arm->variant->has_payload) {
+                Expr *binding = pattern->as.enum_value.payload;
+                if (!binding || binding->kind != EXPR_NAME) {
+                    diagnostic(p->compiler, arm_token, "error", "E2143",
+                               "A payload match arm must bind its value to a name.",
+                               "Use a pattern such as Message.Text(text) -> { ... }.");
+                } else {
+                    arm->payload_binding = new_var(
+                        p->compiler, binding->token, binding->as.name.name,
+                        arm->variant->payload_type, BINDING_IMMUTABLE, false, NULL);
+                    arm->payload_binding->initialized = true;
+                    arm->payload_binding->module = p->compiler->current_module;
+                }
+            }
         }
         consume(p, TOKEN_ARROW, "Expected '->' after the match variant.",
                 "Use EnumName.Variant -> { ... }.");
@@ -798,6 +899,14 @@ static Stmt *parse_statement(Parser *p)
                        "print() needs at least one value.",
                        "For a blank line, use print(\"\");.");
         }
+        return stmt;
+    }
+
+    if (match(p, TOKEN_DEFER)) {
+        Stmt *stmt = new_stmt(p->compiler, STMT_DEFER, token);
+        stmt->as.defer_call = parse_expression(p);
+        consume(p, TOKEN_SEMICOLON, "Expected ';' after deferred call.",
+                "Write defer cleanup(resource); and end it with ';'.");
         return stmt;
     }
 
@@ -881,9 +990,14 @@ static Stmt *parse_statement(Parser *p)
 static Function *parse_function(Parser *p)
 {
     Token start = p->previous;
+    if (start.type == TOKEN_FUNCTION) {
+        diagnostic(p->compiler, start, "warning", "W2302",
+                   "The 'function' keyword is deprecated in YLang 3.0.",
+                   "Replace 'function' with 'fn'; for example: fn add(int a, int b) -> int { ... }");
+    }
     Token name_token = consume(p, TOKEN_IDENTIFIER,
-        "Expected a function name after 'function'.",
-        "For example: function add(int a, int b) -> int { ... }");
+        "Expected a function name after 'fn'.",
+        "For example: fn add(int a, int b) -> int { ... }");
     Function *function = arena_alloc(&p->compiler->arena, sizeof(*function));
     function->token = name_token;
     function->name = token_copy(p->compiler, name_token);
@@ -897,17 +1011,17 @@ static Function *parse_function(Parser *p)
             YType type = parse_type(p);
             Token param_name = consume(p, TOKEN_IDENTIFIER,
                 "Expected a parameter name after its type.",
-                "For example: function greet(string name) -> void.");
+                "For example: fn greet(string name) -> void.");
             VarDecl *param = new_var(p->compiler, param_name,
-                token_copy(p->compiler, param_name), type, false, false, NULL);
+                token_copy(p->compiler, param_name), type,
+                BINDING_IMMUTABLE, false, NULL);
             if (match(p, TOKEN_LEFT_BRACKET)) {
                 param->is_array = true;
                 consume(p, TOKEN_RIGHT_BRACKET,
                         "Array parameters use empty brackets after the name.",
-                        "Use syntax such as function sum(int values[]) -> int.");
+                        "Use syntax such as fn sum(int values[]) -> int.");
             }
             param->initialized = true;
-            if (type == TYPE_BORROWED_STRING) param->is_const = true;
             (void)param_type_token;
             append_ptr(p->compiler, (void ***)&function->params,
                        &function->param_count, param);
@@ -916,7 +1030,7 @@ static Function *parse_function(Parser *p)
     consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after parameters.",
             "Close the parameter list with ')'.");
     consume(p, TOKEN_ARROW, "Expected '->' before function return type.",
-            "For example: function main() -> int { ... }");
+            "For example: fn main() -> int { ... }");
     function->return_type = parse_type(p);
     if (function->return_type == TYPE_BORROWED_STRING) {
         diagnostic(p->compiler, function->token, "error", "E2120",
@@ -956,6 +1070,10 @@ static EnumDecl *parse_enum(Parser *p, Token enum_token)
     enumeration->name = (char *)name;
     enumeration->type = (YType)(TYPE_ENUM_BASE + p->compiler->enum_count);
     enumeration->module = p->compiler->current_module;
+    size_t enum_c_name_size = strlen(name) + 48U;
+    enumeration->c_name = arena_alloc(&p->compiler->arena, enum_c_name_size);
+    (void)snprintf(enumeration->c_name, enum_c_name_size, "yl_enum_%zu_%s",
+                   p->compiler->enum_count, name);
     append_ptr(p->compiler, (void ***)&p->compiler->enums,
                &p->compiler->enum_count, enumeration);
 
@@ -978,6 +1096,24 @@ static EnumDecl *parse_enum(Parser *p, Token enum_token)
             variant->name = variant_name;
             variant->value = (int64_t)enumeration->variant_count;
             variant->enumeration = enumeration;
+            if (match(p, TOKEN_LEFT_PAREN)) {
+                Token payload_type_token = p->current;
+                YType payload_type = parse_type(p);
+                consume(p, TOKEN_RIGHT_PAREN,
+                        "Expected ')' after the enum payload type.",
+                        "A payload variant accepts exactly one type, for example Some(int).");
+                if (payload_type != TYPE_INT && payload_type != TYPE_FLOAT &&
+                    payload_type != TYPE_BOOL && payload_type != TYPE_CHAR &&
+                    payload_type != TYPE_STRING) {
+                    diagnostic(p->compiler, payload_type_token, "error", "E2140",
+                               "This enum payload type is not supported.",
+                               "Payload variants currently accept int, float, bool, char, or string values.");
+                } else {
+                    variant->has_payload = true;
+                    variant->payload_type = payload_type;
+                    enumeration->has_payload = true;
+                }
+            }
             append_ptr(p->compiler, (void ***)&enumeration->variants,
                        &enumeration->variant_count, variant);
         }
@@ -1261,14 +1397,14 @@ Program *parse_program(Compiler *c)
             Stmt *global_stmt = parse_variable(&p, true);
             append_ptr(c, (void ***)&program->globals, &program->global_count,
                        global_stmt->as.variable);
-        } else if (match(&p, TOKEN_FUNCTION)) {
+        } else if (match(&p, TOKEN_FN) || match(&p, TOKEN_FUNCTION)) {
             Function *function = parse_function(&p);
             append_ptr(c, (void ***)&program->functions,
                        &program->function_count, function);
         } else {
             diagnostic(c, p.current, "error", "E1005",
                        "Only imports, global declarations, and function definitions are allowed at file scope.",
-                       "Move executable statements into function main().");
+                       "Move executable statements into fn main().");
             synchronize(&p);
         }
         if (p.current.start == before.start && p.current.type == before.type &&

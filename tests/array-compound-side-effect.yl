@@ -1,11 +1,11 @@
 let int calls = 0;
 
-function next_index() -> int {
+fn next_index() -> int {
     calls++;
     return calls - 1;
 }
 
-function main() -> int {
+fn main() -> int {
     let int values[] = [10, 20];
     values[next_index()] += 5;
 

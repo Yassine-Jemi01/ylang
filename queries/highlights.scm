@@ -9,15 +9,15 @@
 (enum_declaration name: (type_identifier) @type)
 (enum_variant) @constant
 (field_declaration (identifier) @property)
-(variable_declaration name: (identifier) @variable)
+(variable_binding name: (identifier) @variable)
 (primitive_type) @type
 (type_identifier) @type
 (qualified_type) @type
 (import_declaration) @keyword
 (from_import_declaration) @keyword
 [
-  "function" "return" "let" "const" "if" "else" "loop" "while" "for"
-  "break" "continue" "and" "or" "not" "await" "struct" "enum" "match"
+  "fn" "function" "return" "let" "mut" "const" "if" "else" "loop" "while" "for"
+  "break" "continue" "defer" "and" "or" "not" "await" "struct" "enum" "match"
   "from" "import"
 ] @keyword
 (boolean) @boolean
@@ -30,5 +30,5 @@
 (call_expression function: (identifier) @function)
 (member_expression property: (identifier) @property)
 [
-  "=" "+=" "-=" "*=" "/=" "+" "-" "*" "/" "%" "==" "!=" "<" "<=" ">" ">=" "->" "!"
+  "=" "+=" "-=" "*=" "/=" "+" "-" "*" "/" "%" "==" "!=" "<" "<=" ">" ">=" "++" "->" "!" ":"
 ] @operator

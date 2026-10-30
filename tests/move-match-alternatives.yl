@@ -1,6 +1,6 @@
 enum Choice { First, Second }
 
-function main() -> int {
+fn main() -> int {
     let Choice choice = Choice.First;
     let string source = string.concat("Y", "Lang");
     match (choice) {

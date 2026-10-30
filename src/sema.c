@@ -245,6 +245,8 @@ static bool expr_contains_call_or_assignment(Expr *expr)
         case EXPR_BINARY:
             return expr_contains_call_or_assignment(expr->as.binary.left) ||
                    expr_contains_call_or_assignment(expr->as.binary.right);
+        case EXPR_ENUM_VALUE:
+            return expr_contains_call_or_assignment(expr->as.enum_value.payload);
         case EXPR_FSTRING:
             for (size_t i = 0; i < expr->as.fstring.count; i++) {
                 if (expr_contains_call_or_assignment(expr->as.fstring.parts[i].expression)) return true;
@@ -369,9 +371,29 @@ static YType check_expr(Checker *checker, Expr *expr)
     Compiler *c = checker->compiler;
     switch (expr->kind) {
         case EXPR_ERROR: expr->type = TYPE_ERROR; return expr->type;
-        case EXPR_ENUM_VALUE:
+        case EXPR_ENUM_VALUE: {
+            EnumVariant *variant = expr->as.enum_value.variant;
+            if (variant && variant->has_payload) {
+                if (!expr->as.enum_value.payload) {
+                    diagnostic(c, expr->token, "error", "E2142",
+                               "This enum variant requires a payload value.",
+                               "Pass the declared payload when constructing this variant.");
+                } else {
+                    YType payload_type = check_expr(checker, expr->as.enum_value.payload);
+                    if (payload_type != TYPE_ERROR && payload_type != variant->payload_type) {
+                        char suggestion[256];
+                        (void)snprintf(suggestion, sizeof(suggestion),
+                            "Variant %s expects %s, but received %s.",
+                            variant->name, semantic_type_name(c, variant->payload_type),
+                            semantic_type_name(c, payload_type));
+                        diagnostic(c, expr->as.enum_value.payload->token, "error", "E2144",
+                                   "Enum payload type mismatch.", suggestion);
+                    }
+                }
+            }
             expr->type = expr->as.enum_value.enumeration->type;
             return expr->type;
+        }
         case EXPR_STRUCT_INIT: {
             StructDecl *structure = expr->as.struct_init.structure;
             if (!structure) {
@@ -602,10 +624,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
-            if (var->is_const) {
+            if (var->mutability == BINDING_IMMUTABLE) {
                 diagnostic(c, expr->token, "error", "E2022",
-                           "Cannot assign to a const variable.",
-                           "Keep 'const' and remove this assignment, or remove 'const' if the variable should be mutable.");
+                           "Cannot assign to an immutable binding.",
+                           "Declare it with 'let mut name: Type' if it must be reassigned or mutated.");
             }
             if (target_type == TYPE_OWNED_STRING && right == TYPE_OWNED_STRING &&
                 right_expr && right_expr->kind == EXPR_NAME) {
@@ -1039,13 +1061,13 @@ static YType check_expr(Checker *checker, Expr *expr)
                 } else if (near) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
-                                   "Did you mean function '%s'?", near);
+                                   "Did you mean fn '%s'?", near);
                     diagnostic(c, expr->token, "error", "E2040",
                                "Call to an unknown function.", suggestion);
                 } else {
                     diagnostic(c, expr->token, "error", "E2040",
                                "Call to an unknown function.",
-                               "Define the function with the 'function' keyword.");
+                               "Define the function with the 'fn' keyword.");
                 }
                 for (size_t i = 0; i < expr->as.call.count; i++)
                     (void)check_expr(checker, expr->as.call.args[i]);
@@ -1156,8 +1178,9 @@ static bool global_initializer_is_constant(Expr *expr)
     if (!expr) return true;
     switch (expr->kind) {
         case EXPR_INT: case EXPR_FLOAT: case EXPR_BOOL: case EXPR_CHAR: case EXPR_STRING:
-        case EXPR_ENUM_VALUE:
             return true;
+        case EXPR_ENUM_VALUE:
+            return global_initializer_is_constant(expr->as.enum_value.payload);
         case EXPR_ARRAY:
             for (size_t i = 0; i < expr->as.array.count; i++) {
                 if (!global_initializer_is_constant(expr->as.array.items[i])) return false;
@@ -1407,7 +1430,23 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                     c->all_vars[j]->initialized = before[j];
                     c->all_vars[j]->moved = before_moved[j];
                 }
+                Scope *outer_scope = checker->scope;
+                checker->scope = scope_new(c, outer_scope);
+                if (arm->variant && arm->variant->has_payload) {
+                    if (!arm->payload_binding) {
+                        diagnostic(c, arm->token, "error", "E2143",
+                                   "A payload match arm must bind its value to a name.",
+                                   "Use a pattern such as Message.Text(text) -> { ... }.");
+                    } else {
+                        (void)scope_add(checker, checker->scope, arm->payload_binding);
+                    }
+                } else if (arm->payload_binding) {
+                    diagnostic(c, arm->token, "error", "E2145",
+                               "A unit enum variant cannot declare a payload binding.",
+                               "Remove the binding or add a payload type to this variant.");
+                }
                 check_stmt(checker, arm->body);
+                checker->scope = outer_scope;
                 for (size_t j = 0; j < variable_count; j++) {
                     initialized_in_all_arms[j] =
                         initialized_in_all_arms[j] && c->all_vars[j]->initialized;
@@ -1452,6 +1491,49 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                            "Place this statement inside loop(), while, or for.");
             }
             break;
+        case STMT_DEFER: {
+            Expr *call = stmt->as.defer_call;
+            if (!call || call->kind != EXPR_CALL) {
+                if (call) (void)check_expr(checker, call);
+                diagnostic(c, stmt->token, "error", "E2130",
+                           "defer requires a direct call to a declared YLang function.",
+                           "Write defer cleanup(value); using a function declared with fn.");
+                break;
+            }
+            (void)check_expr(checker, call);
+            Function *callee = call->as.call.function;
+            if (!callee) {
+                diagnostic(c, stmt->token, "error", "E2130",
+                           "defer requires a direct call to a declared YLang function.",
+                           "Built-ins and indirect calls cannot be deferred in this version.");
+                break;
+            }
+            if (callee->return_type != TYPE_VOID) {
+                diagnostic(c, stmt->token, "error", "E2131",
+                           "A deferred function must return void.",
+                           "Use a cleanup function declared with -> void.");
+            }
+            for (size_t i = 0; i < call->as.call.count && i < callee->param_count; i++) {
+                if (callee->params[i]->is_array) {
+                    diagnostic(c, stmt->token, "error", "E2132",
+                               "Deferred calls do not support array parameters yet.",
+                               "Pass scalar values to the deferred cleanup function.");
+                    break;
+                }
+                YType argument_type = call->as.call.args[i]->type;
+                if (argument_type == TYPE_STRING ||
+                    argument_type == TYPE_BORROWED_STRING ||
+                    argument_type == TYPE_OWNED_STRING ||
+                    argument_type == TYPE_HTTP_TASK ||
+                    argument_type >= TYPE_STRUCT_BASE) {
+                    diagnostic(c, stmt->token, "error", "E2133",
+                               "defer currently captures only scalar values.",
+                               "Pass an int, float, bool, char, or enum value; string and aggregate captures need ownership-aware support.");
+                    break;
+                }
+            }
+            break;
+        }
         case STMT_RETURN: {
             YType expected = checker->function->return_type;
             if (!stmt->as.return_value) {

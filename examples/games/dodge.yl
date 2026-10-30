@@ -1,6 +1,6 @@
 from "../../stdlib/game2d.yl" import game2d_open, game2d_begin_frame, game2d_draw_rect, game2d_end_frame, game2d_close, game2d_last_error, game2d_key_down, game2d_delta_ms, game2d_rects_overlap;
 
-function main() -> int {
+fn main() -> int {
     print("DODGE");
     print("Move with Left and Right. Avoid the falling block. Press Escape to quit.");
 

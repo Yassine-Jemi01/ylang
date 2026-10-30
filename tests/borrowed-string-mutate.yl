@@ -1,8 +1,8 @@
-function invalid(borrowed_string value) -> int {
+fn invalid(borrowed_string value) -> int {
     value = "changed";
     return 0;
 }
 
-function main() -> int {
+fn main() -> int {
     return invalid("value");
 }

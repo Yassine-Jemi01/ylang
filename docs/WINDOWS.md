@@ -1,8 +1,10 @@
-# Native Windows support (experimental)
+# Native Windows support — YLang 3.0 stability target
 
-YLang's native Windows work targets 64-bit Windows with the MinGW-w64 toolchain. The Windows CI smoke job builds the compiler, builds the optional SDL2 GUI C runtime, compiles and runs a simple native program, verifies relative multi-file imports, and tests standard input.
+**Current status:** the implementation is still a focused MinGW-w64 port with smoke-test coverage. It must not be described as stable before the 3.0 acceptance gates pass.
 
-This is the first portability milestone, not a claim that every YLang feature has full Windows parity. NASM output remains Linux x86-64-only. MSVC is not a supported build toolchain for this milestone.
+**YLang 3.0 goal:** make 64-bit Windows an officially supported native platform using the documented MinGW-w64 toolchain. The supported setup is MSYS2 MINGW64 with MinGW-w64 GCC. MSVC and Windows ARM64 are outside the 3.0 support promise unless they receive separate compiler, runtime, dependency, linker, and CI coverage.
+
+The current Windows CI job builds the compiler and optional SDL2 GUI C runtime, runs the complete applicable `make test` regression suite, and adds native platform checks for compilation, relative imports, stdin, environment access, file I/O, process exit codes, paths with spaces, case-insensitive import identity, the semicolon-separated `YLANG_PATH`, and a MinGW-w64 GDB launch. This is broad regression coverage, not yet proof of complete platform parity. NASM remains a deliberately Linux x86-64-specific backend; its stable scope will be published in the 3.0 capability matrix.
 
 ## 1. Install MSYS2 and the toolchain
 
@@ -74,12 +76,26 @@ The compiler can validate GUI calls without SDL2 or libcurl, but GUI builds requ
 
 The initial GUI runtime supports one active window, event polling, keyboard/mouse state, timing, background clearing, and filled rectangles. Game2D is intended for simple 2D prototypes and examples. Sprites, audio, in-window text rendering, scene management, and a full physics engine are not part of this milestone.
 
-## Current limitations
+## Current implementation limits
 
-- Windows support is experimental and the CI smoke tests cover only a focused path through the compiler/runtime.
-- MSVC is not supported by this build recipe; use MinGW-w64 GCC.
-- The experimental NASM backend is Linux x86-64-only and does not compile all language features.
-- Some developer tests and installation scripts still need platform-specific follow-up.
-- Installing YLang system-wide and packaging all optional runtime dependencies on Windows is still future work.
+- The current Windows path is not yet stable; the existing CI job is a smoke suite, not full regression or feature-parity coverage.
+- MSVC is not supported by this build recipe; use the documented MinGW-w64 GCC toolchain.
+- NASM is intentionally Linux x86-64-only and supports a narrower, explicitly documented subset.
+- The interactive C-backend debugger now launches MinGW-w64 GDB; remaining editor/debug-adapter workflows and installation scripts still need Windows-specific implementation and validation.
+- System-wide Windows packaging and clean install/upgrade/uninstall tests are not complete.
 
-When reporting a Windows issue, include the Windows version, MINGW64 package/toolchain versions, exact command, source files, full output, and whether the problem affects check, generated C compilation, or execution.
+## YLang 3.0 stable-support acceptance
+
+Before this page can describe Windows support as stable, the 3.0 release candidate must pass:
+
+- A clean compiler build and the complete applicable test suite on a native Windows runner.
+- Native build/run tests for compiler-generated executables, imports, paths with spaces, environment variables, standard streams, process exit codes, and filesystem behavior.
+- SDL2 GUI/Game2D and libcurl HTTP build/runtime tests using the documented MSYS2 packages.
+- Ownership cleanup, error handling, and runtime tests on Windows, including sanitizer-equivalent checks where available.
+- Interactive CLI debugging through the documented MSYS2 MINGW64 / MinGW-w64 GDB setup, including a debugger launch test with a source and output path containing spaces.
+- LLVM object generation and native linking for the supported Windows target.
+- Installation, upgrade, removal, and documentation checks from a clean Windows environment.
+
+The stable support statement will remain limited to Windows x86-64 with MinGW-w64 GCC unless other toolchains/architectures independently pass the same gates. The 3.0 release must not promote this port by changing its label alone.
+
+When reporting a Windows issue, include the Windows version, MINGW64 package/toolchain versions, exact command, source files, full output, and whether the problem affects check, generated C/LLVM compilation, or execution.

@@ -3,8 +3,8 @@
 Create a file named `hello.yl`:
 
 ```ylang
-function main() -> int {
-    let const string name = "YLang";
+fn main() -> int {
+    let name: string = "YLang";
     print("Hello from", name);
     print("The answer is", 40 + 2);
     return 0;

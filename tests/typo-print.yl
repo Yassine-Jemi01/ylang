@@ -1,4 +1,4 @@
-function main() -> int {
+fn main() -> int {
     let int age = 16;
     pritn(age);
     print("The literal word pritn must remain unchanged.");

@@ -1,9 +1,9 @@
-function transfer_parameter(string value) -> string {
+fn transfer_parameter(string value) -> string {
     let string invalid = move(value);
     return value;
 }
 
-function main() -> int {
+fn main() -> int {
     let string source = string.concat("some", "thing");
     let string no_argument = move();
     let string expression_argument = move(string.concat("a", "b"));

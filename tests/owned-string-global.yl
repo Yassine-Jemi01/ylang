@@ -1,5 +1,5 @@
 let owned_string GLOBAL = "not supported";
 
-function main() -> int {
+fn main() -> int {
     return 0;
 }

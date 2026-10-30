@@ -3,7 +3,7 @@ let bool global_enabled;
 let char global_grade;
 let float global_rate;
 
-function main() -> int {
+fn main() -> int {
     let float rate = 5.0 / 2.0;
     let char grade = 'A';
     let bool enabled = not false;

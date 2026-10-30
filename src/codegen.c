@@ -264,6 +264,12 @@ static void assign_stmt_codegen_ids(Stmt *stmt, size_t *next_id)
             assign_expr_codegen_ids(stmt->as.for_stmt.increment, next_id);
             assign_stmt_codegen_ids(stmt->as.for_stmt.body, next_id);
             break;
+        case STMT_DEFER:
+            if (stmt->as.defer_call && stmt->as.defer_call->kind == EXPR_CALL) {
+                for (size_t i = 0; i < stmt->as.defer_call->as.call.count; i++)
+                    assign_expr_codegen_ids(stmt->as.defer_call->as.call.args[i], next_id);
+            }
+            break;
         case STMT_RETURN:
             assign_expr_codegen_ids(stmt->as.return_value, next_id);
             break;
@@ -427,6 +433,13 @@ static void emit_temp_declarations_stmt(Compiler *compiler, FILE *out,
             emit_temp_declarations_expr(compiler, out, stmt->as.for_stmt.condition, indent);
             emit_temp_declarations_expr(compiler, out, stmt->as.for_stmt.increment, indent);
             emit_temp_declarations_stmt(compiler, out, stmt->as.for_stmt.body, indent);
+            break;
+        case STMT_DEFER:
+            if (stmt->as.defer_call && stmt->as.defer_call->kind == EXPR_CALL) {
+                for (size_t i = 0; i < stmt->as.defer_call->as.call.count; i++)
+                    emit_temp_declarations_expr(compiler, out,
+                        stmt->as.defer_call->as.call.args[i], indent);
+            }
             break;
         case STMT_RETURN:
             emit_temp_declarations_expr(compiler, out, stmt->as.return_value, indent);
@@ -1014,9 +1027,26 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
 static void emit_var_type(Compiler *compiler, FILE *out, VarDecl *var, bool global)
 {
     if (global) fputs("static ", out);
-    if (var->is_const && !is_c_string_type(var->type)) fputs("const ", out);
+    if (var->mutability == BINDING_IMMUTABLE && !is_c_string_type(var->type)) fputs("const ", out);
     fputs(c_base_type(compiler, var->type), out);
-    if (var->is_const && is_c_string_type(var->type)) fputs(" const", out);
+    if (var->mutability == BINDING_IMMUTABLE && is_c_string_type(var->type)) fputs(" const", out);
+}
+
+static void emit_parameter_decl(Compiler *compiler, FILE *out, VarDecl *param)
+{
+    /* Owned parameters are nulled by cleanup after release. Semantic analysis
+       still enforces their immutability at the YLang source level. */
+    if (param->mutability == BINDING_IMMUTABLE &&
+        param->type != TYPE_OWNED_STRING) {
+        emit_var_type(compiler, out, param, false);
+    } else {
+        fputs(c_base_type(compiler, param->type), out);
+    }
+    if (param->is_array) {
+        fprintf(out, " *%s, size_t %s_len", param->c_name, param->c_name);
+    } else {
+        fprintf(out, " %s", param->c_name);
+    }
 }
 
 static void emit_expr_to_file(FILE *out, Expr *expr)
@@ -1117,8 +1147,17 @@ static void emit_fstring_print(FILE *out, Expr *expr, unsigned indent)
 }
 
 typedef struct {
+    Function *function;
+    char **argument_names;
+    size_t argument_count;
+} DeferredCall;
+
+typedef struct {
     VarDecl **vars;
     size_t count;
+    DeferredCall *defers;
+    size_t defer_count;
+    size_t defer_capacity;
 } OwnedScopeFrame;
 
 typedef struct {
@@ -1138,13 +1177,16 @@ static void emit_control_body(CodegenContext *ctx, Stmt *body, unsigned indent);
 
 static void codegen_fatal_out_of_memory(void)
 {
-    fputs("ylang: out of memory while preparing owned-string cleanup\n", stderr);
+    fputs("ylang: out of memory while preparing scope cleanup\n", stderr);
     exit(70);
 }
 
 static OwnedScopeFrame make_owned_scope_frame(Stmt *scope_stmt)
 {
-    OwnedScopeFrame frame = { .vars = NULL, .count = 0U };
+    OwnedScopeFrame frame = {
+        .vars = NULL, .count = 0U,
+        .defers = NULL, .defer_count = 0U, .defer_capacity = 0U
+    };
     if (!scope_stmt) return frame;
     if (scope_stmt->kind == STMT_VAR) {
         VarDecl *var = scope_stmt->as.variable;
@@ -1195,6 +1237,16 @@ static void emit_cleanup_scope_frame(CodegenContext *ctx,
                                      const OwnedScopeFrame *frame,
                                      unsigned indent)
 {
+    for (size_t i = frame->defer_count; i > 0U; i--) {
+        const DeferredCall *deferred = &frame->defers[i - 1U];
+        emit_indent(ctx->out, indent);
+        fprintf(ctx->out, "%s(", deferred->function->c_name);
+        for (size_t j = 0; j < deferred->argument_count; j++) {
+            if (j) fputs(", ", ctx->out);
+            fputs(deferred->argument_names[j], ctx->out);
+        }
+        fputs(");\n", ctx->out);
+    }
     for (size_t i = frame->count; i > 0U; i--) {
         VarDecl *var = frame->vars[i - 1U];
         emit_indent(ctx->out, indent);
@@ -1212,6 +1264,15 @@ static void pop_owned_scope(CodegenContext *ctx, unsigned indent, bool emit_clea
     free(frame->vars);
     frame->vars = NULL;
     frame->count = 0U;
+    for (size_t i = 0; i < frame->defer_count; i++) {
+        for (size_t j = 0; j < frame->defers[i].argument_count; j++)
+            free(frame->defers[i].argument_names[j]);
+        free(frame->defers[i].argument_names);
+    }
+    free(frame->defers);
+    frame->defers = NULL;
+    frame->defer_count = 0U;
+    frame->defer_capacity = 0U;
     ctx->scope_count--;
 }
 
@@ -1303,6 +1364,62 @@ static void emit_source_line_directive(Compiler *compiler, FILE *out, Token toke
     fputs("\"\n", out);
 }
 
+static void register_deferred_call(CodegenContext *ctx, Stmt *stmt,
+                                     unsigned indent)
+{
+    if (ctx->scope_count == 0U || !stmt->as.defer_call ||
+        stmt->as.defer_call->kind != EXPR_CALL ||
+        !stmt->as.defer_call->as.call.function) {
+        fputs("ylang: internal error: invalid deferred call reached code generation.\n", stderr);
+        exit(70);
+    }
+
+    Expr *call = stmt->as.defer_call;
+    OwnedScopeFrame *frame = &ctx->scopes[ctx->scope_count - 1U];
+    if (frame->defer_count == frame->defer_capacity) {
+        size_t capacity = frame->defer_capacity ? frame->defer_capacity * 2U : 4U;
+        if (capacity < frame->defer_capacity ||
+            capacity > SIZE_MAX / sizeof(*frame->defers)) codegen_fatal_out_of_memory();
+        DeferredCall *grown = realloc(frame->defers, capacity * sizeof(*grown));
+        if (!grown) codegen_fatal_out_of_memory();
+        frame->defers = grown;
+        frame->defer_capacity = capacity;
+    }
+
+    DeferredCall deferred = {
+        .function = call->as.call.function,
+        .argument_names = NULL,
+        .argument_count = call->as.call.count
+    };
+    if (deferred.argument_count > 0U) {
+        if (deferred.argument_count > SIZE_MAX / sizeof(*deferred.argument_names))
+            codegen_fatal_out_of_memory();
+        deferred.argument_names = calloc(deferred.argument_count,
+                                         sizeof(*deferred.argument_names));
+        if (!deferred.argument_names) codegen_fatal_out_of_memory();
+    }
+
+    for (size_t i = 0; i < deferred.argument_count; i++) {
+        size_t prefix_length = strlen(ctx->function->c_name);
+        if (prefix_length > SIZE_MAX - 96U) codegen_fatal_out_of_memory();
+        size_t name_size = prefix_length + 96U;
+        deferred.argument_names[i] = malloc(name_size);
+        if (!deferred.argument_names[i]) codegen_fatal_out_of_memory();
+        (void)snprintf(deferred.argument_names[i], name_size,
+                       "yl_defer_%s_%zu_%zu_arg%zu",
+                       ctx->function->c_name, stmt->token.line,
+                       stmt->token.column, i);
+        emit_indent(ctx->out, indent);
+        fprintf(ctx->out, "%s %s = ",
+                c_base_type(ctx->compiler, call->as.call.args[i]->type),
+                deferred.argument_names[i]);
+        emit_expr_to_file(ctx->out, call->as.call.args[i]);
+        fputs(";\n", ctx->out);
+    }
+
+    frame->defers[frame->defer_count++] = deferred;
+}
+
 static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
 {
     if (!stmt) return;
@@ -1348,6 +1465,9 @@ static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
             fputs(";\n", out);
             break;
         }
+        case STMT_DEFER:
+            register_deferred_call(ctx, stmt, indent);
+            break;
         case STMT_PRINT:
             for (size_t i = 0; i < stmt->as.print.count; i++) {
                 Expr *expr = stmt->as.print.args[i];
@@ -1439,7 +1559,7 @@ static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
                 emit_indent(out, indent);
                 fprintf(out, "return %s;\n", temporary);
             } else {
-                emit_cleanup_function_owned(ctx, indent);
+                emit_cleanup_active_owned(ctx, indent);
                 emit_indent(out, indent);
                 fputs("return;\n", out);
             }
@@ -1573,12 +1693,7 @@ bool generate_c(Compiler *c, const char *path)
         for (size_t j = 0; j < fn->param_count; j++) {
             VarDecl *param = fn->params[j];
             if (!first_param) fputs(", ", out);
-            if (param->is_array) {
-                fprintf(out, "%s *%s, size_t %s_len",
-                        c_base_type(c, param->type), param->c_name, param->c_name);
-            } else {
-                fprintf(out, "%s %s", c_base_type(c, param->type), param->c_name);
-            }
+            emit_parameter_decl(c, out, param);
             first_param = false;
         }
         fputs(");\n", out);
@@ -1593,12 +1708,7 @@ bool generate_c(Compiler *c, const char *path)
         for (size_t j = 0; j < fn->param_count; j++) {
             VarDecl *param = fn->params[j];
             if (!first_param) fputs(", ", out);
-            if (param->is_array) {
-                fprintf(out, "%s *%s, size_t %s_len",
-                        c_base_type(c, param->type), param->c_name, param->c_name);
-            } else {
-                fprintf(out, "%s %s", c_base_type(c, param->type), param->c_name);
-            }
+            emit_parameter_decl(c, out, param);
             first_param = false;
         }
         fputs(") {\n", out);

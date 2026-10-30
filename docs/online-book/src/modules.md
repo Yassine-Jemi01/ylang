@@ -7,11 +7,11 @@ Functions provide named units of behavior; imports let a source file use selecte
 A function should have a clear purpose, a readable signature, and a body that performs a related set of operations. Parameters describe the values the caller supplies; the return type describes the value produced by the function.
 
 \`\`\`ylang
-function answer() -> int {
+fn answer() -> int {
     return 42;
 }
 
-function main() -> int {
+fn main() -> int {
     print(answer());
     return 0;
 }
@@ -24,7 +24,7 @@ The caller uses the function's name and parentheses to invoke it. If a function 
 Given a sibling file named \`math_tools.yl\`:
 
 \`\`\`ylang
-function answer() -> int {
+fn answer() -> int {
     return 42;
 }
 \`\`\`
@@ -34,7 +34,7 @@ A second file can import that function:
 \`\`\`ylang
 from "./math_tools.yl" import answer;
 
-function main() -> int {
+fn main() -> int {
     print(answer());
     return 0;
 }

@@ -1,7 +1,7 @@
-function invalid(borrowed_string text) -> borrowed_string {
+fn invalid(borrowed_string text) -> borrowed_string {
     return text;
 }
 
-function main() -> int {
+fn main() -> int {
     return 0;
 }

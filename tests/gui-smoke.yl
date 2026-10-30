@@ -1,4 +1,4 @@
-function main() -> int {
+fn main() -> int {
     if (not gui.init()) { return 1; }
     if (not gui.create_window("GUI smoke test", 64, 64)) {
         gui.shutdown();

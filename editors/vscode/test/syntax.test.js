@@ -23,13 +23,17 @@ for (const name of includes) {
   assert.ok(repository[name], `grammar include #${name} must be defined`);
 }
 
-for (const keyword of ["struct", "enum", "match", "from", "import", "for", "while", "await"]) {
-  assert.ok(repository.keywords.match.includes(keyword), `missing YLang 2.0 keyword: ${keyword}`);
+for (const keyword of ["fn", "defer", "struct", "enum", "match", "from", "import", "for", "while", "await"]) {
+  assert.ok(repository.keywords.match.includes(keyword), `missing YLang keyword: ${keyword}`);
 }
+assert.ok(repository["function-declaration"].match.includes("fn|function"), "fn and the legacy function spelling should be highlighted");
 assert.ok(repository["struct-declaration"], "struct declarations should have a dedicated scope");
 assert.ok(repository["enum-declaration"], "enum declarations and variants should have dedicated scopes");
 assert.ok(repository["field-declaration"], "struct fields should be highlighted");
-assert.ok(repository["variable-declaration"], "typed variable declarations should be highlighted");
+assert.ok(repository["variable-declaration"], "name:type bindings should be highlighted");
+assert.match(repository["variable-declaration"].match, /mut/, "mutable bindings should be highlighted");
+assert.ok(repository["legacy-variable-declaration"], "legacy type-first declarations should remain highlighted");
+assert.ok(repository.keywords.match.includes("mut"), "mut should be highlighted as a keyword");
 assert.ok(repository.namespace.match.includes("gui"), "built-in namespaces should be highlighted");
 assert.ok(repository.namespace.match.includes("http"), "HTTP namespace should be highlighted");
 assert.ok(repository.namespace.match.includes("env"), "environment namespace should be highlighted");

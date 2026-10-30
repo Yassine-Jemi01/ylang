@@ -134,12 +134,14 @@ static bool is_word(const Lexer *lexer, const char *word)
 static TokenType identifier_type(const Lexer *lexer)
 {
     if (is_word(lexer, "let")) return TOKEN_LET;
+    if (is_word(lexer, "mut")) return TOKEN_MUT;
     if (is_word(lexer, "const")) return TOKEN_CONST;
     if (is_word(lexer, "print")) return TOKEN_PRINT;
     if (is_word(lexer, "if")) return TOKEN_IF;
     if (is_word(lexer, "else")) return TOKEN_ELSE;
     if (is_word(lexer, "true")) return TOKEN_TRUE;
     if (is_word(lexer, "false")) return TOKEN_FALSE;
+    if (is_word(lexer, "fn")) return TOKEN_FN;
     if (is_word(lexer, "function")) return TOKEN_FUNCTION;
     if (is_word(lexer, "loop")) return TOKEN_LOOP;
     if (is_word(lexer, "while")) return TOKEN_WHILE;
@@ -147,6 +149,7 @@ static TokenType identifier_type(const Lexer *lexer)
     if (is_word(lexer, "break")) return TOKEN_BREAK;
     if (is_word(lexer, "continue")) return TOKEN_CONTINUE;
     if (is_word(lexer, "return")) return TOKEN_RETURN;
+    if (is_word(lexer, "defer")) return TOKEN_DEFER;
     if (is_word(lexer, "and")) return TOKEN_AND;
     if (is_word(lexer, "or")) return TOKEN_OR;
     if (is_word(lexer, "not")) return TOKEN_NOT;
@@ -269,6 +272,8 @@ Token lexer_next(Lexer *lexer)
         case '[' : return make_token(lexer, TOKEN_LEFT_BRACKET);
         case ']' : return make_token(lexer, TOKEN_RIGHT_BRACKET);
         case '.' : return make_token(lexer, TOKEN_DOT);
+        case ':' : return make_token(lexer, TOKEN_COLON);
+        case '?' : return make_token(lexer, TOKEN_QUESTION);
         case '+':
             if (match_char(lexer, '+')) return make_token(lexer, TOKEN_PLUS_PLUS);
             return make_token(lexer, match_char(lexer, '=') ? TOKEN_PLUS_EQUAL : TOKEN_PLUS);
@@ -339,12 +344,14 @@ const char *token_type_name(TokenType type)
         case TOKEN_FSTRING: return "FSTRING";
         case TOKEN_NEWLINE: return "NEWLINE";
         case TOKEN_LET: return "LET";
+        case TOKEN_MUT: return "MUT";
         case TOKEN_CONST: return "CONST";
         case TOKEN_PRINT: return "PRINT";
         case TOKEN_IF: return "IF";
         case TOKEN_ELSE: return "ELSE";
         case TOKEN_TRUE: return "TRUE";
         case TOKEN_FALSE: return "FALSE";
+        case TOKEN_FN: return "FN";
         case TOKEN_FUNCTION: return "FUNCTION";
         case TOKEN_LOOP: return "LOOP";
         case TOKEN_WHILE: return "WHILE";
@@ -352,6 +359,7 @@ const char *token_type_name(TokenType type)
         case TOKEN_BREAK: return "BREAK";
         case TOKEN_CONTINUE: return "CONTINUE";
         case TOKEN_RETURN: return "RETURN";
+        case TOKEN_DEFER: return "DEFER";
         case TOKEN_AND: return "AND";
         case TOKEN_OR: return "OR";
         case TOKEN_NOT: return "NOT";
@@ -366,6 +374,8 @@ const char *token_type_name(TokenType type)
         case TOKEN_LEFT_BRACKET: return "LEFT_BRACKET";
         case TOKEN_RIGHT_BRACKET: return "RIGHT_BRACKET";
         case TOKEN_DOT: return "DOT";
+        case TOKEN_COLON: return "COLON";
+        case TOKEN_QUESTION: return "QUESTION";
         case TOKEN_PLUS: return "PLUS";
         case TOKEN_PLUS_EQUAL: return "PLUS_EQUAL";
         case TOKEN_PLUS_PLUS: return "PLUS_PLUS";

@@ -77,6 +77,7 @@ jobs:
             mingw-w64-x86_64-SDL2
             mingw-w64-x86_64-curl
             mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-gdb
             make
             python
       - name: Verify generated runtime template
@@ -85,6 +86,8 @@ jobs:
         run: make clean all CC=gcc PYTHON=python
       - name: Build optional SDL2 GUI runtime
         run: make gui gui-example game2d-example CC=gcc PYTHON=python
+      - name: Run the complete applicable compiler regression suite on Windows
+        run: make test CC=gcc PYTHON=python
       - name: Check, compile, and run a native Windows program
         run: |
           mkdir -p build/windows-smoke
@@ -127,21 +130,104 @@ jobs:
           ./build/ylang.exe build build/windows-smoke/input.yl -o build/windows-smoke/input.exe
           output="$(printf 'native Windows input\n' | ./build/windows-smoke/input.exe)"
           test "$output" = "native Windows input"
-      - name: Test native Windows HTTP, async tasks, and redirect safety
+      - name: Verify the Windows run command cleans up and propagates exit status
         run: |
-          export YLANG_TEST_API_KEY=test-token
-          python tests/run_http_integration.py
-      - name: Reject unsupported Windows interactive debugger cleanly
+          mkdir -p "build/windows smoke/temp"
+          cat > "build/windows smoke/run-exit.yl" <<'EOF'
+          fn main() -> int {
+              print("Windows run command");
+              return 23;
+          }
+          EOF
+          set +e
+          TEMP="build/windows smoke/temp" ./build/ylang.exe run "build/windows smoke/run-exit.yl" > "build/windows smoke/run-exit.out"
+          status=$?
+          set -e
+          test "$status" -eq 23
+          printf 'Windows run command\n' > "build/windows smoke/run-exit.expected"
+          diff -u "build/windows smoke/run-exit.expected" "build/windows smoke/run-exit.out"
+          test -z "$(find "build/windows smoke/temp" -mindepth 1 -maxdepth 1 -print -quit)"
+      - name: Test Windows environment, filesystem, paths with spaces, and exit codes
         run: |
-          if ./build/ylang.exe debug tests/debug-source-map.yl -o build/windows-smoke/debug-unsupported.exe > build/windows-smoke/debug.out 2>&1; then
-            echo "FAIL: Windows interactive debugger unexpectedly claimed support" >&2
-            exit 1
-          else
-            status=$?
-            test "$status" -eq 64
-          fi
-          grep -q "interactive debugging is not implemented on Windows" build/windows-smoke/debug.out
-          test ! -e build/windows-smoke/debug-unsupported.exe
+          mkdir -p "build/windows smoke"
+          export YLANG_TEST_VALUE="native Windows environment value"
+          cat > "build/windows smoke/env-files.yl" <<'EOF'
+          fn main() -> int {
+              let value: string = env.get("YLANG_TEST_VALUE");
+              let output_path: string = "build/windows smoke/result.txt";
+              let saved: bool = io.write_file(output_path, value);
+              if (not saved) {
+                  return 91;
+              }
+              let restored: string = io.read_file(output_path);
+              print(value);
+              print(restored);
+              print(io.file_exists(output_path));
+              return 23;
+          }
+          EOF
+          ./build/ylang.exe build "build/windows smoke/env-files.yl" -o "build/windows smoke/env-files.exe"
+          set +e
+          "build/windows smoke/env-files.exe" > "build/windows smoke/env-files.out"
+          status=$?
+          set -e
+          test "$status" -eq 23
+          printf 'native Windows environment value\nnative Windows environment value\ntrue\n' > "build/windows smoke/env-files.expected"
+          diff -u "build/windows smoke/env-files.expected" "build/windows smoke/env-files.out"
+      - name: Test case-insensitive Windows module path identity
+        run: |
+          mkdir -p "build/windows modules"
+          cat > "build/windows modules/shared.yl" <<'EOF'
+          fn lower_name() -> int {
+              return 20;
+          }
+          fn upper_name() -> int {
+              return 22;
+          }
+          EOF
+          cat > "build/windows modules/main.yl" <<'EOF'
+          from "./shared.yl" import lower_name;
+          from "./SHARED.yl" import upper_name;
+          fn main() -> int {
+              print(lower_name() + upper_name());
+              return 0;
+          }
+          EOF
+          ./build/ylang.exe build "build/windows modules/main.yl" -o "build/windows modules/main.exe"
+          output="$("build/windows modules/main.exe")"
+          test "$output" = "42"
+      - name: Test the Windows YLANG_PATH semicolon separator
+        run: |
+          mkdir -p "build/windows search/first" "build/windows search/second"
+          cat > "build/windows search/second/search_lib.yl" <<'EOF'
+          fn from_search_path() -> int {
+              return 42;
+          }
+          EOF
+          cat > "build/windows search/main.yl" <<'EOF'
+          from "search_lib.yl" import from_search_path;
+          fn main() -> int {
+              print(from_search_path());
+              return 0;
+          }
+          EOF
+          YLANG_PATH="build/windows search/first;build/windows search/second" ./build/ylang.exe build "build/windows search/main.yl" -o "build/windows search/main.exe"
+          output="$("build/windows search/main.exe")"
+          test "$output" = "42"
+      - name: Launch the native Windows debugger through MinGW-w64 GDB
+        run: |
+          mkdir -p "build/windows debugger"
+          cat > "build/windows debugger/debug.yl" <<'EOF'
+          fn main() -> int {
+              let int answer: int = 40 + 2;
+              print(answer);
+              return 0;
+          }
+          EOF
+          printf 'quit\n' | ./build/ylang.exe debug "build/windows debugger/debug.yl" -o "build/windows debugger/debug.exe" > "build/windows debugger/debug.out" 2>&1
+          test -f "build/windows debugger/debug.exe"
+          grep -Fq "Build succeeded: build/windows debugger/debug.exe" "build/windows debugger/debug.out"
+          grep -Fq "Reading symbols from" "build/windows debugger/debug.out"
 
   yspm-package-smoke:
     name: Build and inspect YLang .yspkg package

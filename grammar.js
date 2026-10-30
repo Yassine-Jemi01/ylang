@@ -27,6 +27,7 @@ module.exports = grammar({
       $.loop_statement,
       $.match_statement,
       $.return_statement,
+      $.defer_statement,
       $.break_statement,
       $.continue_statement,
       $.expression_statement,
@@ -34,7 +35,7 @@ module.exports = grammar({
     ),
 
     function_declaration: $ => seq(
-      "function", field("name", $.identifier),
+      choice("fn", "function"), field("name", $.identifier),
       "(", optional($.parameter_list), ")",
       optional(seq("->", field("return_type", $._type))),
       $.block
@@ -51,11 +52,16 @@ module.exports = grammar({
       commaSep1($.enum_variant), optional(","), "}"
     ),
     enum_variant: $ => $.identifier,
-    variable_declaration: $ => seq(
-      "let", optional("const"), field("type", $._type),
-      field("name", $.identifier), optional("[]"),
-      optional(seq("=", $._expression)), ";"
+    variable_binding: $ => choice(
+      seq("let", "mut", field("name", $.identifier), ":", field("type", $._type),
+        optional(seq("=", $._expression))),
+      seq("let", field("name", $.identifier), ":", field("type", $._type),
+        optional(seq("=", $._expression))),
+      seq("let", optional("const"), field("type", $._type),
+        field("name", $.identifier), optional("[]"),
+        optional(seq("=", $._expression)))
     ),
+    variable_declaration: $ => seq($.variable_binding, ";"),
     import_declaration: $ => seq("import", $.string, ";"),
     from_import_declaration: $ => seq(
       "from", choice($.identifier, $.string),
@@ -64,7 +70,8 @@ module.exports = grammar({
     if_statement: $ => seq("if", "(", $._expression, ")", $.block,
       optional(seq("else", choice($.block, $.if_statement)))),
     while_statement: $ => seq("while", "(", $._expression, ")", $.block),
-    for_statement: $ => seq("for", "(", optional($._expression), ";",
+    for_statement: $ => seq("for", "(",
+      optional(choice($.variable_binding, $._expression)), ";",
       optional($._expression), ";", optional($._expression), ")", $.block),
     loop_statement: $ => seq("loop", $.block),
     match_statement: $ => seq("match", "(", $._expression, ")", "{",
@@ -74,6 +81,7 @@ module.exports = grammar({
       "->", choice($.block, $._expression), optional(",")
     ),
     return_statement: $ => seq("return", optional($._expression), ";"),
+    defer_statement: $ => seq("defer", $.call_expression, ";"),
     break_statement: $ => seq("break", ";"),
     continue_statement: $ => seq("continue", ";"),
     block: $ => seq("{", repeat($._statement), "}"),
@@ -91,6 +99,7 @@ module.exports = grammar({
     _expression: $ => choice(
       $.assignment_expression,
       $.binary_expression,
+      $.postfix_increment,
       $.unary_expression,
       $.await_expression,
       $.call_expression,
@@ -130,6 +139,9 @@ module.exports = grammar({
         ))
       ));
     },
+    postfix_increment: $ => prec.left(10, seq(
+      field("target", choice($.identifier, $.member_expression)), "++"
+    )),
     unary_expression: $ => prec(8, seq(choice("!", "-", "not"), $._expression)),
     await_expression: $ => prec(8, seq("await", $._expression)),
     call_expression: $ => prec(9, seq(

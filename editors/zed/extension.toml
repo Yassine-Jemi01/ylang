@@ -9,4 +9,4 @@ lib = "ylang_zed_extension"
 
 [grammars.ylang]
 repository = "https://github.com/Yassine-Jemi01/ylang"
-rev = "239c1bc892a9db1df6e85caef1f8b4d09618a7a7"
+rev = "c9bd0d5b4e7176ffe96c4932ec28082a5d49c240"
