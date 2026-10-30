@@ -19,7 +19,7 @@ else
 GAME2D_OUTPUT ?= build/dodge
 endif
 
-.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
+.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test ir-unit-test fuzz-frontend fuzz-smoke
 
 all: $(BIN)
 
