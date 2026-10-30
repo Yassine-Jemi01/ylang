@@ -78,8 +78,12 @@ bool yir_verify_function(const YIRFunction *function, char *error,
     if (block_count > SIZE_MAX / block_count)
         return fail(error, error_capacity, "function has too many basic blocks");
 
+    if (function->parameter_count && !function->parameters)
+        return fail(error, error_capacity,
+                    "function parameters require a parameter array");
+
     size_t instruction_capacity = 0;
-    size_t parameter_capacity = 0;
+    size_t parameter_capacity = function->parameter_count;
     for (size_t bi = 0; bi < block_count; ++bi) {
         const YIRBlock *block = &function->blocks[bi];
         if (!block->instructions || block->instruction_count == 0)
@@ -118,6 +122,19 @@ bool yir_verify_function(const YIRFunction *function, char *error,
 
     bool ok = false;
     size_t value_count = 0;
+    for (size_t pi = 0; pi < function->parameter_count; ++pi) {
+        const YIRFunctionParameter *parameter = &function->parameters[pi];
+        if (!parameter->id || !valid_type(parameter->type) ||
+            parameter->type == YIR_TYPE_VOID ||
+            find_value(values, value_count, parameter->id)) {
+            (void)fail(error, error_capacity,
+                       "function parameters require unique IDs and valid non-void types");
+            goto cleanup;
+        }
+        values[value_count++] = (ValueDef){
+            parameter->id, parameter->type, 0, 0, true
+        };
+    }
     for (size_t bi = 0; bi < block_count; ++bi) {
         const YIRBlock *block = &function->blocks[bi];
         for (size_t pi = 0; pi < block->parameter_count; ++pi) {
