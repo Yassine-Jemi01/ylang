@@ -152,6 +152,12 @@ if grep -qi 'segmentation fault' build/deep-expression-nesting.out; then
     exit 1
 fi
 
+# The canonical 3.0 function keyword is accepted while legacy 'function' remains compatible.
+./build/ylang check tests/fn-keyword.yl >/dev/null
+./build/ylang build tests/fn-keyword.yl -o build/test-fn-keyword >/dev/null
+./build/test-fn-keyword > build/fn-keyword.out
+diff -u tests/expected-fn-keyword.txt build/fn-keyword.out
+
 ./build/ylang check examples/demo.yl
 ./build/ylang build examples/demo.yl -o build/test-demo >/dev/null
 ./build/test-demo > build/test-demo.out
