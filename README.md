@@ -171,8 +171,21 @@ NASM still rejects floating-point values, owned strings, f-strings, string
 comparisons, structs, GUI/HTTP and most standard-library calls, and `defer`.
 Arrays cannot be returned, nested, or mutated through immutable bindings;
 array parameters are immutable inside the callee. The established C backend
-remains the default and reference backend. A backend-neutral IR and LLVM
-backend are future work; see the [backend roadmap](docs/BACKEND-ROADMAP.md).
+remains the default and reference backend. The 3.0 development branch now has a
+backend-neutral scalar SSA IR and verifier, plus an experimental LLVM path for
+scalar integers, floats, booleans, calls, control flow, globals, and printing:
+
+```sh
+./build/ylang emit-llvm app.yl -o app.ll
+./build/ylang build-llvm app.yl -o app --cc clang
+./build/ylang emit-obj app.yl -o app.o --cc clang
+```
+
+These LLVM commands currently target Linux x86-64 and use Clang to compile the
+textual IR. `emit-obj` is a relocatable-object prototype, not direct LLVM
+TargetMachine emission. Arrays, strings, structs, ownership, exceptions,
+`Result`/`Option`, and the full standard library are not yet supported by this
+LLVM subset. See the [3.0 roadmap](docs/ROADMAP-3.0.md) and [LLVM backend RFC](docs/RFC-3.0-LLVM-BACKEND.md).
 
 ## Structs (experimental)
 
