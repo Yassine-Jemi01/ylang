@@ -187,6 +187,57 @@ A language that is fast but unpleasant to use will not earn adoption.
 
 YSPM remains the Linux system package manager integration. It is not a substitute for project-local dependency resolution.
 
+### 6.1 Official Windows support
+
+Windows x86-64 is a first-class YLang 3.0 target, not an experimental port.
+
+The initial officially supported Windows toolchain is **MinGW-w64 GCC through MSYS2 MINGW64**. MSVC is not part of the 3.0 support promise unless it receives its own compiler, runtime, linker, dependency, and CI validation. A clearly documented supported toolchain is preferable to claiming untested toolchain parity.
+
+Windows 3.0 acceptance requires:
+
+- Clean compiler builds from a fresh checkout and a documented native installation path.
+- The full applicable compiler and integration suite on Windows, not only a hello-world smoke test.
+- Native executable build, linking, startup, process exit codes, standard input/output/error, filesystem operations, environment variables, and command-line paths with spaces.
+- Relative and search-path imports, case-insensitive path identity, Windows path-list separators, and diagnostics with correct source paths.
+- Stable HTTP/libcurl and SDL2 GUI/Game2D build/runtime paths with optional dependency detection and feature-specific tests.
+- The stable CLI debugger on Windows through the documented MinGW-w64 GDB toolchain.
+- LLVM native object generation and executable linking for the supported Windows target triple, with C/LLVM parity tests.
+- Windows-specific ownership, cleanup, error handling, Unicode/path behavior, packaging, and upgrade tests.
+- CI on a clean Windows runner for every release candidate; a focused smoke workflow alone is insufficient.
+
+The support promise is for the documented Windows x86-64 MinGW-w64 configuration. Do not imply MSVC, Windows ARM64, NASM-on-Windows, or an untested combination is supported.
+
+### 6.2 Graduate every existing experimental subsystem
+
+YLang 3.0 has a firm product rule: **none of the features already shipped or documented as experimental may remain experimental in the 3.0 stable release**. Each must either meet its stable acceptance criteria below or be removed from the advertised 3.0 feature set before release. Renaming a heading or deleting the word "experimental" does not count as implementation.
+
+| Current experimental subsystem | Required 3.0 stable contract |
+|---|---|
+| Native Windows | Official Windows x86-64 MinGW-w64 support meeting section 6.1, with full CI and installation documentation. |
+| Named imports and multi-file modules | Stable module resolution, deterministic duplicate/cycle diagnostics, relative and configured search paths, reproducible builds, and C/LLVM parity. |
+| Structs | Stable construction, field access, assignment, parameter passing, return values, nested values, and defined layout/ownership rules; unsupported methods, inheritance, or recursive layouts must be explicitly outside the 3.0 language contract. |
+| Enums and matching | Stable enum identity, payload variants, exhaustive matching, payload binding, and defined behavior across functions, modules, and both stable backends. |
+| GUI and Game2D | Stable documented SDL2 APIs for window lifecycle, events/input, timing, drawing, error reporting, and cleanup on Linux, macOS, and Windows. This is a small 2D application/game API, not a promise of a complete commercial game engine. |
+| NASM backend | A supported, documented Linux x86-64 backend with an enforced capability matrix, complete tests for every advertised construct, safe rejection outside its subset, and C/NASM parity for the shared subset. Linux-only scope is intentional, not experimental status. |
+| HTTP and HTTP-task async | Stable synchronous request and HTTP-task APIs, typed/consistent failure behavior, cancellation/consumption rules, TLS/redirect/timeouts/size limits, loopback integration tests, and optional libcurl setup on every supported desktop platform. General-purpose async functions remain a separate language feature, not an implied promise of this API. |
+| Owned and borrowed strings / memory model | Complete ownership transfer, borrowing/lifetime rules, cleanup for every supported storage form and control-flow exit, and sanitizer/leak tests. Do not advertise Rust-level memory safety unless the implemented model justifies that exact claim. |
+| CLI debugger | Stable source-aware debug builds and interactive debugger launch on Linux, macOS, and Windows for the supported C/LLVM paths, with documented breakpoint, stack, and local-variable behavior. A dedicated VS Code Debug Adapter Protocol UI is a separate deliverable unless explicitly completed. |
+| Nix Flake | Reproducible, tested Nix package and development shell for the declared Linux architecture, with pinned inputs and clean-build CI. Nix's own opt-in Flake configuration requirement is not a YLang feature limitation. |
+| YSPM integration | Reproducible Linux x86-64 package creation, metadata/ABI validation, installation, upgrade/removal, and exact-artifact release CI. It remains a Linux system-package format, not a Windows or macOS installer. |
+| LLVM backend | Complete stable 3.0 language/runtime coverage on each advertised target, native object emission, linking, debug metadata, optimization, and differential parity. The current scalar Clang-mediated prototype is not the stable endpoint. |
+
+A graduated subsystem may still have a deliberately narrow, documented scope. Stable means its published contract is implemented, tested, diagnosable, versioned, and supported within that scope; it does not mean every backend supports every construct or that optional dependencies are bundled.
+
+Release-wide graduation gates:
+
+1. Every row has a feature owner, a stable specification, runnable examples, negative tests, and a test-enforced capability matrix where applicable.
+2. The supported feature set passes Linux GCC/Clang, macOS Clang, and Windows MinGW-w64 CI. Optional GUI/network features also run their platform dependency tests.
+3. C and LLVM agree on observable behavior for their shared supported language set. NASM agrees on its explicitly advertised subset.
+4. No feature marked experimental is exposed as stable merely because the parser accepts its syntax.
+5. README, language specification, Windows/Nix/YSPM/HTTP/debugger/GUI/backend guides, online book, website, editor metadata, release notes, and package metadata all describe the same stable support matrix.
+6. A repository audit before the release candidate finds no current subsystem still described as experimental. The stable release notes must state any intentionally unsupported toolchain/platform explicitly.
+
+
 ## 7. Performance: a release gate, not a slogan
 
 YLang 3.0 must be fast because of measured compiler and runtime behavior, not because the documentation says so.
@@ -281,22 +332,34 @@ The 3.0 release must not be declared complete until the optimized backend demons
 - Run the benchmark suite and profile hot paths.
 - Improve compile time, runtime, startup, and binary size based on evidence.
 
-### M8 — Release hardening
-- Verify all supported targets in native CI.
-- Complete documentation, package, formatter, LSP, and debugger workflows.
-- Run sanitizers, fuzzing, parity, and reproducibility tests.
-- Publish benchmark methodology and results.
-- Release 3.0 only after all release gates pass.
+### M8 — Windows and experimental-feature graduation
+- [ ] Promote Windows x86-64 MinGW-w64 from smoke-tested support to a fully tested, officially supported target.
+- [ ] Complete Windows runtime, imports, HTTP, SDL2, debugger, filesystem, process, path, ownership, and native-linking coverage.
+- [ ] Graduate named imports, structs, enums, GUI/Game2D, NASM, HTTP/HTTP-task async, owned/borrowed strings, the CLI debugger, Nix packaging, and YSPM packaging under section 6.2.
+- [ ] Add payload enums/matching and complete ownership cleanup before declaring those subsystems stable.
+- [ ] Publish and enforce the C/NASM/LLVM/platform feature capability matrix.
+- [ ] Remove obsolete experimental labels only after each feature passes its stable acceptance gate.
+
+### M9 — Release hardening
+- [ ] Verify all supported targets in clean native CI, including Windows x86-64 MinGW-w64.
+- [ ] Complete documentation, packages, formatter, LSP, debugger, install/upgrade, and migration workflows.
+- [ ] Run sanitizers, fuzzing, C/NASM/LLVM parity, GUI/network integration, and reproducibility tests.
+- [ ] Audit the README, website, online book, editor metadata, package metadata, and all feature guides: no existing experimental subsystem may remain experimental in the 3.0 release contract.
+- [ ] Publish benchmark methodology and results only after the implementation and platform gates pass.
+- [ ] Release 3.0 only after all release gates pass.
 
 ## 9. Release policy
 
 - No separate 2.3 stable release is planned; its language work is absorbed into 3.0.
 - Keep C as the reference backend until LLVM reaches parity.
-- Keep NASM explicitly Linux x86-64 and capability-gated.
+- Make Windows x86-64 with MinGW-w64 an officially supported, fully CI-tested target; do not claim MSVC or other untested Windows targets.
+- Graduate every subsystem currently marked experimental under section 6.2 before the 3.0 stable release.
+- Keep NASM Linux x86-64-specific with a stable, explicit, test-enforced capability matrix.
+- Keep optional platform dependencies explicit; optional does not mean experimental.
 - Do not silently change language semantics between backends.
 - Do not claim memory safety before the model is complete.
 - Do not claim speed before reproducible measurements exist.
-- Do not publish 3.0 while any required stable language feature lacks a correct backend implementation.
+- Do not publish 3.0 while any required stable feature, supported platform, or current experimental subsystem lacks its acceptance evidence.
 
 ## 10. Definition of success
 
