@@ -66,10 +66,31 @@ static void reject_terminator_result(void)
     assert(strstr(error,"terminators cannot define")!=NULL);
 }
 
+
+static void reject_duplicate_ssa_across_blocks(void)
+{
+    const YIRInstruction first_ins[]={
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64},
+        {.opcode=YIR_OP_BRANCH,.target=1}
+    };
+    const YIRInstruction second_ins[]={
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64},
+        {.opcode=YIR_OP_RETURN,.lhs=1}
+    };
+    const YIRBlock blocks[]={
+        {.id=0,.instructions=first_ins,.instruction_count=2},
+        {.id=1,.instructions=second_ins,.instruction_count=2}
+    };
+    const YIRFunction fn={.name="duplicate",.return_type=YIR_TYPE_I64,.blocks=blocks,.block_count=2};
+    char error[160]; assert(!yir_verify_function(&fn,error,sizeof(error)));
+    assert(strstr(error,"unique across the function")!=NULL);
+}
+
 int main(void)
 {
     valid_arithmetic_return(); reject_use_before_definition();
     reject_missing_terminator(); reject_wrong_return_type();
     reject_missing_branch_target(); reject_terminator_result();
+    reject_duplicate_ssa_across_blocks();
     puts("YLang IR verifier tests passed"); return 0;
 }
