@@ -276,6 +276,19 @@ static void reject_duplicate_function_parameter_ids(void)
     assert(strstr(error,"function parameters")!=NULL);
 }
 
+
+static void reject_incomplete_source_location(void)
+{
+    const YIRInstruction ins[] = {
+        {.opcode=YIR_OP_RETURN,.source_line=4,.source_column=0}
+    };
+    const YIRBlock block={.id=0,.instructions=ins,.instruction_count=1};
+    const YIRFunction fn={.name="bad_span",.return_type=YIR_TYPE_VOID,
+                          .blocks=&block,.block_count=1};
+    char error[160]; assert(!yir_verify_function(&fn,error,sizeof(error)));
+    assert(strstr(error,"source line and column")!=NULL);
+}
+
 int main(void)
 {
     valid_arithmetic_return(); reject_use_before_definition();
@@ -286,6 +299,7 @@ int main(void)
     reject_unreachable_block();
     accept_function_parameter_return();
     reject_duplicate_function_parameter_ids();
+    reject_incomplete_source_location();
     accept_block_parameter_join(); reject_block_parameter_type_mismatch();
     reject_entry_block_parameters(); reject_missing_block_argument();
     puts("YLang IR verifier tests passed"); return 0;
