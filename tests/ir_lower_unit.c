@@ -172,6 +172,54 @@ static void rejects_if_without_else(void)
     assert(strstr(error,"else branch")!=NULL);
 }
 
+
+static void lowers_integer_function_parameters(void)
+{
+    VarDecl left_parameter = {.name="left",.type=TYPE_INT};
+    VarDecl right_parameter = {.name="right",.type=TYPE_INT};
+    VarDecl *parameters[] = {&left_parameter,&right_parameter};
+    Expr left = {
+        .kind=EXPR_NAME,
+        .type=TYPE_INT,
+        .as.name={.name="left",.variable=&left_parameter}
+    };
+    Expr right = {
+        .kind=EXPR_NAME,
+        .type=TYPE_INT,
+        .as.name={.name="right",.variable=&right_parameter}
+    };
+    Expr sum = {
+        .kind=EXPR_BINARY,
+        .type=TYPE_INT,
+        .as.binary={
+            .left=&left,
+            .right=&right,
+            .op={.type=TOKEN_PLUS,.start="+",.length=1}
+        }
+    };
+    Stmt ret = {.kind=STMT_RETURN,.as.return_value=&sum};
+    Stmt *items[] = {&ret};
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=1}};
+    Function function = {
+        .name="sum",
+        .params=parameters,
+        .param_count=2,
+        .return_type=TYPE_INT,
+        .body=&body
+    };
+    YIRFunction lowered;
+    char error[192];
+    assert(yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(lowered.parameter_count==2);
+    assert(lowered.parameters[0].id==1);
+    assert(lowered.parameters[1].id==2);
+    assert(lowered.blocks[0].instructions[0].opcode==YIR_OP_ADD_I64);
+    assert(lowered.blocks[0].instructions[0].lhs==1);
+    assert(lowered.blocks[0].instructions[0].rhs==2);
+    assert(yir_verify_function(&lowered,error,sizeof(error)));
+    yir_destroy_function(&lowered);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
@@ -180,6 +228,7 @@ int main(void)
     rejects_unsupported_function_body();
     lowers_if_else_returns();
     rejects_if_without_else();
+    lowers_integer_function_parameters();
     puts("YLang IR lowering tests passed");
     return 0;
 }
