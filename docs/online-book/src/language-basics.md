@@ -12,7 +12,7 @@ fn add(int left, int right) -> int {
 }
 
 fn main() -> int {
-    let int total = add(20, 22);
+    let total: int = add(20, 22);
     print(total);
     return 0;
 }
@@ -39,7 +39,7 @@ Use the compiler to confirm the exact syntax accepted by your version. Do not as
 A mutable local uses a declaration such as:
 
 \`\`\`ylang
-let int score = 10;
+let mut score: int = 10;
 score = score + 1;
 \`\`\`
 
@@ -48,10 +48,10 @@ The declared type is \`int\`; the next statement reads the current value, adds o
 A constant declaration uses \`const\`:
 
 \`\`\`ylang
-let const string language = "YLang";
+let language: string = "YLang";
 \`\`\`
 
-Initialize a local before reading it. A constant cannot be reassigned after its declaration. Prefer constants when a value should not change, because this communicates intent to readers and prevents accidental reassignment.
+Initialize a local before reading it. An immutable binding cannot be reassigned after its declaration. Prefer immutable bindings when a value should not change, because this communicates intent to readers and prevents accidental reassignment.
 
 ## Expressions and statements
 

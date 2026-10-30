@@ -159,7 +159,7 @@ Extend match patterns for `Ok(payload)` and `Err(payload)` without weakening exh
 Current public declarations:
 - `include/ylang/compiler.h`
 
-Replace the long-term use of `VarDecl.is_const` with an authoritative mutability enum:
+The AST's authoritative mutability representation is:
 
 ```c
 typedef enum {
