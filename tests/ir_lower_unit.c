@@ -131,13 +131,27 @@ static void lowers_if_else_returns(void)
         .token={.type=TOKEN_NUMBER,.start="0",.length=1},
         .type=TYPE_INT
     };
-    Stmt then_return = {.kind=STMT_RETURN,.as.return_value=&yes};
+    VarDecl branch_local = {
+        .name="branch_value",.type=TYPE_INT,.initializer=&yes
+    };
+    Stmt branch_declaration = {
+        .kind=STMT_VAR,.as.variable=&branch_local
+    };
+    Expr branch_value = {
+        .kind=EXPR_NAME,.type=TYPE_INT,
+        .as.name={.name="branch_value",.variable=&branch_local}
+    };
+    Stmt then_return = {.kind=STMT_RETURN,.as.return_value=&branch_value};
+    Stmt *then_items[] = {&branch_declaration,&then_return};
+    Stmt then_body = {
+        .kind=STMT_BLOCK,.as.block={.items=then_items,.count=2}
+    };
     Stmt else_return = {.kind=STMT_RETURN,.as.return_value=&no};
     Stmt conditional = {
         .kind=STMT_IF,
         .as.if_stmt={
             .condition=&condition,
-            .then_branch=&then_return,
+            .then_branch=&then_body,
             .else_branch=&else_return
         }
     };
