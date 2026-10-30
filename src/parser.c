@@ -656,6 +656,11 @@ static Stmt *parse_variable(Parser *p, bool global)
 {
     Token start = p->previous;
     bool is_const = match(p, TOKEN_CONST);
+    /* YLang 3.0 makes mut explicit while keeping legacy `let type name` mutable. */
+    if (!is_const && p->current.type == TOKEN_IDENTIFIER &&
+        token_is(&p->current, "mut")) {
+        advance_parser(p);
+    }
     YType type = parse_type(p);
     if (type == TYPE_BORROWED_STRING) {
         diagnostic(p->compiler, p->previous, "error", "E2120",
