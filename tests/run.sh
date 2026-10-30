@@ -898,14 +898,17 @@ EOF
 
                 cat > build/llvm-globals.yl <<'EOF'
 let BASE: int = 10;
+let ENABLED: bool = true;
+let mut RATIO: float = 1.5;
 let mut COUNTER: int = 5;
 fn calculate() -> int {
     COUNTER += 2;
+    RATIO += 1.0;
     return BASE + COUNTER;
 }
 fn main() -> int {
     let result: int = calculate();
-    print(BASE, result, COUNTER);
+    print(BASE, ENABLED, RATIO, result, COUNTER);
     return result;
 }
 EOF
@@ -915,7 +918,7 @@ EOF
         if ./build/llvm-globals > build/llvm-globals.out; then llvm_status=0; else llvm_status=$?; fi
         [ "$llvm_status" -eq 17 ]
         diff -u build/llvm-globals-c.out build/llvm-globals.out
-        printf '10 17 7\n' > build/llvm-globals.expected
+        printf '10 true 2.5 17 7\n' > build/llvm-globals.expected
         diff -u build/llvm-globals.expected build/llvm-globals.out
 
 cat > build/llvm-overflow.yl <<'EOF'
