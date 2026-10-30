@@ -1,10 +1,10 @@
 let const string project = "YLang";
 
-function add(int a, int b) -> int {
+fn add(int a, int b) -> int {
     return a + b;
 }
 
-function main() -> int {
+fn main() -> int {
     let int count = 0;
     let int sum = add(10, 20);
 

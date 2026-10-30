@@ -1,4 +1,4 @@
-function main() -> int {
+fn main() -> int {
     let int level = 12;
     if (level < 10) {
         print("beginner");
