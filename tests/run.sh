@@ -432,7 +432,7 @@ fi
 grep -q 'E2093' build/invalid-increment-target.out
 
 cat > build/array-argument-type.yl <<'EOF'
-function total(int values[]) -> int {
+fn total(int values[]) -> int {
     return length(values);
 }
 fn main() -> int {
@@ -500,7 +500,7 @@ fi
 grep -q 'E2098' build/math-non-float.out
 
 cat > build/array-element-type.yl <<'EOF'
-function total(int values[]) -> int {
+fn total(int values[]) -> int {
     return length(values);
 }
 fn main() -> int {
@@ -518,7 +518,7 @@ grep -q 'E2099' build/array-element-type.out
 # User-defined enums have distinct types and can be passed, compared, and lowered.
 cat > build/enum-basic.yl <<'EOF'
 enum Direction { North, East, South, West }
-function is_east(Direction direction) -> bool {
+fn is_east(Direction direction) -> bool {
     return direction == Direction.East;
 }
 fn main() -> int {
@@ -928,31 +928,31 @@ grep -q '^2$' build/compound-operators.out
 mkdir -p build/imports
 cat > build/imports/suffix.yl <<'EOF'
 let const string suffix_prefix = "-";
-function make_suffix() -> string {
+fn make_suffix() -> string {
     return string.concat(suffix_prefix, "YLang");
 }
-function private_helper() -> string {
+fn private_helper() -> string {
     return "suffix-private";
 }
 EOF
 cat > build/imports/data.yl <<'EOF'
 from "./suffix.yl" import make_suffix;
 let const string system_prefix = "module";
-function system_data() -> string {
+fn system_data() -> string {
     return string.concat(private_helper(), make_suffix());
 }
-function private_helper() -> string {
+fn private_helper() -> string {
     return "data-private";
 }
 let int imported_counter = 4;
-function bump_counter(int amount) -> int {
+fn bump_counter(int amount) -> int {
     imported_counter += amount;
     return imported_counter;
 }
 EOF
 cat > build/imports/main.yl <<'EOF'
 from "./data.yl" import system_data(), system_prefix, imported_counter, bump_counter;
-function m1_private_helper() -> string {
+fn m1_private_helper() -> string {
     return "root-collision-test";
 }
 fn main() -> int {
@@ -970,7 +970,7 @@ diff -u build/module-imports.expected build/module-imports.out
 
 # Semantic diagnostics inside an imported module must point at that module's file and line.
 cat > build/imports/diagnostic-module.yl <<'EOF'
-function imported_value() -> int {
+fn imported_value() -> int {
     let int result = true;
     return result;
 }
@@ -1041,7 +1041,7 @@ grep -q 'E1022' build/imports/missing-file.out
 
 cat > build/imports/contains-main.yl <<'EOF'
 fn main() -> int { return 0; }
-function helper() -> int { return 1; }
+fn helper() -> int { return 1; }
 EOF
 cat > build/imports/import-main.yl <<'EOF'
 from "./contains-main.yl" import helper;
@@ -1055,12 +1055,12 @@ grep -q 'E1026' build/imports/import-main.out
 
 cat > build/imports/cycle-a.yl <<'EOF'
 from "./cycle-b.yl" import cycle_b;
-function cycle_a() -> int { return 1; }
+fn cycle_a() -> int { return 1; }
 fn main() -> int { return cycle_b(); }
 EOF
 cat > build/imports/cycle-b.yl <<'EOF'
 from "./cycle-a.yl" import cycle_a;
-function cycle_b() -> int { return cycle_a(); }
+fn cycle_b() -> int { return cycle_a(); }
 EOF
 if ./build/ylang check build/imports/cycle-a.yl > build/imports/cycle.out 2>&1; then
     echo "FAIL: a circular module import was accepted" >&2
@@ -1071,9 +1071,9 @@ grep -q 'E1023' build/imports/cycle.out
 # Repeated imports of one canonical file should reuse the module and bind different names.
 cat > build/imports/reusable.yl <<'EOF'
 let int reusable_counter = 3;
-function reusable_one() -> int { return 11; }
-function reusable_two() -> int { return 22; }
-function increment_reusable(int amount) -> int {
+fn reusable_one() -> int { return 11; }
+fn reusable_two() -> int { return 22; }
+fn increment_reusable(int amount) -> int {
     reusable_counter += amount;
     return reusable_counter;
 }
@@ -1095,7 +1095,7 @@ diff -u build/repeated-imports.expected build/repeated-imports.out
 
 # Quoted import paths must preserve spaces in filenames.
 cat > "build/imports/string tools.yl" <<'EOF'
-function spaced_import() -> string { return "path with spaces"; }
+fn spaced_import() -> string { return "path with spaces"; }
 EOF
 cat > build/imports/spaced-path.yl <<'EOF'
 from "./string tools.yl" import spaced_import();
@@ -1124,7 +1124,7 @@ diff -u build/dotted-import.expected build/dotted-import.out
 
 mkdir -p build/imports/library
 cat > build/imports/library/mathlib.yl <<'EOF'
-function library_value() -> int { return 314; }
+fn library_value() -> int { return 314; }
 EOF
 cat > build/imports/library-main.yl <<'EOF'
 from mathlib.yl import library_value;
@@ -1140,8 +1140,8 @@ diff -u build/library-import.expected build/library-import.out
 
 # The NASM backend supports imported functions when their modules use its subset.
 cat > build/imports/reusable-functions.yl <<'EOF'
-function reusable_one() -> int { return 11; }
-function reusable_two() -> int { return 22; }
+fn reusable_one() -> int { return 11; }
+fn reusable_two() -> int { return 22; }
 EOF
 cat > build/imports/repeated-asm.yl <<'EOF'
 from "./reusable-functions.yl" import reusable_one;
@@ -1608,7 +1608,7 @@ fi
 # NASM logical operators must short-circuit and preserve side-effect order.
 if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
     cat > build/asm-short-circuit.yl <<'EOF'
-function mark(int value) -> bool {
+fn mark(int value) -> bool {
     print(value);
     return true;
 }
@@ -1633,11 +1633,11 @@ fi
 # NASM follows the System V x86-64 ABI for arguments beyond the six integer registers.
 if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
     cat > build/asm-stack-args.yl <<'EOF'
-function emit_value(int value) -> int {
+fn emit_value(int value) -> int {
     print(value);
     return value;
 }
-function sum_eight(int a, int b, int c, int d, int e, int f, int g, int h) -> int {
+fn sum_eight(int a, int b, int c, int d, int e, int f, int g, int h) -> int {
     return a + b + c + d + e + f + g + h;
 }
 fn main() -> int {
