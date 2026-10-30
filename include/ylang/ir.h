@@ -49,6 +49,8 @@ typedef struct {
     size_t argument_count;
     const uint32_t *false_arguments;
     size_t false_argument_count;
+    size_t source_line;
+    size_t source_column;
 } YIRInstruction;
 
 typedef struct {
