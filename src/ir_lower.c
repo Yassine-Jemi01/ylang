@@ -8,6 +8,7 @@
 #include <string.h>
 
 typedef struct {
+    const Function *function;
     YIRInstruction *items;
     size_t count;
     size_t capacity;
@@ -80,6 +81,22 @@ static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
 {
     if (!expression)
         return lower_fail(lowerer, "missing expression in IR lowering");
+
+    if (expression->kind == EXPR_NAME) {
+        if (expression->type != TYPE_INT || !expression->as.name.variable ||
+            !lowerer->function)
+            return lower_fail(lowerer, "only integer function parameters are supported as names");
+        for (size_t i = 0; i < lowerer->function->param_count; ++i) {
+            if (lowerer->function->params[i] == expression->as.name.variable) {
+                if (i >= UINT32_MAX)
+                    return lower_fail(lowerer, "function has too many parameters");
+                *value_id = (uint32_t)i + 1U;
+                return true;
+            }
+        }
+        return lower_fail(lowerer,
+            "local variables and non-parameter names are not supported by the initial IR lowerer");
+    }
 
     if (expression->kind == EXPR_INT) {
         int64_t immediate = 0;
@@ -216,6 +233,7 @@ static bool lower_return_block(const Function *function, const Stmt *ret,
                                char *error, size_t error_capacity)
 {
     Lowerer lowerer = {
+        .function = function,
         .next_id = *next_id,
         .error = error,
         .error_capacity = error_capacity
@@ -261,6 +279,7 @@ void yir_destroy_function(YIRFunction *function)
             free((void *)function->blocks[i].instructions);
         free((void *)function->blocks);
     }
+    free((void *)function->parameters);
     memset(function, 0, sizeof(*function));
 }
 
@@ -272,9 +291,17 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
         return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                           "function and output must be provided");
     memset(out, 0, sizeof(*out));
-    if (function->param_count != 0)
+    if (function->param_count && !function->params)
         return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
-                          "function parameters are not supported by the initial IR lowerer");
+                          "function parameter declarations are missing");
+    if (function->param_count >= UINT32_MAX)
+        return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
+                          "function has too many parameters for the initial IR lowerer");
+    for (size_t i = 0; i < function->param_count; ++i) {
+        if (function->params[i]->type != TYPE_INT)
+            return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
+                              "only int function parameters are supported by the initial IR lowerer");
+    }
     if (function->return_type != TYPE_INT &&
         function->return_type != TYPE_VOID)
         return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
@@ -284,7 +311,18 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
     bool empty_body = false;
     YIRBlock *blocks = NULL;
     size_t block_count = 0;
-    uint32_t next_id = 0;
+    uint32_t next_id = (uint32_t)function->param_count;
+    YIRFunctionParameter *parameters = NULL;
+    if (function->param_count) {
+        parameters = calloc(function->param_count, sizeof(*parameters));
+        if (!parameters)
+            return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
+                              "out of memory while lowering function parameters");
+        for (size_t i = 0; i < function->param_count; ++i) {
+            parameters[i].id = (uint32_t)i + 1U;
+            parameters[i].type = YIR_TYPE_I64;
+        }
+    }
 
     if (root && root->kind == STMT_IF) {
         if (!root->as.if_stmt.else_branch)
@@ -304,10 +342,15 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
             return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                               "out of memory while creating IR control-flow blocks");
 
-        Lowerer entry = {.error=error,.error_capacity=error_capacity};
+        Lowerer entry = {
+            .function=function,
+            .next_id=next_id,
+            .error=error,
+            .error_capacity=error_capacity
+        };
         uint32_t condition = 0;
         if (!lower_boolean_expr(&entry, root->as.if_stmt.condition, &condition)) {
-            free(entry.items); free(blocks); return false;
+            free(entry.items); free(blocks); free(parameters); return false;
         }
         YIRInstruction branch = {
             .opcode=YIR_OP_COND_BRANCH,
@@ -316,7 +359,7 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
             .false_target=2
         };
         if (!emit(&entry, branch, NULL)) {
-            free(entry.items); free(blocks); return false;
+            free(entry.items); free(blocks); free(parameters); return false;
         }
         blocks[0].id = 0;
         blocks[0].instructions = entry.items;
@@ -325,29 +368,33 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
 
         if (!lower_return_block(function, then_return, then_empty, 1,
                                 &next_id, &blocks[1], error, error_capacity)) {
-            free((void *)blocks[0].instructions); free(blocks); return false;
+            free((void *)blocks[0].instructions); free(blocks); free(parameters); return false;
         }
         if (!lower_return_block(function, else_return, else_empty, 2,
                                 &next_id, &blocks[2], error, error_capacity)) {
             free((void *)blocks[0].instructions);
             free((void *)blocks[1].instructions);
             free(blocks);
+            free(parameters);
             return false;
         }
         block_count = 3;
     } else {
         const Stmt *ret = find_single_return(root, &empty_body);
         if (!ret && !(empty_body && function->return_type == TYPE_VOID))
-            return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
-                              "initial IR lowering requires one return statement");
+            { free(parameters); return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
+                              "initial IR lowering requires one return statement"); }
 
         blocks = calloc(1, sizeof(*blocks));
-        if (!blocks)
+        if (!blocks) {
+            free(parameters);
             return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                               "out of memory while creating IR entry block");
+        }
         if (!lower_return_block(function, ret, empty_body, 0, &next_id,
                                 &blocks[0], error, error_capacity)) {
             free(blocks);
+            free(parameters);
             return false;
         }
         block_count = 1;
@@ -356,6 +403,8 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
     out->name = function->name;
     out->return_type = function->return_type == TYPE_VOID ?
                        YIR_TYPE_VOID : YIR_TYPE_I64;
+    out->parameters = parameters;
+    out->parameter_count = function->param_count;
     out->blocks = blocks;
     out->block_count = block_count;
 
