@@ -9,12 +9,12 @@ static void lowers_integer_arithmetic_return(void)
 {
     Expr left = {
         .kind=EXPR_INT,
-        .token={.type=TOKEN_NUMBER,.start="20",.length=2},
+        .token={.type=TOKEN_NUMBER,.start="20",.length=2,.line=1,.column=12},
         .type=TYPE_INT
     };
     Expr right = {
         .kind=EXPR_INT,
-        .token={.type=TOKEN_NUMBER,.start="22",.length=2},
+        .token={.type=TOKEN_NUMBER,.start="22",.length=2,.line=1,.column=17},
         .type=TYPE_INT
     };
     Expr sum = {
@@ -23,10 +23,10 @@ static void lowers_integer_arithmetic_return(void)
         .as.binary={
             .left=&left,
             .right=&right,
-            .op={.type=TOKEN_PLUS,.start="+",.length=1}
+            .op={.type=TOKEN_PLUS,.start="+",.length=1,.line=1,.column=15}
         }
     };
-    Stmt ret = {.kind=STMT_RETURN,.as.return_value=&sum};
+    Stmt ret = {.kind=STMT_RETURN,.token={.line=2,.column=3},.as.return_value=&sum};
     Stmt *items[] = {&ret};
     Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=1}};
     Function function = {
@@ -39,6 +39,9 @@ static void lowers_integer_arithmetic_return(void)
     assert(lowered.block_count==1);
     assert(lowered.blocks[0].instruction_count==4);
     assert(lowered.blocks[0].instructions[2].opcode==YIR_OP_ADD_I64);
+    assert(lowered.blocks[0].instructions[2].source_line==1);
+    assert(lowered.blocks[0].instructions[2].source_column==15);
+    assert(lowered.blocks[0].instructions[3].source_line==2);
     assert(lowered.blocks[0].instructions[3].opcode==YIR_OP_RETURN);
     assert(yir_verify_function(&lowered,error,sizeof(error)));
     yir_destroy_function(&lowered);
