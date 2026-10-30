@@ -1328,7 +1328,7 @@ Program *parse_program(Compiler *c)
         } else {
             diagnostic(c, p.current, "error", "E1005",
                        "Only imports, global declarations, and function definitions are allowed at file scope.",
-                       "Move executable statements into function main().");
+                       "Move executable statements into fn main().");
             synchronize(&p);
         }
         if (p.current.start == before.start && p.current.type == before.type &&
