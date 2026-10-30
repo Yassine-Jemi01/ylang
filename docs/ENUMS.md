@@ -5,11 +5,11 @@ YLang's current enum milestone supports **unit enums**: named alternatives with 
 ```yl
 enum Direction { North, East, South, West }
 
-function is_east(Direction direction) -> bool {
+fn is_east(Direction direction) -> bool {
     return direction == Direction.East;
 }
 
-function main() -> int {
+fn main() -> int {
     let Direction facing = Direction.North;
     match (facing) {
         Direction.North -> { print("north"); }
