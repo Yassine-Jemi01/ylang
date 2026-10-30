@@ -30,5 +30,5 @@
 (call_expression function: (identifier) @function)
 (member_expression property: (identifier) @property)
 [
-  "=" "+=" "-=" "*=" "/=" "+" "-" "*" "/" "%" "==" "!=" "<" "<=" ">" ">=" "->" "!" ":" "?"
+  "=" "+=" "-=" "*=" "/=" "+" "-" "*" "/" "%" "==" "!=" "<" "<=" ">" ">=" "->" "!" ":"
 ] @operator
