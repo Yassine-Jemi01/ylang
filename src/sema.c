@@ -1452,6 +1452,44 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                            "Place this statement inside loop(), while, or for.");
             }
             break;
+        case STMT_DEFER: {
+            Expr *call = stmt->as.defer_call;
+            if (!call || call->kind != EXPR_CALL) {
+                if (call) (void)check_expr(checker, call);
+                diagnostic(c, stmt->token, "error", "E2130",
+                           "defer requires a direct call to a declared YLang function.",
+                           "Write defer cleanup(value); using a function declared with fn.");
+                break;
+            }
+            (void)check_expr(checker, call);
+            Function *callee = call->as.call.function;
+            if (!callee) {
+                diagnostic(c, stmt->token, "error", "E2130",
+                           "defer requires a direct call to a declared YLang function.",
+                           "Built-ins and indirect calls cannot be deferred in this version.");
+                break;
+            }
+            if (callee->return_type != TYPE_VOID) {
+                diagnostic(c, stmt->token, "error", "E2131",
+                           "A deferred function must return void.",
+                           "Use a cleanup function declared with -> void.");
+            }
+            for (size_t i = 0; i < callee->param_count; i++) {
+                if (callee->params[i]->is_array) {
+                    diagnostic(c, stmt->token, "error", "E2132",
+                               "Deferred calls do not support array parameters yet.",
+                               "Pass scalar values to the deferred cleanup function.");
+                    break;
+                }
+                if (callee->params[i]->type == TYPE_OWNED_STRING) {
+                    diagnostic(c, stmt->token, "error", "E2133",
+                               "Deferred calls cannot capture owned_string parameters yet.",
+                               "Use a scalar or borrowed value until ownership-aware defer capture is implemented.");
+                    break;
+                }
+            }
+            break;
+        }
         case STMT_RETURN: {
             YType expected = checker->function->return_type;
             if (!stmt->as.return_value) {

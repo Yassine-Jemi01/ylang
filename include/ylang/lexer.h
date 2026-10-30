@@ -28,6 +28,7 @@ typedef enum {
     TOKEN_BREAK,
     TOKEN_CONTINUE,
     TOKEN_RETURN,
+    TOKEN_DEFER,
     TOKEN_FN,
     TOKEN_AND,
     TOKEN_OR,

@@ -96,6 +96,7 @@ typedef enum {
     STMT_FOR,
     STMT_BREAK,
     STMT_CONTINUE,
+    STMT_DEFER,
     STMT_RETURN,
     STMT_MATCH,
     STMT_EXPR
@@ -129,6 +130,7 @@ struct Stmt {
         struct { Stmt *initializer; Expr *condition; Expr *increment; Stmt *body; } for_stmt;
         struct { Expr *value; MatchArm **arms; size_t arm_count; } match_stmt;
         Expr *return_value;
+        Expr *defer_call;
         Expr *expression;
     } as;
 };

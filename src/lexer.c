@@ -149,6 +149,7 @@ static TokenType identifier_type(const Lexer *lexer)
     if (is_word(lexer, "break")) return TOKEN_BREAK;
     if (is_word(lexer, "continue")) return TOKEN_CONTINUE;
     if (is_word(lexer, "return")) return TOKEN_RETURN;
+    if (is_word(lexer, "defer")) return TOKEN_DEFER;
     if (is_word(lexer, "and")) return TOKEN_AND;
     if (is_word(lexer, "or")) return TOKEN_OR;
     if (is_word(lexer, "not")) return TOKEN_NOT;
@@ -358,6 +359,7 @@ const char *token_type_name(TokenType type)
         case TOKEN_BREAK: return "BREAK";
         case TOKEN_CONTINUE: return "CONTINUE";
         case TOKEN_RETURN: return "RETURN";
+        case TOKEN_DEFER: return "DEFER";
         case TOKEN_AND: return "AND";
         case TOKEN_OR: return "OR";
         case TOKEN_NOT: return "NOT";

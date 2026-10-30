@@ -224,6 +224,9 @@ static bool validate_stmt(AsmContext *ctx, Stmt *stmt)
         case STMT_BREAK:
         case STMT_CONTINUE:
             return true;
+        case STMT_DEFER:
+            return asm_reject(ctx, stmt->token,
+                              "defer calls (use the C backend until NASM cleanup support is implemented)");
         case STMT_RETURN:
             return validate_expr(ctx, stmt->as.return_value);
         case STMT_EXPR:
@@ -289,6 +292,7 @@ static bool collect_stmt_slots(AsmContext *ctx, Stmt *stmt)
         case STMT_PRINT:
         case STMT_BREAK:
         case STMT_CONTINUE:
+        case STMT_DEFER:
         case STMT_RETURN:
         case STMT_EXPR:
             break;
@@ -968,6 +972,8 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
             fprintf(ctx->out, ".Lmatch_end_%u:\n", end_label);
             return true;
         }
+        case STMT_DEFER:
+            return asm_reject(ctx, stmt->token, "defer calls");
         case STMT_EXPR:
             return emit_expr(ctx, stmt->as.expression);
     }

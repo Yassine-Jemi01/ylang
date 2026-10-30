@@ -27,6 +27,7 @@ module.exports = grammar({
       $.loop_statement,
       $.match_statement,
       $.return_statement,
+      $.defer_statement,
       $.break_statement,
       $.continue_statement,
       $.expression_statement,
@@ -78,6 +79,7 @@ module.exports = grammar({
       "->", choice($.block, $._expression), optional(",")
     ),
     return_statement: $ => seq("return", optional($._expression), ";"),
+    defer_statement: $ => seq("defer", $.call_expression, ";"),
     break_statement: $ => seq("break", ";"),
     continue_statement: $ => seq("continue", ";"),
     block: $ => seq("{", repeat($._statement), "}"),

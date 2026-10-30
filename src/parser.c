@@ -113,7 +113,8 @@ static void synchronize(Parser *p)
         if (p->previous.type == TOKEN_SEMICOLON ||
             p->current.type == TOKEN_FN || p->current.type == TOKEN_FUNCTION ||
             p->current.type == TOKEN_LET ||
-            p->current.type == TOKEN_IF || p->current.type == TOKEN_RETURN) {
+            p->current.type == TOKEN_IF || p->current.type == TOKEN_DEFER ||
+            p->current.type == TOKEN_RETURN) {
             return;
         }
         advance_parser(p);
@@ -853,6 +854,14 @@ static Stmt *parse_statement(Parser *p)
                        "print() needs at least one value.",
                        "For a blank line, use print(\"\");.");
         }
+        return stmt;
+    }
+
+    if (match(p, TOKEN_DEFER)) {
+        Stmt *stmt = new_stmt(p->compiler, STMT_DEFER, token);
+        stmt->as.defer_call = parse_expression(p);
+        consume(p, TOKEN_SEMICOLON, "Expected ';' after deferred call.",
+                "Write defer cleanup(resource); and end it with ';'.");
         return stmt;
     }
 
