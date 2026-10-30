@@ -34,7 +34,7 @@ module.exports = grammar({
     ),
 
     function_declaration: $ => seq(
-      "function", field("name", $.identifier),
+      choice("fn", "function"), field("name", $.identifier),
       "(", optional($.parameter_list), ")",
       optional(seq("->", field("return_type", $._type))),
       $.block
