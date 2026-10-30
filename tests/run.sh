@@ -1684,17 +1684,25 @@ cat > build/immutable-values.yl <<'EOF'
 let BASE: int = 10;
 let FIXED_VALUES: int[] = [3, 5, 8];
 struct Point { int x; int y; }
+fn read_second(int data[]) -> int {
+    return data[1];
+}
+fn adjust(int input) -> int {
+    let mut copy: int = input;
+    copy += 1;
+    return copy;
+}
 fn main() -> int {
     let point: Point = Point(4, 6);
     let mut values: int[] = [1, 2, 3];
     values[0] = 9;
-    print(BASE, FIXED_VALUES[1], point.x, values[0]);
+    print(BASE, FIXED_VALUES[1], point.x, values[0], adjust(4), read_second(FIXED_VALUES));
     return 0;
 }
 EOF
 ./build/ylang build build/immutable-values.yl -o build/immutable-values >/dev/null 2>&1
 ./build/immutable-values > build/immutable-values.out
-printf '10 5 4 9\n' > build/immutable-values.expected
+printf '10 5 4 9 5 5\n' > build/immutable-values.expected
 diff -u build/immutable-values.expected build/immutable-values.out
 
 cat > build/immutable-array-error.yl <<'EOF'
@@ -1766,6 +1774,52 @@ EOF
 ./build/mutable-uninitialized > build/mutable-uninitialized.out
 printf '42\n' > build/mutable-uninitialized.expected
 diff -u build/mutable-uninitialized.expected build/mutable-uninitialized.out
+
+# Immutable bindings cannot omit their initializer.
+cat > build/immutable-uninitialized.yl <<'EOF'
+fn main() -> int {
+    let value: int;
+    return 0;
+}
+EOF
+if ./build/ylang check build/immutable-uninitialized.yl > build/immutable-uninitialized.out 2>&1; then
+    echo "FAIL: immutable binding without an initializer was accepted" >&2
+    exit 1
+fi
+grep -q 'E2003' build/immutable-uninitialized.out
+
+# New mutable declarations must participate in definite-assignment flow analysis.
+cat > build/mutable-branch-init.yl <<'EOF'
+fn main() -> int {
+    let mut score: int;
+    if (true) {
+        score = 10;
+    } else {
+        score = 20;
+    }
+    print(score);
+    return 0;
+}
+EOF
+./build/ylang build build/mutable-branch-init.yl -o build/mutable-branch-init >/dev/null 2>&1
+./build/mutable-branch-init > build/mutable-branch-init.out
+printf '10\n' > build/mutable-branch-init.expected
+diff -u build/mutable-branch-init.expected build/mutable-branch-init.out
+
+cat > build/mutable-branch-missing-init.yl <<'EOF'
+fn main() -> int {
+    let mut score: int;
+    if (true) {
+        score = 10;
+    }
+    return score;
+}
+EOF
+if ./build/ylang check build/mutable-branch-missing-init.yl > build/mutable-branch-missing-init.out 2>&1; then
+    echo "FAIL: mutable binding initialized on only one path was accepted" >&2
+    exit 1
+fi
+grep -q 'E2021' build/mutable-branch-missing-init.out
 
 # NASM must support initialized and mutable scalar globals.
 if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
