@@ -17,7 +17,7 @@ Status: standalone typed SSA verifier plus an initial scalar AST lowering slice.
 
 Types: `void`, `bool`, `i64`, `f64`, and opaque `ptr`.
 
-Operations currently implemented: `const.i64`, `const.bool`, `add.i64`, `sub.i64`, `mul.i64`, `eq.i64`, `ne.i64`, `lt.i64`, `le.i64`, `gt.i64`, `ge.i64`, `br`, `cond_br`, and `return`.
+Operations currently implemented: `const.i64`, `const.bool`, `add.i64`, `sub.i64`, `mul.i64`, `eq.i64`, `ne.i64`, `lt.i64`, `le.i64`, `gt.i64`, `ge.i64`, `not.bool`, `br`, `cond_br`, and `return`.
 
 Branch and conditional-branch terminators may carry typed edge arguments. Those arguments initialize the target block's parameters, providing the SSA merge mechanism for control-flow joins.
 
@@ -43,8 +43,8 @@ This IR is not ready to replace the current AST-to-C path. Full calling-conventi
 
 ## AST lowering scope
 
-`yir_lower_function` currently accepts `int`, `bool`, and `void` functions with zero or more scalar `int` or `bool` parameters. It lowers scalar initialized locals, simple name assignments, a return sequence, an empty void body, or a simple `if/else` whose branches each return. Integer expressions are limited to integer literals, negative integer literals, and `+`, `-`, and `*`. Conditions support boolean literals and integer comparisons (`==`, `!=`, `<`, `<=`, `>`, `>=`). Global variables, arrays, compound assignments, uninitialized locals, and unsupported statements or expressions fail explicitly; they are not silently translated. The resulting function is immediately passed through the verifier. `yir_destroy_function` releases the allocated IR storage.
+`yir_lower_function` currently accepts `int`, `bool`, and `void` functions with zero or more scalar `int` or `bool` parameters. It lowers scalar initialized locals, simple name assignments, a return sequence, an empty void body, or a simple `if/else` whose branches each return. Integer expressions are limited to integer literals, negative integer literals, and `+`, `-`, and `*`. Conditions support boolean literals, boolean negation (`!` / `not`), and integer comparisons (`==`, `!=`, `<`, `<=`, `>`, `>=`). Global variables, arrays, compound assignments, uninitialized locals, and unsupported statements or expressions fail explicitly; they are not silently translated. The resulting function is immediately passed through the verifier. `yir_destroy_function` releases the allocated IR storage.
 
 ## Build and tests
 
-Run `make ir-unit-test ir-lower-unit-test` or `sh tests/run-ir-unit.sh`. Verifier tests cover arithmetic and return, same-block ordering, cross-block dominance, unreachable blocks, invalid joins, and typed block-parameter joins. Lowering tests cover integer arithmetic returns, scalar locals and assignments, immutable assignment rejection, integer and boolean function parameters, negative literals, empty void functions, if/else returns, boolean and integer comparison conditions, and explicit rejection of unsupported bodies. One integration test parses and semantically checks real YLang source before lowering its function AST.
+Run `make ir-unit-test ir-lower-unit-test` or `sh tests/run-ir-unit.sh`. Verifier tests cover arithmetic and return, same-block ordering, cross-block dominance, unreachable blocks, invalid joins, and typed block-parameter joins. Lowering tests cover integer arithmetic returns, scalar locals and assignments, immutable assignment rejection, integer and boolean function parameters, negative literals, empty void functions, if/else returns, boolean literals, boolean negation, integer comparison conditions, and explicit rejection of unsupported bodies. One integration test parses and semantically checks real YLang source before lowering its function AST.
