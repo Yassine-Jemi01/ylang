@@ -1,7 +1,7 @@
-function invalid(borrowed_string value) -> owned_string {
+fn invalid(borrowed_string value) -> owned_string {
     return move(value);
 }
 
-function main() -> int {
+fn main() -> int {
     return 0;
 }
