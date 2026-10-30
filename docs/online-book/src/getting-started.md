@@ -11,7 +11,7 @@ You need:
 - GNU Make to run the project's build and test targets.
 - A terminal in which you can run shell commands.
 
-Linux and macOS are the primary documented development environments. A native 64-bit Windows path using MinGW-w64 is available, but it is experimental and has restrictions described in the [Windows Setup](reference/WINDOWS.md) guide.
+Linux and macOS are the primary documented development environments. A native 64-bit Windows path using MinGW-w64 is available, but it remains limited until the YLang 3.0 platform gates pass. The 3.0 goal is official Windows x86-64 support with full native regression coverage, not just a smoke test. See the [Windows Setup](reference/WINDOWS.md) guide for the current state and [3.0 roadmap](reference/ROADMAP-3.0.md) for the acceptance requirements.
 
 GUI and Game2D examples have extra requirements: SDL2 development files and \`pkg-config\`. These are not required for ordinary command-line programs.
 
