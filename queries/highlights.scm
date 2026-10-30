@@ -17,7 +17,7 @@
 (from_import_declaration) @keyword
 [
   "fn" "function" "return" "let" "mut" "const" "if" "else" "loop" "while" "for"
-  "break" "continue" "defer" "and" "or" "not" "await "struct" "enum" "match"
+  "break" "continue" "defer" "and" "or" "not" "await" "struct" "enum" "match"
   "from" "import"
 ] @keyword
 (boolean) @boolean
