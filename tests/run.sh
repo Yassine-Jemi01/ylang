@@ -352,7 +352,7 @@ if ./build/ylang check tests/const-assignment.yl > build/const-assignment.out 2>
     exit 1
 fi
 grep -q 'E2022' build/const-assignment.out
-grep -q "Keep 'const' and remove this assignment" build/const-assignment.out
+grep -q "let mut name: Type" build/const-assignment.out
 
 if ./build/ylang check tests/missing-semicolon.yl > build/missing-semicolon.out 2>&1; then
     echo "FAIL: missing semicolon was accepted" >&2
