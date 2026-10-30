@@ -79,6 +79,7 @@ const char *ylang_ir_instruction_name(YLIRInstructionKind op)
         case YLIR_OP_MUL_F64: return "mul.f64";
         case YLIR_OP_DIV_F64: return "div.f64";
         case YLIR_OP_PHI: return "phi";
+        case YLIR_OP_CALL: return "call";
     }
     return "unknown";
 }
@@ -113,8 +114,10 @@ void ylang_ir_module_destroy(YLIRModule *module)
             YLIRBasicBlock *block = fn->blocks[j];
             if (!block) continue;
             free(block->name);
-            for (size_t k = 0; k < block->instruction_count; k++)
+            for (size_t k = 0; k < block->instruction_count; k++) {
                 free(block->instructions[k].incoming);
+                free(block->instructions[k].arguments);
+            }
             free(block->instructions);
             free(block);
         }
@@ -200,6 +203,18 @@ static bool append_inst(YLIRBasicBlock *block, YLIRInstruction inst, YLIRValue *
     return true;
 }
 
+static bool append_void_inst(YLIRBasicBlock *block, YLIRInstruction inst)
+{
+    if (!block || !block->function ||
+        block->terminator.kind != YLIR_TERM_NONE) return false;
+    if (block->instruction_count == block->instruction_capacity &&
+        !grow_vector((void **)&block->instructions, &block->instruction_capacity,
+                     sizeof(*block->instructions))) return false;
+    inst.result = YLIR_NO_VALUE;
+    block->instructions[block->instruction_count++] = inst;
+    return true;
+}
+
 bool ylang_ir_emit_const_bool(YLIRBasicBlock *block, bool value,
                               size_t line, size_t column, YLIRValue *out)
 {
@@ -270,6 +285,42 @@ bool ylang_ir_emit_phi(YLIRBasicBlock *block, YLIRType type,
         return false;
     }
     return true;
+}
+
+bool ylang_ir_emit_call(YLIRBasicBlock *block, size_t callee_index,
+                        const YLIRValue *arguments, size_t argument_count,
+                        size_t line, size_t column, YLIRValue *out)
+{
+    if (out) *out = YLIR_NO_VALUE;
+    if (!block || !block->function || !block->function->module || !out ||
+        callee_index >= block->function->module->function_count ||
+        (argument_count > 0U && !arguments) ||
+        argument_count > SIZE_MAX / sizeof(*arguments)) return false;
+    const YLIRFunction *callee = block->function->module->functions[callee_index];
+    if (!callee || argument_count != callee->parameter_count) return false;
+
+    YLIRValue *copy = NULL;
+    if (argument_count > 0U) {
+        copy = malloc(argument_count * sizeof(*copy));
+        if (!copy) return false;
+        memcpy(copy, arguments, argument_count * sizeof(*copy));
+    }
+    YLIRInstruction inst = {
+        .kind = YLIR_OP_CALL,
+        .result = YLIR_NO_VALUE,
+        .type = callee->return_type,
+        .left = YLIR_NO_VALUE,
+        .right = YLIR_NO_VALUE,
+        .callee_index = callee_index,
+        .arguments = copy,
+        .argument_count = argument_count,
+        .source_line = line,
+        .source_column = column
+    };
+    bool okay = callee->return_type == YLIR_TYPE_VOID ?
+        append_void_inst(block, inst) : append_inst(block, inst, out);
+    if (!okay) free(copy);
+    return okay;
 }
 
 static bool set_term(YLIRBasicBlock *block, YLIRTerminator term)
@@ -395,6 +446,13 @@ static bool result_type_for_instruction(FILE *out, const YLIRFunction *fn,
                 return ir_error(out, fn, block, inst->source_line, inst->source_column,
                                 "PHI has invalid or void type");
             *result_type = inst->type; break;
+        case YLIR_OP_CALL:
+            if (!fn->module || inst->callee_index >= fn->module->function_count ||
+                !fn->module->functions[inst->callee_index])
+                return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                "call references an unknown function");
+            *result_type = fn->module->functions[inst->callee_index]->return_type;
+            break;
         default:
             return ir_error(out, fn, block, inst->source_line, inst->source_column,
                             "unknown instruction opcode");
@@ -412,6 +470,12 @@ static bool collect_definition(FILE *out, const YLIRFunction *fn,
 {
     YLIRType result_type = YLIR_TYPE_INVALID;
     if (!result_type_for_instruction(out, fn, block, inst, &result_type)) return false;
+    if (result_type == YLIR_TYPE_VOID) {
+        if (inst->kind != YLIR_OP_CALL || inst->result != YLIR_NO_VALUE)
+            return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                            "void instruction must be a void call without an SSA result");
+        return true;
+    }
     if (inst->result == YLIR_NO_VALUE || inst->result >= fn->next_value_id ||
         inst->result < fn->parameter_count || defs[inst->result].defined)
         return ir_error(out, fn, block, inst->source_line, inst->source_column,
@@ -766,6 +830,30 @@ static bool verify_function(FILE *out, const YLIRFunction *fn)
         bool saw_regular_instruction = false;
         for (size_t i = 0; i < block->instruction_count; i++) {
             const YLIRInstruction *inst = &block->instructions[i];
+            if (inst->kind == YLIR_OP_CALL) {
+                if (inst->left != YLIR_NO_VALUE || inst->right != YLIR_NO_VALUE ||
+                    (inst->argument_count > 0U && !inst->arguments) ||
+                    inst->callee_index >= fn->module->function_count) {
+                    free(defs); free(preds); free(dom); free(reachable); free(queue);
+                    return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                    "malformed function call operands");
+                }
+                const YLIRFunction *callee = fn->module->functions[inst->callee_index];
+                if (!callee || inst->argument_count != callee->parameter_count) {
+                    free(defs); free(preds); free(dom); free(reachable); free(queue);
+                    return ir_error(out, fn, block, inst->source_line, inst->source_column,
+                                    "call argument count does not match the callee signature");
+                }
+                for (size_t arg = 0; arg < inst->argument_count; arg++) {
+                    if (!expect_value(out, fn, block, b, defs, dom, n,
+                                      inst->arguments[arg], callee->parameter_types[arg],
+                                      i, inst->source_line, inst->source_column)) {
+                        free(defs); free(preds); free(dom); free(reachable); free(queue);
+                        return false;
+                    }
+                }
+                continue;
+            }
             if (inst->kind == YLIR_OP_PHI) {
                 if (saw_regular_instruction) {
                     free(defs); free(preds); free(dom); free(reachable); free(queue);

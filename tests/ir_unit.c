@@ -255,9 +255,63 @@ static void test_cross_block_dominated_value(void)
     ylang_ir_module_destroy(&m);
 }
 
+static void test_calls_and_signatures(void)
+{
+    YLIRModule m;
+    YLIRFunction *add = NULL, *main_fn = NULL, *consume = NULL;
+    YLIRBasicBlock *add_entry = NULL, *main_entry = NULL, *consume_entry = NULL;
+    const YLIRType add_params[] = { YLIR_TYPE_I64, YLIR_TYPE_I64 };
+    const YLIRType consume_params[] = { YLIR_TYPE_I64 };
+    YLIRValue sum, result, a, b, void_out = 0U;
+    assert(ylang_ir_module_init(&m));
+    assert(ylang_ir_add_function(&m, "add", YLIR_TYPE_I64, add_params, 2U, &add));
+    assert(ylang_ir_add_function(&m, "main", YLIR_TYPE_I64, NULL, 0U, &main_fn));
+    assert(ylang_ir_add_function(&m, "consume", YLIR_TYPE_VOID,
+                                 consume_params, 1U, &consume));
+    assert(ylang_ir_add_block(add, "entry", &add_entry));
+    assert(ylang_ir_add_block(main_fn, "entry", &main_entry));
+    assert(ylang_ir_add_block(consume, "entry", &consume_entry));
+    assert(ylang_ir_emit_op(add_entry, YLIR_OP_ADD_I64, 0U, 1U, 1U, 1U, &sum));
+    assert(ylang_ir_return(add_entry, sum, 1U, 10U));
+    assert(ylang_ir_emit_const_i64(main_entry, 20, 1U, 1U, &a));
+    assert(ylang_ir_emit_const_i64(main_entry, 22, 1U, 5U, &b));
+    const YLIRValue args[] = { a, b };
+    assert(ylang_ir_emit_call(main_entry, 0U, args, 2U, 1U, 10U, &result));
+    const YLIRValue consume_args[] = { result };
+    assert(ylang_ir_emit_call(consume_entry, 2U, consume_args, 1U, 1U, 1U, &void_out));
+    assert(void_out == YLIR_NO_VALUE);
+    assert(ylang_ir_return_void(consume_entry, 1U, 10U));
+    assert(ylang_ir_return(main_entry, result, 2U, 1U));
+    assert(ylang_ir_verify(&m, stderr));
+    ylang_ir_module_destroy(&m);
+}
+
+static void test_call_argument_type_is_checked(void)
+{
+    YLIRModule m;
+    YLIRFunction *callee = NULL, *caller = NULL;
+    YLIRBasicBlock *callee_entry = NULL, *caller_entry = NULL;
+    const YLIRType param[] = { YLIR_TYPE_I64 };
+    YLIRValue flag, result;
+    assert(ylang_ir_module_init(&m));
+    assert(ylang_ir_add_function(&m, "callee", YLIR_TYPE_I64, param, 1U, &callee));
+    assert(ylang_ir_add_function(&m, "caller", YLIR_TYPE_I64, NULL, 0U, &caller));
+    assert(ylang_ir_add_block(callee, "entry", &callee_entry));
+    assert(ylang_ir_add_block(caller, "entry", &caller_entry));
+    assert(ylang_ir_return(callee_entry, 0U, 1U, 1U));
+    assert(ylang_ir_emit_const_bool(caller_entry, true, 1U, 1U, &flag));
+    const YLIRValue args[] = { flag };
+    assert(ylang_ir_emit_call(caller_entry, 0U, args, 1U, 1U, 5U, &result));
+    assert(ylang_ir_return(caller_entry, result, 2U, 1U));
+    assert(!ylang_ir_verify(&m, NULL));
+    ylang_ir_module_destroy(&m);
+}
+
 int main(void)
 {
     test_integer_function();
+    test_calls_and_signatures();
+    test_call_argument_type_is_checked();
     test_params_and_branches();
     test_f64();
     test_stable_addresses();
