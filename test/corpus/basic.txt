@@ -85,3 +85,61 @@ fn cleanup() -> void {
           function: (identifier)
           (argument_list
             (integer)))))))
+
+==================
+YLang 3.0 bindings and for initializer
+==================
+
+fn main() -> int {
+    let fixed: int = 10;
+    let mut total: int = 0;
+    for (let mut index: int = 0; index < 2; index = index + 1) {
+        total += index;
+    }
+    return fixed + total;
+}
+
+---
+
+(source_file
+  (function_declaration
+    name: (identifier)
+    return_type: (primitive_type)
+    (block
+      (variable_declaration
+        (variable_binding
+          name: (identifier)
+          type: (primitive_type)
+          (integer)))
+      (variable_declaration
+        (variable_binding
+          name: (identifier)
+          type: (primitive_type)
+          (integer)))
+      (for_statement
+        (variable_binding
+          name: (identifier)
+          type: (primitive_type)
+          (integer))
+        (binary_expression
+          left: (identifier)
+          operator: "<"
+          right: (integer))
+        (assignment_expression
+          left: (identifier)
+          operator: "="
+          right: (binary_expression
+            left: (identifier)
+            operator: "+"
+            right: (integer)))
+        (block
+          (expression_statement
+            (assignment_expression
+              left: (identifier)
+              operator: "+="
+              right: (identifier)))))
+      (return_statement
+        (binary_expression
+          left: (identifier)
+          operator: "+"
+          right: (identifier)))))

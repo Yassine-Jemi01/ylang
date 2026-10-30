@@ -52,15 +52,16 @@ module.exports = grammar({
       commaSep1($.enum_variant), optional(","), "}"
     ),
     enum_variant: $ => $.identifier,
-    variable_declaration: $ => choice(
+    variable_binding: $ => choice(
       seq("let", "mut", field("name", $.identifier), ":", field("type", $._type),
-        optional(seq("=", $._expression)), ";"),
+        optional(seq("=", $._expression))),
       seq("let", field("name", $.identifier), ":", field("type", $._type),
-        optional(seq("=", $._expression)), ";"),
+        optional(seq("=", $._expression))),
       seq("let", optional("const"), field("type", $._type),
         field("name", $.identifier), optional("[]"),
-        optional(seq("=", $._expression)), ";")
+        optional(seq("=", $._expression)))
     ),
+    variable_declaration: $ => seq($.variable_binding, ";"),
     import_declaration: $ => seq("import", $.string, ";"),
     from_import_declaration: $ => seq(
       "from", choice($.identifier, $.string),
@@ -69,7 +70,8 @@ module.exports = grammar({
     if_statement: $ => seq("if", "(", $._expression, ")", $.block,
       optional(seq("else", choice($.block, $.if_statement)))),
     while_statement: $ => seq("while", "(", $._expression, ")", $.block),
-    for_statement: $ => seq("for", "(", optional($._expression), ";",
+    for_statement: $ => seq("for", "(",
+      optional(choice($.variable_binding, $._expression)), ";",
       optional($._expression), ";", optional($._expression), ")", $.block),
     loop_statement: $ => seq("loop", $.block),
     match_statement: $ => seq("match", "(", $._expression, ")", "{",
