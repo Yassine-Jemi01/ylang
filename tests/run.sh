@@ -1921,6 +1921,35 @@ EOF
         [ "$array_status" -eq 70 ]
     fi
     grep -q 'array index out of bounds' build/asm-array-oob.out
+
+    cat > build/asm-array-params.yl <<'EOF'
+let VALUES: int[] = [2, 4, 6];
+fn sum_three(int items[]) -> int {
+    return items[0] + items[1] + items[2];
+}
+fn length_of(int items[]) -> int {
+    return length(items);
+}
+fn forward_array(int items[]) -> int {
+    return sum_three(items);
+}
+fn mixed_arguments(int a, int b, int c, int d, int e, int f, int items[]) -> int {
+    return a + b + c + d + e + f + items[1] + length(items);
+}
+fn main() -> int {
+    let mut local: int[] = [10, 20, 30];
+    print(sum_three(VALUES), length_of(VALUES), forward_array(local));
+    print(mixed_arguments(1, 2, 3, 4, 5, 6, VALUES));
+    return 0;
+}
+EOF
+    ./build/ylang build build/asm-array-params.yl -o build/asm-array-params-c >/dev/null 2>&1
+    ./build/ylang build-asm build/asm-array-params.yl -o build/asm-array-params >/dev/null
+    ./build/asm-array-params-c > build/asm-array-params-c.out
+    ./build/asm-array-params > build/asm-array-params.out
+    diff -u build/asm-array-params-c.out build/asm-array-params.out
+    printf '12 3 60\n24\n' > build/asm-array-params.expected
+    diff -u build/asm-array-params.expected build/asm-array-params.out
 fi
 
 # NASM logical operators must short-circuit and preserve side-effect order.
