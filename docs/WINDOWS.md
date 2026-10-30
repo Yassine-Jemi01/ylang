@@ -4,7 +4,7 @@
 
 **YLang 3.0 goal:** make 64-bit Windows an officially supported native platform using the documented MinGW-w64 toolchain. The supported setup is MSYS2 MINGW64 with MinGW-w64 GCC. MSVC and Windows ARM64 are outside the 3.0 support promise unless they receive separate compiler, runtime, dependency, linker, and CI coverage.
 
-The current Windows CI job builds the compiler and optional SDL2 GUI C runtime; exercises native compilation, relative imports, stdin, environment access, file I/O, process exit codes, paths with spaces, case-insensitive import identity, the semicolon-separated `YLANG_PATH`, HTTP tasks, and the MinGW-w64 GDB launch. This is a broader regression baseline, not yet complete platform parity. NASM remains a deliberately Linux x86-64-specific backend; its stable scope will be published in the 3.0 capability matrix.
+The current Windows CI job builds the compiler and optional SDL2 GUI C runtime, runs the complete applicable `make test` regression suite, and adds native platform checks for compilation, relative imports, stdin, environment access, file I/O, process exit codes, paths with spaces, case-insensitive import identity, the semicolon-separated `YLANG_PATH`, and a MinGW-w64 GDB launch. This is broad regression coverage, not yet proof of complete platform parity. NASM remains a deliberately Linux x86-64-specific backend; its stable scope will be published in the 3.0 capability matrix.
 
 ## 1. Install MSYS2 and the toolchain
 

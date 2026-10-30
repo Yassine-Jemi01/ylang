@@ -3,6 +3,7 @@ set -eux
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
+PYTHON=${PYTHON:-python3}
 
 EXPECTED_VERSION=$(cat VERSION)
 ./build/ylang --version | grep -Fq "$EXPECTED_VERSION"
@@ -109,8 +110,8 @@ fi
 grep -q 'E2123' build/await-type-error.out
 
 # HTTP integration runs its loopback server in-process to avoid background process leakage.
-python3 tests/run_http_integration.py
-python3 tests/benchmark-smoke.py
+"$PYTHON" tests/run_http_integration.py
+"$PYTHON" tests/benchmark-smoke.py
 if ./build/ylang > build/no-args.out 2>&1; then
     echo "FAIL: ylang without arguments should return usage error" >&2
     exit 1

@@ -86,6 +86,8 @@ jobs:
         run: make clean all CC=gcc PYTHON=python
       - name: Build optional SDL2 GUI runtime
         run: make gui gui-example game2d-example CC=gcc PYTHON=python
+      - name: Run the complete applicable compiler regression suite on Windows
+        run: make test CC=gcc PYTHON=python
       - name: Check, compile, and run a native Windows program
         run: |
           mkdir -p build/windows-smoke
@@ -212,10 +214,6 @@ jobs:
           YLANG_PATH="build/windows search/first;build/windows search/second" ./build/ylang.exe build "build/windows search/main.yl" -o "build/windows search/main.exe"
           output="$("build/windows search/main.exe")"
           test "$output" = "42"
-      - name: Test native Windows HTTP, async tasks, and redirect safety
-        run: |
-          export YLANG_TEST_API_KEY=test-token
-          python tests/run_http_integration.py
       - name: Launch the native Windows debugger through MinGW-w64 GDB
         run: |
           mkdir -p "build/windows debugger"
