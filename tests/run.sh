@@ -1682,8 +1682,11 @@ grep -q 'E2022' build/immutable-binding-error.out
 # Immutable globals, arrays and structs are readable but cannot be modified.
 cat > build/immutable-values.yl <<'EOF'
 let BASE: int = 10;
+let mut GLOBAL_TOTAL: int = 1;
 let FIXED_VALUES: int[] = [3, 5, 8];
 struct Point { int x; int y; }
+struct Position { int x; int y; }
+struct Hero { Position pos; int hp; }
 fn read_second(int data[]) -> int {
     return data[1];
 }
@@ -1694,9 +1697,12 @@ fn adjust(int input) -> int {
 }
 fn main() -> int {
     let point: Point = Point(4, 6);
+    let mut hero: Hero = Hero(Position(2, 7), 100);
+    hero.pos.x = 9;
     let mut values: int[] = [1, 2, 3];
     values[0] = 9;
-    print(BASE, FIXED_VALUES[1], point.x, values[0], adjust(4), read_second(FIXED_VALUES));
+    GLOBAL_TOTAL += 2;
+    print(BASE, FIXED_VALUES[1], point.x, values[0], adjust(4), read_second(FIXED_VALUES), hero.pos.x, GLOBAL_TOTAL);
     return 0;
 }
 EOF
@@ -1757,6 +1763,21 @@ if ./build/ylang check build/immutable-struct-error.yl > build/immutable-struct-
     exit 1
 fi
 grep -q 'E2022' build/immutable-struct-error.out
+
+cat > build/immutable-nested-struct-error.yl <<'EOF'
+struct Position { int x; int y; }
+struct Hero { Position pos; int hp; }
+fn main() -> int {
+    let hero: Hero = Hero(Position(2, 7), 100);
+    hero.pos.x = 9;
+    return hero.pos.x;
+}
+EOF
+if ./build/ylang check build/immutable-nested-struct-error.yl > build/immutable-nested-struct-error.out 2>&1; then
+    echo "FAIL: field through an immutable nested struct was modified" >&2
+    exit 1
+fi
+grep -q 'E2022' build/immutable-nested-struct-error.out
 
 # Function parameters are immutable; use an explicit let mut copy to change a value.
 cat > build/immutable-parameter-error.yl <<'EOF'
