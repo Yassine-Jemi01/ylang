@@ -20,8 +20,23 @@ typedef struct {
 } LowerProgram;
 
 typedef struct {
+    size_t predecessor;
+    YLIRValue *values;
+} LowerLoopEdge;
+
+typedef struct {
+    LowerLoopEdge *items;
+    size_t count;
+    size_t capacity;
+} LowerLoopEdgeList;
+
+typedef struct {
     size_t break_target;
     size_t continue_target;
+    size_t break_value_count;
+    size_t continue_value_count;
+    LowerLoopEdgeList breaks;
+    LowerLoopEdgeList continues;
 } LowerLoop;
 
 typedef struct {
@@ -569,6 +584,218 @@ static bool lower_expression(LowerFunction *ctx, Expr *expr, YLIRValue *out)
     }
 }
 
+static void free_loop_edges(LowerLoopEdgeList *edges)
+{
+    if (!edges) return;
+    for (size_t i = 0; i < edges->count; i++) free(edges->items[i].values);
+    free(edges->items);
+    memset(edges, 0, sizeof(*edges));
+}
+
+static bool record_loop_edge(LowerFunction *ctx, bool is_break, Token token)
+{
+    LowerLoop *loop = ctx->loop;
+    if (!loop || !ctx->block) {
+        lower_error(ctx, token, is_break ? "break used outside a supported loop"
+                                         : "continue used outside a supported loop");
+        return false;
+    }
+    LowerLoopEdgeList *edges = is_break ? &loop->breaks : &loop->continues;
+    const size_t value_count = is_break ? loop->break_value_count
+                                        : loop->continue_value_count;
+    size_t predecessor = 0U;
+    if (!block_index(ctx->function, ctx->block, &predecessor) ||
+        value_count > ctx->binding_count) {
+        lower_error(ctx, token, "loop exit has an invalid predecessor or binding state");
+        return false;
+    }
+
+    YLIRValue *values = value_count ? malloc(value_count * sizeof(*values)) : NULL;
+    if (value_count && !values) {
+        lower_error(ctx, token, "out of memory recording loop exit values");
+        return false;
+    }
+    for (size_t i = 0; i < value_count; i++) values[i] = ctx->bindings[i].value;
+
+    if (edges->count == edges->capacity) {
+        size_t next = edges->capacity ? edges->capacity * 2U : 4U;
+        if (next < edges->capacity || next > SIZE_MAX / sizeof(*edges->items)) {
+            free(values);
+            lower_error(ctx, token, "loop exit edge table is too large");
+            return false;
+        }
+        LowerLoopEdge *grown = realloc(edges->items, next * sizeof(*grown));
+        if (!grown) {
+            free(values);
+            lower_error(ctx, token, "out of memory growing loop exit edge table");
+            return false;
+        }
+        edges->items = grown;
+        edges->capacity = next;
+    }
+
+    if (!ylang_ir_branch(ctx->block,
+            is_break ? loop->break_target : loop->continue_target,
+            token.line, token.column)) {
+        free(values);
+        lower_error(ctx, token, "could not emit loop exit branch");
+        return false;
+    }
+    edges->items[edges->count++] = (LowerLoopEdge){
+        .predecessor = predecessor, .values = values
+    };
+    ctx->block = NULL;
+    return true;
+}
+
+static bool append_phi_incoming(YLIRBasicBlock *header, YLIRValue phi,
+                                size_t predecessor, YLIRValue value)
+{
+    if (!header) return false;
+    for (size_t i = 0; i < header->instruction_count; i++) {
+        YLIRInstruction *instruction = &header->instructions[i];
+        if (instruction->kind != YLIR_OP_PHI || instruction->result != phi)
+            continue;
+        for (size_t j = 0; j < instruction->incoming_count; j++)
+            if (instruction->incoming[j].predecessor == predecessor) return false;
+        if (instruction->incoming_count == SIZE_MAX ||
+            instruction->incoming_count + 1U >
+                SIZE_MAX / sizeof(*instruction->incoming)) return false;
+        YLIRPhiIncoming *grown = realloc(instruction->incoming,
+            (instruction->incoming_count + 1U) * sizeof(*instruction->incoming));
+        if (!grown) return false;
+        instruction->incoming = grown;
+        instruction->incoming[instruction->incoming_count++] =
+            (YLIRPhiIncoming){ .predecessor = predecessor, .value = value };
+        return true;
+    }
+    return false;
+}
+
+static bool emit_loop_exit_values(LowerFunction *ctx, LowerLoop *loop,
+                                  YLIRBasicBlock *exit,
+                                  size_t condition_predecessor,
+                                  const YLIRValue *header_values,
+                                  size_t visible_binding_count,
+                                  Token token)
+{
+    if (visible_binding_count > ctx->binding_count) {
+        lower_error(ctx, token, "loop exit binding count is inconsistent");
+        return false;
+    }
+    ctx->block = exit;
+    for (size_t i = 0; i < visible_binding_count; i++) {
+        bool all_equal = true;
+        const YLIRValue first = header_values[i];
+        for (size_t edge = 0; edge < loop->breaks.count; edge++)
+            if (loop->breaks.items[edge].values[i] != first) all_equal = false;
+        if (all_equal) {
+            ctx->bindings[i].value = first;
+            continue;
+        }
+
+        size_t incoming_count = loop->breaks.count + 1U;
+        if (incoming_count > SIZE_MAX / sizeof(YLIRPhiIncoming)) {
+            lower_error(ctx, token, "loop exit PHI has too many incoming edges");
+            return false;
+        }
+        YLIRPhiIncoming *incoming = malloc(incoming_count * sizeof(*incoming));
+        if (!incoming) {
+            lower_error(ctx, token, "out of memory merging loop exit values");
+            return false;
+        }
+        incoming[0] = (YLIRPhiIncoming){
+            .predecessor = condition_predecessor, .value = first
+        };
+        for (size_t edge = 0; edge < loop->breaks.count; edge++) {
+            incoming[edge + 1U] = (YLIRPhiIncoming){
+                .predecessor = loop->breaks.items[edge].predecessor,
+                .value = loop->breaks.items[edge].values[i]
+            };
+        }
+        YLIRType type = lower_type(ctx->bindings[i].variable->type);
+        YLIRValue merged = YLIR_NO_VALUE;
+        bool okay = type != YLIR_TYPE_INVALID &&
+            ylang_ir_emit_phi(exit, type, incoming, incoming_count,
+                              token.line, token.column, &merged);
+        free(incoming);
+        if (!okay) {
+            lower_error(ctx, token, "could not emit loop exit PHI");
+            return false;
+        }
+        ctx->bindings[i].value = merged;
+    }
+    ctx->binding_count = visible_binding_count;
+    return true;
+}
+
+static bool merge_for_increment(LowerFunction *ctx, YLIRBasicBlock *increment,
+                                size_t visible_count, bool has_fallthrough,
+                                size_t fallthrough_predecessor,
+                                const YLIRValue *fallthrough_values,
+                                const LowerLoopEdgeList *continues,
+                                Token token)
+{
+    size_t incoming_count = continues->count + (has_fallthrough ? 1U : 0U);
+    if (incoming_count == 0U) {
+        if (!ylang_ir_unreachable(increment, token.line, token.column)) {
+            lower_error(ctx, token, "could not mark an unreachable for increment block");
+            return false;
+        }
+        ctx->block = NULL;
+        return true;
+    }
+    if (visible_count > ctx->binding_count) {
+        lower_error(ctx, token, "for increment binding count is inconsistent");
+        return false;
+    }
+
+    ctx->block = increment;
+    for (size_t i = 0; i < visible_count; i++) {
+        YLIRValue first = has_fallthrough
+            ? fallthrough_values[i] : continues->items[0].values[i];
+        bool all_equal = true;
+        for (size_t edge = 0; edge < continues->count; edge++)
+            if (continues->items[edge].values[i] != first) all_equal = false;
+        if (has_fallthrough && fallthrough_values[i] != first) all_equal = false;
+        if (all_equal) {
+            ctx->bindings[i].value = first;
+            continue;
+        }
+
+        YLIRPhiIncoming *incoming = malloc(incoming_count * sizeof(*incoming));
+        if (!incoming) {
+            lower_error(ctx, token, "out of memory merging for continue values");
+            return false;
+        }
+        size_t at = 0U;
+        if (has_fallthrough) {
+            incoming[at++] = (YLIRPhiIncoming){
+                .predecessor = fallthrough_predecessor,
+                .value = fallthrough_values[i]
+            };
+        }
+        for (size_t edge = 0; edge < continues->count; edge++) {
+            incoming[at++] = (YLIRPhiIncoming){
+                .predecessor = continues->items[edge].predecessor,
+                .value = continues->items[edge].values[i]
+            };
+        }
+        YLIRType type = lower_type(ctx->bindings[i].variable->type);
+        YLIRValue merged = YLIR_NO_VALUE;
+        bool okay = type != YLIR_TYPE_INVALID &&
+            ylang_ir_emit_phi(increment, type, incoming, incoming_count,
+                              token.line, token.column, &merged);
+        free(incoming);
+        if (!okay) {
+            lower_error(ctx, token, "could not emit for continue PHI");
+            return false;
+        }
+        ctx->bindings[i].value = merged;
+    }
+    return true;
+}
+
 static bool emit_phi_for_binding(LowerFunction *ctx, YLIRBasicBlock *header,
                                  size_t predecessor, VarDecl *variable,
                                  YLIRValue initial, YLIRValue *out)
@@ -589,25 +816,6 @@ static bool emit_phi_for_binding(LowerFunction *ctx, YLIRBasicBlock *header,
     return true;
 }
 
-static bool patch_loop_phi(YLIRBasicBlock *header, YLIRValue phi,
-                           size_t predecessor, YLIRValue value)
-{
-    for (size_t i = 0; i < header->instruction_count; i++) {
-        YLIRInstruction *instruction = &header->instructions[i];
-        if (instruction->kind != YLIR_OP_PHI || instruction->result != phi) continue;
-        if (instruction->incoming_count != 1U) return false;
-        YLIRPhiIncoming *grown = realloc(instruction->incoming,
-            2U * sizeof(*instruction->incoming));
-        if (!grown) return false;
-        instruction->incoming = grown;
-        instruction->incoming[1] = (YLIRPhiIncoming){
-            .predecessor = predecessor, .value = value
-        };
-        instruction->incoming_count = 2U;
-        return true;
-    }
-    return false;
-}
 
 static bool lower_if(LowerFunction *ctx, Stmt *stmt)
 {
@@ -709,7 +917,7 @@ static bool lower_if(LowerFunction *ctx, Stmt *stmt)
 
 static bool lower_while(LowerFunction *ctx, Stmt *stmt)
 {
-    size_t base_count = ctx->binding_count;
+    const size_t base_count = ctx->binding_count;
     size_t preheader_index = 0U, header_index = 0U, body_index = 0U, exit_index = 0U;
     if (!block_index(ctx->function, ctx->block, &preheader_index)) return false;
     YLIRBasicBlock *header = NULL, *body = NULL, *exit = NULL;
@@ -734,50 +942,91 @@ static bool lower_while(LowerFunction *ctx, Stmt *stmt)
         }
         ctx->bindings[i].value = phis[i];
     }
+
     YLIRValue condition = YLIR_NO_VALUE;
     if (!lower_expression(ctx, stmt->as.while_stmt.condition, &condition)) {
         free(initial); free(phis); return false;
     }
-    if (!ylang_ir_cond_branch(ctx->block, condition, body_index, exit_index,
+    size_t condition_predecessor = 0U;
+    if (!block_index(ctx->function, ctx->block, &condition_predecessor) ||
+        !ylang_ir_cond_branch(ctx->block, condition, body_index, exit_index,
                               stmt->token.line, stmt->token.column)) {
         free(initial); free(phis);
         lower_error(ctx, stmt->token, "could not emit while condition branch");
         return false;
     }
 
+    LowerLoop loop = {
+        .break_target = exit_index, .continue_target = header_index,
+        .break_value_count = base_count, .continue_value_count = base_count
+    };
+    ctx->loop = &loop;
     ctx->block = body;
     bool okay = lower_statement(ctx, stmt->as.while_stmt.body);
-    if (!okay) { free(initial); free(phis); return false; }
+    ctx->loop = NULL;
+    if (!okay) {
+        free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
+        free(initial); free(phis); return false;
+    }
+
     bool has_backedge = ctx->block && ctx->block->terminator.kind == YLIR_TERM_NONE;
+    size_t backedge_index = 0U;
+    YLIRValue *backedge_values = NULL;
     if (has_backedge) {
-        size_t backedge_index = 0U;
-        if (!block_index(ctx->function, ctx->block, &backedge_index) ||
-            !branch_to(ctx, ctx->block, header, stmt->token)) {
+        if (!block_index(ctx->function, ctx->block, &backedge_index)) {
+            lower_error(ctx, stmt->token, "could not locate while backedge predecessor");
+            free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
             free(initial); free(phis); return false;
         }
-        for (size_t i = 0; i < base_count; i++) {
-            if (!patch_loop_phi(header, phis[i], backedge_index, ctx->bindings[i].value)) {
-                free(initial); free(phis);
-                lower_error(ctx, stmt->token, "could not patch a loop-carried PHI");
-                return false;
+        backedge_values = base_count ? malloc(base_count * sizeof(*backedge_values)) : NULL;
+        if (base_count && !backedge_values) {
+            lower_error(ctx, stmt->token, "out of memory saving while backedge values");
+            free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
+            free(initial); free(phis); return false;
+        }
+        for (size_t i = 0; i < base_count; i++)
+            backedge_values[i] = ctx->bindings[i].value;
+        if (!branch_to(ctx, ctx->block, header, stmt->token)) {
+            free(backedge_values); free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
+            free(initial); free(phis); return false;
+        }
+    }
+
+    for (size_t i = 0; i < base_count; i++) {
+        if (has_backedge &&
+            !append_phi_incoming(header, phis[i], backedge_index, backedge_values[i])) {
+            lower_error(ctx, stmt->token, "could not add while backedge PHI input");
+            free(backedge_values); free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
+            free(initial); free(phis); return false;
+        }
+        for (size_t edge = 0; edge < loop.continues.count; edge++) {
+            if (!append_phi_incoming(header, phis[i],
+                                     loop.continues.items[edge].predecessor,
+                                     loop.continues.items[edge].values[i])) {
+                lower_error(ctx, stmt->token, "could not add continue PHI input");
+                free(backedge_values); free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
+                free(initial); free(phis); return false;
             }
         }
     }
-    ctx->binding_count = base_count;
-    for (size_t i = 0; i < base_count; i++) ctx->bindings[i].value = phis[i];
-    ctx->block = exit;
+    if (base_count) {
+        for (size_t i = 0; i < base_count; i++) ctx->bindings[i].value = phis[i];
+    }
+    okay = emit_loop_exit_values(ctx, &loop, exit, condition_predecessor,
+                                 phis, base_count, stmt->token);
+    free(backedge_values); free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
     free(initial); free(phis);
-    return true;
+    return okay;
 }
 
 static bool lower_for(LowerFunction *ctx, Stmt *stmt)
 {
-    size_t outer_count = ctx->binding_count;
+    const size_t outer_count = ctx->binding_count;
     if (!lower_statement(ctx, stmt->as.for_stmt.initializer)) return false;
-    size_t loop_count = ctx->binding_count;
+    const size_t loop_count = ctx->binding_count;
     if (!stmt->as.for_stmt.condition) {
         lower_error(ctx, stmt->token,
-                    "unbounded for loops require break-aware exit lowering, not yet supported by this IR slice");
+                    "unbounded for loops require break-aware exit lowering, not supported in this IR slice");
         ctx->binding_count = outer_count;
         return false;
     }
@@ -809,7 +1058,11 @@ static bool lower_for(LowerFunction *ctx, Stmt *stmt)
         ctx->bindings[i].value = phis[i];
     }
     YLIRValue condition = YLIR_NO_VALUE;
-    if (!lower_expression(ctx, stmt->as.for_stmt.condition, &condition) ||
+    if (!lower_expression(ctx, stmt->as.for_stmt.condition, &condition)) {
+        free(initial); free(phis); return false;
+    }
+    size_t condition_predecessor = 0U;
+    if (!block_index(ctx->function, ctx->block, &condition_predecessor) ||
         !ylang_ir_cond_branch(ctx->block, condition, body_index, exit_index,
                               stmt->token.line, stmt->token.column)) {
         free(initial); free(phis);
@@ -817,47 +1070,94 @@ static bool lower_for(LowerFunction *ctx, Stmt *stmt)
         return false;
     }
 
+    LowerLoop loop = {
+        .break_target = exit_index, .continue_target = increment_index,
+        .break_value_count = outer_count, .continue_value_count = loop_count
+    };
+    ctx->loop = &loop;
     ctx->block = body;
     bool okay = lower_statement(ctx, stmt->as.for_stmt.body);
-    if (!okay) { free(initial); free(phis); return false; }
-    bool body_falls_through = ctx->block && ctx->block->terminator.kind == YLIR_TERM_NONE;
-    if (body_falls_through) {
-        if (!branch_to(ctx, ctx->block, increment, stmt->token)) {
+    ctx->loop = NULL;
+    if (!okay) {
+        free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
+        free(initial); free(phis); return false;
+    }
+
+    bool has_fallthrough = ctx->block && ctx->block->terminator.kind == YLIR_TERM_NONE;
+    size_t fallthrough_predecessor = 0U;
+    YLIRValue *fallthrough_values = loop_count ? malloc(loop_count * sizeof(*fallthrough_values)) : NULL;
+    if (loop_count && !fallthrough_values) {
+        lower_error(ctx, stmt->token, "out of memory saving for-loop body values");
+        free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
+        free(initial); free(phis); return false;
+    }
+    if (has_fallthrough) {
+        if (!block_index(ctx->function, ctx->block, &fallthrough_predecessor)) {
+            lower_error(ctx, stmt->token, "could not locate for-loop body predecessor");
+            free(fallthrough_values); free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
             free(initial); free(phis); return false;
         }
-    } else {
-        (void)ylang_ir_unreachable(increment, stmt->token.line, stmt->token.column);
+        for (size_t i = 0; i < loop_count; i++)
+            fallthrough_values[i] = ctx->bindings[i].value;
+        if (!branch_to(ctx, ctx->block, increment, stmt->token)) {
+            free(fallthrough_values); free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
+            free(initial); free(phis); return false;
+        }
     }
 
     ctx->binding_count = loop_count;
-    ctx->block = increment;
-    if (body_falls_through && stmt->as.for_stmt.increment) {
+    okay = merge_for_increment(ctx, increment, loop_count, has_fallthrough,
+                               fallthrough_predecessor, fallthrough_values,
+                               &loop.continues, stmt->token);
+    free(fallthrough_values);
+    if (!okay) {
+        free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
+        free(initial); free(phis); return false;
+    }
+
+    bool has_backedge = ctx->block && ctx->block->terminator.kind == YLIR_TERM_NONE;
+    if (has_backedge && stmt->as.for_stmt.increment) {
         YLIRValue ignored = YLIR_NO_VALUE;
         if (!lower_expression(ctx, stmt->as.for_stmt.increment, &ignored)) {
+            free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
             free(initial); free(phis); return false;
         }
     }
-    bool has_backedge = body_falls_through &&
-        ctx->block && ctx->block->terminator.kind == YLIR_TERM_NONE;
+    has_backedge = ctx->block && ctx->block->terminator.kind == YLIR_TERM_NONE;
+    size_t backedge_index = 0U;
+    YLIRValue *backedge_values = loop_count ? malloc(loop_count * sizeof(*backedge_values)) : NULL;
+    if (loop_count && has_backedge && !backedge_values) {
+        lower_error(ctx, stmt->token, "out of memory saving for-loop increment values");
+        free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
+        free(initial); free(phis); return false;
+    }
     if (has_backedge) {
-        size_t backedge_index = 0U;
-        if (!block_index(ctx->function, ctx->block, &backedge_index) ||
-            !branch_to(ctx, ctx->block, header, stmt->token)) {
+        if (!block_index(ctx->function, ctx->block, &backedge_index)) {
+            lower_error(ctx, stmt->token, "could not locate for-loop backedge");
+            free(backedge_values); free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
+            free(initial); free(phis); return false;
+        }
+        for (size_t i = 0; i < loop_count; i++)
+            backedge_values[i] = ctx->bindings[i].value;
+        if (!branch_to(ctx, ctx->block, header, stmt->token)) {
+            free(backedge_values); free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
             free(initial); free(phis); return false;
         }
         for (size_t i = 0; i < loop_count; i++) {
-            if (!patch_loop_phi(header, phis[i], backedge_index, ctx->bindings[i].value)) {
-                free(initial); free(phis);
-                lower_error(ctx, stmt->token, "could not patch a for-loop PHI");
-                return false;
+            if (!append_phi_incoming(header, phis[i], backedge_index, backedge_values[i])) {
+                lower_error(ctx, stmt->token, "could not add for-loop backedge PHI input");
+                free(backedge_values); free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
+                free(initial); free(phis); return false;
             }
         }
     }
-    ctx->binding_count = outer_count;
-    for (size_t i = 0; i < outer_count; i++) ctx->bindings[i].value = phis[i];
-    ctx->block = exit;
+
+    for (size_t i = 0; i < loop_count; i++) ctx->bindings[i].value = phis[i];
+    okay = emit_loop_exit_values(ctx, &loop, exit, condition_predecessor,
+                                 phis, outer_count, stmt->token);
+    free(backedge_values); free_loop_edges(&loop.breaks); free_loop_edges(&loop.continues);
     free(initial); free(phis);
-    return true;
+    return okay;
 }
 
 static bool lower_statement(LowerFunction *ctx, Stmt *stmt)
@@ -943,9 +1243,9 @@ static bool lower_statement(LowerFunction *ctx, Stmt *stmt)
             }
             return true;
         case STMT_BREAK:
+            return record_loop_edge(ctx, true, stmt->token);
         case STMT_CONTINUE:
-            lower_error(ctx, stmt->token, "break and continue are not in this scalar IR slice yet");
-            return false;
+            return record_loop_edge(ctx, false, stmt->token);
         case STMT_LOOP:
             lower_error(ctx, stmt->token, "infinite loops require break-aware exit PHIs");
             return false;
