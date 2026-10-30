@@ -272,6 +272,22 @@ static bool lower_boolean_expr(Lowerer *lowerer, const Expr *expression,
         return emit(lowerer, instruction, value_id);
     }
 
+    if (expression->kind == EXPR_UNARY &&
+        (expression->as.unary.op.type == TOKEN_NOT ||
+         expression->as.unary.op.type == TOKEN_BANG)) {
+        uint32_t operand = 0;
+        if (!lower_boolean_expr(lowerer, expression->as.unary.right, &operand))
+            return false;
+        YIRInstruction instruction = {
+            .opcode = YIR_OP_NOT_BOOL,
+            .result_type = YIR_TYPE_BOOL,
+            .lhs = operand,
+            .source_line = expression->as.unary.op.line,
+            .source_column = expression->as.unary.op.column
+        };
+        return emit(lowerer, instruction, value_id);
+    }
+
     if (expression->kind == EXPR_NAME) {
         if (!expression->as.name.variable || !lowerer->function)
             return lower_fail(lowerer, "boolean name is not a supported function parameter");
