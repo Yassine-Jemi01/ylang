@@ -1,4 +1,4 @@
-function main() -> int {
+fn main() -> int {
     let owned_string response = await 42;
     print(response);
     return 0;
