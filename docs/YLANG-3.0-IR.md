@@ -37,7 +37,7 @@ The verifier computes CFG reachability and iterative dominator sets. It rejects 
 
 ## Remaining work before frontend integration
 
-This IR is not ready to replace the current AST-to-C path. Function signatures and parameters, source spans, floating-point and string operations, memory and aggregate operations, calls, ownership/drop metadata, debug locations, and real frontend lowering are still required. Backends must consume the same verified IR before the architecture can be considered integrated.
+This IR is not ready to replace the current AST-to-C path. Function signatures and parameters, source spans, floating-point and string operations, memory and aggregate operations, calls, ownership/drop metadata, debug locations, and complete frontend lowering for the supported language are still required. Backends must consume the same verified IR before the architecture can be considered integrated.
 
 ## AST lowering scope
 
