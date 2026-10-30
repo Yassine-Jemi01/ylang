@@ -159,11 +159,6 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
                 return asm_reject(ctx, expr->token,
                                   "standard-library and conversion calls");
             }
-            if (expr->as.call.count > 6 ||
-                expr->as.call.function->param_count > 6) {
-                return asm_reject(ctx, expr->token,
-                                  "calls with more than six scalar arguments");
-            }
             for (size_t i = 0; i < expr->as.call.function->param_count; i++) {
                 if (expr->as.call.function->params[i]->is_array) {
                     return asm_reject(ctx, expr->token, "array parameters");
@@ -427,19 +422,74 @@ static bool emit_call(AsmContext *ctx, Expr *expr)
     static const char *const argument_registers[] = {
         "rdi", "rsi", "rdx", "rcx", "r8", "r9"
     };
-    for (size_t i = 0; i < expr->as.call.count; i++) {
+    const size_t argument_count = expr->as.call.count;
+    if (argument_count > SIZE_MAX / 8U ||
+        ctx->temporary_depth > SIZE_MAX - argument_count * 8U) {
+        return asm_reject(ctx, expr->token, "calls with an unaddressable argument list");
+    }
+
+    /* Evaluate every argument left-to-right before arranging the SysV ABI. */
+    for (size_t i = 0; i < argument_count; i++) {
         if (!emit_expr(ctx, expr->as.call.args[i])) return false;
         fputs("    push rax\n", ctx->out);
         ctx->temporary_depth += 8U;
     }
-    for (size_t i = expr->as.call.count; i > 0; i--) {
-        fprintf(ctx->out, "    pop %s\n", argument_registers[i - 1U]);
-        if (ctx->temporary_depth >= 8U) ctx->temporary_depth -= 8U;
+
+    const size_t stack_argument_count =
+        argument_count > 6U ? argument_count - 6U : 0U;
+    const size_t stack_bytes = stack_argument_count * 8U;
+    if (ctx->temporary_depth > SIZE_MAX - stack_bytes) {
+        return asm_reject(ctx, expr->token, "calls with an unaddressable stack argument area");
     }
-    bool padded = (ctx->temporary_depth % 16U) != 0;
-    if (padded) fputs("    sub rsp, 8\n", ctx->out);
+
+    /*
+     * The first stack argument must be at [rsp] before CALL. Keep the
+     * temporary argument values above that outgoing area, and place any
+     * alignment padding after the stack arguments as required by SysV.
+     */
+    const size_t depth_with_stack_args = ctx->temporary_depth + stack_bytes;
+    const size_t padding = depth_with_stack_args % 16U == 0U ? 0U : 8U;
+    if (stack_bytes > SIZE_MAX - padding) {
+        return asm_reject(ctx, expr->token, "calls with an unaddressable alignment area");
+    }
+    const size_t outgoing_size = stack_bytes + padding;
+    if (outgoing_size > 0U) {
+        fprintf(ctx->out, "    sub rsp, %zu\n", outgoing_size);
+    }
+
+    /* Copy arguments 7..N to the caller's stack area in source order. */
+    for (size_t i = 6U; i < argument_count; i++) {
+        const size_t source_offset =
+            outgoing_size + (argument_count - 1U - i) * 8U;
+        const size_t destination_offset = (i - 6U) * 8U;
+        fprintf(ctx->out,
+                "    mov rax, [rsp + %zu]\n"
+                "    mov [rsp + %zu], rax\n",
+                source_offset, destination_offset);
+    }
+
+    /* Load arguments 1..6 from their saved values without disturbing rsp. */
+    const size_t register_argument_count =
+        argument_count < 6U ? argument_count : 6U;
+    for (size_t i = 0; i < register_argument_count; i++) {
+        const size_t source_offset =
+            outgoing_size + (argument_count - 1U - i) * 8U;
+        fprintf(ctx->out, "    mov %s, [rsp + %zu]\n",
+                argument_registers[i], source_offset);
+    }
+
     fprintf(ctx->out, "    call %s\n", expr->as.call.function->c_name);
-    if (padded) fputs("    add rsp, 8\n", ctx->out);
+
+    const size_t argument_bytes = argument_count * 8U;
+    if (outgoing_size > SIZE_MAX - argument_bytes) {
+        return asm_reject(ctx, expr->token, "calls with an unaddressable cleanup area");
+    }
+    const size_t cleanup_bytes = outgoing_size + argument_bytes;
+    if (cleanup_bytes > 0U) {
+        fprintf(ctx->out, "    add rsp, %zu\n", cleanup_bytes);
+    }
+    ctx->temporary_depth -= argument_bytes;
+
     if (expr->as.call.function->return_type == TYPE_VOID) {
         fputs("    xor eax, eax\n", ctx->out);
     }
@@ -1052,8 +1102,16 @@ static bool emit_function(AsmContext *ctx, Function *function)
     if (frame_size != 0U) fprintf(ctx->out, "    sub rsp, %zu\n", frame_size);
     for (size_t i = 0; i < function->param_count; i++) {
         size_t offset = slot_offset(ctx, function->params[i]);
-        fprintf(ctx->out, "    mov [rbp - %zu], %s\n", offset,
-                argument_registers[i]);
+        if (i < sizeof(argument_registers) / sizeof(argument_registers[0])) {
+            fprintf(ctx->out, "    mov [rbp - %zu], %s\n", offset,
+                    argument_registers[i]);
+        } else {
+            size_t incoming_offset = 16U + (i - 6U) * 8U;
+            fprintf(ctx->out,
+                    "    mov rax, [rbp + %zu]\n"
+                    "    mov [rbp - %zu], rax\n",
+                    incoming_offset, offset);
+        }
     }
     if (!emit_stmt(ctx, function->body)) return false;
     fputs("    xor eax, eax\n", ctx->out);
@@ -1217,11 +1275,6 @@ bool generate_asm(Compiler *compiler, const char *path)
 
     for (size_t i = 0; ctx.okay && i < compiler->program->function_count; i++) {
         Function *function = compiler->program->functions[i];
-        if (function->param_count > 6U) {
-            (void)asm_reject(&ctx, function->token,
-                             "functions with more than six parameters");
-            break;
-        }
         if (!asm_type_supported(&ctx, function->return_type,
                                 function->token, true)) break;
         for (size_t j = 0; j < function->param_count; j++) {
