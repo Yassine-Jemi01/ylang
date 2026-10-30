@@ -1894,13 +1894,14 @@ fi
 if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
     cat > build/asm-arrays.yl <<'EOF'
 let BASE_VALUES: int[] = [4, 6, 8];
+let NAMES: string[] = ["red", "blue"];
 let mut global_values: int[] = [1, 2, 3];
 fn main() -> int {
     let mut values: int[] = [10, 20, 30];
     let index: int = 1;
     values[index] += 2;
     global_values[0] = global_values[0] + 5;
-    print(values[0], values[1], values[2], BASE_VALUES[1], global_values[0]);
+    print(values[0], values[1], values[2], BASE_VALUES[1], global_values[0], NAMES[1]);
     return 0;
 }
 EOF
@@ -1909,7 +1910,7 @@ EOF
     ./build/asm-arrays-c > build/asm-arrays-c.out
     ./build/asm-arrays > build/asm-arrays.out
     diff -u build/asm-arrays-c.out build/asm-arrays.out
-    printf '10 22 30 6 6\n' > build/asm-arrays.expected
+    printf '10 22 30 6 6 blue\n' > build/asm-arrays.expected
     diff -u build/asm-arrays.expected build/asm-arrays.out
 
     ./build/ylang build-asm tests/array-out-of-bounds.yl -o build/asm-array-oob >/dev/null
@@ -1921,6 +1922,24 @@ EOF
         [ "$array_status" -eq 70 ]
     fi
     grep -q 'array index out of bounds' build/asm-array-oob.out
+
+    cat > build/asm-array-negative.yl <<'EOF'
+fn main() -> int {
+    let values: int[] = [1, 2, 3];
+    let index: int = -1;
+    print(values[index]);
+    return 0;
+}
+EOF
+    ./build/ylang build-asm build/asm-array-negative.yl -o build/asm-array-negative >/dev/null
+    if ./build/asm-array-negative > build/asm-array-negative.out 2>&1; then
+        echo "FAIL: NASM accepted a negative array index" >&2
+        exit 1
+    else
+        array_status=$?
+        [ "$array_status" -eq 70 ]
+    fi
+    grep -q 'array index out of bounds' build/asm-array-negative.out
 
     cat > build/asm-array-params.yl <<'EOF'
 let VALUES: int[] = [2, 4, 6];
