@@ -9,7 +9,7 @@
 (enum_declaration name: (type_identifier) @type)
 (enum_variant) @constant
 (field_declaration (identifier) @property)
-(variable_declaration name: (identifier) @variable)
+(variable_binding name: (identifier) @variable)
 (primitive_type) @type
 (type_identifier) @type
 (qualified_type) @type
