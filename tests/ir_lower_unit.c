@@ -262,10 +262,39 @@ static void lowers_boolean_literal_condition(void)
     yir_destroy_function(&lowered);
 }
 
+
+static void lowers_minimum_signed_integer(void)
+{
+    Expr magnitude = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="9223372036854775808",
+               .length=19,.line=1,.column=2},
+        .type=TYPE_INT
+    };
+    Expr minimum = {
+        .kind=EXPR_UNARY,
+        .token={.type=TOKEN_MINUS,.start="-",.length=1,.line=1,.column=1},
+        .type=TYPE_INT,
+        .is_min_int=true,
+        .as.unary={.right=&magnitude,.op={.type=TOKEN_MINUS,.start="-",
+                                         .length=1,.line=1,.column=1}}
+    };
+    Stmt ret = {.kind=STMT_RETURN,.as.return_value=&minimum};
+    Stmt *items[] = {&ret};
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=1}};
+    Function function = {.name="min",.return_type=TYPE_INT,.body=&body};
+    YIRFunction lowered;
+    char error[192];
+    assert(yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(lowered.blocks[0].instructions[0].immediate==INT64_MIN);
+    yir_destroy_function(&lowered);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
     lowers_unary_negative();
+    lowers_minimum_signed_integer();
     lowers_empty_void_function();
     rejects_unsupported_function_body();
     lowers_if_else_returns();
