@@ -29,7 +29,6 @@ typedef enum {
     TOKEN_CONTINUE,
     TOKEN_RETURN,
     TOKEN_FN,
-    TOKEN_FUNCTION,
     TOKEN_AND,
     TOKEN_OR,
     TOKEN_NOT,
