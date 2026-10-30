@@ -1378,17 +1378,25 @@ static bool emit_function(AsmContext *ctx, Function *function)
     fprintf(ctx->out, "\n%s:\n    push rbp\n    mov rbp, rsp\n",
             function->c_name);
     if (frame_size != 0U) fprintf(ctx->out, "    sub rsp, %zu\n", frame_size);
+    size_t abi_index = 0U;
     for (size_t i = 0; i < function->param_count; i++) {
-        size_t offset = slot_offset(ctx, function->params[i]);
-        if (i < sizeof(argument_registers) / sizeof(argument_registers[0])) {
-            fprintf(ctx->out, "    mov [rbp - %zu], %s\n", offset,
-                    argument_registers[i]);
-        } else {
-            size_t incoming_offset = 16U + (i - 6U) * 8U;
-            fprintf(ctx->out,
-                    "    mov rax, [rbp + %zu]\n"
-                    "    mov [rbp - %zu], rax\n",
-                    incoming_offset, offset);
+        VarDecl *parameter = function->params[i];
+        const size_t piece_count = parameter->is_array ? 2U : 1U;
+        for (size_t piece = 0; piece < piece_count; piece++) {
+            size_t destination_offset = piece == 0U ?
+                slot_offset(ctx, parameter) :
+                array_parameter_length_offset(ctx, parameter);
+            if (abi_index < sizeof(argument_registers) / sizeof(argument_registers[0])) {
+                fprintf(ctx->out, "    mov [rbp - %zu], %s\n",
+                        destination_offset, argument_registers[abi_index]);
+            } else {
+                size_t incoming_offset = 16U + (abi_index - 6U) * 8U;
+                fprintf(ctx->out,
+                        "    mov rax, [rbp + %zu]\n"
+                        "    mov [rbp - %zu], rax\n",
+                        incoming_offset, destination_offset);
+            }
+            abi_index++;
         }
     }
     if (!emit_stmt(ctx, function->body)) return false;
