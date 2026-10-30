@@ -59,7 +59,7 @@ static int test_lexer(void)
     for (size_t i = 0; i < sizeof(function_tokens) / sizeof(function_tokens[0]); i++) {
         Token token = lexer_next(&function_keywords);
         if (token.type != function_tokens[i]) {
-            fprintf(stderr, "function keyword token %zu: expected %s, got %s\\n",
+            fprintf(stderr, "function keyword token %zu: expected %s, got %s\n",
                     i, token_type_name(function_tokens[i]), token_type_name(token.type));
             return 1;
         }
