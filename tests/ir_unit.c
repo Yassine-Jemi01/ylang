@@ -208,6 +208,43 @@ static void reject_block_parameter_type_mismatch(void)
     assert(strstr(error,"branch argument type")!=NULL);
 }
 
+
+static void reject_entry_block_parameters(void)
+{
+    const YIRBlockParameter params[] = {
+        {.id=1,.type=YIR_TYPE_I64}
+    };
+    const YIRInstruction ins[] = { {.opcode=YIR_OP_RETURN,.lhs=1} };
+    const YIRBlock block = {
+        .id=0,.parameters=params,.parameter_count=1,
+        .instructions=ins,.instruction_count=1
+    };
+    const YIRFunction fn={.name="entry_parameter",.return_type=YIR_TYPE_I64,
+                          .blocks=&block,.block_count=1};
+    char error[160]; assert(!yir_verify_function(&fn,error,sizeof(error)));
+    assert(strstr(error,"entry block parameters")!=NULL);
+}
+
+static void reject_missing_block_argument(void)
+{
+    const YIRBlockParameter params[] = {
+        {.id=2,.type=YIR_TYPE_I64}
+    };
+    const YIRInstruction entry_ins[] = {
+        {.opcode=YIR_OP_BRANCH,.target=1}
+    };
+    const YIRInstruction exit_ins[] = { {.opcode=YIR_OP_RETURN,.lhs=2} };
+    const YIRBlock blocks[] = {
+        {.id=0,.instructions=entry_ins,.instruction_count=1},
+        {.id=1,.parameters=params,.parameter_count=1,
+         .instructions=exit_ins,.instruction_count=1}
+    };
+    const YIRFunction fn={.name="missing_argument",.return_type=YIR_TYPE_I64,
+                          .blocks=blocks,.block_count=2};
+    char error[160]; assert(!yir_verify_function(&fn,error,sizeof(error)));
+    assert(strstr(error,"argument count")!=NULL);
+}
+
 int main(void)
 {
     valid_arithmetic_return(); reject_use_before_definition();
@@ -217,5 +254,6 @@ int main(void)
     accept_value_from_dominating_block(); reject_value_not_dominating_join();
     reject_unreachable_block();
     accept_block_parameter_join(); reject_block_parameter_type_mismatch();
+    reject_entry_block_parameters(); reject_missing_block_argument();
     puts("YLang IR verifier tests passed"); return 0;
 }
