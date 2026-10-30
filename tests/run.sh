@@ -1708,7 +1708,7 @@ fn main() -> int {
 EOF
 ./build/ylang build build/immutable-values.yl -o build/immutable-values >/dev/null 2>&1
 ./build/immutable-values > build/immutable-values.out
-printf '10 5 4 9 5 5\n' > build/immutable-values.expected
+printf '10 5 4 9 5 5 9 3\n' > build/immutable-values.expected
 diff -u build/immutable-values.expected build/immutable-values.out
 
 cat > build/immutable-array-error.yl <<'EOF'
