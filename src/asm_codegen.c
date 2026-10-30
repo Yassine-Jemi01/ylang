@@ -399,11 +399,11 @@ static bool validate_array_element_type(AsmContext *ctx, VarDecl *variable)
 static bool validate_array_declaration(AsmContext *ctx, VarDecl *variable)
 {
     if (!validate_array_element_type(ctx, variable)) return false;
-    if (variable->array_length == 0U || !variable->initializer ||
-        variable->initializer->kind != EXPR_ARRAY ||
+    if (variable->array_length == 0U || variable->array_length > (size_t)INT32_MAX ||
+        !variable->initializer || variable->initializer->kind != EXPR_ARRAY ||
         variable->initializer->as.array.count != variable->array_length) {
         return asm_reject(ctx, variable->token,
-                          "fixed arrays without a non-empty literal initializer");
+                          "fixed arrays without a non-empty, addressable literal initializer");
     }
     return true;
 }
@@ -426,7 +426,7 @@ static size_t array_parameter_length_offset(AsmContext *ctx, VarDecl *variable)
 static bool emit_array_bounds_check(AsmContext *ctx, VarDecl *variable)
 {
     if (!variable || !variable->is_array ||
-        variable->array_length > (size_t)INT64_MAX) {
+        variable->array_length > (size_t)INT32_MAX) {
         return asm_reject(ctx, variable ? variable->token : (Token){0},
                           "arrays with an invalid length");
     }
@@ -1375,6 +1375,10 @@ static bool emit_function(AsmContext *ctx, Function *function)
     }
     size_t raw_frame_size = ctx->slot_words * 8U;
     size_t frame_size = (raw_frame_size + 15U) & ~(size_t)15U;
+    if (frame_size > (size_t)INT32_MAX) {
+        return asm_reject(ctx, function->token,
+                          "a stack frame larger than the x86-64 signed displacement range");
+    }
     fprintf(ctx->out, "\n%s:\n    push rbp\n    mov rbp, rsp\n",
             function->c_name);
     if (frame_size != 0U) fprintf(ctx->out, "    sub rsp, %zu\n", frame_size);
