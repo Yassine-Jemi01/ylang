@@ -283,6 +283,11 @@ bool yir_verify_function(const YIRFunction *function, char *error,
                                       YIR_TYPE_I64);
                     break;
                 case YIR_OP_EQ_I64:
+                case YIR_OP_NE_I64:
+                case YIR_OP_LT_I64:
+                case YIR_OP_LE_I64:
+                case YIR_OP_GT_I64:
+                case YIR_OP_GE_I64:
                     operands_ok = ins->result_id != 0 &&
                         ins->result_type == YIR_TYPE_BOOL &&
                         check_operand(values, value_count, dominators,
@@ -291,6 +296,11 @@ bool yir_verify_function(const YIRFunction *function, char *error,
                         check_operand(values, value_count, dominators,
                                       block_count, bi, ii, ins->rhs,
                                       YIR_TYPE_I64);
+                    break;
+                case YIR_OP_CONST_BOOL:
+                    operands_ok = ins->result_id != 0 &&
+                        ins->result_type == YIR_TYPE_BOOL &&
+                        (ins->immediate == 0 || ins->immediate == 1);
                     break;
                 case YIR_OP_BRANCH:
                     operands_ok = true;
