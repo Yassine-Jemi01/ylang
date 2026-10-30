@@ -44,7 +44,7 @@ score += count;
 - The old `let Type name` syntax remains accepted during migration with warning `W2301`.
 - Legacy declarations must retain their old mutability semantics; they must never silently change meaning.
 
-The initial compiler slice is implemented on the 3.0 development branch. Immutable arrays are still explicitly unsupported until their aggregate mutation semantics are implemented.
+The initial compiler slice is implemented on the 3.0 development branch. Immutable arrays and immutable aggregate mutation are still unsupported; the compiler must reject them rather than silently allow mutation.
 
 ### 2.2 Functions: keep YLang recognizable
 
