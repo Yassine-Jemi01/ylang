@@ -111,7 +111,8 @@ static void synchronize(Parser *p)
 {
     while (p->current.type != TOKEN_EOF) {
         if (p->previous.type == TOKEN_SEMICOLON ||
-            p->current.type == TOKEN_FUNCTION || p->current.type == TOKEN_LET ||
+            p->current.type == TOKEN_FN || p->current.type == TOKEN_FUNCTION ||
+            p->current.type == TOKEN_LET ||
             p->current.type == TOKEN_IF || p->current.type == TOKEN_RETURN) {
             return;
         }
@@ -935,9 +936,14 @@ static Stmt *parse_statement(Parser *p)
 static Function *parse_function(Parser *p)
 {
     Token start = p->previous;
+    if (start.type == TOKEN_FUNCTION) {
+        diagnostic(p->compiler, start, "warning", "W2302",
+                   "The 'function' keyword is deprecated in YLang 3.0.",
+                   "Replace 'function' with 'fn'; for example: fn add(int a, int b) -> int { ... }");
+    }
     Token name_token = consume(p, TOKEN_IDENTIFIER,
-        "Expected a function name after 'function'.",
-        "For example: function add(int a, int b) -> int { ... }");
+        "Expected a function name after 'fn'.",
+        "For example: fn add(int a, int b) -> int { ... }");
     Function *function = arena_alloc(&p->compiler->arena, sizeof(*function));
     function->token = name_token;
     function->name = token_copy(p->compiler, name_token);
@@ -951,14 +957,14 @@ static Function *parse_function(Parser *p)
             YType type = parse_type(p);
             Token param_name = consume(p, TOKEN_IDENTIFIER,
                 "Expected a parameter name after its type.",
-                "For example: function greet(string name) -> void.");
+                "For example: fn greet(string name) -> void.");
             VarDecl *param = new_var(p->compiler, param_name,
                 token_copy(p->compiler, param_name), type, false, false, NULL);
             if (match(p, TOKEN_LEFT_BRACKET)) {
                 param->is_array = true;
                 consume(p, TOKEN_RIGHT_BRACKET,
                         "Array parameters use empty brackets after the name.",
-                        "Use syntax such as function sum(int values[]) -> int.");
+                        "Use syntax such as fn sum(int values[]) -> int.");
             }
             param->initialized = true;
             if (type == TYPE_BORROWED_STRING) param->is_const = true;
@@ -970,7 +976,7 @@ static Function *parse_function(Parser *p)
     consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after parameters.",
             "Close the parameter list with ')'.");
     consume(p, TOKEN_ARROW, "Expected '->' before function return type.",
-            "For example: function main() -> int { ... }");
+            "For example: fn main() -> int { ... }");
     function->return_type = parse_type(p);
     if (function->return_type == TYPE_BORROWED_STRING) {
         diagnostic(p->compiler, function->token, "error", "E2120",
@@ -1315,7 +1321,7 @@ Program *parse_program(Compiler *c)
             Stmt *global_stmt = parse_variable(&p, true);
             append_ptr(c, (void ***)&program->globals, &program->global_count,
                        global_stmt->as.variable);
-        } else if (match(&p, TOKEN_FUNCTION)) {
+        } else if (match(&p, TOKEN_FN) || match(&p, TOKEN_FUNCTION)) {
             Function *function = parse_function(&p);
             append_ptr(c, (void ***)&program->functions,
                        &program->function_count, function);
