@@ -453,6 +453,11 @@ static bool emit_call(AsmContext *ctx, Expr *expr)
         return asm_reject(ctx, expr->token, "calls with an unaddressable alignment area");
     }
     const size_t outgoing_size = stack_bytes + padding;
+    const size_t argument_bytes = argument_count * 8U;
+    if (outgoing_size > SIZE_MAX - argument_bytes) {
+        return asm_reject(ctx, expr->token, "calls with an unaddressable cleanup area");
+    }
+    const size_t cleanup_bytes = outgoing_size + argument_bytes;
     if (outgoing_size > 0U) {
         fprintf(ctx->out, "    sub rsp, %zu\n", outgoing_size);
     }
@@ -480,11 +485,6 @@ static bool emit_call(AsmContext *ctx, Expr *expr)
 
     fprintf(ctx->out, "    call %s\n", expr->as.call.function->c_name);
 
-    const size_t argument_bytes = argument_count * 8U;
-    if (outgoing_size > SIZE_MAX - argument_bytes) {
-        return asm_reject(ctx, expr->token, "calls with an unaddressable cleanup area");
-    }
-    const size_t cleanup_bytes = outgoing_size + argument_bytes;
     if (cleanup_bytes > 0U) {
         fprintf(ctx->out, "    add rsp, %zu\n", cleanup_bytes);
     }
