@@ -15,6 +15,8 @@ vim.api.nvim_buf_set_lines(0, 0, -1, false, {
   "    await task;",
   "    let http_task pending = task;",
   "    defer cleanup(1);",
+  "    let immutable: int = 9;",
+  "    let mut mutable: int = immutable;",
   "    return 0;",
   "}",
 })
@@ -43,5 +45,8 @@ assert(group_at(10, "env") == "ylangNamespace", "environment namespace should be
 assert(group_at(11, "await") == "ylangKeyword", "await should be highlighted as a keyword")
 assert(group_at(12, "http_task") == "ylangType", "HTTP task handles should be highlighted as a type")
 assert(group_at(13, "defer") == "ylangKeyword", "defer should be highlighted as a keyword")
+assert(group_at(14, "immutable") == "ylangVariable", "immutable name:type bindings should be highlighted")
+assert(group_at(15, "mut") == "ylangKeyword", "mut should be highlighted as a keyword")
+assert(group_at(15, "mutable") == "ylangVariable", "mutable name:type bindings should be highlighted")
 print("YLang Neovim syntax tests passed")
 vim.cmd("qa!")

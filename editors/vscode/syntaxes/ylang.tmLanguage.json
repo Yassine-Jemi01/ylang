@@ -26,6 +26,9 @@
       "include": "#variable-declaration"
     },
     {
+      "include": "#legacy-variable-declaration"
+    },
+    {
       "include": "#namespace"
     },
     {
@@ -214,7 +217,7 @@
       "name": "constant.language.boolean.ylang"
     },
     "keywords": {
-      "match": "\\b(?:fn|function|defer|return|let|const|if|else|loop|while|for|break|continue|and|or|not|await|struct|enum|match|from|import)\\b",
+      "match": "\\b(?:fn|function|defer|return|let|mut|const|if|else|loop|while|for|break|continue|and|or|not|await|struct|enum|match|from|import)\\b",
       "name": "keyword.control.ylang"
     },
     "types": {
@@ -343,6 +346,29 @@
       ]
     },
     "variable-declaration": {
+      "match": "\\b(let)(\\s+)(mut\\s+)?([A-Za-z_][A-Za-z0-9_]*)(\\s*:\\s*)([A-Za-z_][A-Za-z0-9_]*)(\\s*\\[\\])?",
+      "captures": {
+        "1": {
+          "name": "keyword.declaration.variable.ylang"
+        },
+        "3": {
+          "name": "storage.modifier.mutable.ylang"
+        },
+        "4": {
+          "name": "variable.other.ylang"
+        },
+        "5": {
+          "name": "punctuation.ylang"
+        },
+        "6": {
+          "name": "storage.type.ylang"
+        },
+        "7": {
+          "name": "punctuation.ylang"
+        }
+      }
+    },
+    "legacy-variable-declaration": {
       "match": "\\b(let)(\\s+)(const\\s+)?([A-Za-z_][A-Za-z0-9_]*)(\\s+)([A-Za-z_][A-Za-z0-9_]*)(\\s*\\[\\])?",
       "captures": {
         "1": {

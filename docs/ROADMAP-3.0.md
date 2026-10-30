@@ -44,7 +44,7 @@ score += count;
 - The old `let Type name` syntax remains accepted during migration with warning `W2301`.
 - Legacy declarations must retain their old mutability semantics; they must never silently change meaning.
 
-The initial compiler slice is implemented on the 3.0 development branch. Immutable arrays and immutable aggregate mutation are still unsupported; the compiler must reject them rather than silently allow mutation.
+The compiler enforces immutable bindings for locals, globals, function parameters, array elements, and struct field paths. Immutable fixed-size arrays can be initialized and read; attempts to mutate their elements or fields through an immutable root are rejected with E2022. Mutable arrays remain element-mutable.
 
 ### 2.2 Function declarations
 

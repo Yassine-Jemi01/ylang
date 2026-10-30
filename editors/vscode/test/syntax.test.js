@@ -30,7 +30,10 @@ assert.ok(repository["function-declaration"].match.includes("fn|function"), "fn 
 assert.ok(repository["struct-declaration"], "struct declarations should have a dedicated scope");
 assert.ok(repository["enum-declaration"], "enum declarations and variants should have dedicated scopes");
 assert.ok(repository["field-declaration"], "struct fields should be highlighted");
-assert.ok(repository["variable-declaration"], "typed variable declarations should be highlighted");
+assert.ok(repository["variable-declaration"], "name:type bindings should be highlighted");
+assert.match(repository["variable-declaration"].match, /mut/, "mutable bindings should be highlighted");
+assert.ok(repository["legacy-variable-declaration"], "legacy type-first declarations should remain highlighted");
+assert.ok(repository.keywords.match.includes("mut"), "mut should be highlighted as a keyword");
 assert.ok(repository.namespace.match.includes("gui"), "built-in namespaces should be highlighted");
 assert.ok(repository.namespace.match.includes("http"), "HTTP namespace should be highlighted");
 assert.ok(repository.namespace.match.includes("env"), "environment namespace should be highlighted");

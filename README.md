@@ -277,15 +277,15 @@ YSPM manages Linux system packages, not project-local YLang module dependencies.
 ## Language overview
 
 ```ylang
-let const int MAX = 100;
-let int count = 0;
+let MAX: int = 100;
+let mut count: int = 0;
 
 fn add(int a, int b) -> int {
     return a + b;
 }
 
 fn main() -> int {
-    let string product = "YLang";
+    let product: string = "YLang";
     print(f"Welcome to {product}");
     print("Sum:", add(10, 20));
 
@@ -311,14 +311,14 @@ See [`docs/language-spec.md`](docs/language-spec.md) for the complete supported 
 YLang includes a checked `math` namespace for floating-point functions:
 
 ```ylang
-let float root = math.sqrt(81.0);
-let float power = math.pow(2.0, 8.0);
+let root: float = math.sqrt(81.0);
+let power: float = math.pow(2.0, 8.0);
 ```
 
 Fixed-size arrays use an inferred length, homogeneous initializers, and bounds-checked indexing. Functions can accept arrays with `int values[]`; `length(values)` returns the array length, including for parameters:
 
 ```ylang
-let int scores[] = [10, 20, 30];
+let mut scores: int[] = [10, 20, 30];
 
 fn main() -> int {
     scores[1] = 42;
@@ -332,7 +332,7 @@ Explicit conversions include `to_float(int)`, range-checked `to_int(float)`, and
 
 ## Supported language features
 
-- Explicit declarations (`let type name`) and constants (`let const type name`)
+- Immutable declarations (`let name: Type`) and explicit mutable declarations (`let mut name: Type`)
 - `int` (signed 64-bit), `float` (64-bit), `bool`, single-byte `char`, `string`, and `void` return types
 - Functions and return statements
 - `if` / `else if` / `else`, `loop()`, `while`, C-style `for`, `break`, and `continue`

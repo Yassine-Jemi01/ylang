@@ -48,7 +48,7 @@ let mut values: float[] = [1.0, 2.0, 3.0];
 values[0] = 5.0;
 ```
 
-An immutable binding cannot be used to mutate an array element or a struct field. Mutation through a nested field path requires a mutable root binding. This restriction must be enforced consistently for direct assignment, compound assignment, array indexing, and chained struct fields.
+Immutable arrays are valid read-only values in the C reference backend. Mutable arrays allow element assignment. Mutation through an array index or a nested struct-field path requires a mutable root binding. Whole-array reassignment remains unsupported. The NASM backend may reject arrays until its array capability milestone is complete.
 
 ### 2.4 Globals
 
@@ -175,7 +175,7 @@ Add explicit metadata for:
 
 Add statement kinds for `STMT_TRY` and `STMT_THROW`, an expression kind for Result propagation, and payload-binding information to match arms.
 
-The implementation may temporarily retain `is_const` while migrating internal code, but two conflicting sources of truth must not remain.
+The AST uses `BindingMutability` as its single authoritative mutability field. `used_legacy_syntax` records whether a declaration used the deprecated type-first spelling. No parallel `is_const` source of truth remains. Function parameters in `fn` declarations are immutable; a function must create an explicit `let mut` local copy when mutation is needed.
 
 ## 7. Semantic analysis
 
@@ -190,7 +190,7 @@ All writes must verify that the root binding is mutable. This includes:
 - Struct field assignment.
 - Chained struct field assignment.
 
-An immutable binding must not become mutable because it is accessed through a pointer-like or aggregate expression. Unsupported mutation forms must be rejected explicitly.
+An immutable binding must not become mutable because it is accessed through an array index or an aggregate expression. Immutable array reads are supported; writes to elements or struct-field paths through an immutable root are rejected with E2022. Unsupported mutation forms must be rejected explicitly.
 
 ### 7.2 Definite assignment
 
