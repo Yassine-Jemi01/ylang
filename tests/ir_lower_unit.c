@@ -1,5 +1,5 @@
 #include "ylang/ir.h"
-#include "ylang/compiler.h"
+#include "internal.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -535,6 +535,34 @@ static void rejects_global_assignment_as_local_ssa(void)
     assert(strstr(error,"prior local declaration")!=NULL);
 }
 
+
+static void lowers_real_checked_frontend_function(void)
+{
+    const char *source =
+        "fn add(int left, int right) -> int { return left + right; }\n"
+        "fn main() -> int { return add(20, 22); }\n";
+    Compiler compiler = {0};
+    compiler.filename = "ir-lower-integration.yl";
+    compiler.source = (char *)source;
+    compiler.source_length = strlen(source);
+    compiler.quiet_diagnostics = true;
+    compiler.program = parse_program(&compiler);
+    assert(compiler.program != NULL);
+    assert(!compiler.had_error);
+    assert(check_program(&compiler));
+
+    Function *add_function = find_function(&compiler, "add");
+    assert(add_function != NULL);
+    YIRFunction lowered;
+    char error[192];
+    assert(yir_lower_function(add_function,&lowered,error,sizeof(error)));
+    assert(lowered.parameter_count==2);
+    assert(lowered.blocks[0].instructions[0].opcode==YIR_OP_ADD_I64);
+    assert(lowered.blocks[0].instructions[1].opcode==YIR_OP_RETURN);
+    yir_destroy_function(&lowered);
+    arena_destroy(&compiler.arena);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
@@ -552,6 +580,7 @@ int main(void)
     rejects_assignment_to_const_local();
     lowers_assignment_to_parameter_as_new_ssa_value();
     rejects_global_assignment_as_local_ssa();
+    lowers_real_checked_frontend_function();
     puts("YLang IR lowering tests passed");
     return 0;
 }
