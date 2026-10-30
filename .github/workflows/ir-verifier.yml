@@ -15,7 +15,7 @@ on:
       - ".github/workflows/ir-verifier.yml"
 
 concurrency:
-  group: ylang-3-ir-${{ github.head_ref || github.ref }}
+  group: ylang-3-ir-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 permissions:
