@@ -16,7 +16,7 @@
 (import_declaration) @keyword
 (from_import_declaration) @keyword
 [
-  "fn" "function" "return" "let" "const" "if" "else" "loop" "while" "for"
+  "fn" "function" "return" "let" "mut" "const" "if" "else" "loop" "while" "for"
   "break" "continue" "defer" "and" "or" "not" "await" "struct" "enum" "match"
   "from" "import"
 ] @keyword
@@ -30,5 +30,5 @@
 (call_expression function: (identifier) @function)
 (member_expression property: (identifier) @property)
 [
-  "=" "+=" "-=" "*=" "/=" "+" "-" "*" "/" "%" "==" "!=" "<" "<=" ">" ">=" "->" "!"
+  "=" "+=" "-=" "*=" "/=" "+" "-" "*" "/" "%" "==" "!=" "<" "<=" ">" ">=" "++" "->" "!"
 ] @operator
