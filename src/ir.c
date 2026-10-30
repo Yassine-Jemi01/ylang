@@ -324,6 +324,13 @@ bool yir_verify_function(const YIRFunction *function, char *error,
                         ins->result_type == YIR_TYPE_BOOL &&
                         (ins->immediate == 0 || ins->immediate == 1);
                     break;
+                case YIR_OP_NOT_BOOL:
+                    operands_ok = ins->result_id != 0 &&
+                        ins->result_type == YIR_TYPE_BOOL &&
+                        check_operand(values, value_count, dominators,
+                                      block_count, bi, ii, ins->lhs,
+                                      YIR_TYPE_BOOL);
+                    break;
                 case YIR_OP_BRANCH:
                     operands_ok = true;
                     break;
