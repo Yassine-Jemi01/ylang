@@ -290,6 +290,36 @@ static void lowers_minimum_signed_integer(void)
     yir_destroy_function(&lowered);
 }
 
+
+static void lowers_boolean_function_parameter_and_return(void)
+{
+    VarDecl parameter = {.name="enabled",.type=TYPE_BOOL};
+    VarDecl *parameters[] = {&parameter};
+    Expr value = {
+        .kind=EXPR_NAME,
+        .type=TYPE_BOOL,
+        .as.name={.name="enabled",.variable=&parameter}
+    };
+    Stmt ret = {.kind=STMT_RETURN,.as.return_value=&value};
+    Stmt *items[] = {&ret};
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=1}};
+    Function function = {
+        .name="identity_bool",
+        .params=parameters,
+        .param_count=1,
+        .return_type=TYPE_BOOL,
+        .body=&body
+    };
+    YIRFunction lowered;
+    char error[192];
+    assert(yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(lowered.return_type==YIR_TYPE_BOOL);
+    assert(lowered.parameters[0].type==YIR_TYPE_BOOL);
+    assert(lowered.blocks[0].instructions[0].opcode==YIR_OP_RETURN);
+    assert(lowered.blocks[0].instructions[0].lhs==1);
+    yir_destroy_function(&lowered);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
@@ -301,6 +331,7 @@ int main(void)
     rejects_if_without_else();
     lowers_integer_function_parameters();
     lowers_boolean_literal_condition();
+    lowers_boolean_function_parameter_and_return();
     puts("YLang IR lowering tests passed");
     return 0;
 }
