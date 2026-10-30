@@ -1620,4 +1620,31 @@ EOF
     diff -u build/asm-short-circuit.expected build/asm-short-circuit.out
 fi
 
+# NASM follows the System V x86-64 ABI for arguments beyond the six integer registers.
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+    cat > build/asm-stack-args.yl <<'EOF'
+function emit_value(int value) -> int {
+    print(value);
+    return value;
+}
+function sum_eight(int a, int b, int c, int d, int e, int f, int g, int h) -> int {
+    return a + b + c + d + e + f + g + h;
+}
+function main() -> int {
+    print(sum_eight(
+        emit_value(1), emit_value(2), emit_value(3), emit_value(4),
+        emit_value(5), emit_value(6), emit_value(7), emit_value(8)
+    ));
+    return 0;
+}
+EOF
+    ./build/ylang build build/asm-stack-args.yl -o build/asm-stack-args-c >/dev/null 2>&1
+    ./build/ylang build-asm build/asm-stack-args.yl -o build/asm-stack-args >/dev/null
+    ./build/asm-stack-args-c > build/asm-stack-args-c.out
+    ./build/asm-stack-args > build/asm-stack-args.out
+    diff -u build/asm-stack-args-c.out build/asm-stack-args.out
+    printf '1\n2\n3\n4\n5\n6\n7\n8\n36\n' > build/asm-stack-args.expected
+    diff -u build/asm-stack-args.expected build/asm-stack-args.out
+fi
+
 echo "All YLang tests passed."
