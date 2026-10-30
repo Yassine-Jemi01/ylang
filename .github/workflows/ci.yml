@@ -89,8 +89,10 @@ jobs:
         run: |
           mkdir -p build/windows-smoke
           cat > build/windows-smoke/hello.yl <<'EOF'
-          function main() -> int {
-              print("Windows smoke:", 40 + 2);
+          fn main() -> int {
+              let mut int answer = 40;
+              answer += 2;
+              print("Windows smoke:", answer);
               return 0;
           }
           EOF
