@@ -8,6 +8,7 @@ Status: standalone typed SSA verifier plus an initial scalar AST lowering slice.
 - Every produced value has an explicit type and a function-wide unique SSA identifier.
 - The first block is the function entry.
 - Every block ends in exactly one explicit terminator.
+- Lowered instructions retain source line and column locations when available.
 - Values may cross blocks only when their definition dominates the use.
 - Non-entry blocks may declare typed parameters. Branch edges pass one value per target parameter, in order.
 - Typed integer function parameters are modeled as entry SSA values. Entry block parameters, non-integer function parameters, calls, memory operations, and ownership metadata are not modeled yet.
@@ -32,12 +33,13 @@ The verifier checks:
 - Cross-block use only when the defining block dominates the use.
 - Block argument count, type, and availability on each incoming edge.
 - Return type agreement and the absence of values on void returns.
+- Source line and column metadata must be supplied together.
 
 The verifier computes CFG reachability and iterative dominator sets. It rejects unreachable blocks and values that do not dominate a control-flow join.
 
 ## Remaining work before frontend integration
 
-This IR is not ready to replace the current AST-to-C path. Full calling-convention and ABI metadata, source spans, floating-point and string operations, memory and aggregate operations, calls, ownership/drop metadata, debug locations, and complete frontend lowering for the supported language are still required. Backends must consume the same verified IR before the architecture can be considered integrated.
+This IR is not ready to replace the current AST-to-C path. Full calling-convention and ABI metadata, source spans, floating-point and string operations, memory and aggregate operations, calls, ownership/drop metadata, debug locations, and complete frontend lowering for the supported language are still required; current source locations cover lowered instructions, not every IR entity. Backends must consume the same verified IR before the architecture can be considered integrated.
 
 ## AST lowering scope
 
