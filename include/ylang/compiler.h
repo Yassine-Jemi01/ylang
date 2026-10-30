@@ -102,12 +102,18 @@ typedef enum {
     STMT_EXPR
 } StmtKind;
 
+typedef enum {
+    BINDING_IMMUTABLE,
+    BINDING_MUTABLE
+} BindingMutability;
+
 struct VarDecl {
     Token token;
     char *name;
     char *c_name;
     YType type;
-    bool is_const;
+    BindingMutability mutability;
+    bool used_legacy_syntax;
     bool initialized;
     bool moved; /* True after ownership is explicitly transferred with move(name). */
     bool is_global;

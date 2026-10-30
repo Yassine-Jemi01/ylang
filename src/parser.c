@@ -139,16 +139,18 @@ static Stmt *new_stmt(Compiler *c, StmtKind kind, Token token)
 }
 
 static VarDecl *new_var(Compiler *c, Token token, char *name, YType type,
-                        bool is_const, bool is_global, Expr *initializer)
+                        BindingMutability mutability, bool is_global,
+                        Expr *initializer)
 {
     VarDecl *var = arena_alloc(&c->arena, sizeof(*var));
     var->token = token;
     var->name = name;
     var->type = type;
-    var->is_const = is_const;
+    var->mutability = mutability;
     var->is_global = is_global;
     var->initializer = initializer;
-    var->initialized = initializer != NULL || (is_global && !is_const);
+    var->initialized = initializer != NULL ||
+                       (is_global && mutability == BINDING_MUTABLE);
     size_t variable_id = ++c->next_var_id;
     size_t name_length = strlen(name);
     int prefix_length = snprintf(NULL, 0, "yl_v_%zu_", variable_id);
@@ -667,39 +669,39 @@ static bool next_token_is_colon(Parser *p)
 static Stmt *parse_variable(Parser *p, bool global)
 {
     Token start = p->previous;
-    bool is_const = false;
+    BindingMutability mutability = BINDING_MUTABLE;
+    bool used_legacy_syntax = false;
     bool is_new_syntax = false;
     bool is_array = false;
     YType type = TYPE_ERROR;
     Token name_token = {0};
 
     if (match(p, TOKEN_MUT)) {
-        /* New mutable binding: let mut name: Type = value; */
         name_token = consume(p, TOKEN_IDENTIFIER,
             "Expected a variable name after 'let mut'.",
             "Use 'let mut count: int = 0;'.");
         consume(p, TOKEN_COLON, "Expected ':' after the mutable binding name.",
                 "Write the type after the name, for example 'let mut count: int'.");
         type = parse_type(p);
+        mutability = BINDING_MUTABLE;
         is_new_syntax = true;
     } else if (p->current.type == TOKEN_IDENTIFIER && next_token_is_colon(p)) {
-        /* New immutable binding: let name: Type = value; */
         name_token = consume(p, TOKEN_IDENTIFIER,
             "Expected a binding name after 'let'.",
             "Use 'let name: Type = value;'.");
         consume(p, TOKEN_COLON, "Expected ':' after the binding name.",
                 "Write the type after the name, for example 'let name: string'.");
         type = parse_type(p);
-        is_const = true;
+        mutability = BINDING_IMMUTABLE;
         is_new_syntax = true;
     } else {
-        /* Compatibility path: let [const] Type name = value; */
         bool legacy_const = match(p, TOKEN_CONST);
-        is_const = legacy_const;
+        mutability = legacy_const ? BINDING_IMMUTABLE : BINDING_MUTABLE;
+        used_legacy_syntax = true;
         type = parse_type(p);
         name_token = consume(p, TOKEN_IDENTIFIER,
             "Expected a variable name after the type.",
-            "Use 'let mut count: int = 0;' for mutable values or 'let name: int = 0;' for immutable values.");
+            "Use 'let mut count: int = 0;' for mutable values or 'let name: int = 0;'.");
         diagnostic(p->compiler, start, "warning", "W2301",
                    "Legacy type-first variable declaration syntax is deprecated.",
                    legacy_const
@@ -722,21 +724,16 @@ static Stmt *parse_variable(Parser *p, bool global)
         }
     } else if (match(p, TOKEN_LEFT_BRACKET)) {
         is_array = true;
-        consume(p, TOKEN_RIGHT_BRACKET, "Array declarations use empty brackets after the name.",
+        consume(p, TOKEN_RIGHT_BRACKET,
+                "Array declarations use empty brackets after the name.",
                 "Use a declaration such as 'let mut values: int[] = [1, 2, 3];'.");
-    }
-
-    if (is_array && is_const) {
-        diagnostic(p->compiler, name_token, "error", "E2017",
-                   "Immutable arrays are not supported yet.",
-                   "Use 'let mut values: Type[]' until immutable array storage is implemented.");
     }
 
     Expr *initializer = NULL;
     if (match(p, TOKEN_EQUAL)) initializer = parse_expression(p);
-    if (is_array && !initializer) {
+    if (is_array && (!initializer || initializer->kind != EXPR_ARRAY)) {
         diagnostic(p->compiler, name_token, "error", "E2018",
-                   "An array declaration requires an initializer in this release.",
+                   "An array declaration requires an array literal initializer.",
                    "Initialize it with an array literal, for example [1, 2, 3].");
     }
     if (!is_array && initializer && initializer->kind == EXPR_ARRAY) {
@@ -744,17 +741,20 @@ static Stmt *parse_variable(Parser *p, bool global)
                    "An array literal requires an array declaration.",
                    "Declare the variable with an array type, such as 'let mut values: int[] = [1, 2, 3];'.");
     }
-    if (is_const && !initializer) {
+    if (mutability == BINDING_IMMUTABLE && !initializer) {
         diagnostic(p->compiler, name_token, "error", "E2003",
                    "An immutable binding must be initialized at declaration.",
                    "Give it a value, for example 'let limit: int = 10;'.");
     }
     consume(p, TOKEN_SEMICOLON, "Expected ';' after variable declaration.",
             "The declaration may be missing ';' before this token.");
-    VarDecl *var = new_var(p->compiler, name_token, token_copy(p->compiler, name_token),
-                           type, is_const, global, initializer);
+    VarDecl *var = new_var(p->compiler, name_token,
+                           token_copy(p->compiler, name_token),
+                           type, mutability, global, initializer);
+    var->used_legacy_syntax = used_legacy_syntax;
     var->is_array = is_array;
-    var->array_length = is_array && initializer && initializer->kind == EXPR_ARRAY ?
+    var->array_length = is_array && initializer &&
+                        initializer->kind == EXPR_ARRAY ?
                         initializer->as.array.count : 0;
     Stmt *stmt = new_stmt(p->compiler, STMT_VAR, start);
     stmt->as.variable = var;
@@ -968,7 +968,8 @@ static Function *parse_function(Parser *p)
                 "Expected a parameter name after its type.",
                 "For example: fn greet(string name) -> void.");
             VarDecl *param = new_var(p->compiler, param_name,
-                token_copy(p->compiler, param_name), type, false, false, NULL);
+                token_copy(p->compiler, param_name), type,
+                BINDING_IMMUTABLE, false, NULL);
             if (match(p, TOKEN_LEFT_BRACKET)) {
                 param->is_array = true;
                 consume(p, TOKEN_RIGHT_BRACKET,
@@ -976,7 +977,6 @@ static Function *parse_function(Parser *p)
                         "Use syntax such as fn sum(int values[]) -> int.");
             }
             param->initialized = true;
-            if (type == TYPE_BORROWED_STRING) param->is_const = true;
             (void)param_type_token;
             append_ptr(p->compiler, (void ***)&function->params,
                        &function->param_count, param);

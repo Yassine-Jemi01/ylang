@@ -1679,6 +1679,94 @@ if ./build/ylang check build/immutable-binding-error.yl > build/immutable-bindin
 fi
 grep -q 'E2022' build/immutable-binding-error.out
 
+# Immutable globals, arrays and structs are readable but cannot be modified.
+cat > build/immutable-values.yl <<'EOF'
+let BASE: int = 10;
+let FIXED_VALUES: int[] = [3, 5, 8];
+struct Point { int x; int y; }
+fn main() -> int {
+    let point: Point = Point(4, 6);
+    let mut values: int[] = [1, 2, 3];
+    values[0] = 9;
+    print(BASE, FIXED_VALUES[1], point.x, values[0]);
+    return 0;
+}
+EOF
+./build/ylang build build/immutable-values.yl -o build/immutable-values >/dev/null 2>&1
+./build/immutable-values > build/immutable-values.out
+printf '10 5 4 9\n' > build/immutable-values.expected
+diff -u build/immutable-values.expected build/immutable-values.out
+
+cat > build/immutable-array-error.yl <<'EOF'
+fn main() -> int {
+    let values: int[] = [1, 2, 3];
+    values[0] = 4;
+    return values[0];
+}
+EOF
+if ./build/ylang check build/immutable-array-error.yl > build/immutable-array-error.out 2>&1; then
+    echo "FAIL: immutable array element was modified" >&2
+    exit 1
+fi
+grep -q 'E2022' build/immutable-array-error.out
+
+cat > build/immutable-struct-error.yl <<'EOF'
+struct Point { int x; int y; }
+fn main() -> int {
+    let point: Point = Point(1, 2);
+    point.x = 3;
+    return point.x;
+}
+EOF
+if ./build/ylang check build/immutable-struct-error.yl > build/immutable-struct-error.out 2>&1; then
+    echo "FAIL: immutable struct field was modified" >&2
+    exit 1
+fi
+grep -q 'E2022' build/immutable-struct-error.out
+
+# Function parameters are immutable; use an explicit let mut copy to change a value.
+cat > build/immutable-parameter-error.yl <<'EOF'
+fn increment(int value) -> int {
+    value = value + 1;
+    return value;
+}
+fn main() -> int {
+    return increment(1);
+}
+EOF
+if ./build/ylang check build/immutable-parameter-error.yl > build/immutable-parameter-error.out 2>&1; then
+    echo "FAIL: immutable function parameter was reassigned" >&2
+    exit 1
+fi
+grep -q 'E2022' build/immutable-parameter-error.out
+
+cat > build/immutable-global-error.yl <<'EOF'
+let LIMIT: int = 100;
+fn main() -> int {
+    LIMIT = 101;
+    return LIMIT;
+}
+EOF
+if ./build/ylang check build/immutable-global-error.yl > build/immutable-global-error.out 2>&1; then
+    echo "FAIL: immutable global was reassigned" >&2
+    exit 1
+fi
+grep -q 'E2022' build/immutable-global-error.out
+
+# Mutable bindings may be declared first and initialized later.
+cat > build/mutable-uninitialized.yl <<'EOF'
+fn main() -> int {
+    let mut value: int;
+    value = 42;
+    print(value);
+    return 0;
+}
+EOF
+./build/ylang build build/mutable-uninitialized.yl -o build/mutable-uninitialized >/dev/null 2>&1
+./build/mutable-uninitialized > build/mutable-uninitialized.out
+printf '42\n' > build/mutable-uninitialized.expected
+diff -u build/mutable-uninitialized.expected build/mutable-uninitialized.out
+
 # NASM must support initialized and mutable scalar globals.
 if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
     cat > build/asm-globals.yl <<'EOF'

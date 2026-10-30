@@ -602,10 +602,10 @@ static YType check_expr(Checker *checker, Expr *expr)
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
-            if (var->is_const) {
+            if (var->mutability == BINDING_IMMUTABLE) {
                 diagnostic(c, expr->token, "error", "E2022",
-                           "Cannot assign to a const variable.",
-                           "Keep 'const' and remove this assignment, or remove 'const' if the variable should be mutable.");
+                           "Cannot assign to an immutable binding.",
+                           "Declare it with 'let mut name: Type' if it must be reassigned or mutated.");
             }
             if (target_type == TYPE_OWNED_STRING && right == TYPE_OWNED_STRING &&
                 right_expr && right_expr->kind == EXPR_NAME) {

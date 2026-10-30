@@ -1027,9 +1027,26 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
 static void emit_var_type(Compiler *compiler, FILE *out, VarDecl *var, bool global)
 {
     if (global) fputs("static ", out);
-    if (var->is_const && !is_c_string_type(var->type)) fputs("const ", out);
+    if (var->mutability == BINDING_IMMUTABLE && !is_c_string_type(var->type)) fputs("const ", out);
     fputs(c_base_type(compiler, var->type), out);
-    if (var->is_const && is_c_string_type(var->type)) fputs(" const", out);
+    if (var->mutability == BINDING_IMMUTABLE && is_c_string_type(var->type)) fputs(" const", out);
+}
+
+static void emit_parameter_decl(Compiler *compiler, FILE *out, VarDecl *param)
+{
+    /* Owned parameters are nulled by cleanup after release. Semantic analysis
+       still enforces their immutability at the YLang source level. */
+    if (param->mutability == BINDING_IMMUTABLE &&
+        param->type != TYPE_OWNED_STRING) {
+        emit_var_type(compiler, out, param, false);
+    } else {
+        fputs(c_base_type(compiler, param->type), out);
+    }
+    if (param->is_array) {
+        fprintf(out, " *%s, size_t %s_len", param->c_name, param->c_name);
+    } else {
+        fprintf(out, " %s", param->c_name);
+    }
 }
 
 static void emit_expr_to_file(FILE *out, Expr *expr)
@@ -1676,12 +1693,7 @@ bool generate_c(Compiler *c, const char *path)
         for (size_t j = 0; j < fn->param_count; j++) {
             VarDecl *param = fn->params[j];
             if (!first_param) fputs(", ", out);
-            if (param->is_array) {
-                fprintf(out, "%s *%s, size_t %s_len",
-                        c_base_type(c, param->type), param->c_name, param->c_name);
-            } else {
-                fprintf(out, "%s %s", c_base_type(c, param->type), param->c_name);
-            }
+            emit_parameter_decl(c, out, param);
             first_param = false;
         }
         fputs(");\n", out);
@@ -1696,12 +1708,7 @@ bool generate_c(Compiler *c, const char *path)
         for (size_t j = 0; j < fn->param_count; j++) {
             VarDecl *param = fn->params[j];
             if (!first_param) fputs(", ", out);
-            if (param->is_array) {
-                fprintf(out, "%s *%s, size_t %s_len",
-                        c_base_type(c, param->type), param->c_name, param->c_name);
-            } else {
-                fprintf(out, "%s %s", c_base_type(c, param->type), param->c_name);
-            }
+            emit_parameter_decl(c, out, param);
             first_param = false;
         }
         fputs(") {\n", out);
