@@ -8,7 +8,7 @@ This lightweight Neovim integration adds native syntax highlighting and uses YLa
 
 ## Features
 
-- Highlights YLang 2.2 declarations, `struct`/`enum`/`match`, imports, fields and enum variants, built-in namespaces, strings/f-strings, comments, numbers, and operators.
+- Highlights YLang declarations including the 3.0 `fn` keyword, `struct`/`enum`/`match`, imports, fields and enum variants, built-in namespaces, strings/f-strings, comments, numbers, and operators.
 - Marks syntax and semantic errors in the buffer with underlines, signs, and virtual text.
 - Preserves YLang diagnostic codes and compiler hints.
 - Checks the current unsaved buffer while typing, when opening a .yl file, and after saving.
@@ -62,7 +62,7 @@ You can also open Neovim's message area with :messages if the compiler cannot st
 Open a temporary file with intentionally invalid YLang, for example:
 
 ~~~ylang
-function main() -> int {
+fn main() -> int {
     let int answer = "not an integer";
     return 0;
 }

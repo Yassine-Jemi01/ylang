@@ -23,9 +23,10 @@ for (const name of includes) {
   assert.ok(repository[name], `grammar include #${name} must be defined`);
 }
 
-for (const keyword of ["struct", "enum", "match", "from", "import", "for", "while", "await"]) {
-  assert.ok(repository.keywords.match.includes(keyword), `missing YLang 2.0 keyword: ${keyword}`);
+for (const keyword of ["fn", "struct", "enum", "match", "from", "import", "for", "while", "await"]) {
+  assert.ok(repository.keywords.match.includes(keyword), `missing YLang keyword: ${keyword}`);
 }
+assert.match(repository["function-declaration"].match, /fn\\|function/, "fn and the legacy function spelling should be highlighted");
 assert.ok(repository["struct-declaration"], "struct declarations should have a dedicated scope");
 assert.ok(repository["enum-declaration"], "enum declarations and variants should have dedicated scopes");
 assert.ok(repository["field-declaration"], "struct fields should be highlighted");

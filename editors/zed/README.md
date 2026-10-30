@@ -7,7 +7,7 @@
 
 # YLang support for Zed
 
-YLang syntax highlighting and language intelligence for `.yl` files. The extension uses Tree-sitter for syntax and the YLang Language Server Protocol (LSP) server for editor features.
+YLang syntax highlighting (including the 3.0 `fn` declaration keyword) and language intelligence for `.yl` files. The extension uses Tree-sitter for syntax and the YLang Language Server Protocol (LSP) server for editor features.
 
 ## Install
 

@@ -7,7 +7,7 @@ vim.api.nvim_buf_set_lines(0, 0, -1, false, {
   "}",
   "enum Direction { North, East }",
   'from "./math.yl" import add;',
-  "function main() -> int {",
+  "fn main() -> int {",
   "    let const float ratio = 2.5e-4;",
   "    match (direction) { Direction.North -> { break; } }",
   '    print(http.get("https://api.example.test"));',
@@ -31,7 +31,8 @@ assert(group_at(4, "enum") == "ylangDeclaration", "enum keyword should be highli
 assert(group_at(4, "North") == "ylangEnumVariant", "enum variants should be highlighted")
 assert(group_at(5, "from") == "ylangDeclaration", "module imports should be highlighted")
 assert(group_at(5, "import") == "ylangDeclaration", "imported names should be highlighted after the path string")
-assert(group_at(6, "main") == "ylangFunction", "function declarations should be highlighted")
+assert(group_at(6, "fn") == "ylangKeyword", "fn should be highlighted as a keyword")
+assert(group_at(6, "main") == "ylangFunction", "fn declarations should be highlighted")
 assert(group_at(7, "ratio") == "ylangVariable", "typed variable names should be highlighted")
 assert(group_at(7, "2.5e-4") == "ylangNumber", "exponent floats should be highlighted")
 assert(group_at(8, "match") == "ylangDeclaration", "match should be highlighted")

@@ -5,7 +5,7 @@ endif
 syn case match
 
 " Core declarations and control flow, including YLang 2.0 constructs.
-syn keyword ylangKeyword function return let const if else loop while for break continue and or not await
+syn keyword ylangKeyword fn function return let const if else loop while for break continue and or not await
 syn keyword ylangDeclaration struct enum match from import
 syn keyword ylangBoolean true false
 syn keyword ylangType int float bool char string void http_task
@@ -25,7 +25,7 @@ syn match ylangNumber "\<\%(0[xX][0-9A-Fa-f]\+\|[0-9]\+\%([.][0-9]\+\)\?\%([eE][
 
 syn match ylangOperator "->\|++\|+=\|==\|!=\|<=\|>=\|[=+*/%<>!-]"
 syn match ylangFunction "\<[A-Za-z_][A-Za-z0-9_]*\>\ze\s*("
-syn match ylangFunctionDeclaration "\<function\s\+\zs[A-Za-z_][A-Za-z0-9_]*"
+syn match ylangFunctionDeclaration "\<\(fn\|function\)\s\+\zs[A-Za-z_][A-Za-z0-9_]*"
 
 syn region ylangFString start=+f"+ end=+"+ contains=ylangInterpolation,ylangEscape
 syn region ylangString start=+"+ end=+"+ contains=ylangEscape
