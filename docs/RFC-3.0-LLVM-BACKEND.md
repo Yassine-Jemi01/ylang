@@ -10,8 +10,10 @@ At the time this RFC is prepared:
 - The compiler frontend and semantic analysis are written in C17.
 - The established backend walks the checked program and emits C; GCC or Clang then produces the executable.
 - The experimental NASM backend covers a deliberately restricted Linux x86-64 subset, including fixed-size scalar arrays and pointer-plus-length array parameters for the supported element types.
-- The backend roadmap describes a backend-neutral typed IR as a prerequisite.
-- No complete LLVM code-generation backend is present in the repository's main branch.
+- A backend-neutral typed IR now has an independent verifier and a scalar AST-lowering prototype on the 3.0 development branch.
+- An experimental textual LLVM emitter and explicit `emit-llvm` / `build-llvm` commands have been added on that branch.
+- The prototype currently covers scalar integer, float, and bool expressions, calls, control flow, PHIs, checked integer arithmetic, and scalar printing. It is not a complete LLVM backend.
+- The repository's main branch does not yet have a complete LLVM code-generation backend.
 
 Installing LLVM or Clang in CI for compiler testing, fuzzing, or host tooling does not mean YLang already generates LLVM IR.
 
@@ -91,7 +93,7 @@ The IR must represent:
 - Exception edges and Result control flow.
 - Runtime and external function declarations.
 
-The first typed IR foundation is implemented in `include/ylang/ir.h` and `src/ir.c`. It defines typed SSA values, scalar constants and arithmetic/comparison operations, functions and basic blocks, and explicit return/branch terminators. Its independent verifier checks value definitions, operand/result types, block terminators, return types, branch targets, predecessor-specific PHI inputs, and SSA dominance across reachable control-flow blocks. AST lowering, globals, calls, memory operations, ownership operations, and LLVM emission remain future steps.
+The typed IR foundation is implemented in `include/ylang/ir.h` and `src/ir.c`. It defines typed SSA values, scalar constants, arithmetic/comparison/print instructions, function calls, functions and basic blocks, and explicit return/branch terminators. Its independent verifier checks value definitions, operand/result types, void calls, print operands, block terminators, return types, branch targets, predecessor-specific PHI inputs, and SSA dominance across reachable control-flow blocks. The scalar AST lowerer is in `src/ir_lower.c`; it currently handles scalar functions, locals, arithmetic, boolean short circuit, if/while/for, calls, and print(int/float/bool). The textual LLVM emitter is in `src/llvm_text.c`. Globals, arrays, strings, aggregates, full runtime, ownership operations, exceptions, Result, debug metadata, and target-machine object emission remain future work.
 
 The IR verifier must reject malformed control flow, mismatched types, invalid terminators, unresolved symbols, and ownership states that cannot be represented safely.
 
@@ -151,9 +153,12 @@ Requirements:
 - Keep `--backend=c` available as the reference path after LLVM ships.
 - Do not silently fall back from LLVM to C.
 - `check` must remain backend-independent.
-- `emit-llvm` must emit inspectable textual LLVM IR.
-- `emit-obj` must produce a native object for a supported target.
+- `emit-llvm` emits inspectable textual LLVM IR for the currently implemented scalar subset.
+- `build-llvm` is an experimental Linux x86-64 path that feeds the textual IR to Clang. It is not yet a target-machine object backend.
+- `emit-obj` must eventually produce a native object for a supported target.
 - Unsupported target/backend combinations must fail before emission.
+
+The current `build-llvm` prototype supports only scalar `int`, `float`, and `bool` computation, scalar function parameters and returns, calls, branches, loops, PHIs, and scalar printing. It rejects globals, arrays, strings, structs, enum printing, ownership, exceptions, Result, and other constructs not yet represented in the IR. Integer overflow, division by zero, and signed division overflow use explicit runtime traps. The prototype uses Clang to compile textual IR and is not a claim of complete LLVM backend coverage.
 
 LLVM should become the default for 3.0 only after all 3.0 acceptance gates pass. The release may retain C as an explicit compatibility backend.
 

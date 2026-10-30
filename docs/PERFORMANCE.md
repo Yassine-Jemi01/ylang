@@ -29,7 +29,7 @@ Use `--cc clang` to measure the C backend with Clang. The NASM mode is restricte
 - **native-calls:** 2 million calls across a small integer function. This checks call overhead and basic argument passing.
 - Future cases must cover floating-point work, branching, memory access, strings/allocations, and collections before release claims are made.
 
-Both initial workloads use features currently shared by the C and NASM backends. If a backend does not support a benchmark's language features, the suite must report that backend as unsupported rather than silently switching implementations.
+Both initial workloads use features currently shared by the C and NASM backends; LLVM is not included in the performance matrix until language and backend parity is broader. If a backend does not support a benchmark's language features, the suite must report that backend as unsupported rather than silently switching implementations.
 
 ## What is measured
 

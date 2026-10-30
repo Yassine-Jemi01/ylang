@@ -256,15 +256,19 @@ The 3.0 release must not be declared complete until the optimized backend demons
 - [x] Define the first backend-neutral typed SSA IR core: scalar types, values, functions, blocks, arithmetic/comparison instructions, and explicit terminators.
 - [x] Implement an independent verifier for SSA definitions, typed operands/results, returns, and branch targets.
 - [x] Add PHI nodes, predecessor validation, and dominator-based cross-block SSA verification.
-- [ ] Add globals, calls, memory operations, and complete source metadata.
-- [ ] Lower the resolved YLang frontend into IR.
+- [x] Add typed function calls and void calls.
+- [x] Lower scalar numeric/bool functions, locals, arithmetic, short-circuit logic, if/while/for control flow, PHI merges, and scalar print.
+- [ ] Add globals, arrays, strings, aggregate memory operations, and complete source metadata.
+- [ ] Extend ownership, errors, enums, imports, and standard-library lowering.
 - [ ] Keep semantics out of backend-specific code.
 
 ### M5 — LLVM executable prototype
-- Select and isolate an LLVM API boundary.
-- Generate verified LLVM IR.
-- Emit native objects and link a minimal executable.
-- Add debug metadata and target detection.
+- [x] Emit verified textual LLVM IR for the initial scalar subset.
+- [x] Add explicit `emit-llvm` and experimental Linux x86-64 `build-llvm` commands using Clang.
+- [x] Lower checked integer overflow and division failures to the YLang runtime failure path.
+- [ ] Select and isolate a stable LLVM API boundary and target-machine implementation.
+- [ ] Emit native objects through LLVM and link the complete YLang runtime.
+- [ ] Add debug metadata and target detection.
 
 ### M6 — LLVM language coverage
 - Lower all stable language features.

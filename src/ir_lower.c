@@ -784,8 +784,11 @@ static bool lower_statement(LowerFunction *ctx, Stmt *stmt)
             for (size_t i = 0; i < stmt->as.print.count; i++) {
                 Expr *argument = stmt->as.print.args[i];
                 YLIRType type = lower_type(argument->type);
-                if (type != YLIR_TYPE_I64 && type != YLIR_TYPE_F64 &&
-                    type != YLIR_TYPE_BOOL) {
+                if ((argument->type != TYPE_INT &&
+                     argument->type != TYPE_FLOAT &&
+                     argument->type != TYPE_BOOL) ||
+                    (type != YLIR_TYPE_I64 && type != YLIR_TYPE_F64 &&
+                     type != YLIR_TYPE_BOOL)) {
                     lower_error(ctx, argument->token,
                                 "LLVM print currently supports int, float, and bool values only");
                     return false;
