@@ -106,7 +106,7 @@ The compiler's help output should list the available commands. The everyday work
 ./build/ylang run path/to/program.yl
 \`\`\`
 
-Replace the example path with an actual \`.yl\` file. The first command checks the source; the second creates a native executable through the default C backend.
+Replace the example path with an actual \`.yl\` file. The first command checks the source; the second creates a native executable through the default C backend. The `run` command builds in a temporary directory, executes the program, cleans up its temporary files, and returns the program's exit status.
 
 ## Optional: GUI and Game2D dependencies
 
