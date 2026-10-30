@@ -563,6 +563,54 @@ static void lowers_real_checked_frontend_function(void)
     arena_destroy(&compiler.arena);
 }
 
+
+static void lowers_boolean_negation_condition(void)
+{
+    Expr false_literal = {
+        .kind=EXPR_BOOL,
+        .token={.type=TOKEN_FALSE,.start="false",.length=5},
+        .type=TYPE_BOOL
+    };
+    Expr negated = {
+        .kind=EXPR_UNARY,
+        .type=TYPE_BOOL,
+        .as.unary={
+            .right=&false_literal,
+            .op={.type=TOKEN_BANG,.start="!",.length=1}
+        }
+    };
+    Expr yes = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="1",.length=1},
+        .type=TYPE_INT
+    };
+    Expr no = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="0",.length=1},
+        .type=TYPE_INT
+    };
+    Stmt then_return = {.kind=STMT_RETURN,.as.return_value=&yes};
+    Stmt else_return = {.kind=STMT_RETURN,.as.return_value=&no};
+    Stmt conditional = {
+        .kind=STMT_IF,
+        .as.if_stmt={
+            .condition=&negated,
+            .then_branch=&then_return,
+            .else_branch=&else_return
+        }
+    };
+    Stmt *items[] = {&conditional};
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=1}};
+    Function function = {.name="not_condition",.return_type=TYPE_INT,.body=&body};
+    YIRFunction lowered;
+    char error[192];
+    assert(yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(lowered.blocks[0].instructions[0].opcode==YIR_OP_CONST_BOOL);
+    assert(lowered.blocks[0].instructions[1].opcode==YIR_OP_NOT_BOOL);
+    assert(lowered.blocks[0].instructions[2].opcode==YIR_OP_COND_BRANCH);
+    yir_destroy_function(&lowered);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
@@ -581,6 +629,7 @@ int main(void)
     lowers_assignment_to_parameter_as_new_ssa_value();
     rejects_global_assignment_as_local_ssa();
     lowers_real_checked_frontend_function();
+    lowers_boolean_negation_condition();
     puts("YLang IR lowering tests passed");
     return 0;
 }
