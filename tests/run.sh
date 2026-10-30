@@ -16,15 +16,15 @@ grep -Fq "YLang v${EXPECTED_VERSION} — compiled language toolchain" build/help
 ./build/test-type-conversions > build/type-conversions.out
 diff -u tests/expected-type-conversions.txt build/type-conversions.out
 
-# The run command builds in a temporary directory and returns the program's exit code.
-mkdir -p "build/run command"
+# The run command builds in a temporary directory, cleans it up, and returns the program's exit code.
+mkdir -p "build/run command/tmp"
 cat > "build/run command/exit-status.yl" <<'EOF'
 fn main() -> int {
     print("run command works");
     return 23;
 }
 EOF
-if ./build/ylang run "build/run command/exit-status.yl" > "build/run command/output.txt"; then
+if TMPDIR="build/run command/tmp" ./build/ylang run "build/run command/exit-status.yl" > "build/run command/output.txt"; then
     echo "FAIL: run did not propagate the program's non-zero exit status" >&2
     exit 1
 else
@@ -33,6 +33,7 @@ else
 fi
 printf 'run command works\n' > "build/run command/expected.txt"
 diff -u "build/run command/expected.txt" "build/run command/output.txt"
+[ -z "$(find "build/run command/tmp" -mindepth 1 -maxdepth 1 -print -quit)" ]
 if ./build/ylang run examples/hello.yl -o build/run-command-output > build/run-command-invalid.out 2>&1; then
     echo "FAIL: run accepted an output path" >&2
     exit 1

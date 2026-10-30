@@ -172,6 +172,11 @@ Each API should return typed errors where failures are expected. Avoid APIs that
 
 A language that is fast but unpleasant to use will not earn adoption.
 
+The 3.0 development branch now has a `ylang run` command that builds into a temporary
+directory, forwards standard streams, cleans up its artifacts, and returns the program's
+exit status. This is an implemented CLI step, not completion of the project workflow
+(`new`, `test`, `fmt`, and `doc` remain separate work).
+
 3.0 should include:
 
 - Official formatter with stable formatting rules.

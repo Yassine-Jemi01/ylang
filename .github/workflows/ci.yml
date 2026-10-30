@@ -130,7 +130,7 @@ jobs:
           test "$output" = "native Windows input"
       - name: Verify the Windows run command cleans up and propagates exit status
         run: |
-          mkdir -p "build/windows smoke"
+          mkdir -p "build/windows smoke/temp"
           cat > "build/windows smoke/run-exit.yl" <<'EOF'
           fn main() -> int {
               print("Windows run command");
@@ -138,12 +138,13 @@ jobs:
           }
           EOF
           set +e
-          ./build/ylang.exe run "build/windows smoke/run-exit.yl" > "build/windows smoke/run-exit.out"
+          TEMP="build/windows smoke/temp" ./build/ylang.exe run "build/windows smoke/run-exit.yl" > "build/windows smoke/run-exit.out"
           status=$?
           set -e
           test "$status" -eq 23
           printf 'Windows run command\n' > "build/windows smoke/run-exit.expected"
           diff -u "build/windows smoke/run-exit.expected" "build/windows smoke/run-exit.out"
+          test -z "$(find "build/windows smoke/temp" -mindepth 1 -maxdepth 1 -print -quit)"
       - name: Test Windows environment, filesystem, paths with spaces, and exit codes
         run: |
           mkdir -p "build/windows smoke"
