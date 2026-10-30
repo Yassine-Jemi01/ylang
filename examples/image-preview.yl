@@ -1,4 +1,4 @@
-function main() -> int {
+fn main() -> int {
     print("Image/file path to open:");
     let string file = io.read_line();
     if (not path.exists(file)) {

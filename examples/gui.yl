@@ -1,4 +1,4 @@
-function main() -> int {
+fn main() -> int {
     if (not gui.init()) {
         print(gui.last_error());
         return 1;

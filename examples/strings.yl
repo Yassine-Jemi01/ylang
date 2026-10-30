@@ -1,4 +1,4 @@
-function main() -> int {
+fn main() -> int {
     let const string title = "YLang projects";
     print(string.length(title));
     print(string.contains(title, "projects"));
