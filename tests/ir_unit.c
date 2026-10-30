@@ -53,18 +53,19 @@ static void test_f64(void)
 static void test_stable_addresses(void)
 {
     YLIRModule m; YLIRFunction *first = NULL, *helper = NULL;
-    YLIRBasicBlock *entry = NULL, *last = NULL; YLIRValue v;
+    YLIRBasicBlock *entry = NULL, *last = NULL;
+    const YLIRType params[] = { YLIR_TYPE_I64 };
     assert(ylang_ir_module_init(&m));
-    assert(ylang_ir_add_function(&m, "first", YLIR_TYPE_I64, NULL, 0U, &first));
+    assert(ylang_ir_add_function(&m, "first", YLIR_TYPE_I64,
+                                 params, 1U, &first));
     assert(ylang_ir_add_block(first, "entry", &entry));
     for (size_t i = 0; i < 24U; i++) {
         char name[32]; (void)snprintf(name, sizeof(name), "block_%zu", i);
         assert(ylang_ir_add_function(&m, name, YLIR_TYPE_VOID, NULL, 0U, &helper));
         assert(ylang_ir_add_block(first, name, &last));
+        assert(ylang_ir_return(last, 0U, 1U, 1U));
     }
-    assert(ylang_ir_emit_const_i64(entry, 9, 1U, 1U, &v));
-    assert(ylang_ir_return(entry, v, 1U, 3U));
-    assert(ylang_ir_return_void(last, 1U, 1U));
+    assert(ylang_ir_return(entry, 0U, 1U, 3U));
     assert(ylang_ir_verify(&m, stderr));
     ylang_ir_module_destroy(&m);
 }
