@@ -16,7 +16,7 @@
 (import_declaration) @keyword
 (from_import_declaration) @keyword
 [
-  "function" "return" "let" "const" "if" "else" "loop" "while" "for"
+  "fn" "function" "return" "let" "mut" "const" "if" "else" "loop" "while" "for"
   "break" "continue" "and" "or" "not" "await" "struct" "enum" "match"
   "from" "import"
 ] @keyword
