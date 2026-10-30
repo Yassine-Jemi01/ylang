@@ -1,0 +1,24 @@
+name: YLang 3.0 IR verifier
+
+on:
+  push:
+    branches: [ylang-3.0-dev]
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/ir.c"
+      - "include/ylang/ir.h"
+      - "tests/ir_unit.c"
+      - "tests/run-ir-unit.sh"
+      - ".github/workflows/ir-verifier.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  ir-verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile verifier tests with strict warnings
+        run: sh tests/run-ir-unit.sh
