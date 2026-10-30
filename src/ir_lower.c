@@ -106,7 +106,9 @@ static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
         YIRInstruction instruction = {
             .opcode = YIR_OP_CONST_I64,
             .result_type = YIR_TYPE_I64,
-            .immediate = immediate
+            .immediate = immediate,
+            .source_line = expression->token.line,
+            .source_column = expression->token.column
         };
         return emit(lowerer, instruction, value_id);
     }
@@ -124,7 +126,9 @@ static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
         YIRInstruction instruction = {
             .opcode = YIR_OP_CONST_I64,
             .result_type = YIR_TYPE_I64,
-            .immediate = -immediate
+            .immediate = -immediate,
+            .source_line = expression->token.line,
+            .source_column = expression->token.column
         };
         return emit(lowerer, instruction, value_id);
     }
@@ -150,7 +154,9 @@ static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
             .opcode = opcode,
             .result_type = YIR_TYPE_I64,
             .lhs = lhs,
-            .rhs = rhs
+            .rhs = rhs,
+            .source_line = expression->as.binary.op.line,
+            .source_column = expression->as.binary.op.column
         };
         return emit(lowerer, instruction, value_id);
     }
@@ -169,7 +175,9 @@ static bool lower_boolean_expr(Lowerer *lowerer, const Expr *expression,
         YIRInstruction instruction = {
             .opcode = YIR_OP_CONST_BOOL,
             .result_type = YIR_TYPE_BOOL,
-            .immediate = expression->token.type == TOKEN_TRUE ? 1 : 0
+            .immediate = expression->token.type == TOKEN_TRUE ? 1 : 0,
+            .source_line = expression->token.line,
+            .source_column = expression->token.column
         };
         if (expression->token.type != TOKEN_TRUE &&
             expression->token.type != TOKEN_FALSE)
@@ -198,7 +206,9 @@ static bool lower_boolean_expr(Lowerer *lowerer, const Expr *expression,
             .opcode = opcode,
             .result_type = YIR_TYPE_BOOL,
             .lhs = lhs,
-            .rhs = rhs
+            .rhs = rhs,
+            .source_line = expression->as.binary.op.line,
+            .source_column = expression->as.binary.op.column
         };
         return emit(lowerer, instruction, value_id);
     }
@@ -247,7 +257,12 @@ static bool lower_return_block(const Function *function, const Stmt *ret,
         uint32_t returned = 0;
         if (!lower_integer_expr(&lowerer, ret->as.return_value, &returned))
             goto failed;
-        YIRInstruction terminator = {.opcode=YIR_OP_RETURN,.lhs=returned};
+        YIRInstruction terminator = {
+            .opcode=YIR_OP_RETURN,
+            .lhs=returned,
+            .source_line=ret->token.line,
+            .source_column=ret->token.column
+        };
         if (!emit(&lowerer, terminator, NULL)) goto failed;
     } else {
         if (function->return_type != TYPE_VOID ||
@@ -256,7 +271,11 @@ static bool lower_return_block(const Function *function, const Stmt *ret,
                 "int functions and non-empty void branches require a return statement");
             goto failed;
         }
-        YIRInstruction terminator = {.opcode=YIR_OP_RETURN};
+        YIRInstruction terminator = {
+            .opcode=YIR_OP_RETURN,
+            .source_line=ret ? ret->token.line : function->token.line,
+            .source_column=ret ? ret->token.column : function->token.column
+        };
         if (!emit(&lowerer, terminator, NULL)) goto failed;
     }
 
@@ -363,7 +382,9 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
             .opcode=YIR_OP_COND_BRANCH,
             .lhs=condition,
             .target=1,
-            .false_target=2
+            .false_target=2,
+            .source_line=root->token.line,
+            .source_column=root->token.column
         };
         if (!emit(&entry, branch, NULL)) {
             free(entry.items); free(blocks); free(parameters); return false;
