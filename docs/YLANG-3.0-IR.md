@@ -27,7 +27,7 @@ The verifier checks:
 - Non-empty functions and blocks, unique block IDs, and valid type tags.
 - Exactly one final terminator in each block.
 - Existing branch destinations and reachable blocks from the entry.
-- Function-wide unique SSA identifiers, including block parameters.
+- Function-wide unique SSA identifiers, including function and block parameters.
 - Operand type agreement and definition-before-use within a block.
 - Cross-block use only when the defining block dominates the use.
 - Block argument count, type, and availability on each incoming edge.
