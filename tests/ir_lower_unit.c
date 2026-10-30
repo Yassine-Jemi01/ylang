@@ -96,12 +96,90 @@ static void rejects_unsupported_function_body(void)
     assert(strstr(error,"one return statement")!=NULL);
 }
 
+
+static void lowers_if_else_returns(void)
+{
+    Expr left = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="5",.length=1},
+        .type=TYPE_INT
+    };
+    Expr right = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="9",.length=1},
+        .type=TYPE_INT
+    };
+    Expr condition = {
+        .kind=EXPR_BINARY,
+        .type=TYPE_BOOL,
+        .as.binary={
+            .left=&left,
+            .right=&right,
+            .op={.type=TOKEN_LESS,.start="<",.length=1}
+        }
+    };
+    Expr yes = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="1",.length=1},
+        .type=TYPE_INT
+    };
+    Expr no = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="0",.length=1},
+        .type=TYPE_INT
+    };
+    Stmt then_return = {.kind=STMT_RETURN,.as.return_value=&yes};
+    Stmt else_return = {.kind=STMT_RETURN,.as.return_value=&no};
+    Stmt conditional = {
+        .kind=STMT_IF,
+        .as.if_stmt={
+            .condition=&condition,
+            .then_branch=&then_return,
+            .else_branch=&else_return
+        }
+    };
+    Stmt *items[] = {&conditional};
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=1}};
+    Function function = {.name="choose",.return_type=TYPE_INT,.body=&body};
+    YIRFunction lowered;
+    char error[192];
+    assert(yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(lowered.block_count==3);
+    assert(lowered.blocks[0].instructions[2].opcode==YIR_OP_LT_I64);
+    assert(lowered.blocks[0].instructions[3].opcode==YIR_OP_COND_BRANCH);
+    assert(yir_verify_function(&lowered,error,sizeof(error)));
+    yir_destroy_function(&lowered);
+}
+
+static void rejects_if_without_else(void)
+{
+    Expr condition = {
+        .kind=EXPR_BOOL,
+        .token={.type=TOKEN_TRUE,.start="true",.length=4},
+        .type=TYPE_BOOL
+    };
+    Stmt ret = {.kind=STMT_RETURN};
+    Stmt conditional = {
+        .kind=STMT_IF,
+        .as.if_stmt={.condition=&condition,.then_branch=&ret,.else_branch=NULL}
+    };
+    Stmt *items[] = {&conditional};
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=1}};
+    Function function = {.name="missing_else",.return_type=TYPE_VOID,.body=&body};
+    YIRFunction lowered;
+    char error[192];
+    assert(!yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(strstr(error,"else branch")!=NULL);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
     lowers_unary_negative();
     lowers_empty_void_function();
     rejects_unsupported_function_body();
+    lowers_if_else_returns();
+    rejects_if_without_else();
     puts("YLang IR lowering tests passed");
     return 0;
 }
