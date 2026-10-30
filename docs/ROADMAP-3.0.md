@@ -127,22 +127,26 @@ See [RFC-3.0-LLVM-BACKEND.md](RFC-3.0-LLVM-BACKEND.md).
 
 ### 4.2 Complete the NASM backend
 
-The NASM backend must grow from a restricted demo subset into a well-defined native backend for Linux x86-64.
+The NASM backend is a first-class native target for Linux x86-64, not a cross-platform backend. The 3.0 branch has already expanded its baseline beyond the original demo subset.
 
-Current limitations include floats, arrays, globals, f-strings, string comparisons, many standard-library calls, structs, owned strings, and GUI/network APIs.
+Implemented on the development branch:
+- Short-circuit `and` / `or`, preserving left-to-right side effects.
+- Scalar global storage and reads/writes for integer, boolean, character, enum, and literal-initialized string values.
+- System V AMD64 integer-class argument passing: the first six arguments use registers and additional scalar arguments use the caller's stack area with 16-byte call-site alignment.
+- Differential coverage for globals, short-circuit evaluation, and nested calls with eight arguments.
 
-Development priorities:
+Remaining limitations include floating-point values and formatting, arrays and bounds checks, f-strings, string comparisons, structs, owned strings, general standard-library calls, and GUI/network APIs.
 
-1. Scalar globals and short-circuit boolean operations.
-2. Fixed-size arrays, array indexing, and array parameters with bounds checks.
-3. Float arithmetic and formatting using the x86-64 SSE2 ABI.
-4. String comparisons and formatted strings.
-5. A documented calling convention beyond the six-register-only restriction, including stack arguments and alignment.
-6. Runtime and standard-library helpers for supported file, path, and conversion operations.
-7. Struct/enum payload lowering and module/import parity.
-8. Explicit unsupported-feature diagnostics for ownership-heavy and platform-specific APIs until correct lowering exists.
+Next priorities:
+1. Fixed-size arrays, array indexing, array parameters, and bounds-check parity.
+2. Floating-point arithmetic and formatting using the x86-64 SSE2 ABI.
+3. String comparisons, formatting, and UTF-8-safe runtime helpers.
+4. More standard-library operations with explicit runtime contracts.
+5. Struct values, payload enums, and module/import parity.
+6. Ownership-aware cleanup and error propagation only after the runtime semantics are defined.
+7. Precise unsupported-feature diagnostics for anything that remains outside the backend subset.
 
-NASM is Linux x86-64-specific. Do not advertise it as a cross-platform backend. Every expanded feature must have C/NASM differential tests for output and exit status.
+Every expanded feature requires C/NASM differential tests for standard output, error behavior, and exit status. Do not mark a feature supported because assembly emission alone succeeds; the assembled executable must run correctly.
 
 ### 4.3 Backend capability matrix
 
@@ -240,11 +244,12 @@ The 3.0 release must not be declared complete until the optimized backend demons
 - Test exceptional and early exits under sanitizers.
 
 ### M3 — NASM expansion
-- Add globals and short-circuit logic.
-- Add arrays and ABI-compliant function calls.
-- Add floating point, strings, and standard-library lowering.
-- Extend C/NASM parity coverage.
-- Publish the actual capability matrix.
+- [x] Add scalar globals and short-circuit boolean logic.
+- [x] Implement System V AMD64 stack-passed scalar arguments and 16-byte call alignment.
+- [x] Add C/NASM parity coverage for globals, short-circuit side effects, and eight-argument nested calls.
+- [ ] Add arrays, indexing, array parameters, and bounds checks.
+- [ ] Add floating point, strings, and standard-library lowering.
+- [ ] Publish a test-enforced capability matrix.
 
 ### M4 — Backend-neutral typed IR
 - Define IR types, values, blocks, instructions, terminators, and source metadata.
