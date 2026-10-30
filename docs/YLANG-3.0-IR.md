@@ -1,6 +1,6 @@
 # YLang 3.0 Typed IR — Verifier Contract
 
-Status: standalone typed SSA verifier. The frontend does not lower programs to this IR yet, and LLVM, NASM, and C code generation do not consume it yet. This is an intermediate compiler component, not a completed backend.
+Status: standalone typed SSA verifier plus an initial scalar AST lowering slice. The lowerer currently handles simple int-return functions with integer literals, unary negation, and +, -, * expressions, plus empty void functions. It does not yet lower general programs, and LLVM, NASM, and C code generation do not consume this IR yet.
 
 ## Design constraints
 
@@ -39,6 +39,10 @@ The verifier computes CFG reachability and iterative dominator sets. It rejects 
 
 This IR is not ready to replace the current AST-to-C path. Function signatures and parameters, source spans, floating-point and string operations, memory and aggregate operations, calls, ownership/drop metadata, debug locations, and real frontend lowering are still required. Backends must consume the same verified IR before the architecture can be considered integrated.
 
+## AST lowering scope
+
+`yir_lower_function` currently accepts only parameterless functions whose body contains exactly one return statement, or an empty body for a void function. Integer expressions are limited to integer literals, unary minus, and `+`, `-`, and `*`. Unsupported statements and expressions fail explicitly; they are not silently translated. The resulting function is immediately passed through the verifier. `yir_destroy_function` releases the allocated IR storage.
+
 ## Build and tests
 
-Run `make ir-unit-test`. Tests cover arithmetic and return, same-block ordering, cross-block dominance, unreachable blocks, invalid joins, and typed block-parameter joins.
+Run `make ir-unit-test ir-lower-unit-test` or `sh tests/run-ir-unit.sh`. Verifier tests cover arithmetic and return, same-block ordering, cross-block dominance, unreachable blocks, invalid joins, and typed block-parameter joins. Lowering tests cover integer arithmetic returns, unary negation, empty void functions, and explicit rejection of unsupported bodies.
