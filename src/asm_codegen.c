@@ -634,12 +634,25 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
         }
         case EXPR_NAME: {
             VarDecl *variable = expr->as.name.variable;
+            if (variable->is_array) {
+                return asm_reject(ctx, expr->token,
+                                  "using a whole fixed array as a scalar value");
+            }
             if (variable->is_global) {
                 fprintf(ctx->out, "    mov rax, [rel %s]\n", variable->c_name);
             } else {
                 size_t offset = slot_offset(ctx, variable);
                 fprintf(ctx->out, "    mov rax, [rbp - %zu]\n", offset);
             }
+            return ctx->okay;
+        }
+        case EXPR_INDEX: {
+            VarDecl *variable = expr->as.index.variable;
+            if (!variable || !variable->is_array ||
+                !emit_expr(ctx, expr->as.index.index)) return false;
+            fputs("    mov r10, rax\n", ctx->out);
+            if (!emit_array_bounds_check(ctx, variable)) return false;
+            fputs("    mov rax, [r11 + r10*8]\n", ctx->out);
             return ctx->okay;
         }
         case EXPR_UNARY:
@@ -836,6 +849,27 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
             VarDecl *variable = expr->as.assign.variable;
             Expr *target = expr->as.assign.target;
             Expr *value = expr->as.assign.right;
+            if (target && target->kind == EXPR_INDEX &&
+                variable && variable->is_array) {
+                if (!emit_expr(ctx, target->as.index.index)) return false;
+                fputs("    push rax\n", ctx->out);
+                ctx->temporary_depth += 8U;
+                if (!emit_expr(ctx, value)) return false;
+                fputs("    mov r9, rax\n"
+                      "    pop r10\n", ctx->out);
+                ctx->temporary_depth -= 8U;
+                if (!emit_array_bounds_check(ctx, variable)) return false;
+                if (expr->as.assign.is_compound) {
+                    fputs("    mov rax, [r11 + r10*8]\n"
+                          "    add rax, r9\n"
+                          "    jo __yl_runtime_error\n"
+                          "    mov [r11 + r10*8], rax\n", ctx->out);
+                } else {
+                    fputs("    mov [r11 + r10*8], r9\n"
+                          "    mov rax, r9\n", ctx->out);
+                }
+                return true;
+            }
             int32_t increment = 0;
             if (!expr->as.assign.is_compound && variable &&
                 variable->type == TYPE_INT && !variable->is_global &&
@@ -876,7 +910,6 @@ static bool emit_expr(AsmContext *ctx, Expr *expr)
         case EXPR_FLOAT:
         case EXPR_FSTRING:
         case EXPR_ARRAY:
-        case EXPR_INDEX:
         case EXPR_STRUCT_INIT:
         case EXPR_MEMBER:
         case EXPR_ERROR:
@@ -937,6 +970,22 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
             return true;
         case STMT_VAR: {
             VarDecl *var = stmt->as.variable;
+            if (var->is_array) {
+                if (!validate_array_element_type(ctx, var) ||
+                    !var->initializer || var->initializer->kind != EXPR_ARRAY ||
+                    var->initializer->as.array.count != var->array_length) {
+                    return asm_reject(ctx, stmt->token,
+                                      "fixed arrays without a literal initializer");
+                }
+                size_t base = array_base_offset(ctx, var);
+                for (size_t element = 0; element < var->array_length; element++) {
+                    if (!emit_expr(ctx, var->initializer->as.array.items[element]))
+                        return false;
+                    size_t offset = base - element * 8U;
+                    fprintf(ctx->out, "    mov [rbp - %zu], rax\n", offset);
+                }
+                return ctx->okay;
+            }
             size_t offset = slot_offset(ctx, var);
             if (var->initializer) {
                 if (!emit_expr(ctx, var->initializer)) return false;
@@ -1150,9 +1199,37 @@ static bool emit_global_storage(AsmContext *ctx)
     fputs("\nsection .data\n", ctx->out);
     for (size_t i = 0; i < ctx->compiler->program->global_count; i++) {
         VarDecl *var = ctx->compiler->program->globals[i];
-        if (var->is_array || var->type == TYPE_FLOAT ||
-            var->type == TYPE_OWNED_STRING || var->type == TYPE_HTTP_TASK) {
+        if (var->type == TYPE_FLOAT || var->type == TYPE_OWNED_STRING ||
+            var->type == TYPE_HTTP_TASK) {
             return asm_reject(ctx, var->token, "this global storage type");
+        }
+        if (var->is_array) {
+            if (!validate_array_element_type(ctx, var) ||
+                !var->initializer || var->initializer->kind != EXPR_ARRAY ||
+                var->initializer->as.array.count != var->array_length) {
+                return asm_reject(ctx, var->token,
+                                  "global arrays without a fixed literal initializer");
+            }
+            fprintf(ctx->out, "align 8\n%s:\n", var->c_name);
+            for (size_t element = 0; element < var->array_length; element++) {
+                Expr *item = var->initializer->as.array.items[element];
+                if (var->type == TYPE_STRING || var->type == TYPE_BORROWED_STRING) {
+                    if (!item || item->kind != EXPR_STRING) {
+                        return asm_reject(ctx, item ? item->token : var->token,
+                                          "global string arrays initialized by non-literal values");
+                    }
+                    size_t id = intern_string(ctx, item);
+                    fprintf(ctx->out, "    dq yl_str_%zu\n", id);
+                } else {
+                    int64_t value = 0;
+                    if (!eval_global_integer(ctx, item, &value)) {
+                        return asm_reject(ctx, item ? item->token : var->token,
+                                          "global array elements other than scalar constants");
+                    }
+                    fprintf(ctx->out, "    dq 0x%016" PRIx64 "\n", (uint64_t)value);
+                }
+            }
+            continue;
         }
         fprintf(ctx->out, "align 8\n%s:\n", var->c_name);
         if (!var->initializer) {
@@ -1366,9 +1443,14 @@ bool generate_asm(Compiler *compiler, const char *path)
 
     for (size_t i = 0; ctx.okay && i < compiler->program->global_count; i++) {
         VarDecl *var = compiler->program->globals[i];
-        if (var->is_array ||
-            !asm_type_supported(&ctx, var->type, var->token, false) ||
-            !validate_expr(&ctx, var->initializer)) break;
+        if (!asm_type_supported(&ctx, var->type, var->token, false)) break;
+        if (var->is_array) {
+            if (!validate_array_element_type(&ctx, var) ||
+                !var->initializer || var->initializer->kind != EXPR_ARRAY ||
+                var->initializer->as.array.count != var->array_length ||
+                !validate_expr_list(&ctx, var->initializer->as.array.items,
+                                    var->initializer->as.array.count)) break;
+        } else if (!validate_expr(&ctx, var->initializer)) break;
     }
 
     for (size_t i = 0; ctx.okay && i < compiler->program->function_count; i++) {
