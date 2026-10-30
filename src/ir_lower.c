@@ -96,14 +96,18 @@ static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
 
     if (expression->kind == EXPR_UNARY &&
         expression->as.unary.op.type == TOKEN_MINUS) {
-        uint32_t operand = 0;
+        int64_t immediate = 0;
         if (expression->type != TYPE_INT ||
-            !lower_integer_expr(lowerer, expression->as.unary.right, &operand))
-            return false;
+            !parse_integer_literal(expression->as.unary.right, &immediate))
+            return lower_fail(lowerer,
+                "only in-range negative integer literals are supported by the initial IR lowerer");
+        if (immediate == INT64_MIN)
+            return lower_fail(lowerer,
+                "negative integer literal is outside the initial IR literal range");
         YIRInstruction instruction = {
-            .opcode = YIR_OP_NEG_I64,
+            .opcode = YIR_OP_CONST_I64,
             .result_type = YIR_TYPE_I64,
-            .lhs = operand
+            .immediate = -immediate
         };
         return emit(lowerer, instruction, value_id);
     }
