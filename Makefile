@@ -60,7 +60,7 @@ build/ir-unit: tests/ir_unit.c src/ir.c include/ylang/ir.h
 ir-unit-test: build/ir-unit
 	./build/ir-unit
 
-test: $(BIN) frontend-unit-test
+test: $(BIN) frontend-unit-test ir-unit-test
 	sh tests/run.sh
 
 FUZZ_CC ?= clang
