@@ -326,10 +326,10 @@ The 3.0 release must not be declared complete until the optimized backend demons
 - Integrate runtime, ownership, exceptions, Result, imports, and standard library.
 - Add backend differential tests.
 
-### M7 — Optimization and performance
-- Implement and test `-O0`, `-O1`, `-O2`, `-O3`, and size optimization.
-- Run the benchmark suite and profile hot paths.
-- Improve compile time, runtime, startup, and binary size based on evidence.
+### M7 — Optimization support (without the final performance gate)
+- [ ] Implement and test `-O0`, `-O1`, `-O2`, `-O3`, and size optimization on the stable backend feature set.
+- [ ] Verify that optimization levels preserve overflow checks, bounds checks, ownership cleanup, error behavior, and observable evaluation order.
+- [ ] Keep the benchmark workloads and measurement scripts ready, but do not run the final comparative performance campaign yet.
 
 ### M8 — Windows and experimental-feature graduation
 - [ ] Promote Windows x86-64 MinGW-w64 from smoke-tested support to a fully tested, officially supported target.
@@ -344,8 +344,14 @@ The 3.0 release must not be declared complete until the optimized backend demons
 - [ ] Complete documentation, packages, formatter, LSP, debugger, install/upgrade, and migration workflows.
 - [ ] Run sanitizers, fuzzing, C/NASM/LLVM parity, GUI/network integration, and reproducibility tests.
 - [ ] Audit the README, website, online book, editor metadata, package metadata, and all feature guides: no existing experimental subsystem may remain experimental in the 3.0 release contract.
-- [ ] Publish benchmark methodology and results only after the implementation and platform gates pass.
-- [ ] Release 3.0 only after all release gates pass.
+- [ ] Confirm that the exact release candidate passes the full suite before beginning performance verification.
+
+### M10 — Final performance gate (owner-run)
+- [ ] Begin only after M0-M9 are complete and the exact candidate passes all correctness, platform, packaging, and documentation gates.
+- [ ] Hand the benchmark suite and methodology to the project owner for final execution and review.
+- [ ] Do not start further performance-driven code changes or publish performance claims until the owner has inspected and accepted the measurements.
+- [ ] Record CPU, OS, compiler/LLVM versions, optimization levels, commit, warmups, repeated samples, medians, P95, binary size, startup, and compile time.
+- [ ] Release 3.0 only after the owner accepts the reproducible results and every other release gate passes.
 
 ## 9. Release policy
 
