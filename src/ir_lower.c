@@ -115,6 +115,16 @@ static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
 
     if (expression->kind == EXPR_UNARY &&
         expression->as.unary.op.type == TOKEN_MINUS) {
+        if (expression->type == TYPE_INT && expression->is_min_int) {
+            YIRInstruction instruction = {
+                .opcode = YIR_OP_CONST_I64,
+                .result_type = YIR_TYPE_I64,
+                .immediate = INT64_MIN,
+                .source_line = expression->token.line,
+                .source_column = expression->token.column
+            };
+            return emit(lowerer, instruction, value_id);
+        }
         int64_t immediate = 0;
         if (expression->type != TYPE_INT ||
             !parse_integer_literal(expression->as.unary.right, &immediate))
