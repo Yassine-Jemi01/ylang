@@ -1,7 +1,7 @@
 function main() -> int {
     let mut counter: int = 0;
     let mut total: int = 0;
-    while (counter < 10000) {
+    while (counter < 20000000) {
         total = total + counter;
         counter++;
     }
