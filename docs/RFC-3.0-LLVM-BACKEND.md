@@ -1,6 +1,6 @@
 # RFC-3.0-001: Complete LLVM Backend
 
-**Status:** Accepted project direction; implementation pending  
+**Status:** Architecture agreed; typed IR and LLVM code generation not implemented  
 **Target release:** YLang 3.0.0  
 **Primary goal:** A production-quality native backend that lowers checked YLang programs to LLVM IR and emits native object files without generating C as the program's intermediate representation.
 
@@ -145,7 +145,7 @@ ylang build app.yl --backend=llvm --target=x86_64-unknown-linux-gnu
 Exact flag spelling is subject to CLI consistency review.
 
 Requirements:
-- Keep C as the default through the 2.3 development line.
+- Keep C as the default throughout 3.0 development. Promote LLVM only after the complete 3.0 language and runtime parity gates pass.
 - Keep `--backend=c` available as the reference path after LLVM ships.
 - Do not silently fall back from LLVM to C.
 - `check` must remain backend-independent.
