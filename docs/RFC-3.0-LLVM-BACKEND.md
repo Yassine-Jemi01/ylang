@@ -1,6 +1,6 @@
 # RFC-3.0-001: Complete LLVM Backend
 
-**Status:** Scalar typed AST lowering, a textual LLVM emitter, and an experimental Clang-backed executable path are implemented; complete LLVM language coverage and target-machine object emission remain in progress  
+**Status:** Scalar typed AST lowering, textual LLVM emission, Clang-backed executable builds, and Clang-backed relocatable object emission are implemented as prototypes; complete language coverage and LLVM target-machine object emission remain in progress  
 **Target release:** YLang 3.0.0  
 **Primary goal:** A production-quality native backend that lowers checked YLang programs to LLVM IR and emits native object files without generating C as the program's intermediate representation.
 
@@ -11,7 +11,7 @@ At the time this RFC is prepared:
 - The established backend walks the checked program and emits C; GCC or Clang then produces the executable.
 - The experimental NASM backend covers a deliberately restricted Linux x86-64 subset, including fixed-size scalar arrays and pointer-plus-length array parameters for the supported element types.
 - A backend-neutral typed IR now has an independent verifier and a scalar AST-lowering prototype on the 3.0 development branch.
-- An experimental textual LLVM emitter and explicit `emit-llvm` / `build-llvm` commands have been added on that branch.
+- An experimental textual LLVM emitter and explicit `emit-llvm`, `build-llvm`, and `emit-obj` commands have been added on that branch.
 - The prototype currently covers scalar integer, float, and bool expressions, calls, control flow, PHIs, checked integer arithmetic, and scalar printing. It is not a complete LLVM backend.
 - The repository's main branch does not yet have a complete LLVM code-generation backend.
 
@@ -154,11 +154,12 @@ Requirements:
 - Do not silently fall back from LLVM to C.
 - `check` must remain backend-independent.
 - `emit-llvm` emits inspectable textual LLVM IR for the currently implemented scalar subset.
-- `build-llvm` is an experimental Linux x86-64 path that feeds the textual IR to Clang. It is not yet a target-machine object backend.
+- `build-llvm` is an experimental Linux x86-64 path that feeds the textual IR to Clang.
+- `emit-obj` emits a relocatable scalar object by asking Clang to compile the generated textual IR with `-c`; it is an integration prototype, not LLVM's target-machine API.
 - `emit-obj` must eventually produce a native object for a supported target.
 - Unsupported target/backend combinations must fail before emission.
 
-The current `build-llvm` prototype supports only scalar `int`, `float`, and `bool` computation, scalar function parameters and returns, calls, branches, loops, PHIs, and scalar printing. It rejects globals, arrays, strings, structs, enum printing, ownership, exceptions, Result, and other constructs not yet represented in the IR. Integer overflow, division by zero, and signed division overflow use explicit runtime traps. The prototype uses Clang to compile textual IR and is not a claim of complete LLVM backend coverage.
+The current `build-llvm` and `emit-obj` prototypes support only the scalar IR subset: `int`, `float`, and `bool` computation, scalar function parameters and returns, calls, branches, loops, PHIs, scalar globals, and scalar printing. They reject arrays, strings, structs, enum printing, ownership, exceptions, Result, and other constructs not yet represented in the IR. Integer overflow, division by zero, and signed division overflow use explicit runtime traps. Clang compiles the generated textual IR for Linux x86-64; object emission is not yet performed through LLVM's target-machine API and does not establish broader target support.
 
 LLVM should become the default for 3.0 only after all 3.0 acceptance gates pass. The release may retain C as an explicit compatibility backend.
 
