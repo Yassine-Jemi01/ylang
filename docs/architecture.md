@@ -53,6 +53,31 @@ Compiler errors are intended to be stable, user-facing output. Changes should pr
 
 The v1.0 backend generates C17 and invokes the selected native compiler (`gcc` by default or `clang` when selected). Linux builds use GNU linker RELRO/NOW hardening and `_FORTIFY_SOURCE`; macOS builds omit GNU/Linux-specific flags and use the platform linker. Generated programs are ordinary native executables, not sandboxed. For native builds, generated C is placed in a private temporary directory and removed after the native compiler exits. This avoids clobbering a project file and avoids collisions between concurrent build invocations. `emit-c` writes to the requested path, or `build/ylang-generated.c` if no output path is given.
 
+## YLang 3.0 backend development (experimental)
+
+The 3.0 development branch adds a backend-neutral scalar SSA IR in
+`include/ylang/ir.h`, its verifier and AST lowerer in `src/ir.c` and
+`src/ir_lower.c`, and a textual LLVM IR emitter in `src/llvm_text.c`.
+The same lexer, parser, module loader, and semantic checker are used before
+backend lowering.
+
+The experimental commands are:
+
+- `ylang emit-llvm app.yl -o app.ll` — write verified textual LLVM IR.
+- `ylang build-llvm app.yl -o app --cc clang` — build the supported subset.
+- `ylang emit-obj app.yl -o app.o --cc clang` — compile the IR to a relocatable
+  object with Clang's `-c` path.
+
+These are Linux x86-64 prototypes and currently cover scalar integer, float,
+and boolean expressions, scalar function calls, branches, loops, PHIs, scalar
+globals, checked integer arithmetic, and printing. The object path still
+delegates code generation to Clang; it does not yet use LLVM's TargetMachine
+API. Arrays, strings, structs, ownership, exceptions, Result/Option, full
+runtime integration, source debug metadata, and broad target support remain
+unfinished. The C backend remains the default and behavioral reference.
+See [the 3.0 LLVM RFC](RFC-3.0-LLVM-BACKEND.md) and
+[the 3.0 roadmap](ROADMAP-3.0.md) for the acceptance gates.
+
 ## Scope
 
 This architecture documents the current implementation, not a promise of features outside `docs/language-spec.md`. Arrays, pointers/references, classes, exception syntax, and a finalized memory model are intentionally outside the original 1.0.0 feature set. Named imports are supported by the default C backend; the NASM backend remains a limited experimental subset.
