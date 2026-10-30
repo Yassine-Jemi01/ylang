@@ -1718,6 +1718,32 @@ if ./build/ylang check build/immutable-array-error.yl > build/immutable-array-er
 fi
 grep -q 'E2022' build/immutable-array-error.out
 
+cat > build/immutable-increment-error.yl <<'EOF'
+fn main() -> int {
+    let count: int = 0;
+    count++;
+    return count;
+}
+EOF
+if ./build/ylang check build/immutable-increment-error.yl > build/immutable-increment-error.out 2>&1; then
+    echo "FAIL: immutable binding was incremented" >&2
+    exit 1
+fi
+grep -q 'E2022' build/immutable-increment-error.out
+
+cat > build/mutable-increment.yl <<'EOF'
+fn main() -> int {
+    let mut count: int = 0;
+    count++;
+    print(count);
+    return 0;
+}
+EOF
+./build/ylang build build/mutable-increment.yl -o build/mutable-increment >/dev/null 2>&1
+./build/mutable-increment > build/mutable-increment.out
+printf '1\n' > build/mutable-increment.expected
+diff -u build/mutable-increment.expected build/mutable-increment.out
+
 cat > build/immutable-struct-error.yl <<'EOF'
 struct Point { int x; int y; }
 fn main() -> int {

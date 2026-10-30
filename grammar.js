@@ -99,6 +99,7 @@ module.exports = grammar({
     _expression: $ => choice(
       $.assignment_expression,
       $.binary_expression,
+      $.postfix_increment,
       $.unary_expression,
       $.await_expression,
       $.call_expression,
@@ -138,6 +139,9 @@ module.exports = grammar({
         ))
       ));
     },
+    postfix_increment: $ => prec.left(10, seq(
+      field("target", choice($.identifier, $.member_expression)), "++"
+    )),
     unary_expression: $ => prec(8, seq(choice("!", "-", "not"), $._expression)),
     await_expression: $ => prec(8, seq("await", $._expression)),
     call_expression: $ => prec(9, seq(

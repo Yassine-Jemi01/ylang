@@ -140,3 +140,31 @@ fn main() -> int {
         (binary_expression
           left: (identifier)
           right: (identifier)))))
+
+==================
+Postfix increment
+==================
+
+fn main() -> int {
+    let mut count: int = 0;
+    count++;
+    return count;
+}
+
+---
+
+(source_file
+  (function_declaration
+    name: (identifier)
+    return_type: (primitive_type)
+    (block
+      (variable_declaration
+        (variable_binding
+          name: (identifier)
+          type: (primitive_type)
+          (integer)))
+      (expression_statement
+        (postfix_increment
+          target: (identifier)))
+      (return_statement
+        (identifier)))))
