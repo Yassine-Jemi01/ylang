@@ -1,0 +1,7 @@
+fn transform(int value) -> int {
+    return value + 1;
+}
+
+fn forward() -> int {
+    return transform(41);
+}

@@ -189,6 +189,24 @@ grep -Fq 'call @notify()' build/emit-mir-calls.out
 grep -Fq 'call @identity(' build/emit-mir-calls.out
 grep -Fq 'call @add(' build/emit-mir-calls.out
 
+# Imported IR calls use module-qualified symbols, including transitive imports.
+# Both imported modules intentionally define a function named transform().
+./build/ylang emit-mir tests/ir-module-calls/main.yl > build/emit-mir-module-calls.out
+[ "$(grep -c '^fn transform(' build/emit-mir-module-calls.out)" -eq 2 ]
+[ "$(grep -c 'call @transform(' build/emit-mir-module-calls.out)" -eq 2 ]
+grep -Fq 'call @forward(' build/emit-mir-module-calls.out
+grep -Fq 'call @answer(' build/emit-mir-module-calls.out
+grep -Fq 'call @leaf(' build/emit-mir-module-calls.out
+
+# The IR-to-C emitter must link duplicate source names from separate modules correctly.
+./build/ylang emit-ir-c tests/ir-module-calls/main.yl -o build/ir-module-calls.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/ir-module-calls.c -o build/test-ir-module-calls
+set +e
+./build/test-ir-module-calls
+ir_module_calls_status=$?
+set -e
+[ "$ir_module_calls_status" -eq 84 ]
+
 # Emit standalone C from verified IR, compile it, and run the generated executable.
 ./build/ylang emit-ir-c tests/emit-ir-c.yl -o build/emit-ir-c.c > build/emit-ir-c.out
 grep -Fq 'yir_add_i64' build/emit-ir-c.c

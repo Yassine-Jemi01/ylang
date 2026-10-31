@@ -1,0 +1,9 @@
+from "./lib_c.yl" import leaf;
+
+fn transform(int value) -> int {
+    return value * 2;
+}
+
+fn answer() -> int {
+    return transform(leaf());
+}

@@ -84,7 +84,12 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 2.3.6.4.2 Compare call arity, parameter types, and return type with the target signature.
   - [~] 2.3.6.4.3 Generate module-qualified IR symbols from canonical module paths; verify same-named functions in different modules resolve independently.
   - [ ] 2.3.6.4.4 Define stable cross-build symbol IDs and backend/linker symbol mangling for imported functions.
-  - [ ] 2.3.6.5 Add imported-function, built-in, and external ABI call lowering.
+  - [~] 2.3.6.5 Lower imported user functions through module-qualified direct calls; imported-module integration coverage is added and awaits CI validation.
+  - [~] 2.3.6.5.1 Lower a root module's call to a function imported from another source file.
+  - [~] 2.3.6.5.2 Lower transitive imported-function calls across multiple source files.
+  - [~] 2.3.6.5.3 Verify same-named functions in separate modules resolve to distinct symbols and execute correctly in the IR-to-C prototype.
+  - [ ] 2.3.6.5.4 Define a stable built-in call namespace and lower built-in signatures.
+  - [ ] 2.3.6.5.5 Define external function declarations and lower external ABI calls.
   - [ ] 2.3.6.6 Add calling-convention metadata and call-site ABI validation.
 - [ ] 2.3.7 Lower floating-point expressions and values.
 - [ ] 2.3.8 Lower strings, arrays, tuples, structs, enums, and indexing.
@@ -117,6 +122,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 3.2.2.1.2.3 Add generated-C runtime regressions for all division/modulo/negation error and edge cases.
   - [~] 3.2.2.1.3 Reject unsupported IR types and opcodes explicitly.
   - [~] 3.2.2.1.4 Add unit tests for arithmetic, direct calls, branch edges, and unsupported signatures.
+- [~] 3.2.2.1.5 Compile and run imported-module calls, including transitive imports and identical function names in separate modules.
 - [~] 3.2.3 Add an `emit-ir-c` CLI command that writes verified IR-generated C to a requested file.
   - [~] 3.2.3.1 Register the command and require an explicit `-o` destination.
   - [~] 3.2.3.2 Lower every function and verify the complete module before writing.
