@@ -9,6 +9,9 @@ EXPECTED_VERSION=$(cat VERSION)
 ./build/ylang --help > build/help.out
 grep -q 'ylang check' build/help.out
 grep -q 'ylang debug' build/help.out
+grep -q 'ylang emit-mir-opt' build/help.out
+grep -q 'ylang emit-mir-json' build/help.out
+grep -q 'ylang emit-ir-c-opt' build/help.out
 grep -Fq "YLang v${EXPECTED_VERSION} — compiled language toolchain" build/help.out
 ./build/ylang check examples/type-conversions.yl >/dev/null
 ./build/ylang build examples/type-conversions.yl -o build/test-type-conversions >/dev/null
@@ -86,6 +89,10 @@ grep -q 'E2123' build/await-type-error.out
 # HTTP integration runs its loopback server in-process to avoid background process leakage.
 python3 tests/run_http_integration.py
 python3 tests/benchmark-smoke.py
+python3 tests/ir_backend_parity.py
+# Machine-readable MIR is versioned JSON and carries module-qualified call metadata.
+./build/ylang emit-mir-json tests/ir-module-calls/main.yl > build/ir-module-calls.json
+python3 tests/check_ir_json.py build/ir-module-calls.json
 if ./build/ylang > build/no-args.out 2>&1; then
     echo "FAIL: ylang without arguments should return usage error" >&2
     exit 1
@@ -151,6 +158,281 @@ if grep -qi 'segmentation fault' build/deep-expression-nesting.out; then
     echo "FAIL: deeply nested expression crashed the compiler" >&2
     exit 1
 fi
+
+# The canonical 3.0 function keyword is accepted while legacy 'function' remains compatible.
+./build/ylang check tests/fn-keyword.yl >/dev/null
+./build/ylang build tests/fn-keyword.yl -o build/test-fn-keyword >/dev/null
+./build/test-fn-keyword > build/fn-keyword.out
+diff -u tests/expected-fn-keyword.txt build/fn-keyword.out
+
+# The emit-mir CLI lowers, verifies, and prints the currently supported subset.
+./build/ylang emit-mir tests/emit-mir.yl > build/emit-mir.out
+diff -u tests/expected-emit-mir.txt build/emit-mir.out
+
+# The opt-in MIR printer folds safe integer constants while preserving traps and f64 operations.
+./build/ylang emit-mir tests/emit-mir-opt.yl > build/emit-mir-opt-before.out
+grep -Fq 'add.i64' build/emit-mir-opt-before.out
+grep -Fq 'mul.i64' build/emit-mir-opt-before.out
+grep -Fq 'add.f64' build/emit-mir-opt-before.out
+grep -Fq 'mul.f64' build/emit-mir-opt-before.out
+./build/ylang emit-mir-opt tests/emit-mir-opt.yl > build/emit-mir-opt-after.out
+grep -Fq 'const.i64 84' build/emit-mir-opt-after.out
+grep -Fq 'div.i64' build/emit-mir-opt-after.out
+grep -Fq 'const.f64 0x1.ep+2' build/emit-mir-opt-after.out
+grep -Fq 'div.f64' build/emit-mir-opt-after.out
+if grep -Eq 'add[.]i64|mul[.]i64|add[.]f64|mul[.]f64' build/emit-mir-opt-after.out; then
+    echo "FAIL: emit-mir-opt left foldable arithmetic in the MIR" >&2
+    exit 1
+fi
+
+# Constant boolean branches become unconditional edges; unused pure values disappear.
+./build/ylang emit-mir tests/emit-mir-opt-cfg.yl > build/emit-mir-opt-cfg-before.out
+grep -Fq 'cond_br' build/emit-mir-opt-cfg-before.out
+./build/ylang emit-mir-opt tests/emit-mir-opt-cfg.yl > build/emit-mir-opt-cfg-after.out
+if grep -Fq 'cond_br' build/emit-mir-opt-cfg-after.out; then
+    echo "FAIL: emit-mir-opt did not simplify a constant conditional branch" >&2
+    exit 1
+fi
+grep -Fq 'br bb' build/emit-mir-opt-cfg-after.out
+
+./build/ylang emit-mir tests/emit-ir-c-f64.yl > build/emit-mir-f64-before.out
+./build/ylang emit-mir-opt tests/emit-ir-c-f64.yl > build/emit-mir-f64-after.out
+diff -u build/emit-mir-f64-before.out build/emit-mir-f64-after.out
+if ./build/ylang emit-mir-opt tests/emit-mir-opt.yl -o build/optimized-mir.txt > build/emit-mir-opt-argument.out 2>&1; then
+    echo "FAIL: emit-mir-opt accepted -o" >&2
+    exit 1
+fi
+grep -q 'emit-mir-opt does not accept -o' build/emit-mir-opt-argument.out
+
+# Unsupported functions fail before any partial MIR is written.
+if ./build/ylang emit-mir tests/fn-keyword.yl > build/emit-mir-unsupported.out 2> build/emit-mir-unsupported.err; then
+    echo "FAIL: emit-mir accepted a function outside the initial lowering subset" >&2
+    exit 1
+fi
+test ! -s build/emit-mir-unsupported.out
+grep -q "cannot lower function 'main'" build/emit-mir-unsupported.err
+
+# emit-mir writes to stdout and does not accept an output path.
+if ./build/ylang emit-mir tests/emit-mir.yl -o build/emit-mir.txt > build/emit-mir-argument.out 2>&1; then
+    echo "FAIL: emit-mir accepted -o" >&2
+    exit 1
+fi
+grep -q "emit-mir does not accept -o" build/emit-mir-argument.out
+
+# Nested control flow and loop-carried scalar values are represented in verified MIR.
+./build/ylang emit-mir tests/emit-mir-control-flow.yl > build/emit-mir-control-flow.out
+grep -q 'cond_br' build/emit-mir-control-flow.out
+grep -q 'br bb' build/emit-mir-control-flow.out
+grep -Eq '^bb[0-9]+\(%[0-9]+: i64\):$' build/emit-mir-control-flow.out
+
+# Direct user-function calls preserve typed parameters and return values in MIR.
+./build/ylang emit-mir tests/emit-mir-calls.yl > build/emit-mir-calls.out
+grep -Fq 'call @notify()' build/emit-mir-calls.out
+grep -Fq 'call @identity(' build/emit-mir-calls.out
+grep -Fq 'call @add(' build/emit-mir-calls.out
+
+# Imported IR calls use module-qualified symbols, including transitive imports.
+# Both imported modules intentionally define a function named transform().
+./build/ylang emit-mir tests/ir-module-calls/main.yl > build/emit-mir-module-calls.out
+[ "$(grep -c '^fn transform(' build/emit-mir-module-calls.out)" -eq 2 ]
+[ "$(grep -c 'call @transform(' build/emit-mir-module-calls.out)" -eq 2 ]
+grep -Fq 'call @forward(' build/emit-mir-module-calls.out
+grep -Fq 'call @answer(' build/emit-mir-module-calls.out
+grep -Fq 'call @leaf(' build/emit-mir-module-calls.out
+
+# The IR-to-C emitter must link duplicate source names from separate modules correctly.
+./build/ylang emit-ir-c tests/ir-module-calls/main.yl -o build/ir-module-calls.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/ir-module-calls.c -o build/test-ir-module-calls
+set +e
+./build/test-ir-module-calls
+ir_module_calls_status=$?
+set -e
+[ "$ir_module_calls_status" -eq 84 ]
+
+# Boolean and/or use control-flow edges so the right operand is truly short-circuited.
+./build/ylang emit-mir tests/emit-ir-c-short-circuit.yl > build/emit-ir-c-short-circuit.mir
+[ "$(grep -c 'cond_br' build/emit-ir-c-short-circuit.mir)" -ge 4 ]
+./build/ylang emit-ir-c tests/emit-ir-c-short-circuit.yl -o build/emit-ir-c-short-circuit.c >/dev/null
+grep -Fq 'yir_div_i64' build/emit-ir-c-short-circuit.c
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-short-circuit.c -o build/test-emit-ir-c-short-circuit
+set +e
+./build/test-emit-ir-c-short-circuit
+short_circuit_status=$?
+set -e
+[ "$short_circuit_status" -eq 42 ]
+
+# The optimized IR-to-C path runs constant folding before C emission.
+./build/ylang emit-ir-c-opt tests/emit-mir-opt.yl -o build/emit-ir-c-opt.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-opt.c -o build/test-emit-ir-c-opt
+set +e
+./build/test-emit-ir-c-opt
+ir_c_opt_status=$?
+set -e
+[ "$ir_c_opt_status" -eq 84 ]
+
+# Optimization must preserve a runtime division-by-zero failure.
+./build/ylang emit-ir-c-opt tests/emit-ir-c-div-zero.yl -o build/emit-ir-c-opt-div-zero.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-opt-div-zero.c -o build/test-emit-ir-c-opt-div-zero
+set +e
+./build/test-emit-ir-c-opt-div-zero > build/emit-ir-c-opt-div-zero.stdout 2> build/emit-ir-c-opt-div-zero.stderr
+ir_c_opt_div_zero_status=$?
+set -e
+[ "$ir_c_opt_div_zero_status" -eq 70 ]
+grep -Fq 'YLang runtime error: integer division by zero' build/emit-ir-c-opt-div-zero.stderr
+
+# Optimized IR-to-C must preserve division by negative floating-point zero.
+./build/ylang emit-ir-c-opt tests/emit-ir-c-opt-f64-div-zero.yl -o build/emit-ir-c-opt-f64-div-zero.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-opt-f64-div-zero.c -o build/test-emit-ir-c-opt-f64-div-zero
+set +e
+./build/test-emit-ir-c-opt-f64-div-zero > build/emit-ir-c-opt-f64-div-zero.stdout 2> build/emit-ir-c-opt-f64-div-zero.stderr
+ir_c_opt_f64_div_zero_status=$?
+set -e
+[ "$ir_c_opt_f64_div_zero_status" -eq 70 ]
+grep -Fq 'YLang runtime error: floating-point division by zero' build/emit-ir-c-opt-f64-div-zero.stderr
+
+# emit-ir-c-opt requires an explicit output path.
+if ./build/ylang emit-ir-c-opt tests/emit-mir-opt.yl > build/emit-ir-c-opt-no-output.out 2>&1; then
+    echo "FAIL: emit-ir-c-opt accepted a missing output path" >&2
+    exit 1
+fi
+grep -q 'emit-ir-c-opt requires -o' build/emit-ir-c-opt-no-output.out
+
+# Emit standalone C from verified IR, compile it, and run the generated executable.
+./build/ylang emit-ir-c tests/emit-ir-c.yl -o build/emit-ir-c.c > build/emit-ir-c.out
+grep -Fq 'yir_add_i64' build/emit-ir-c.c
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c.c -o build/test-emit-ir-c
+set +e
+./build/test-emit-ir-c
+emit_ir_c_status=$?
+set -e
+[ "$emit_ir_c_status" -eq 42 ]
+
+# Checked division, modulo, and general integer negation work in IR-generated C.
+./build/ylang emit-ir-c tests/emit-ir-c-arithmetic.yl -o build/emit-ir-c-arithmetic.c > build/emit-ir-c-arithmetic.out
+grep -Fq 'yir_div_i64' build/emit-ir-c-arithmetic.c
+grep -Fq 'yir_mod_i64' build/emit-ir-c-arithmetic.c
+grep -Fq 'yir_neg_i64' build/emit-ir-c-arithmetic.c
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-arithmetic.c -o build/test-emit-ir-c-arithmetic
+set +e
+./build/test-emit-ir-c-arithmetic
+emit_ir_c_arithmetic_status=$?
+set -e
+[ "$emit_ir_c_arithmetic_status" -eq 8 ]
+
+# Finite f64 values, calls, arithmetic, negation, and comparisons work in IR and C.
+./build/ylang emit-mir tests/emit-ir-c-f64.yl > build/emit-ir-c-f64.mir
+grep -Fq 'const.f64' build/emit-ir-c-f64.mir
+grep -Fq 'mul.f64' build/emit-ir-c-f64.mir
+grep -Fq 'div.f64' build/emit-ir-c-f64.mir
+grep -Fq 'neg.f64' build/emit-ir-c-f64.mir
+grep -Fq 'lt.f64' build/emit-ir-c-f64.mir
+./build/ylang emit-ir-c tests/emit-ir-c-f64.yl -o build/emit-ir-c-f64.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-f64.c -o build/test-emit-ir-c-f64
+set +e
+./build/test-emit-ir-c-f64
+emit_ir_c_f64_status=$?
+set -e
+[ "$emit_ir_c_f64_status" -eq 42 ]
+
+# IEEE f64 behavior: overflow to infinity, NaN comparisons, subnormals, and underflow.
+./build/ylang emit-mir tests/emit-ir-c-f64-ieee.yl > build/emit-ir-c-f64-ieee.mir
+grep -Fq 'mul.f64' build/emit-ir-c-f64-ieee.mir
+grep -Fq 'ne.f64' build/emit-ir-c-f64-ieee.mir
+./build/ylang emit-ir-c-opt tests/emit-ir-c-f64-ieee.yl -o build/emit-ir-c-f64-ieee.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-f64-ieee.c -o build/test-emit-ir-c-f64-ieee
+set +e
+./build/test-emit-ir-c-f64-ieee
+emit_ir_c_f64_ieee_status=$?
+set -e
+[ "$emit_ir_c_f64_ieee_status" -eq 42 ]
+
+# Explicit int/float conversions lower to IR and preserve truncation toward zero.
+./build/ylang emit-mir tests/emit-ir-c-conversions.yl > build/emit-ir-c-conversions.mir
+grep -Fq 'i64.to_f64' build/emit-ir-c-conversions.mir
+grep -Fq 'f64.to_i64' build/emit-ir-c-conversions.mir
+./build/ylang emit-ir-c tests/emit-ir-c-conversions.yl -o build/emit-ir-c-conversions.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-conversions.c -o build/test-emit-ir-c-conversions
+set +e
+./build/test-emit-ir-c-conversions
+emit_ir_c_conversions_status=$?
+set -e
+[ "$emit_ir_c_conversions_status" -eq 42 ]
+./build/ylang emit-ir-c-opt tests/emit-ir-c-conversions.yl -o build/emit-ir-c-conversions-opt.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-conversions-opt.c -o build/test-emit-ir-c-conversions-opt
+set +e
+./build/test-emit-ir-c-conversions-opt
+emit_ir_c_conversions_opt_status=$?
+set -e
+[ "$emit_ir_c_conversions_opt_status" -eq 42 ]
+
+# Conversion overflow must fail identically in the normal and optimized IR backends.
+./build/ylang emit-ir-c-opt tests/emit-ir-c-conversions-overflow.yl -o build/emit-ir-c-conversions-overflow.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-conversions-overflow.c -o build/test-emit-ir-c-conversions-overflow
+set +e
+./build/test-emit-ir-c-conversions-overflow > build/emit-ir-c-conversions-overflow.stdout 2> build/emit-ir-c-conversions-overflow.stderr
+emit_ir_c_conversions_overflow_status=$?
+set -e
+[ "$emit_ir_c_conversions_overflow_status" -eq 70 ]
+grep -Fq 'YLang runtime error: to_int value is outside the signed 64-bit range' build/emit-ir-c-conversions-overflow.stderr
+
+# Float overflow to infinity must be rejected by the same checked conversion.
+./build/ylang emit-ir-c-opt tests/emit-ir-c-conversions-nonfinite.yl -o build/emit-ir-c-conversions-nonfinite.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-conversions-nonfinite.c -o build/test-emit-ir-c-conversions-nonfinite
+set +e
+./build/test-emit-ir-c-conversions-nonfinite > build/emit-ir-c-conversions-nonfinite.stdout 2> build/emit-ir-c-conversions-nonfinite.stderr
+emit_ir_c_conversions_nonfinite_status=$?
+set -e
+[ "$emit_ir_c_conversions_nonfinite_status" -eq 70 ]
+grep -Fq 'YLang runtime error: to_int value is outside the signed 64-bit range' build/emit-ir-c-conversions-nonfinite.stderr
+
+# Division by zero must retain YLang's checked runtime failure.
+./build/ylang emit-ir-c tests/emit-ir-c-div-zero.yl -o build/emit-ir-c-div-zero.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-div-zero.c -o build/test-emit-ir-c-div-zero
+set +e
+./build/test-emit-ir-c-div-zero > build/emit-ir-c-div-zero.stdout 2> build/emit-ir-c-div-zero.stderr
+emit_ir_c_div_zero_status=$?
+set -e
+[ "$emit_ir_c_div_zero_status" -eq 70 ]
+grep -Fq 'YLang runtime error: integer division by zero' build/emit-ir-c-div-zero.stderr
+
+# INT64_MIN / -1 must fail rather than invoking C undefined behavior.
+./build/ylang emit-ir-c tests/emit-ir-c-div-overflow.yl -o build/emit-ir-c-div-overflow.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-div-overflow.c -o build/test-emit-ir-c-div-overflow
+set +e
+./build/test-emit-ir-c-div-overflow > build/emit-ir-c-div-overflow.stdout 2> build/emit-ir-c-div-overflow.stderr
+emit_ir_c_div_overflow_status=$?
+set -e
+[ "$emit_ir_c_div_overflow_status" -eq 70 ]
+grep -Fq 'YLang runtime error: integer overflow in division' build/emit-ir-c-div-overflow.stderr
+
+# Negating INT64_MIN must retain the checked overflow diagnostic.
+./build/ylang emit-ir-c tests/emit-ir-c-neg-overflow.yl -o build/emit-ir-c-neg-overflow.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-neg-overflow.c -o build/test-emit-ir-c-neg-overflow
+set +e
+./build/test-emit-ir-c-neg-overflow > build/emit-ir-c-neg-overflow.stdout 2> build/emit-ir-c-neg-overflow.stderr
+emit_ir_c_neg_overflow_status=$?
+set -e
+[ "$emit_ir_c_neg_overflow_status" -eq 70 ]
+grep -Fq 'YLang runtime error: integer overflow in negation' build/emit-ir-c-neg-overflow.stderr
+
+# INT64_MIN % -1 is defined as zero by YLang's current runtime.
+./build/ylang emit-ir-c tests/emit-ir-c-modulo-edge.yl -o build/emit-ir-c-modulo-edge.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-modulo-edge.c -o build/test-emit-ir-c-modulo-edge
+./build/test-emit-ir-c-modulo-edge
+[ "$?" -eq 0 ]
+
+# emit-ir-c requires an explicit output path.
+if ./build/ylang emit-ir-c tests/emit-ir-c.yl > build/emit-ir-c-no-output.out 2>&1; then
+    echo "FAIL: emit-ir-c accepted a missing output path" >&2
+    exit 1
+fi
+grep -q "emit-ir-c requires -o" build/emit-ir-c-no-output.out
+
+# Explicit mut is the preferred 3.0 spelling; legacy mutable let remains compatible.
+./build/ylang check tests/explicit-mut.yl >/dev/null
+./build/ylang build tests/explicit-mut.yl -o build/test-explicit-mut >/dev/null
+./build/test-explicit-mut > build/explicit-mut.out
+diff -u tests/expected-explicit-mut.txt build/explicit-mut.out
 
 ./build/ylang check examples/demo.yl
 ./build/ylang build examples/demo.yl -o build/test-demo >/dev/null
@@ -1418,6 +1700,31 @@ if ./build/ylang check tests/borrowed-string-move.yl > build/borrowed-string-mov
 fi
 grep -q 'E2112' build/borrowed-string-move.out
 
+# Multiple immutable views of the same owner are valid for one call.
+./build/ylang build tests/borrowed-string-aliasing.yl -o build/test-borrowed-string-aliasing >/dev/null
+[ "$(./build/test-borrowed-string-aliasing)" = "12" ]
+
+# A call-scoped shared borrow reserves its owner before any argument is checked.
+# This must reject moving the same owner in another argument, regardless of order.
+if ./build/ylang check tests/borrowed-string-move-conflict.yl > build/borrowed-string-move-conflict.out 2>&1; then
+    echo "FAIL: YLang allowed moving an owner while the same call borrows it" >&2
+    exit 1
+fi
+grep -q 'E2130' build/borrowed-string-move-conflict.out
+
+# The later borrowed argument must reserve its owner before an earlier move argument.
+if ./build/ylang check tests/borrowed-string-move-conflict-order.yl > build/borrowed-string-move-conflict-order.out 2>&1; then
+    echo "FAIL: YLang allowed moving an owner before a later argument borrows it" >&2
+    exit 1
+fi
+grep -q 'E2130' build/borrowed-string-move-conflict-order.out
+
+if ./build/ylang check tests/borrowed-string-write-conflict.yl > build/borrowed-string-write-conflict.out 2>&1; then
+    echo "FAIL: YLang allowed mutation of an owner while the same call borrows it" >&2
+    exit 1
+fi
+grep -q 'E2131' build/borrowed-string-write-conflict.out
+
 if ./build/ylang check tests/borrowed-string-array.yl > build/borrowed-string-array.out 2>&1; then
     echo "FAIL: YLang accepted an array of borrowed_string parameters" >&2
     exit 1
@@ -1519,6 +1826,20 @@ YLANG_MEMORY_STATS=1 ./build/test-owned-string-loop-cleanup > build/owned-string
 printf 'iteration\ninner\nouter\n' > build/owned-string-loop-cleanup.expected
 diff -u build/owned-string-loop-cleanup.expected build/owned-string-loop-cleanup.stdout
 grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-loop-cleanup.stderr
+
+# A move on a branch that always returns must not poison the fallthrough path.
+./build/ylang build tests/owned-string-if-return-branch.yl -o build/test-owned-string-if-return-branch >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string-if-return-branch > build/owned-string-if-return-branch.stdout 2> build/owned-string-if-return-branch.stderr
+printf 'value\nvalue\n' > build/owned-string-if-return-branch.expected
+diff -u build/owned-string-if-return-branch.expected build/owned-string-if-return-branch.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-if-return-branch.stderr
+
+# A move in a branch that can fall through must still invalidate the source owner.
+if ./build/ylang check tests/owned-string-if-fallthrough-move.yl > build/owned-string-if-fallthrough-move.out 2>&1; then
+    echo "FAIL: YLang accepted use of an owner moved on a fallthrough branch" >&2
+    exit 1
+fi
+grep -q 'E2110' build/owned-string-if-fallthrough-move.out
 
 # Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
 ./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null

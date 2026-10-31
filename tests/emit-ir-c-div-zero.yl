@@ -1,0 +1,7 @@
+fn divide(int value, int divisor) -> int {
+    return value / divisor;
+}
+
+fn main() -> int {
+    return divide(9, 0);
+}

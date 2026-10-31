@@ -1,0 +1,15 @@
+fn main() -> int {
+    return (20 + 22) * 2;
+}
+
+fn preserve_trap() -> int {
+    return 1 / 0;
+}
+
+fn f64_safe() -> float {
+    return (1.25 + 2.5) * 2.0;
+}
+
+fn preserve_f64_trap() -> float {
+    return 1.0 / -0.0;
+}

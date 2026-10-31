@@ -1,6 +1,6 @@
 # YLang Memory Model — RFC
 
-Status: partial implementation in the experimental C backend. The compiler has an explicit `owned_string` type with move-only binding transfers and generated cleanup at ordinary block exits, function returns, loop breaks, and loop continues. A restricted immutable `borrowed_string` function-parameter view is also implemented. General `&T` / `&mut T` borrow syntax, conflicting-borrow checks, and full Rust-like lifetime analysis are still unimplemented.
+Status: partial implementation in the experimental C backend. The compiler has an explicit `owned_string` type with move-only binding transfers and generated cleanup at ordinary block exits, function returns, loop breaks, and loop continues. A restricted immutable `borrowed_string` function-parameter view is implemented, including call-scoped shared-loan tracking that rejects moving or assigning the named owner in another argument of the same call (E2130/E2131). General `&T` / `&mut T` syntax, exclusive mutable loans, full alias analysis, and non-lexical lifetime analysis remain unimplemented.
 
 ## Goals
 
@@ -55,13 +55,15 @@ let owned_string destination = move(joined);
 print(source, destination);
 ```
 
-`owned_string` is a separate experimental type. `string.own(text)` clones text into tracked heap storage; `owned_string.concat/replace/upper/lower` and `io.read_line_owned` / `io.read_file_owned` return owned values. The source of `move(name)` becomes unavailable (diagnostic `E2110`) until reinitialized. Implicit copies of owned bindings are rejected (`E2115`); returning an owned local requires `return move(name)` (`E2116`). Moves are merged conservatively across branches, loops, and exhaustive `match` arms. Self-move assignment is rejected (`E2114`).
+`owned_string` is a separate experimental type. `string.own(text)` clones text into tracked heap storage; `owned_string.concat/replace/upper/lower` and `io.read_line_owned` / `io.read_file_owned` return owned values. The source of `move(name)` becomes unavailable (diagnostic `E2110`) until reinitialized. Implicit copies of owned bindings are rejected (`E2115`); returning an owned local requires `return move(name)` (`E2116`). Moves are merged conservatively across branches, loops, and exhaustive `match` arms. A branch that guarantees a function return is excluded from the ownership join after the `if`, because its moved values cannot reach the fallthrough path; statements after a guaranteed return are treated as unreachable. Self-move assignment is rejected (`E2114`).
 
 Generated C keeps owned slots initialized to null and emits `yl_release` calls on ordinary scope exit and before `return`, `break`, or `continue`. Transferred values are nulled at the source, so cleanup is safe to run on every path. Assigning a new owned value releases the previous value. The runtime release helper only frees pointers registered by YLang's allocation tracker, so string literals and other untracked pointers are not freed accidentally.
 
 The existing `string` type remains a legacy C-string representation; runtime-created legacy strings can still be retained until process exit. `owned_string` is supported only by the C backend for now. Global owned strings, arrays of owned strings, and owned-string struct fields are rejected (`E2118`) until global, array-element, and field cleanup are implemented. User functions that accept `owned_string` take ownership of that argument; call them with `move(name)` or a fresh owned expression.
 
 The separate experimental `borrowed_string` type is permitted only for function parameters. Such parameters are immutable, are passed as non-owning pointers, and cannot be stored in a local/global variable, a struct field, or a return type. They may be forwarded only to other `borrowed_string` parameters or used immediately by non-retaining string helpers. An `owned_string` temporary is rejected when passed into a borrowed parameter because the temporary would have no named owner to keep it alive for the call. This provides a narrow immutable parameter view, not a general lifetime checker: the language still has no `&mut T`, no returned borrows, and no general alias analysis.
+
+The 3.0 development branch now reserves every named owner passed to a `borrowed_string` parameter before checking any other argument expression. This makes the check independent of argument order and prevents a call such as `inspect(owner, move(owner))` from transferring the owner while the same call borrows it (E2130). Direct assignment to that owner in another argument is rejected as E2131. Multiple immutable parameters may borrow the same owner in one call. These are call-scoped checks over named whole-variable arguments only; they do not yet provide `&T` syntax, mutable borrows, field-level disjointness, or lifetime inference.
 
 The first runtime instrumentation commit adds an opt-in diagnostic:
 
@@ -78,7 +80,7 @@ The test suite includes an opt-in fixture and checks that enabling the diagnosti
 Implement this in small, reviewable steps:
 
 1. **Flow-sensitive ownership facts (in progress)**: current checks model explicit moves and merge them conservatively, but complex control-flow should continue to gain regression cases.
-2. **Borrow checker**: design explicit immutable and mutable borrow syntax, then reject dangling/conflicting borrows, borrowed moves, and returned local references.
+2. **Borrow checker**: the first call-scoped shared-loan checks now protect named `borrowed_string` arguments from same-call moves and assignments; next add explicit `&T` / `&mut T` syntax, exclusive loans, control-flow lifetime analysis, and returned-local-reference rejection.
 3. **Signature and inter-module ownership contracts**: make ownership transfer vs borrow behavior explicit for all functions and imported signatures.
 4. **Cleanup coverage**: expand and verify cleanup for all control-flow edges, then add arrays, structs, globals, and nested owners only when their drop semantics are defined.
 5. **Runtime verification**: test allocations/frees under AddressSanitizer and LeakSanitizer where available, plus repeated-request stress tests.

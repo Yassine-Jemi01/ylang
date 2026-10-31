@@ -1,0 +1,6 @@
+from "./lib_a.yl" import forward;
+from "./lib_b.yl" import answer;
+
+fn main() -> int {
+    return forward() + answer();
+}

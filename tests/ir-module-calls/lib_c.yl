@@ -1,0 +1,3 @@
+fn leaf() -> int {
+    return 21;
+}

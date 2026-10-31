@@ -1,0 +1,5 @@
+fn main() -> int {
+    let mut int total = 40;
+    total = total + 2;
+    return total;
+}

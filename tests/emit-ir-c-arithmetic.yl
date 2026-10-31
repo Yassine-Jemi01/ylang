@@ -1,0 +1,11 @@
+fn calculate() -> int {
+    return 20 / 3 + 20 % 3;
+}
+
+fn negate(int value) -> int {
+    return -value;
+}
+
+fn main() -> int {
+    return calculate();
+}

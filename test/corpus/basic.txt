@@ -64,3 +64,37 @@ enum State {
       (identifier))
     (enum_variant
       (identifier))))
+
+==================
+YLang 3.0 fn and explicit mut
+==================
+
+fn main() -> int {
+    let mut int counter = 40;
+    counter += 2;
+    let const int answer = 42;
+    return answer;
+}
+
+---
+
+(source_file
+  (function_declaration
+    name: (identifier)
+    return_type: (primitive_type)
+    (block
+      (variable_declaration
+        type: (primitive_type)
+        name: (identifier)
+        (integer))
+      (expression_statement
+        (assignment_expression
+          left: (identifier)
+          operator: "+="
+          right: (integer)))
+      (variable_declaration
+        type: (primitive_type)
+        name: (identifier)
+        (integer))
+      (return_statement
+        (identifier)))))

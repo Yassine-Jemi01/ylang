@@ -656,6 +656,11 @@ static Stmt *parse_variable(Parser *p, bool global)
 {
     Token start = p->previous;
     bool is_const = match(p, TOKEN_CONST);
+    /* YLang 3.0 makes mut explicit while keeping legacy `let type name` mutable. */
+    if (!is_const && p->current.type == TOKEN_IDENTIFIER &&
+        token_is(&p->current, "mut")) {
+        advance_parser(p);
+    }
     YType type = parse_type(p);
     if (type == TYPE_BORROWED_STRING) {
         diagnostic(p->compiler, p->previous, "error", "E2120",
@@ -664,12 +669,12 @@ static Stmt *parse_variable(Parser *p, bool global)
     }
     Token name_token = consume(p, TOKEN_IDENTIFIER,
         "Expected a variable name after the type.",
-        "For example: let int count = 0;");
+        "For example: let mut int count = 0;");
     bool is_array = false;
     if (match(p, TOKEN_LEFT_BRACKET)) {
         is_array = true;
         consume(p, TOKEN_RIGHT_BRACKET, "Array declarations use empty brackets after the name.",
-                "Use a declaration such as 'let int values[] = [1, 2, 3];'.");
+                "Use a declaration such as 'let mut int values[] = [1, 2, 3];'.");
         if (is_const) {
             diagnostic(p->compiler, name_token, "error", "E2017",
                        "const arrays are not supported yet.",
@@ -686,7 +691,7 @@ static Stmt *parse_variable(Parser *p, bool global)
     if (!is_array && initializer && initializer->kind == EXPR_ARRAY) {
         diagnostic(p->compiler, name_token, "error", "E2019",
                    "An array literal requires an array declaration.",
-                   "Declare the variable with empty brackets after its name, such as 'let int values[] = [1, 2, 3];'.");
+                   "Declare the variable with empty brackets after its name, such as 'let mut int values[] = [1, 2, 3];'.");
     }
     if (is_const && !initializer) {
         diagnostic(p->compiler, name_token, "error", "E2003",
@@ -882,8 +887,8 @@ static Function *parse_function(Parser *p)
 {
     Token start = p->previous;
     Token name_token = consume(p, TOKEN_IDENTIFIER,
-        "Expected a function name after 'function'.",
-        "For example: function add(int a, int b) -> int { ... }");
+        "Expected a function name after 'fn'.",
+        "For example: fn add(int a, int b) -> int { ... }");
     Function *function = arena_alloc(&p->compiler->arena, sizeof(*function));
     function->token = name_token;
     function->name = token_copy(p->compiler, name_token);
@@ -897,14 +902,14 @@ static Function *parse_function(Parser *p)
             YType type = parse_type(p);
             Token param_name = consume(p, TOKEN_IDENTIFIER,
                 "Expected a parameter name after its type.",
-                "For example: function greet(string name) -> void.");
+                "For example: fn greet(string name) -> void.");
             VarDecl *param = new_var(p->compiler, param_name,
                 token_copy(p->compiler, param_name), type, false, false, NULL);
             if (match(p, TOKEN_LEFT_BRACKET)) {
                 param->is_array = true;
                 consume(p, TOKEN_RIGHT_BRACKET,
                         "Array parameters use empty brackets after the name.",
-                        "Use syntax such as function sum(int values[]) -> int.");
+                        "Use syntax such as fn sum(int values[]) -> int.");
             }
             param->initialized = true;
             if (type == TYPE_BORROWED_STRING) param->is_const = true;
@@ -916,7 +921,7 @@ static Function *parse_function(Parser *p)
     consume(p, TOKEN_RIGHT_PAREN, "Expected ')' after parameters.",
             "Close the parameter list with ')'.");
     consume(p, TOKEN_ARROW, "Expected '->' before function return type.",
-            "For example: function main() -> int { ... }");
+            "For example: fn main() -> int { ... }");
     function->return_type = parse_type(p);
     if (function->return_type == TYPE_BORROWED_STRING) {
         diagnostic(p->compiler, function->token, "error", "E2120",

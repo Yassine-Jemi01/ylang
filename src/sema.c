@@ -571,6 +571,14 @@ static YType check_expr(Checker *checker, Expr *expr)
                 return expr->type;
             }
             expr->as.assign.variable = var;
+            if (var->shared_borrow_count != 0U) {
+                diagnostic(c, expr->token, "error", "E2131",
+                           "Cannot mutate a value while it is immutably borrowed.",
+                           "Wait until every borrowed_string call using this value has completed.");
+                (void)check_expr(checker, expr->as.assign.right);
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
             if (expr->as.assign.is_compound &&
                 target_type != TYPE_INT && target_type != TYPE_FLOAT) {
                 diagnostic(c, expr->token, "error", "E2095",
@@ -850,6 +858,13 @@ static YType check_expr(Checker *checker, Expr *expr)
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
+                if (source->shared_borrow_count != 0U) {
+                    diagnostic(c, argument->token, "error", "E2130",
+                               "Cannot move a value while it is immutably borrowed.",
+                               "Finish the borrowed function call before transferring ownership with move().");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
                 if (!source->initialized) {
                     expr->type = TYPE_ERROR;
                     return expr->type;
@@ -1063,6 +1078,26 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             size_t shared = expr->as.call.count < function->param_count ?
                             expr->as.call.count : function->param_count;
+            /*
+             * Reserve all named immutable arguments before checking any argument
+             * expression. This makes conflicts independent of argument order:
+             * f(view_of(owner), move(owner)) must be rejected even if the backend
+             * later chooses a different C argument evaluation order.
+             */
+            VarDecl **call_borrows = shared != 0U ?
+                arena_alloc(&c->arena, shared * sizeof(*call_borrows)) : NULL;
+            if (call_borrows) memset(call_borrows, 0, shared * sizeof(*call_borrows));
+            for (size_t i = 0; i < shared; i++) {
+                if (function->params[i]->type != TYPE_BORROWED_STRING ||
+                    expr->as.call.args[i]->kind != EXPR_NAME) continue;
+                VarDecl *owner = scope_lookup(checker->scope,
+                    expr->as.call.args[i]->as.name.name);
+                if (!owner || owner->is_array || !is_string_type(owner->type)) continue;
+                if (owner->shared_borrow_count == 0U)
+                    owner->shared_borrow_token = expr->as.call.args[i]->token;
+                owner->shared_borrow_count++;
+                call_borrows[i] = owner;
+            }
             for (size_t i = 0; i < expr->as.call.count; i++) {
                 Expr *arg = expr->as.call.args[i];
                 bool array_parameter = i < shared && function->params[i]->is_array;
@@ -1117,6 +1152,12 @@ static YType check_expr(Checker *checker, Expr *expr)
                         semantic_type_name(c, arg_type));
                     diagnostic(c, arg->token, "error", "E2042",
                                "Function argument type mismatch.", suggestion);
+                }
+            }
+            for (size_t i = 0; i < shared; i++) {
+                if (call_borrows && call_borrows[i] &&
+                    call_borrows[i]->shared_borrow_count != 0U) {
+                    call_borrows[i]->shared_borrow_count--;
                 }
             }
             expr->type = function->return_type;
@@ -1178,8 +1219,11 @@ static void check_stmt(Checker *checker, Stmt *stmt)
         case STMT_BLOCK: {
             Scope *outer = checker->scope;
             checker->scope = scope_new(c, outer);
-            for (size_t i = 0; i < stmt->as.block.count; i++)
+            for (size_t i = 0; i < stmt->as.block.count; i++) {
                 check_stmt(checker, stmt->as.block.items[i]);
+                /* A guaranteed return makes later statements unreachable. */
+                if (stmt_guarantees_return(stmt->as.block.items[i])) break;
+            }
             checker->scope = outer;
             break;
         }
@@ -1256,6 +1300,8 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 before[i] = c->all_vars[i]->initialized;
                 before_moved[i] = c->all_vars[i]->moved;
             }
+            bool then_returns =
+                stmt_guarantees_return(stmt->as.if_stmt.then_branch);
             check_stmt(checker, stmt->as.if_stmt.then_branch);
             for (size_t i = 0; i < n; i++) {
                 after_then[i] = c->all_vars[i]->initialized;
@@ -1266,8 +1312,26 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 c->all_vars[i]->moved = before_moved[i];
             }
             if (stmt->as.if_stmt.else_branch) {
+                bool else_returns =
+                    stmt_guarantees_return(stmt->as.if_stmt.else_branch);
                 check_stmt(checker, stmt->as.if_stmt.else_branch);
                 for (size_t i = 0; i < n; i++) {
+                    if (then_returns && !else_returns) {
+                        /* Only the else path reaches the statement after this if. */
+                        continue;
+                    }
+                    if (!then_returns && else_returns) {
+                        /* The then path is the only path that falls through. */
+                        c->all_vars[i]->initialized = after_then[i];
+                        c->all_vars[i]->moved = after_then_moved[i];
+                        continue;
+                    }
+                    if (then_returns && else_returns) {
+                        /* No path reaches the statement after this if. */
+                        c->all_vars[i]->initialized = before[i];
+                        c->all_vars[i]->moved = before_moved[i];
+                        continue;
+                    }
                     c->all_vars[i]->initialized =
                         after_then[i] && c->all_vars[i]->initialized;
                     c->all_vars[i]->moved =
@@ -1275,9 +1339,15 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 }
             } else {
                 for (size_t i = 0; i < n; i++) {
-                    c->all_vars[i]->initialized = before[i];
-                    c->all_vars[i]->moved =
-                        before_moved[i] || after_then_moved[i];
+                    if (then_returns) {
+                        /* The implicit else path leaves ownership unchanged. */
+                        c->all_vars[i]->initialized = before[i];
+                        c->all_vars[i]->moved = before_moved[i];
+                    } else {
+                        c->all_vars[i]->initialized = before[i];
+                        c->all_vars[i]->moved =
+                            before_moved[i] || after_then_moved[i];
+                    }
                 }
             }
             break;

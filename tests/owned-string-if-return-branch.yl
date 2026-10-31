@@ -1,0 +1,16 @@
+function take_or_keep(bool take) -> int {
+    let owned_string current = string.own("value");
+    if (take) {
+        let owned_string taken = move(current);
+        print(taken);
+        return 0;
+    }
+    print(current);
+    return 0;
+}
+
+function main() -> int {
+    take_or_keep(true);
+    take_or_keep(false);
+    return 0;
+}

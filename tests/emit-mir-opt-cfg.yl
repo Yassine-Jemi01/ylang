@@ -1,0 +1,11 @@
+fn selected() -> int {
+    if (false) {
+        return 11;
+    } else {
+        return 22;
+    }
+}
+
+fn main() -> int {
+    return selected();
+}

@@ -1,0 +1,8 @@
+fn add(int left, int right) -> int {
+    return left + right;
+}
+
+fn main() -> int {
+    print(add(19, 23));
+    return 0;
+}

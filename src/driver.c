@@ -3,6 +3,7 @@
 #endif
 #define _POSIX_C_SOURCE 200809L
 #include "internal.h"
+#include "ylang/ir.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -493,6 +494,241 @@ static int run_external(char *const argv[])
 #endif
 }
 
+
+static int emit_mir(Compiler *compiler, bool optimize, bool json_output)
+{
+    const char *command = json_output ? "emit-mir-json" :
+                          optimize ? "emit-mir-opt" : "emit-mir";
+    if (!compiler->program || compiler->program->function_count == 0) {
+        fprintf(stderr, "ylang: %s: the program contains no functions to lower.\n", command);
+        return 1;
+    }
+
+    const size_t function_count = compiler->program->function_count;
+    if (function_count > SIZE_MAX / sizeof(YIRFunction)) {
+        fprintf(stderr, "ylang: %s: too many functions to lower.\n", command);
+        return 70;
+    }
+
+    YIRFunction *lowered = calloc(function_count, sizeof(*lowered));
+    if (!lowered) {
+        fprintf(stderr, "ylang: %s: out of memory while preparing MIR output.\n", command);
+        return 70;
+    }
+
+    size_t lowered_count = 0;
+    for (size_t i = 0; i < function_count; ++i) {
+        Function *function = compiler->program->functions[i];
+        char error[256];
+        const char *name = function && function->name ? function->name : "<anonymous>";
+
+        if (!yir_lower_function(function, &lowered[i], error, sizeof(error))) {
+            fprintf(stderr,
+                    "ylang: %s: cannot lower function '%s' at %zu:%zu: %s\n",
+                    command, name,
+                    function ? function->token.line : 0,
+                    function ? function->token.column : 0,
+                    error[0] ? error : "unknown lowering error");
+            for (size_t j = 0; j < lowered_count; ++j)
+                yir_destroy_function(&lowered[j]);
+            free(lowered);
+            return 1;
+        }
+        lowered_count++;
+
+        if (!yir_verify_function(&lowered[i], error, sizeof(error))) {
+            fprintf(stderr,
+                    "ylang: %s: verifier rejected function '%s': %s\n",
+                    command, name, error[0] ? error : "unknown verification error");
+            for (size_t j = 0; j < lowered_count; ++j)
+                yir_destroy_function(&lowered[j]);
+            free(lowered);
+            return 1;
+        }
+    }
+
+    char module_error[512];
+    if (!yir_verify_module(lowered, function_count,
+                           module_error, sizeof(module_error))) {
+        fprintf(stderr, "ylang: %s: module verifier rejected the program: %s\n",
+                command, module_error[0] ? module_error : "unknown module verification error");
+        for (size_t i = 0; i < lowered_count; ++i)
+            yir_destroy_function(&lowered[i]);
+        free(lowered);
+        return 1;
+    }
+
+    if (optimize) {
+        char optimize_error[512];
+        if (!yir_optimize_module(lowered, function_count,
+                                 optimize_error, sizeof(optimize_error))) {
+            fprintf(stderr, "ylang: %s: optimizer rejected the module: %s\n",
+                    command, optimize_error[0] ? optimize_error : "unknown optimization error");
+            for (size_t i = 0; i < lowered_count; ++i)
+                yir_destroy_function(&lowered[i]);
+            free(lowered);
+            return 1;
+        }
+    }
+
+    int result = 0;
+    if (json_output) {
+        char json_error[512];
+        if (!yir_write_json_module(stdout, lowered, function_count,
+                                   json_error, sizeof(json_error))) {
+            fprintf(stderr, "ylang: %s: cannot write JSON IR: %s\n",
+                    command, json_error[0] ? json_error : "unknown JSON error");
+            result = 1;
+        }
+    } else {
+        for (size_t i = 0; i < function_count; ++i) {
+            if (i != 0) (void)fputc('\n', stdout);
+            yir_print_function(stdout, &lowered[i]);
+        }
+    }
+    if (fflush(stdout) != 0 || ferror(stdout)) {
+        fprintf(stderr, "ylang: %s: failed while writing IR to standard output.\n",
+                command);
+        result = 74;
+    }
+
+    for (size_t i = 0; i < lowered_count; ++i)
+        yir_destroy_function(&lowered[i]);
+    free(lowered);
+    return result;
+}
+
+
+static void destroy_lowered_module(YIRFunction *functions, size_t count)
+{
+    if (!functions) return;
+    for (size_t i = 0; i < count; ++i)
+        yir_destroy_function(&functions[i]);
+    free(functions);
+}
+
+static int emit_ir_c(Compiler *compiler, const char *output_path,
+                     bool optimize)
+{
+    const char *command = optimize ? "emit-ir-c-opt" : "emit-ir-c";
+    if (!output_path) {
+        fprintf(stderr, "ylang: %s requires an output path with -o.\n",
+                command);
+        return 64;
+    }
+    if (!compiler->program || compiler->program->function_count == 0) {
+        fprintf(stderr, "ylang: %s: the program contains no functions to lower.\n", command);
+        return 1;
+    }
+
+    const size_t function_count = compiler->program->function_count;
+    if (function_count > SIZE_MAX / sizeof(YIRFunction)) {
+        fprintf(stderr, "ylang: %s: too many functions to lower.\n", command);
+        return 70;
+    }
+
+    YIRFunction *lowered = calloc(function_count, sizeof(*lowered));
+    if (!lowered) {
+        fprintf(stderr, "ylang: %s: out of memory while preparing IR.\n", command);
+        return 70;
+    }
+
+    size_t lowered_count = 0;
+    for (size_t i = 0; i < function_count; ++i) {
+        Function *function = compiler->program->functions[i];
+        char error[256];
+        const char *name = function && function->name ?
+                           function->name : "<anonymous>";
+        if (!yir_lower_function(function, &lowered[i], error, sizeof(error))) {
+            fprintf(stderr,
+                "ylang: %s: cannot lower function '%s' at %zu:%zu: %s\n",
+                command, name,
+                function ? function->token.line : 0,
+                function ? function->token.column : 0,
+                error[0] ? error : "unknown lowering error");
+            destroy_lowered_module(lowered, lowered_count);
+            return 1;
+        }
+        lowered_count++;
+    }
+
+    FILE *temporary = tmpfile();
+    if (!temporary) {
+        fprintf(stderr, "ylang: %s: cannot create temporary output: %s\n",
+                command, strerror(errno));
+        destroy_lowered_module(lowered, lowered_count);
+        return 73;
+    }
+
+    if (optimize) {
+        char optimize_error[512];
+        if (!yir_optimize_module(lowered, function_count,
+                                 optimize_error, sizeof(optimize_error))) {
+            fprintf(stderr, "ylang: emit-ir-c-opt: optimizer rejected the module: %s\n",
+                    optimize_error[0] ? optimize_error : "unknown optimization error");
+            (void)fclose(temporary);
+            destroy_lowered_module(lowered, lowered_count);
+            return 1;
+        }
+    }
+
+    char error[512];
+    if (!yir_emit_c_module(temporary, lowered, function_count,
+                           error, sizeof(error))) {
+        fprintf(stderr, "ylang: %s: cannot emit verified IR as C: %s\n",
+                command, error[0] ? error : "unknown C emission error");
+        (void)fclose(temporary);
+        destroy_lowered_module(lowered, lowered_count);
+        return 1;
+    }
+
+    if (fseek(temporary, 0, SEEK_SET) != 0) {
+        fprintf(stderr, "ylang: %s: cannot rewind temporary C output: %s\n",
+                command, strerror(errno));
+        (void)fclose(temporary);
+        destroy_lowered_module(lowered, lowered_count);
+        return 74;
+    }
+
+    FILE *destination = fopen(output_path, "wb");
+    if (!destination) {
+        fprintf(stderr, "ylang: %s: cannot open '%s': %s\n",
+                command, output_path, strerror(errno));
+        (void)fclose(temporary);
+        destroy_lowered_module(lowered, lowered_count);
+        return 73;
+    }
+
+    char buffer[8192];
+    bool okay = true;
+    for (;;) {
+        size_t count = fread(buffer, 1, sizeof(buffer), temporary);
+        if (count != 0 && fwrite(buffer, 1, count, destination) != count) {
+            okay = false;
+            break;
+        }
+        if (count < sizeof(buffer)) {
+            if (ferror(temporary)) okay = false;
+            break;
+        }
+    }
+    if (fclose(destination) != 0) okay = false;
+    if (fclose(temporary) != 0) okay = false;
+
+    if (!okay) {
+        fprintf(stderr, "ylang: %s: failed while writing '%s'.\n",
+                command, output_path);
+        (void)remove(output_path);
+        destroy_lowered_module(lowered, lowered_count);
+        return 74;
+    }
+
+    printf("Generated IR C: %s%s\n", output_path,
+           optimize ? " (optimized)" : "");
+    destroy_lowered_module(lowered, lowered_count);
+    return 0;
+}
+
 int ylang_run(const char *command, const char *input_path,
               const char *output_path, const char *cc)
 {
@@ -555,6 +791,15 @@ int ylang_run(const char *command, const char *input_path,
         } else if (strcmp(command, "emit-c") == 0) {
             fprintf(stderr, "ylang: emit-c failed with %u error(s); no C source was generated.\n",
                     compiler.error_count);
+        } else if (strcmp(command, "emit-mir") == 0 ||
+                   strcmp(command, "emit-mir-opt") == 0 ||
+                   strcmp(command, "emit-mir-json") == 0) {
+            fprintf(stderr, "ylang: %s failed with %u error(s); no IR was generated.\n",
+                    command, compiler.error_count);
+        } else if (strcmp(command, "emit-ir-c") == 0 ||
+                   strcmp(command, "emit-ir-c-opt") == 0) {
+            fprintf(stderr, "ylang: %s failed with %u error(s); no C source was generated.\n",
+                    command, compiler.error_count);
         } else if (strcmp(command, "emit-asm") == 0) {
             fprintf(stderr, "ylang: emit-asm failed with %u error(s); no assembly was generated.\n",
                     compiler.error_count);
@@ -575,6 +820,26 @@ int ylang_run(const char *command, const char *input_path,
         arena_destroy(&compiler.arena);
         free(source);
         return 0;
+    }
+
+    if (strcmp(command, "emit-mir") == 0 ||
+        strcmp(command, "emit-mir-opt") == 0 ||
+        strcmp(command, "emit-mir-json") == 0) {
+        int result = emit_mir(&compiler,
+                              strcmp(command, "emit-mir-opt") == 0,
+                              strcmp(command, "emit-mir-json") == 0);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return result;
+    }
+
+    if (strcmp(command, "emit-ir-c") == 0 ||
+        strcmp(command, "emit-ir-c-opt") == 0) {
+        int result = emit_ir_c(&compiler, output_path,
+                               strcmp(command, "emit-ir-c-opt") == 0);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return result;
     }
 
     if (strcmp(command, "build-asm") == 0) {

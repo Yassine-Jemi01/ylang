@@ -2,8 +2,16 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
   workflow_dispatch:
+
+# Keep only the newest CI run for a pull request. Rapid commits should not
+# leave several full platform matrices waiting for hosted runners.
+concurrency:
+  group: ylang-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-test:
@@ -89,8 +97,10 @@ jobs:
         run: |
           mkdir -p build/windows-smoke
           cat > build/windows-smoke/hello.yl <<'EOF'
-          function main() -> int {
-              print("Windows smoke:", 40 + 2);
+          fn main() -> int {
+              let mut int answer = 40;
+              answer += 2;
+              print("Windows smoke:", answer);
               return 0;
           }
           EOF

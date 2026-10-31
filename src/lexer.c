@@ -140,7 +140,7 @@ static TokenType identifier_type(const Lexer *lexer)
     if (is_word(lexer, "else")) return TOKEN_ELSE;
     if (is_word(lexer, "true")) return TOKEN_TRUE;
     if (is_word(lexer, "false")) return TOKEN_FALSE;
-    if (is_word(lexer, "function")) return TOKEN_FUNCTION;
+    if (is_word(lexer, "function") || is_word(lexer, "fn")) return TOKEN_FUNCTION;
     if (is_word(lexer, "loop")) return TOKEN_LOOP;
     if (is_word(lexer, "while")) return TOKEN_WHILE;
     if (is_word(lexer, "for")) return TOKEN_FOR;

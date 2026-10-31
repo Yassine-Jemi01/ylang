@@ -1,0 +1,9 @@
+function inspect_and_take(borrowed_string view, owned_string taken) -> int {
+    return string.length(view);
+}
+
+function main() -> int {
+    let owned_string owner = string.own("borrow");
+    inspect_and_take(owner, move(owner));
+    return 0;
+}

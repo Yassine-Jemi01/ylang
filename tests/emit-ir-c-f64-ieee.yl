@@ -1,0 +1,10 @@
+fn main() -> int {
+    let float huge = 1e308 * 1e308;
+    let float not_a_number = huge - huge;
+    let float tiny = 5e-324;
+    let float underflow = tiny * 0.5;
+    if (not_a_number != not_a_number and tiny > 0.0 and underflow == 0.0) {
+        return 42;
+    }
+    return 0;
+}
