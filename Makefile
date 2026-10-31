@@ -1,9 +1,8 @@
- 
 VERSION := $(shell cat VERSION)
 CC = gcc
 AR ?= ar
 PYTHON ?= python3
-CPPFLAGS += -Iinclude -Ibuild -DYLANG_VERSION=\\\"$(VERSION)\\\" -DYLANG_SHARE_DIR=\\\"$(PREFIX)/share/ylang\\\" -DYLANG_INCLUDE_DIR=\\\"$(PREFIX)/include\\\"
+CPPFLAGS += -Iinclude -Ibuild -DYLANG_VERSION=\"$(VERSION)\" -DYLANG_SHARE_DIR=\"$(PREFIX)/share/ylang\" -DYLANG_INCLUDE_DIR=\"$(PREFIX)/include\"
 CFLAGS ?= -std=c17 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes -g3 -O0
 LDFLAGS ?=
 PREFIX ?= /usr/local
@@ -44,7 +43,7 @@ regen-runtime-template:
 	@$(PYTHON) tools/embed_text.py runtime/runtime_template.c build/runtime_template.h
 
 print-version:
-	@printf '%s\\n' '$(VERSION)'
+	@printf '%s\n' '$(VERSION)'
 
 build/frontend-unit: tests/frontend_unit.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c src/internal.h include/ylang/compiler.h include/ylang/lexer.h
 	@mkdir -p build
