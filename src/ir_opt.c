@@ -4,6 +4,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef struct {
     uint32_t id;
@@ -407,8 +408,7 @@ static bool constant_fold_function(YIRFunction *function, char *error,
                                 "constant table exceeded the instruction count");
                         }
                         if (constant_count != previous_count)
-                            changed = true;
-                    }
+                                    }
                     continue;
                 }
 
