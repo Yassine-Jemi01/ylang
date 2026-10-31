@@ -75,7 +75,8 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 2.3.6.4 Resolve direct callees against the loaded IR module.
   - [~] 2.3.6.4.1 Verify every call target exists exactly once in the module.
   - [~] 2.3.6.4.2 Compare call arity, parameter types, and return type with the target signature.
-  - [ ] 2.3.6.4.3 Add module-qualified symbol IDs so same-named functions in separate imports remain distinguishable.
+  - [~] 2.3.6.4.3 Generate module-qualified IR symbols from canonical module paths; verify same-named functions in different modules resolve independently.
+  - [ ] 2.3.6.4.4 Define stable cross-build symbol IDs and backend/linker symbol mangling for imported functions.
   - [ ] 2.3.6.5 Add imported-function, built-in, and external ABI call lowering.
   - [ ] 2.3.6.6 Add calling-convention metadata and call-site ABI validation.
 - [ ] 2.3.7 Lower floating-point expressions and values.

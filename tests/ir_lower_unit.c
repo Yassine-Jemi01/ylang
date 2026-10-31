@@ -863,6 +863,29 @@ static void lowers_void_function_call_statement(void)
     arena_destroy(&compiler.arena);
 }
 
+static void lowers_function_with_module_qualified_symbol(void)
+{
+    Expr value = {
+        .kind=EXPR_INT,
+        .token={.type=TOKEN_NUMBER,.start="1",.length=1},
+        .type=TYPE_INT
+    };
+    Stmt ret = {.kind=STMT_RETURN,.as.return_value=&value};
+    Stmt *items[] = {&ret};
+    Stmt body = {.kind=STMT_BLOCK,.as.block={.items=items,.count=1}};
+    Module module = {.canonical_path="/project/stdlib/math.yl"};
+    Function function = {
+        .name="helper",.module=&module,
+        .return_type=TYPE_INT,.body=&body
+    };
+    YIRFunction lowered;
+    char error[192];
+    assert(yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(strcmp(lowered.name,"helper")==0);
+    assert(strcmp(lowered.symbol,"/project/stdlib/math.yl::helper")==0);
+    yir_destroy_function(&lowered);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
@@ -891,6 +914,7 @@ int main(void)
     lowers_nested_direct_function_calls();
     lowers_boolean_function_call_in_condition();
     lowers_void_function_call_statement();
+    lowers_function_with_module_qualified_symbol();
     puts("YLang IR lowering tests passed");
     return 0;
 }

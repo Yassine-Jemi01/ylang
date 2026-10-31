@@ -408,7 +408,7 @@ static void reject_module_missing_call_target(void)
     };
     char error[192];
     assert(!yir_verify_module(&function,1,error,sizeof(error)));
-    assert(strstr(error,"calls missing function 'missing'")!=NULL);
+    assert(strstr(error,"calls missing function symbol 'missing'")!=NULL);
 }
 
 static void reject_module_call_signature_mismatch(void)
@@ -450,7 +450,98 @@ static void reject_module_call_signature_mismatch(void)
     assert(strstr(error,"wrong type")!=NULL);
 }
 
-static void reject_ambiguous_module_call_target(void)
+static void accept_module_qualified_same_name_call_targets(void)
+{
+    const YIRInstruction return_instructions[] = {
+        {.opcode=YIR_OP_RETURN}
+    };
+    const YIRBlock target_block = {
+        .id=0,.instructions=return_instructions,.instruction_count=1
+    };
+    const YIRFunction first_target = {
+        .name="helper",.symbol="lib_a::helper",
+        .return_type=YIR_TYPE_VOID,
+        .blocks=&target_block,.block_count=1
+    };
+    const YIRFunction second_target = {
+        .name="helper",.symbol="lib_b::helper",
+        .return_type=YIR_TYPE_VOID,
+        .blocks=&target_block,.block_count=1
+    };
+    const YIRInstruction caller_instructions[] = {
+        {.opcode=YIR_OP_CALL,.result_type=YIR_TYPE_VOID,
+         .callee="helper",.callee_symbol="lib_b::helper"},
+        {.opcode=YIR_OP_RETURN}
+    };
+    const YIRBlock caller_block = {
+        .id=0,.instructions=caller_instructions,.instruction_count=2
+    };
+    const YIRFunction caller = {
+        .name="main",.symbol="app::main",
+        .return_type=YIR_TYPE_VOID,
+        .blocks=&caller_block,.block_count=1
+    };
+    const YIRFunction module[] = {first_target,second_target,caller};
+    char error[192];
+    assert(yir_verify_module(module,3,error,sizeof(error)));
+}
+
+static void accept_module_qualified_same_name_call_targets(void)
+{
+    const YIRInstruction return_instructions[] = {
+        {.opcode=YIR_OP_RETURN}
+    };
+    const YIRBlock target_block = {
+        .id=0,.instructions=return_instructions,.instruction_count=1
+    };
+    const YIRFunction first_target = {
+        .name="helper",.symbol="lib_a::helper",
+        .return_type=YIR_TYPE_VOID,
+        .blocks=&target_block,.block_count=1
+    };
+    const YIRFunction second_target = {
+        .name="helper",.symbol="lib_b::helper",
+        .return_type=YIR_TYPE_VOID,
+        .blocks=&target_block,.block_count=1
+    };
+    const YIRInstruction caller_instructions[] = {
+        {.opcode=YIR_OP_CALL,.result_type=YIR_TYPE_VOID,
+         .callee="helper",.callee_symbol="lib_b::helper"},
+        {.opcode=YIR_OP_RETURN}
+    };
+    const YIRBlock caller_block = {
+        .id=0,.instructions=caller_instructions,.instruction_count=2
+    };
+    const YIRFunction caller = {
+        .name="main",.symbol="app::main",
+        .return_type=YIR_TYPE_VOID,
+        .blocks=&caller_block,.block_count=1
+    };
+    const YIRFunction module[] = {first_target,second_target,caller};
+    char error[192];
+    assert(yir_verify_module(module,3,error,sizeof(error)));
+}
+
+static void reject_duplicate_qualified_function_symbols(void)
+{
+    const YIRInstruction return_instructions[] = {
+        {.opcode=YIR_OP_RETURN}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=return_instructions,.instruction_count=1
+    };
+    const YIRFunction functions[] = {
+        {.name="helper",.symbol="lib::helper",.return_type=YIR_TYPE_VOID,
+         .blocks=&block,.block_count=1},
+        {.name="other",.symbol="lib::helper",.return_type=YIR_TYPE_VOID,
+         .blocks=&block,.block_count=1}
+    };
+    char error[192];
+    assert(!yir_verify_module(functions,2,error,sizeof(error)));
+    assert(strstr(error,"duplicate function symbol 'lib::helper'")!=NULL);
+}
+
+static void reject_duplicate_symbol_module_call_target(void)
 {
     const YIRInstruction return_instructions[] = {
         {.opcode=YIR_OP_RETURN}
@@ -480,7 +571,7 @@ static void reject_ambiguous_module_call_target(void)
     const YIRFunction module[] = {first_target,second_target,caller};
     char error[192];
     assert(!yir_verify_module(module,3,error,sizeof(error)));
-    assert(strstr(error,"ambiguous function name 'duplicate'")!=NULL);
+    assert(strstr(error,"duplicate function symbol 'duplicate'")!=NULL);
 }
 
 int main(void)
@@ -502,6 +593,9 @@ int main(void)
     accept_module_resolved_call();
     reject_module_missing_call_target();
     reject_module_call_signature_mismatch();
-    reject_ambiguous_module_call_target();
+    reject_duplicate_symbol_module_call_target();
+    accept_module_qualified_same_name_call_targets();
+    reject_duplicate_qualified_function_symbols();
+    accept_module_qualified_same_name_call_targets();
     puts("YLang IR verifier tests passed"); return 0;
 }

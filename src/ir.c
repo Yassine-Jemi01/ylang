@@ -161,6 +161,7 @@ bool yir_verify_function(const YIRFunction *function, char *error,
 
             if (ins->opcode == YIR_OP_CALL) {
                 if (!ins->callee || ins->callee[0] == '\0' ||
+                    (ins->callee_symbol && ins->callee_symbol[0] == '\0') ||
                     ins->argument_count != ins->call_parameter_count ||
                     (ins->argument_count &&
                      (!ins->arguments || !ins->call_parameter_types)) ||
@@ -454,6 +455,13 @@ cleanup:
     return ok;
 }
 
+static const char *module_function_symbol(const YIRFunction *function)
+{
+    if (function->symbol && function->symbol[0] != '\0')
+        return function->symbol;
+    return function->name;
+}
+
 bool yir_verify_module(const YIRFunction *functions, size_t function_count,
                       char *error, size_t error_capacity)
 {
@@ -465,10 +473,21 @@ bool yir_verify_module(const YIRFunction *functions, size_t function_count,
     for (size_t fi = 0; fi < function_count; ++fi) {
         const YIRFunction *function = &functions[fi];
         char function_error[256];
-        if (!function->name || function->name[0] == '\0') {
+        const char *symbol = module_function_symbol(function);
+        if (!function->name || function->name[0] == '\0' ||
+            !symbol || symbol[0] == '\0') {
             (void)fail(error, error_capacity,
-                       "IR module functions require non-empty names");
+                       "IR module functions require non-empty names and symbols");
             return false;
+        }
+        for (size_t prior = 0; prior < fi; ++prior) {
+            if (strcmp(module_function_symbol(&functions[prior]), symbol) == 0) {
+                if (error && error_capacity)
+                    (void)snprintf(error, error_capacity,
+                        "IR module contains duplicate function symbol '%s'",
+                        symbol);
+                return false;
+            }
         }
         if (!yir_verify_function(function, function_error,
                                  sizeof(function_error))) {
@@ -489,12 +508,16 @@ bool yir_verify_module(const YIRFunction *functions, size_t function_count,
                 const YIRInstruction *instruction = &block->instructions[ii];
                 if (instruction->opcode != YIR_OP_CALL) continue;
 
+                const char *requested_symbol =
+                    instruction->callee_symbol && instruction->callee_symbol[0] ?
+                    instruction->callee_symbol : instruction->callee;
                 const YIRFunction *callee = NULL;
                 size_t matches = 0;
                 for (size_t target_index = 0;
                      target_index < function_count; ++target_index) {
-                    if (strcmp(functions[target_index].name,
-                               instruction->callee) == 0) {
+                    const char *target_symbol =
+                        module_function_symbol(&functions[target_index]);
+                    if (strcmp(target_symbol, requested_symbol) == 0) {
                         callee = &functions[target_index];
                         matches++;
                     }
@@ -503,15 +526,15 @@ bool yir_verify_module(const YIRFunction *functions, size_t function_count,
                 if (matches == 0) {
                     if (error && error_capacity)
                         (void)snprintf(error, error_capacity,
-                            "function '%s' calls missing function '%s'",
-                            caller->name, instruction->callee);
+                            "function '%s' calls missing function symbol '%s'",
+                            caller->name, requested_symbol);
                     return false;
                 }
                 if (matches > 1) {
                     if (error && error_capacity)
                         (void)snprintf(error, error_capacity,
-                            "function '%s' calls ambiguous function name '%s'",
-                            caller->name, instruction->callee);
+                            "function '%s' calls ambiguous function symbol '%s'",
+                            caller->name, requested_symbol);
                     return false;
                 }
 

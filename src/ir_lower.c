@@ -71,6 +71,36 @@ static bool lower_fail(Lowerer *lowerer, const char *message)
     return false;
 }
 
+static char *make_function_symbol(const Function *function)
+{
+    if (!function || !function->name || function->name[0] == '\0')
+        return NULL;
+
+    const char *module_path = function->module ?
+                              function->module->canonical_path : NULL;
+    if (!module_path || module_path[0] == '\0') {
+        size_t name_length = strlen(function->name);
+        if (name_length == SIZE_MAX) return NULL;
+        char *symbol = malloc(name_length + 1U);
+        if (!symbol) return NULL;
+        memcpy(symbol, function->name, name_length + 1U);
+        return symbol;
+    }
+
+    size_t module_length = strlen(module_path);
+    size_t name_length = strlen(function->name);
+    if (name_length > SIZE_MAX - 3U ||
+        module_length > SIZE_MAX - name_length - 3U) return NULL;
+    size_t total = module_length + 2U + name_length + 1U;
+    char *symbol = malloc(total);
+    if (!symbol) return NULL;
+    memcpy(symbol, module_path, module_length);
+    symbol[module_length] = ':';
+    symbol[module_length + 1U] = ':';
+    memcpy(symbol + module_length + 2U, function->name, name_length + 1U);
+    return symbol;
+}
+
 static bool map_scalar_type(YType type, YIRType *ir_type)
 {
     if (type == TYPE_INT) {
@@ -240,12 +270,14 @@ static bool append_instruction(Lowerer *lowerer, YIRInstruction instruction,
         free((void *)instruction.arguments);
         free((void *)instruction.false_arguments);
         free((void *)instruction.call_parameter_types);
+        free(instruction.callee_symbol);
         return lower_fail(lowerer, "internal error: no current IR block");
     }
     if (block_is_terminated(block)) {
         free((void *)instruction.arguments);
         free((void *)instruction.false_arguments);
         free((void *)instruction.call_parameter_types);
+        free(instruction.callee_symbol);
         return lower_fail(lowerer, "attempted to emit an instruction after a block terminator");
     }
     if (block->instruction_count == block->instruction_capacity) {
@@ -256,6 +288,7 @@ static bool append_instruction(Lowerer *lowerer, YIRInstruction instruction,
             free((void *)instruction.arguments);
             free((void *)instruction.false_arguments);
             free((void *)instruction.call_parameter_types);
+            free(instruction.callee_symbol);
             return lower_fail(lowerer, "too many instructions in an IR block");
         }
         YIRInstruction *instructions = realloc(
@@ -264,6 +297,7 @@ static bool append_instruction(Lowerer *lowerer, YIRInstruction instruction,
             free((void *)instruction.arguments);
             free((void *)instruction.false_arguments);
             free((void *)instruction.call_parameter_types);
+            free(instruction.callee_symbol);
             return lower_fail(lowerer, "out of memory while lowering IR instructions");
         }
         block->instructions = instructions;
@@ -274,6 +308,7 @@ static bool append_instruction(Lowerer *lowerer, YIRInstruction instruction,
             free((void *)instruction.arguments);
             free((void *)instruction.false_arguments);
             free((void *)instruction.call_parameter_types);
+        free(instruction.callee_symbol);
             return false;
         }
         *result_id = instruction.result_id;
@@ -343,6 +378,7 @@ static bool emit_cond_branch(Lowerer *lowerer, uint32_t condition,
         free((void *)instruction.arguments);
         free((void *)instruction.false_arguments);
         free((void *)instruction.call_parameter_types);
+        free(instruction.callee_symbol);
         return false;
     }
     return append_instruction(lowerer, instruction, NULL);
@@ -401,6 +437,11 @@ static bool lower_call_expression(Lowerer *lowerer, const Expr *expression,
         return lower_fail(lowerer,
             "only int, bool, and void user-function return types are supported by the scalar IR lowerer");
 
+    char *callee_symbol = make_function_symbol(callee);
+    if (!callee_symbol)
+        return lower_fail(lowerer,
+            "out of memory while creating a qualified function symbol");
+
     uint32_t *arguments = callee->param_count ?
         calloc(callee->param_count, sizeof(*arguments)) : NULL;
     YIRType *parameter_types = callee->param_count ?
@@ -408,6 +449,7 @@ static bool lower_call_expression(Lowerer *lowerer, const Expr *expression,
     if (callee->param_count && (!arguments || !parameter_types)) {
         free(arguments);
         free(parameter_types);
+        free(callee_symbol);
         return lower_fail(lowerer,
             "out of memory while lowering function call arguments");
     }
@@ -420,6 +462,7 @@ static bool lower_call_expression(Lowerer *lowerer, const Expr *expression,
             argument->type != parameter->type) {
             free(arguments);
             free(parameter_types);
+            free(callee_symbol);
             return lower_fail(lowerer,
                 "function calls in the initial IR lowerer require matching scalar int or bool parameters");
         }
@@ -430,6 +473,7 @@ static bool lower_call_expression(Lowerer *lowerer, const Expr *expression,
         if (!lowered) {
             free(arguments);
             free(parameter_types);
+            free(callee_symbol);
             return false;
         }
     }
@@ -440,6 +484,7 @@ static bool lower_call_expression(Lowerer *lowerer, const Expr *expression,
         .arguments=arguments,
         .argument_count=callee->param_count,
         .callee=callee->name,
+        .callee_symbol=callee_symbol,
         .call_parameter_types=parameter_types,
         .call_parameter_count=callee->param_count,
         .source_line=expression->token.line,
@@ -1368,6 +1413,7 @@ static void destroy_building_blocks(BuildingBlock *blocks, size_t block_count)
             free((void *)blocks[bi].instructions[ii].arguments);
             free((void *)blocks[bi].instructions[ii].false_arguments);
             free((void *)blocks[bi].instructions[ii].call_parameter_types);
+            free(blocks[bi].instructions[ii].callee_symbol);
         }
         free(blocks[bi].parameters);
         free(blocks[bi].instructions);
@@ -1387,6 +1433,7 @@ void yir_destroy_function(YIRFunction *function)
                 free((void *)instructions[ii].arguments);
                 free((void *)instructions[ii].false_arguments);
                 free((void *)instructions[ii].call_parameter_types);
+                free(instructions[ii].callee_symbol);
             }
             free(instructions);
             free((void *)blocks[bi].parameters);
@@ -1394,6 +1441,7 @@ void yir_destroy_function(YIRFunction *function)
         free(blocks);
     }
     free((void *)function->parameters);
+    free(function->symbol);
     memset(function, 0, sizeof(*function));
 }
 
@@ -1502,6 +1550,16 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
     free(lowerer.locals);
 
     out->name = function->name;
+    out->symbol = make_function_symbol(function);
+    if (!out->symbol) {
+        out->blocks = blocks;
+        out->block_count = lowerer.block_count;
+        out->parameters = parameters;
+        out->parameter_count = function->param_count;
+        yir_destroy_function(out);
+        return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
+                          "out of memory while creating the function's qualified symbol");
+    }
     out->return_type = function->return_type == TYPE_VOID ? YIR_TYPE_VOID :
                        function->return_type == TYPE_BOOL ? YIR_TYPE_BOOL :
                                                            YIR_TYPE_I64;

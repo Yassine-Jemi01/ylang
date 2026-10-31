@@ -4,7 +4,7 @@ Status: standalone typed SSA verifier plus an expanding scalar AST lowering slic
 
 ## Design constraints
 
-- The IR is independent of C syntax and target instruction sets. Direct user-function calls carry a symbolic callee name, typed argument values, and the checked scalar parameter signature; the function verifier checks argument value types and SSA dominance, while `yir_verify_module` resolves each callee to one unique function and compares its complete scalar signature. Missing or ambiguous names fail explicitly. Same-named functions in different modules still need module-qualified symbol IDs.
+- The IR is independent of C syntax and target instruction sets. Direct user-function calls carry a readable callee name, a module-qualified callee symbol, typed argument values, and the checked scalar parameter signature. A function lowered from a module receives a symbol built from its canonical module path plus `::` and its source function name, while unowned AST unit-test functions fall back to their source name. The function verifier checks argument value types and SSA dominance, while `yir_verify_module` resolves the qualified symbol to one unique function and compares its complete scalar signature. This allows same-named functions in different imported modules without ambiguous calls; duplicate symbols are rejected.
 - Every produced value has an explicit type and a function-wide unique SSA identifier.
 - The first block is the function entry.
 - Every block ends in exactly one explicit terminator.

@@ -54,6 +54,7 @@ typedef struct {
     size_t false_argument_count;
     /* Direct user-function call metadata; arguments stores SSA value IDs. */
     const char *callee;
+    char *callee_symbol;
     const YIRType *call_parameter_types;
     size_t call_parameter_count;
     size_t source_line;
@@ -75,6 +76,7 @@ typedef struct {
 
 typedef struct {
     const char *name;
+    char *symbol;
     YIRType return_type;
     const YIRFunctionParameter *parameters;
     size_t parameter_count;
