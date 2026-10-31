@@ -3,6 +3,7 @@
 #endif
 #define _POSIX_C_SOURCE 200809L
 #include "internal.h"
+#include "ylang/ir.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -493,6 +494,74 @@ static int run_external(char *const argv[])
 #endif
 }
 
+
+static int emit_mir(Compiler *compiler)
+{
+    if (!compiler->program || compiler->program->function_count == 0) {
+        fputs("ylang: emit-mir: the program contains no functions to lower.\\n", stderr);
+        return 1;
+    }
+
+    const size_t function_count = compiler->program->function_count;
+    if (function_count > SIZE_MAX / sizeof(YIRFunction)) {
+        fputs("ylang: emit-mir: too many functions to lower.\\n", stderr);
+        return 70;
+    }
+
+    YIRFunction *lowered = calloc(function_count, sizeof(*lowered));
+    if (!lowered) {
+        fputs("ylang: emit-mir: out of memory while preparing MIR output.\\n", stderr);
+        return 70;
+    }
+
+    size_t lowered_count = 0;
+    for (size_t i = 0; i < function_count; ++i) {
+        Function *function = compiler->program->functions[i];
+        char error[256];
+        const char *name = function && function->name ? function->name : "<anonymous>";
+
+        if (!yir_lower_function(function, &lowered[i], error, sizeof(error))) {
+            fprintf(stderr,
+                    "ylang: emit-mir: cannot lower function '%s' at %zu:%zu: %s\\n",
+                    name,
+                    function ? function->token.line : 0,
+                    function ? function->token.column : 0,
+                    error[0] ? error : "unknown lowering error");
+            for (size_t j = 0; j < lowered_count; ++j)
+                yir_destroy_function(&lowered[j]);
+            free(lowered);
+            return 1;
+        }
+        lowered_count++;
+
+        if (!yir_verify_function(&lowered[i], error, sizeof(error))) {
+            fprintf(stderr,
+                    "ylang: emit-mir: verifier rejected function '%s': %s\\n",
+                    name, error[0] ? error : "unknown verification error");
+            for (size_t j = 0; j < lowered_count; ++j)
+                yir_destroy_function(&lowered[j]);
+            free(lowered);
+            return 1;
+        }
+    }
+
+    for (size_t i = 0; i < function_count; ++i) {
+        if (i != 0) (void)fputc('\\n', stdout);
+        yir_print_function(stdout, &lowered[i]);
+    }
+
+    int result = 0;
+    if (fflush(stdout) != 0 || ferror(stdout)) {
+        fputs("ylang: emit-mir: failed while writing MIR to standard output.\\n", stderr);
+        result = 74;
+    }
+
+    for (size_t i = 0; i < lowered_count; ++i)
+        yir_destroy_function(&lowered[i]);
+    free(lowered);
+    return result;
+}
+
 int ylang_run(const char *command, const char *input_path,
               const char *output_path, const char *cc)
 {
@@ -555,7 +624,7 @@ int ylang_run(const char *command, const char *input_path,
         } else if (strcmp(command, "emit-c") == 0) {
             fprintf(stderr, "ylang: emit-c failed with %u error(s); no C source was generated.\n",
                     compiler.error_count);
-        } else if (strcmp(command, "emit-asm") == 0) {
+        } else if (strcmp(command, "emit-mir") == 0) {\n            fprintf(stderr, "ylang: emit-mir failed with %u error(s); no MIR was generated.\\n",\n                    compiler.error_count);\n        } else if (strcmp(command, "emit-asm") == 0) {
             fprintf(stderr, "ylang: emit-asm failed with %u error(s); no assembly was generated.\n",
                     compiler.error_count);
         } else if (strcmp(command, "build-asm") == 0) {
@@ -575,6 +644,13 @@ int ylang_run(const char *command, const char *input_path,
         arena_destroy(&compiler.arena);
         free(source);
         return 0;
+    }
+
+    if (strcmp(command, "emit-mir") == 0) {
+        int result = emit_mir(&compiler);
+        arena_destroy(&compiler.arena);
+        free(source);
+        return result;
     }
 
     if (strcmp(command, "build-asm") == 0) {
