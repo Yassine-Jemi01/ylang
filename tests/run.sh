@@ -1700,6 +1700,24 @@ if ./build/ylang check tests/borrowed-string-move.yl > build/borrowed-string-mov
 fi
 grep -q 'E2112' build/borrowed-string-move.out
 
+# Multiple immutable views of the same owner are valid for one call.
+./build/ylang build tests/borrowed-string-aliasing.yl -o build/test-borrowed-string-aliasing >/dev/null
+[ "$(./build/test-borrowed-string-aliasing)" = "12" ]
+
+# A call-scoped shared borrow reserves its owner before any argument is checked.
+# This must reject moving the same owner in another argument, regardless of order.
+if ./build/ylang check tests/borrowed-string-move-conflict.yl > build/borrowed-string-move-conflict.out 2>&1; then
+    echo "FAIL: YLang allowed moving an owner while the same call borrows it" >&2
+    exit 1
+fi
+grep -q 'E2130' build/borrowed-string-move-conflict.out
+
+if ./build/ylang check tests/borrowed-string-write-conflict.yl > build/borrowed-string-write-conflict.out 2>&1; then
+    echo "FAIL: YLang allowed mutation of an owner while the same call borrows it" >&2
+    exit 1
+fi
+grep -q 'E2131' build/borrowed-string-write-conflict.out
+
 if ./build/ylang check tests/borrowed-string-array.yl > build/borrowed-string-array.out 2>&1; then
     echo "FAIL: YLang accepted an array of borrowed_string parameters" >&2
     exit 1
