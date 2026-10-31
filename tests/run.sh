@@ -242,6 +242,21 @@ emit_ir_c_arithmetic_status=$?
 set -e
 [ "$emit_ir_c_arithmetic_status" -eq 8 ]
 
+# Finite f64 values, calls, arithmetic, negation, and comparisons work in IR and C.
+./build/ylang emit-mir tests/emit-ir-c-f64.yl > build/emit-ir-c-f64.mir
+grep -Fq 'const.f64' build/emit-ir-c-f64.mir
+grep -Fq 'mul.f64' build/emit-ir-c-f64.mir
+grep -Fq 'div.f64' build/emit-ir-c-f64.mir
+grep -Fq 'neg.f64' build/emit-ir-c-f64.mir
+grep -Fq 'lt.f64' build/emit-ir-c-f64.mir
+./build/ylang emit-ir-c tests/emit-ir-c-f64.yl -o build/emit-ir-c-f64.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-f64.c -o build/test-emit-ir-c-f64
+set +e
+./build/test-emit-ir-c-f64
+emit_ir_c_f64_status=$?
+set -e
+[ "$emit_ir_c_f64_status" -eq 42 ]
+
 # Division by zero must retain YLang's checked runtime failure.
 ./build/ylang emit-ir-c tests/emit-ir-c-div-zero.yl -o build/emit-ir-c-div-zero.c >/dev/null
 cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-div-zero.c -o build/test-emit-ir-c-div-zero

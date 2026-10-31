@@ -1,5 +1,6 @@
 #include "ylang/ir.h"
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -625,6 +626,77 @@ static void reject_non_integer_negation_operand(void)
     assert(strstr(error,"operand type")!=NULL);
 }
 
+static void accept_typed_f64_arithmetic_and_comparison(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_F64},
+        {.id=2,.type=YIR_TYPE_F64}
+    };
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_ADD_F64,.result_id=3,.result_type=YIR_TYPE_F64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_DIV_F64,.result_id=4,.result_type=YIR_TYPE_F64,
+         .lhs=3,.rhs=2},
+        {.opcode=YIR_OP_NEG_F64,.result_id=5,.result_type=YIR_TYPE_F64,
+         .lhs=4},
+        {.opcode=YIR_OP_LT_F64,.result_id=6,.result_type=YIR_TYPE_BOOL,
+         .lhs=5,.rhs=1},
+        {.opcode=YIR_OP_RETURN,.lhs=6}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=5
+    };
+    const YIRFunction function = {
+        .name="compare_f64",.return_type=YIR_TYPE_BOOL,
+        .parameters=parameters,.parameter_count=2,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
+static void reject_non_finite_f64_constant(void)
+{
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_F64,.result_id=1,.result_type=YIR_TYPE_F64,
+         .floating_immediate=NAN},
+        {.opcode=YIR_OP_RETURN,.lhs=1}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=2
+    };
+    const YIRFunction function = {
+        .name="non_finite",.return_type=YIR_TYPE_F64,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,"operand type") != NULL);
+}
+
+static void reject_f64_operation_with_i64_operand(void)
+{
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+         .immediate=1},
+        {.opcode=YIR_OP_CONST_F64,.result_id=2,.result_type=YIR_TYPE_F64,
+         .floating_immediate=2.0},
+        {.opcode=YIR_OP_ADD_F64,.result_id=3,.result_type=YIR_TYPE_F64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_RETURN,.lhs=3}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=4
+    };
+    const YIRFunction function = {
+        .name="bad_mixed_float",.return_type=YIR_TYPE_F64,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,"operand type") != NULL);
+}
+
 int main(void)
 {
     valid_arithmetic_return(); reject_use_before_definition();
@@ -648,6 +720,9 @@ int main(void)
     accept_module_qualified_same_name_call_targets();
     accept_integer_division_modulo_and_negation();
     reject_non_integer_negation_operand();
+    accept_typed_f64_arithmetic_and_comparison();
+    reject_non_finite_f64_constant();
+    reject_f64_operation_with_i64_operand();
     reject_duplicate_qualified_function_symbols();
     accept_module_qualified_same_name_call_targets();
     puts("YLang IR verifier tests passed"); return 0;

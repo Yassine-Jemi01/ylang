@@ -43,6 +43,10 @@ static void print_instruction(FILE *stream, const YIRInstruction *instruction)
         case YIR_OP_CONST_I64:
             (void)fprintf(stream, "const.i64 %" PRId64, instruction->immediate);
             break;
+        case YIR_OP_CONST_F64:
+            (void)fprintf(stream, "const.f64 %a",
+                          instruction->floating_immediate);
+            break;
         case YIR_OP_ADD_I64:
             (void)fputs("add.i64 ", stream);
             print_value(stream, instruction->lhs);
@@ -61,6 +65,42 @@ static void print_instruction(FILE *stream, const YIRInstruction *instruction)
             (void)fputs(", ", stream);
             print_value(stream, instruction->rhs);
             break;
+        case YIR_OP_ADD_F64:
+        case YIR_OP_SUB_F64:
+        case YIR_OP_MUL_F64:
+        case YIR_OP_DIV_F64: {
+            const char *name = instruction->opcode == YIR_OP_ADD_F64 ?
+                "add.f64" : instruction->opcode == YIR_OP_SUB_F64 ?
+                "sub.f64" : instruction->opcode == YIR_OP_MUL_F64 ?
+                "mul.f64" : "div.f64";
+            (void)fprintf(stream, "%s ", name);
+            print_value(stream, instruction->lhs);
+            (void)fputs(", ", stream);
+            print_value(stream, instruction->rhs);
+            break;
+        }
+        case YIR_OP_NEG_F64:
+            (void)fputs("neg.f64 ", stream);
+            print_value(stream, instruction->lhs);
+            break;
+        case YIR_OP_EQ_F64:
+        case YIR_OP_NE_F64:
+        case YIR_OP_LT_F64:
+        case YIR_OP_LE_F64:
+        case YIR_OP_GT_F64:
+        case YIR_OP_GE_F64: {
+            const char *name = instruction->opcode == YIR_OP_EQ_F64 ?
+                "eq.f64" : instruction->opcode == YIR_OP_NE_F64 ?
+                "ne.f64" : instruction->opcode == YIR_OP_LT_F64 ?
+                "lt.f64" : instruction->opcode == YIR_OP_LE_F64 ?
+                "le.f64" : instruction->opcode == YIR_OP_GT_F64 ?
+                "gt.f64" : "ge.f64";
+            (void)fprintf(stream, "%s ", name);
+            print_value(stream, instruction->lhs);
+            (void)fputs(", ", stream);
+            print_value(stream, instruction->rhs);
+            break;
+        }
         case YIR_OP_DIV_I64:
             (void)fputs("div.i64 ", stream);
             print_value(stream, instruction->lhs);

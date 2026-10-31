@@ -168,10 +168,52 @@ static void emits_division_modulo_and_negation_runtime_checks(void)
     assert(fclose(stream) == 0);
 }
 
-static void rejects_float_signatures_until_lowering_exists(void)
+static void emits_f64_arithmetic_calls_and_zero_checks(void)
 {
     const YIRFunctionParameter parameters[] = {
         {.id=1,.type=YIR_TYPE_F64}
+    };
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_F64,.result_id=2,.result_type=YIR_TYPE_F64,
+         .floating_immediate=1.25},
+        {.opcode=YIR_OP_ADD_F64,.result_id=3,.result_type=YIR_TYPE_F64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_DIV_F64,.result_id=4,.result_type=YIR_TYPE_F64,
+         .lhs=3,.rhs=1},
+        {.opcode=YIR_OP_NEG_F64,.result_id=5,.result_type=YIR_TYPE_F64,
+         .lhs=4},
+        {.opcode=YIR_OP_LT_F64,.result_id=6,.result_type=YIR_TYPE_BOOL,
+         .lhs=5,.rhs=1},
+        {.opcode=YIR_OP_RETURN,.lhs=6}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=6
+    };
+    const YIRFunction function = {
+        .name="f64_ops",.symbol="math::f64_ops",
+        .return_type=YIR_TYPE_BOOL,
+        .parameters=parameters,.parameter_count=1,
+        .blocks=&block,.block_count=1
+    };
+    FILE *stream = tmpfile();
+    assert(stream != NULL);
+    char error[256];
+    assert(yir_emit_c_module(stream,&function,1,error,sizeof(error)));
+    char output[8192];
+    (void)read_stream(stream,output,sizeof(output));
+    assert(strstr(output,"double yir_v_1") != NULL);
+    assert(strstr(output,"0x1.4p+0") != NULL);
+    assert(strstr(output,"yir_div_f64(") != NULL);
+    assert(strstr(output,"floating-point division by zero") != NULL);
+    assert(strstr(output,"yir_v_5 = -yir_v_4;") != NULL);
+    assert(strstr(output,"(yir_v_5 < yir_v_1)") != NULL);
+    assert(fclose(stream) == 0);
+}
+
+static void rejects_pointer_signatures_until_lowering_exists(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_PTR}
     };
     const YIRInstruction instructions[] = {
         {.opcode=YIR_OP_RETURN,.lhs=1}
@@ -180,8 +222,8 @@ static void rejects_float_signatures_until_lowering_exists(void)
         .id=0,.instructions=instructions,.instruction_count=1
     };
     const YIRFunction function = {
-        .name="identity_float",.symbol="app::identity_float",
-        .return_type=YIR_TYPE_F64,
+        .name="identity_pointer",.symbol="app::identity_pointer",
+        .return_type=YIR_TYPE_PTR,
         .parameters=parameters,.parameter_count=1,
         .blocks=&block,.block_count=1
     };
@@ -190,7 +232,7 @@ static void rejects_float_signatures_until_lowering_exists(void)
     assert(stream != NULL);
     char error[256];
     assert(!yir_emit_c_module(stream,&function,1,error,sizeof(error)));
-    assert(strstr(error,"only void, bool, and i64 scalar signatures") != NULL);
+    assert(strstr(error,"only void, bool, i64, and f64 scalar signatures") != NULL);
     assert(fclose(stream) == 0);
 }
 
@@ -198,8 +240,9 @@ int main(void)
 {
     emits_scalar_arithmetic_and_direct_calls();
     emits_control_flow_and_block_parameter_assignments();
-    rejects_float_signatures_until_lowering_exists();
+    rejects_pointer_signatures_until_lowering_exists();
     emits_division_modulo_and_negation_runtime_checks();
+    emits_f64_arithmetic_calls_and_zero_checks();
     puts("YLang IR C emitter tests passed");
     return 0;
 }

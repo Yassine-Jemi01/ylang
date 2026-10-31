@@ -3,6 +3,7 @@
 
 #include <errno.h>
 #include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -109,6 +110,10 @@ static bool map_scalar_type(YType type, YIRType *ir_type)
     }
     if (type == TYPE_BOOL) {
         *ir_type = YIR_TYPE_BOOL;
+        return true;
+    }
+    if (type == TYPE_FLOAT) {
+        *ir_type = YIR_TYPE_F64;
         return true;
     }
     return false;
@@ -411,8 +416,32 @@ static bool parse_integer_literal(const Expr *expression, int64_t *value)
     return true;
 }
 
+static bool parse_float_literal(const Expr *expression, double *value)
+{
+    if (!expression || expression->kind != EXPR_FLOAT ||
+        !expression->token.start || expression->token.length == 0 ||
+        expression->token.length == SIZE_MAX)
+        return false;
+
+    size_t length = expression->token.length;
+    char *copy = malloc(length + 1U);
+    if (!copy) return false;
+    memcpy(copy, expression->token.start, length);
+    copy[length] = '\0';
+    errno = 0;
+    char *end = NULL;
+    double parsed = strtod(copy, &end);
+    bool valid = end == copy + length && isfinite(parsed);
+    free(copy);
+    if (!valid) return false;
+    *value = parsed;
+    return true;
+}
+
 static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
                                uint32_t *value_id);
+static bool lower_float_expr(Lowerer *lowerer, const Expr *expression,
+                             uint32_t *value_id);
 static bool lower_boolean_expr(Lowerer *lowerer, const Expr *expression,
                                uint32_t *value_id);
 
@@ -435,7 +464,7 @@ static bool lower_call_expression(Lowerer *lowerer, const Expr *expression,
     if (callee->return_type != TYPE_VOID &&
         !map_scalar_type(callee->return_type, &return_type))
         return lower_fail(lowerer,
-            "only int, bool, and void user-function return types are supported by the scalar IR lowerer");
+            "only int, float, bool, and void user-function return types are supported by the scalar IR lowerer");
 
     char *callee_symbol = make_function_symbol(callee);
     if (!callee_symbol)
@@ -464,12 +493,16 @@ static bool lower_call_expression(Lowerer *lowerer, const Expr *expression,
             free(parameter_types);
             free(callee_symbol);
             return lower_fail(lowerer,
-                "function calls in the initial IR lowerer require matching scalar int or bool parameters");
+                "function calls in the initial IR lowerer require matching scalar int, float, or bool parameters");
         }
 
-        bool lowered = parameter->type == TYPE_INT ?
-            lower_integer_expr(lowerer, argument, &arguments[i]) :
-            lower_boolean_expr(lowerer, argument, &arguments[i]);
+        bool lowered = false;
+        if (parameter->type == TYPE_INT)
+            lowered = lower_integer_expr(lowerer, argument, &arguments[i]);
+        else if (parameter->type == TYPE_BOOL)
+            lowered = lower_boolean_expr(lowerer, argument, &arguments[i]);
+        else if (parameter->type == TYPE_FLOAT)
+            lowered = lower_float_expr(lowerer, argument, &arguments[i]);
         if (!lowered) {
             free(arguments);
             free(parameter_types);
@@ -616,6 +649,105 @@ static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
         "expression is outside the scalar IR lowering subset");
 }
 
+static bool lower_float_expr(Lowerer *lowerer, const Expr *expression,
+                             uint32_t *value_id)
+{
+    if (!expression || expression->type != TYPE_FLOAT)
+        return lower_fail(lowerer, "floating-point expression must have type float");
+
+    if (expression->kind == EXPR_CALL)
+        return lower_call_expression(lowerer, expression, value_id);
+
+    if (expression->kind == EXPR_NAME) {
+        uint32_t value = 0;
+        if (!expression->as.name.variable ||
+            expression->as.name.variable->type != TYPE_FLOAT ||
+            !current_value(lowerer, expression->as.name.variable, &value))
+            return lower_fail(lowerer,
+                "float names must refer to scalar float parameters or initialized locals");
+        *value_id = value;
+        return true;
+    }
+
+    if (expression->kind == EXPR_FLOAT) {
+        double immediate = 0.0;
+        if (!parse_float_literal(expression, &immediate))
+            return lower_fail(lowerer,
+                "floating-point literal must be finite and representable");
+        YIRInstruction instruction = {
+            .opcode=YIR_OP_CONST_F64,
+            .result_type=YIR_TYPE_F64,
+            .floating_immediate=immediate,
+            .source_line=expression->token.line,
+            .source_column=expression->token.column
+        };
+        return append_instruction(lowerer, instruction, value_id);
+    }
+
+    if (expression->kind == EXPR_UNARY &&
+        expression->as.unary.op.type == TOKEN_MINUS) {
+        double immediate = 0.0;
+        if (parse_float_literal(expression->as.unary.right, &immediate)) {
+            YIRInstruction literal = {
+                .opcode=YIR_OP_CONST_F64,
+                .result_type=YIR_TYPE_F64,
+                .floating_immediate=-immediate,
+                .source_line=expression->as.unary.op.line,
+                .source_column=expression->as.unary.op.column
+            };
+            return append_instruction(lowerer, literal, value_id);
+        }
+
+        uint32_t operand = 0;
+        if (!lower_float_expr(lowerer, expression->as.unary.right, &operand))
+            return false;
+        YIRInstruction instruction = {
+            .opcode=YIR_OP_NEG_F64,
+            .result_type=YIR_TYPE_F64,
+            .lhs=operand,
+            .source_line=expression->as.unary.op.line,
+            .source_column=expression->as.unary.op.column
+        };
+        return append_instruction(lowerer, instruction, value_id);
+    }
+
+    if (expression->kind == EXPR_BINARY) {
+        const Expr *left = expression->as.binary.left;
+        const Expr *right = expression->as.binary.right;
+        if (!left || !right || left->type != TYPE_FLOAT ||
+            right->type != TYPE_FLOAT)
+            return lower_fail(lowerer,
+                "mixed int/float arithmetic requires an explicit conversion");
+
+        uint32_t lhs = 0, rhs = 0;
+        if (!lower_float_expr(lowerer, left, &lhs) ||
+            !lower_float_expr(lowerer, right, &rhs))
+            return false;
+        YIROpcode opcode;
+        switch (expression->as.binary.op.type) {
+            case TOKEN_PLUS: opcode = YIR_OP_ADD_F64; break;
+            case TOKEN_MINUS: opcode = YIR_OP_SUB_F64; break;
+            case TOKEN_STAR: opcode = YIR_OP_MUL_F64; break;
+            case TOKEN_SLASH: opcode = YIR_OP_DIV_F64; break;
+            default:
+                return lower_fail(lowerer,
+                    "operator is not supported for the initial f64 IR subset");
+        }
+        YIRInstruction instruction = {
+            .opcode=opcode,
+            .result_type=YIR_TYPE_F64,
+            .lhs=lhs,
+            .rhs=rhs,
+            .source_line=expression->as.binary.op.line,
+            .source_column=expression->as.binary.op.column
+        };
+        return append_instruction(lowerer, instruction, value_id);
+    }
+
+    return lower_fail(lowerer,
+        "floating-point expression is outside the initial f64 lowering subset");
+}
+
 static bool lower_boolean_expr(Lowerer *lowerer, const Expr *expression,
                                uint32_t *value_id)
 {
@@ -725,21 +857,47 @@ static bool lower_boolean_expr(Lowerer *lowerer, const Expr *expression,
             return true;
         }
 
+        const Expr *left = expression->as.binary.left;
+        const Expr *right = expression->as.binary.right;
+        if (!left || !right || left->type != right->type)
+            return lower_fail(lowerer,
+                "comparison operands must have matching numeric types");
+
         uint32_t lhs = 0, rhs = 0;
-        if (!lower_integer_expr(lowerer, expression->as.binary.left, &lhs) ||
-            !lower_integer_expr(lowerer, expression->as.binary.right, &rhs))
-            return false;
         YIROpcode opcode;
-        switch (operator_type) {
+        if (left->type == TYPE_FLOAT) {
+            if (!lower_float_expr(lowerer, left, &lhs) ||
+                !lower_float_expr(lowerer, right, &rhs))
+                return false;
+            switch (operator_type) {
+                case TOKEN_EQUAL_EQUAL: opcode = YIR_OP_EQ_F64; break;
+                case TOKEN_BANG_EQUAL: opcode = YIR_OP_NE_F64; break;
+                case TOKEN_LESS: opcode = YIR_OP_LT_F64; break;
+                case TOKEN_LESS_EQUAL: opcode = YIR_OP_LE_F64; break;
+                case TOKEN_GREATER: opcode = YIR_OP_GT_F64; break;
+                case TOKEN_GREATER_EQUAL: opcode = YIR_OP_GE_F64; break;
+                default:
+                    return lower_fail(lowerer,
+                        "comparison operator is not supported for f64 values");
+            }
+        } else if (left->type == TYPE_INT) {
+            if (!lower_integer_expr(lowerer, left, &lhs) ||
+                !lower_integer_expr(lowerer, right, &rhs))
+                return false;
+            switch (operator_type) {
             case TOKEN_EQUAL_EQUAL: opcode = YIR_OP_EQ_I64; break;
             case TOKEN_BANG_EQUAL: opcode = YIR_OP_NE_I64; break;
             case TOKEN_LESS: opcode = YIR_OP_LT_I64; break;
             case TOKEN_LESS_EQUAL: opcode = YIR_OP_LE_I64; break;
             case TOKEN_GREATER: opcode = YIR_OP_GT_I64; break;
-            case TOKEN_GREATER_EQUAL: opcode = YIR_OP_GE_I64; break;
-            default:
-                return lower_fail(lowerer,
-                    "comparison operator is not supported by the scalar IR lowerer");
+                case TOKEN_GREATER_EQUAL: opcode = YIR_OP_GE_I64; break;
+                default:
+                    return lower_fail(lowerer,
+                        "comparison operator is not supported by the scalar IR lowerer");
+            }
+        } else {
+            return lower_fail(lowerer,
+                "only int and float comparisons are supported by the scalar IR lowerer");
         }
         YIRInstruction instruction = {
             .opcode=opcode,
@@ -875,6 +1033,11 @@ static bool lower_return_statement(Lowerer *lowerer,
             lowered = lower_boolean_expr(lowerer,
                                           statement->as.return_value,
                                           &returned);
+        else if (lowerer->function->return_type == TYPE_FLOAT &&
+                 statement->as.return_value->type == TYPE_FLOAT)
+            lowered = lower_float_expr(lowerer,
+                                       statement->as.return_value,
+                                       &returned);
         else
             return lower_fail(lowerer,
                 "return expression type does not match the function return type");
@@ -914,14 +1077,17 @@ static bool lower_expression_statement(Lowerer *lowerer,
         !is_function_parameter(lowerer, variable, NULL))
         return lower_fail(lowerer,
             "assignment target has no prior local declaration or parameter");
-    if (variable->type != TYPE_INT && variable->type != TYPE_BOOL)
+    if (variable->type != TYPE_INT && variable->type != TYPE_BOOL &&
+        variable->type != TYPE_FLOAT)
         return lower_fail(lowerer,
-            "only int and bool local assignments are supported");
+            "only int, float, and bool local assignments are supported");
 
     uint32_t value_id = 0;
     bool lowered = variable->type == TYPE_INT ?
         lower_integer_expr(lowerer, expression->as.assign.right, &value_id) :
-        lower_boolean_expr(lowerer, expression->as.assign.right, &value_id);
+        variable->type == TYPE_BOOL ?
+        lower_boolean_expr(lowerer, expression->as.assign.right, &value_id) :
+        lower_float_expr(lowerer, expression->as.assign.right, &value_id);
     if (!lowered) return false;
     return bind_local(lowerer, variable, value_id);
 }
@@ -1431,14 +1597,16 @@ static bool lower_statement(Lowerer *lowerer, const Stmt *statement)
         case STMT_VAR: {
             const VarDecl *variable = statement->as.variable;
             if (!variable || variable->is_array ||
-                (variable->type != TYPE_INT && variable->type != TYPE_BOOL) ||
-                !variable->initializer)
+                (variable->type != TYPE_INT && variable->type != TYPE_BOOL &&
+                 variable->type != TYPE_FLOAT) || !variable->initializer)
                 return lower_fail(lowerer,
-                    "only initialized scalar int and bool local variables are supported");
+                    "only initialized scalar int, float, and bool local variables are supported");
             uint32_t value_id = 0;
             bool lowered = variable->type == TYPE_INT ?
                 lower_integer_expr(lowerer, variable->initializer, &value_id) :
-                lower_boolean_expr(lowerer, variable->initializer, &value_id);
+                variable->type == TYPE_BOOL ?
+                lower_boolean_expr(lowerer, variable->initializer, &value_id) :
+                lower_float_expr(lowerer, variable->initializer, &value_id);
             if (!lowered) return false;
             return bind_local(lowerer, variable, value_id);
         }
@@ -1530,17 +1698,17 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
         return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                           "function has too many parameters for the IR lowerer");
     for (size_t i = 0; i < function->param_count; ++i) {
+        YIRType ignored_type;
         if (!function->params[i] || function->params[i]->is_array ||
-            (function->params[i]->type != TYPE_INT &&
-             function->params[i]->type != TYPE_BOOL))
+            !map_scalar_type(function->params[i]->type, &ignored_type))
             return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
-                              "only scalar int and bool function parameters are supported by the IR lowerer");
+                              "only scalar int, float, and bool function parameters are supported by the IR lowerer");
     }
-    if (function->return_type != TYPE_INT &&
-        function->return_type != TYPE_BOOL &&
-        function->return_type != TYPE_VOID)
+    YIRType function_return_type = YIR_TYPE_VOID;
+    if (function->return_type != TYPE_VOID &&
+        !map_scalar_type(function->return_type, &function_return_type))
         return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
-                          "only int, bool, and void functions are supported by the IR lowerer");
+                          "only int, float, bool, and void functions are supported by the IR lowerer");
 
     YIRFunctionParameter *parameters = NULL;
     if (function->param_count) {
@@ -1630,9 +1798,7 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
         return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
                           "out of memory while creating the function's qualified symbol");
     }
-    out->return_type = function->return_type == TYPE_VOID ? YIR_TYPE_VOID :
-                       function->return_type == TYPE_BOOL ? YIR_TYPE_BOOL :
-                                                           YIR_TYPE_I64;
+    out->return_type = function_return_type;
     out->parameters = parameters;
     out->parameter_count = function->param_count;
     out->blocks = blocks;

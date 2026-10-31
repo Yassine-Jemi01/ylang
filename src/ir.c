@@ -1,5 +1,6 @@
 #include "ylang/ir.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -312,6 +313,11 @@ bool yir_verify_function(const YIRFunction *function, char *error,
                     operands_ok = ins->result_id != 0 &&
                                   ins->result_type == YIR_TYPE_I64;
                     break;
+                case YIR_OP_CONST_F64:
+                    operands_ok = ins->result_id != 0 &&
+                                  ins->result_type == YIR_TYPE_F64 &&
+                                  isfinite(ins->floating_immediate);
+                    break;
                 case YIR_OP_ADD_I64:
                 case YIR_OP_SUB_I64:
                 case YIR_OP_MUL_I64:
@@ -332,6 +338,41 @@ bool yir_verify_function(const YIRFunction *function, char *error,
                         check_operand(values, value_count, dominators,
                                       block_count, bi, ii, ins->lhs,
                                       YIR_TYPE_I64);
+                    break;
+                case YIR_OP_ADD_F64:
+                case YIR_OP_SUB_F64:
+                case YIR_OP_MUL_F64:
+                case YIR_OP_DIV_F64:
+                    operands_ok = ins->result_id != 0 &&
+                        ins->result_type == YIR_TYPE_F64 &&
+                        check_operand(values, value_count, dominators,
+                                      block_count, bi, ii, ins->lhs,
+                                      YIR_TYPE_F64) &&
+                        check_operand(values, value_count, dominators,
+                                      block_count, bi, ii, ins->rhs,
+                                      YIR_TYPE_F64);
+                    break;
+                case YIR_OP_NEG_F64:
+                    operands_ok = ins->result_id != 0 &&
+                        ins->result_type == YIR_TYPE_F64 &&
+                        check_operand(values, value_count, dominators,
+                                      block_count, bi, ii, ins->lhs,
+                                      YIR_TYPE_F64);
+                    break;
+                case YIR_OP_EQ_F64:
+                case YIR_OP_NE_F64:
+                case YIR_OP_LT_F64:
+                case YIR_OP_LE_F64:
+                case YIR_OP_GT_F64:
+                case YIR_OP_GE_F64:
+                    operands_ok = ins->result_id != 0 &&
+                        ins->result_type == YIR_TYPE_BOOL &&
+                        check_operand(values, value_count, dominators,
+                                      block_count, bi, ii, ins->lhs,
+                                      YIR_TYPE_F64) &&
+                        check_operand(values, value_count, dominators,
+                                      block_count, bi, ii, ins->rhs,
+                                      YIR_TYPE_F64);
                     break;
                 case YIR_OP_EQ_I64:
                 case YIR_OP_NE_I64:

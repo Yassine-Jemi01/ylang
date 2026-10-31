@@ -221,12 +221,55 @@ static void prints_division_modulo_and_negation(void)
     assert(fclose(stream) == 0);
 }
 
+static void prints_f64_constants_arithmetic_and_comparisons(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_F64}
+    };
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_F64,.result_id=2,.result_type=YIR_TYPE_F64,
+         .floating_immediate=1.25},
+        {.opcode=YIR_OP_ADD_F64,.result_id=3,.result_type=YIR_TYPE_F64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_DIV_F64,.result_id=4,.result_type=YIR_TYPE_F64,
+         .lhs=3,.rhs=1},
+        {.opcode=YIR_OP_NEG_F64,.result_id=5,.result_type=YIR_TYPE_F64,
+         .lhs=4},
+        {.opcode=YIR_OP_LT_F64,.result_id=6,.result_type=YIR_TYPE_BOOL,
+         .lhs=5,.rhs=1},
+        {.opcode=YIR_OP_RETURN,.lhs=6}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=6
+    };
+    const YIRFunction function = {
+        .name="f64_ops",.return_type=YIR_TYPE_BOOL,
+        .parameters=parameters,.parameter_count=1,
+        .blocks=&block,.block_count=1
+    };
+    FILE *stream = tmpfile();
+    assert(stream != NULL);
+    yir_print_function(stream,&function);
+    assert_stream_equals(stream,
+        "fn f64_ops(%1: f64) -> bool {\n"
+        "bb0:\n"
+        "  %2 = const.f64 0x1.4p+0\n"
+        "  %3 = add.f64 %1, %2\n"
+        "  %4 = div.f64 %3, %1\n"
+        "  %5 = neg.f64 %4\n"
+        "  %6 = lt.f64 %5, %1\n"
+        "  return %6\n"
+        "}\n");
+    assert(fclose(stream) == 0);
+}
+
 int main(void)
 {
     prints_scalar_function();
     prints_typed_control_flow_edges();
     prints_direct_function_calls();
     prints_division_modulo_and_negation();
+    prints_f64_constants_arithmetic_and_comparisons();
     puts("YLang IR printer tests passed");
     return 0;
 }

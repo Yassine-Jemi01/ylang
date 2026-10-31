@@ -25,6 +25,7 @@ static const char *c_type(YIRType type)
         case YIR_TYPE_VOID: return "void";
         case YIR_TYPE_BOOL: return "bool";
         case YIR_TYPE_I64: return "int64_t";
+        case YIR_TYPE_F64: return "double";
         default: return NULL;
     }
 }
@@ -181,6 +182,13 @@ static bool emit_instruction(FILE *stream, const YIRFunction *function,
                               instruction->immediate);
             return true;
 
+        case YIR_OP_CONST_F64:
+            (void)fputs("    ", stream);
+            emit_value(stream, instruction->result_id);
+            (void)fprintf(stream, " = %a;\n",
+                          instruction->floating_immediate);
+            return true;
+
         case YIR_OP_CONST_BOOL:
             (void)fputs("    ", stream);
             emit_value(stream, instruction->result_id);
@@ -203,6 +211,60 @@ static bool emit_instruction(FILE *stream, const YIRFunction *function,
             (void)fprintf(stream, " = %s(", helper);
             emit_value(stream, instruction->lhs);
             (void)fputs(", ", stream);
+            emit_value(stream, instruction->rhs);
+            (void)fputs(");\n", stream);
+            return true;
+        }
+
+        case YIR_OP_ADD_F64:
+        case YIR_OP_SUB_F64:
+        case YIR_OP_MUL_F64: {
+            const char *operator_text = instruction->opcode == YIR_OP_ADD_F64 ?
+                "+" : instruction->opcode == YIR_OP_SUB_F64 ? "-" : "*";
+            (void)fputs("    ", stream);
+            emit_value(stream, instruction->result_id);
+            (void)fputs(" = (", stream);
+            emit_value(stream, instruction->lhs);
+            (void)fprintf(stream, " %s ", operator_text);
+            emit_value(stream, instruction->rhs);
+            (void)fputs(");\n", stream);
+            return true;
+        }
+
+        case YIR_OP_DIV_F64:
+            (void)fputs("    ", stream);
+            emit_value(stream, instruction->result_id);
+            (void)fputs(" = yir_div_f64(", stream);
+            emit_value(stream, instruction->lhs);
+            (void)fputs(", ", stream);
+            emit_value(stream, instruction->rhs);
+            (void)fputs(");\n", stream);
+            return true;
+
+        case YIR_OP_NEG_F64:
+            (void)fputs("    ", stream);
+            emit_value(stream, instruction->result_id);
+            (void)fputs(" = -", stream);
+            emit_value(stream, instruction->lhs);
+            (void)fputs(";\n", stream);
+            return true;
+
+        case YIR_OP_EQ_F64:
+        case YIR_OP_NE_F64:
+        case YIR_OP_LT_F64:
+        case YIR_OP_LE_F64:
+        case YIR_OP_GT_F64:
+        case YIR_OP_GE_F64: {
+            const char *operator_text = instruction->opcode == YIR_OP_EQ_F64 ?
+                "==" : instruction->opcode == YIR_OP_NE_F64 ? "!=" :
+                instruction->opcode == YIR_OP_LT_F64 ? "<" :
+                instruction->opcode == YIR_OP_LE_F64 ? "<=" :
+                instruction->opcode == YIR_OP_GT_F64 ? ">" : ">=";
+            (void)fputs("    ", stream);
+            emit_value(stream, instruction->result_id);
+            (void)fputs(" = (", stream);
+            emit_value(stream, instruction->lhs);
+            (void)fprintf(stream, " %s ", operator_text);
             emit_value(stream, instruction->rhs);
             (void)fputs(");\n", stream);
             return true;
@@ -321,10 +383,10 @@ static bool emit_function(FILE *stream, const YIRFunction *function,
 static void emit_runtime_helpers(FILE *stream, bool need_add,
                                  bool need_sub, bool need_mul,
                                  bool need_div, bool need_mod,
-                                 bool need_neg)
+                                 bool need_neg, bool need_f64_div)
 {
     if (need_add || need_sub || need_mul ||
-        need_div || need_mod || need_neg) {
+        need_div || need_mod || need_neg || need_f64_div) {
         (void)fputs(
             "static void yir_runtime_error(const char *message) {\n"
             "    (void)fprintf(stderr, \"YLang runtime error: %s\\n\", message);\n"
@@ -389,8 +451,16 @@ static void emit_runtime_helpers(FILE *stream, bool need_add,
             "    return -value;\n"
             "}\n", stream);
     }
+    if (need_f64_div) {
+        (void)fputs(
+            "static double yir_div_f64(double a, double b) {\n"
+            "    if (b == 0.0) yir_runtime_error(\"floating-point division by zero\");\n"
+            "    return a / b;\n"
+            "}\n", stream);
+    }
     if (need_add || need_sub || need_mul ||
-        need_div || need_mod || need_neg) (void)fputc('\n', stream);
+        need_div || need_mod || need_neg || need_f64_div)
+        (void)fputc('\n', stream);
 }
 
 bool yir_emit_c_module(FILE *stream, const YIRFunction *functions,
@@ -410,7 +480,7 @@ bool yir_emit_c_module(FILE *stream, const YIRFunction *functions,
         if (!supported_function_type(&functions[fi]) ||
             !supported_instruction_types(&functions[fi]))
             return emit_fail(error, error_capacity,
-                "C emitter currently supports only void, bool, and i64 scalar signatures and values");
+                "C emitter currently supports only void, bool, i64, and f64 scalar signatures and values");
         if (strcmp(functions[fi].name, "main") == 0) {
             entry = &functions[fi];
             entry_count++;
@@ -433,6 +503,7 @@ bool yir_emit_c_module(FILE *stream, const YIRFunction *functions,
         "#include <stdlib.h>\n\n", stream);
     bool need_add = false, need_sub = false, need_mul = false;
     bool need_div = false, need_mod = false, need_neg = false;
+    bool need_f64_div = false;
     for (size_t fi = 0; fi < function_count; ++fi) {
         for (size_t bi = 0; bi < functions[fi].block_count; ++bi) {
             const YIRBlock *block = &functions[fi].blocks[bi];
@@ -444,13 +515,14 @@ bool yir_emit_c_module(FILE *stream, const YIRFunction *functions,
                     case YIR_OP_DIV_I64: need_div = true; break;
                     case YIR_OP_MOD_I64: need_mod = true; break;
                     case YIR_OP_NEG_I64: need_neg = true; break;
+                    case YIR_OP_DIV_F64: need_f64_div = true; break;
                     default: break;
                 }
             }
         }
     }
     emit_runtime_helpers(stream, need_add, need_sub, need_mul,
-                         need_div, need_mod, need_neg);
+                         need_div, need_mod, need_neg, need_f64_div);
 
     for (size_t fi = 0; fi < function_count; ++fi) {
         emit_signature(stream, &functions[fi], true);

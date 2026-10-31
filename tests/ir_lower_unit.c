@@ -947,6 +947,77 @@ static void lowers_short_circuit_boolean_operators(void)
     arena_destroy(&compiler.arena);
 }
 
+static void lowers_float_function_locals_calls_and_comparisons(void)
+{
+    static const char source[] =
+        "fn half(float value) -> float {\n"
+        "    return value / 2.0;\n"
+        "}\n"
+        "fn main() -> int {\n"
+        "    let mut float result = half(4.0);\n"
+        "    result = -(result + 1.0);\n"
+        "    if (result < 0.0) { return 42; } else { return 0; }\n"
+        "}\n";
+    Compiler compiler;
+    memset(&compiler,0,sizeof(compiler));
+    compiler.filename = "ir-f64-test.yl";
+    compiler.source = (char *)source;
+    compiler.source_length = strlen(source);
+    compiler.quiet_diagnostics = true;
+    compiler.program = parse_program(&compiler);
+    assert(compiler.program != NULL);
+    assert(!compiler.had_error);
+    assert(check_program(&compiler));
+
+    Function *half_function = find_function(&compiler,"half");
+    Function *main_function = find_function(&compiler,"main");
+    assert(half_function != NULL && main_function != NULL);
+
+    YIRFunction half_ir = {0}, main_ir = {0};
+    char error[256];
+    assert(yir_lower_function(half_function,&half_ir,error,sizeof(error)));
+    assert(yir_lower_function(main_function,&main_ir,error,sizeof(error)));
+    const YIRFunction module[] = {half_ir,main_ir};
+    assert(yir_verify_module(module,2,error,sizeof(error)));
+
+    assert(half_ir.return_type == YIR_TYPE_F64);
+    assert(half_ir.parameter_count == 1);
+    assert(half_ir.parameters[0].type == YIR_TYPE_F64);
+    bool saw_float_division = false;
+    for (size_t bi = 0; bi < half_ir.block_count; ++bi)
+        for (size_t ii = 0; ii < half_ir.blocks[bi].instruction_count; ++ii)
+            if (half_ir.blocks[bi].instructions[ii].opcode == YIR_OP_DIV_F64)
+                saw_float_division = true;
+    assert(saw_float_division);
+
+    bool saw_float_call = false;
+    bool saw_float_add = false;
+    bool saw_float_negation = false;
+    bool saw_float_comparison = false;
+    for (size_t bi = 0; bi < main_ir.block_count; ++bi) {
+        for (size_t ii = 0; ii < main_ir.blocks[bi].instruction_count; ++ii) {
+            const YIRInstruction *instruction =
+                &main_ir.blocks[bi].instructions[ii];
+            if (instruction->opcode == YIR_OP_CALL &&
+                instruction->result_type == YIR_TYPE_F64 &&
+                instruction->call_parameter_types[0] == YIR_TYPE_F64)
+                saw_float_call = true;
+            if (instruction->opcode == YIR_OP_ADD_F64)
+                saw_float_add = true;
+            if (instruction->opcode == YIR_OP_NEG_F64)
+                saw_float_negation = true;
+            if (instruction->opcode == YIR_OP_LT_F64)
+                saw_float_comparison = true;
+        }
+    }
+    assert(saw_float_call && saw_float_add &&
+           saw_float_negation && saw_float_comparison);
+
+    yir_destroy_function(&main_ir);
+    yir_destroy_function(&half_ir);
+    arena_destroy(&compiler.arena);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
@@ -978,6 +1049,7 @@ int main(void)
     lowers_function_with_module_qualified_symbol();
     lowers_division_modulo_and_general_integer_negation();
     lowers_short_circuit_boolean_operators();
+    lowers_float_function_locals_calls_and_comparisons();
     puts("YLang IR lowering tests passed");
     return 0;
 }

@@ -17,12 +17,24 @@ typedef enum {
 
 typedef enum {
     YIR_OP_CONST_I64,
+    YIR_OP_CONST_F64,
     YIR_OP_ADD_I64,
     YIR_OP_SUB_I64,
     YIR_OP_MUL_I64,
     YIR_OP_DIV_I64,
     YIR_OP_MOD_I64,
     YIR_OP_NEG_I64,
+    YIR_OP_ADD_F64,
+    YIR_OP_SUB_F64,
+    YIR_OP_MUL_F64,
+    YIR_OP_DIV_F64,
+    YIR_OP_NEG_F64,
+    YIR_OP_EQ_F64,
+    YIR_OP_NE_F64,
+    YIR_OP_LT_F64,
+    YIR_OP_LE_F64,
+    YIR_OP_GT_F64,
+    YIR_OP_GE_F64,
     YIR_OP_EQ_I64,
     YIR_OP_NE_I64,
     YIR_OP_LT_I64,
@@ -49,6 +61,7 @@ typedef struct {
     uint32_t lhs;
     uint32_t rhs;
     int64_t immediate;
+    double floating_immediate;
     uint32_t target;
     uint32_t false_target;
     const uint32_t *arguments;

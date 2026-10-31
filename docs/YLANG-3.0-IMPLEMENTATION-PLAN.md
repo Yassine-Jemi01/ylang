@@ -65,7 +65,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 ### 2.3 AST-to-IR lowering
 - [x] 2.3.1 Lower integer and boolean literals and scalar parameters.
 - [x] 2.3.2 Lower scalar local declarations and simple assignments.
-- [~] 2.3.3 Lower integer arithmetic and comparison conditions.
+- [~] 2.3.3 Lower numeric arithmetic and comparison conditions.
   - [x] 2.3.3.1 Lower addition, subtraction, and multiplication.
   - [~] 2.3.3.2 Lower integer division, modulo, and general unary negation with checked runtime semantics.
     - [~] 2.3.3.2.1 Add typed `div.i64`, `mod.i64`, and `neg.i64` IR operations and verifier rules.
@@ -73,16 +73,23 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
     - [~] 2.3.3.2.3 Add stable textual MIR output for the new operations.
     - [~] 2.3.3.2.4 Add checked C helpers for divide/modulo-by-zero and signed overflow edge cases.
     - [~] 2.3.3.2.5 Add runtime tests for divide-by-zero, `INT64_MIN / -1`, negation overflow, and `INT64_MIN % -1 == 0`.
-  - [~] 2.3.3.3 Lower short-circuit boolean `and` / `or` using conditional branches and typed merge parameters.
-    - [~] 2.3.3.3.1 Skip the right operand of `and` when the left operand is false.
-    - [~] 2.3.3.3.2 Skip the right operand of `or` when the left operand is true.
-    - [~] 2.3.3.3.3 Preserve left-to-right evaluation for nested logical expressions and calls.
-    - [~] 2.3.3.3.4 Compile and run IR-to-C tests where the skipped operand would divide by zero.
+  - [~] 2.3.3.3 Lower the first scalar f64 subset.
+    - [~] 2.3.3.3.1 Add finite f64 constants and verifier contracts.
+    - [~] 2.3.3.3.2 Lower scalar float parameters, return values, locals, and assignments.
+    - [~] 2.3.3.3.3 Lower f64 `+`, `-`, `*`, `/`, unary negation, and matching-type comparisons.
+    - [~] 2.3.3.3.4 Support direct calls with scalar float parameters and returns.
+    - [~] 2.3.3.3.5 Add verifier, printer, lowerer, C-emitter, and CLI compile/run tests.
+    - [~] 2.3.3.3.6 Add an AST-to-C vs IR-to-C parity fixture.
+  - [~] 2.3.3.4 Lower short-circuit boolean `and` / `or` using conditional branches and typed merge parameters.
+    - [~] 2.3.3.4.1 Skip the right operand of `and` when the left operand is false.
+    - [~] 2.3.3.4.2 Skip the right operand of `or` when the left operand is true.
+    - [~] 2.3.3.4.3 Preserve left-to-right evaluation for nested logical expressions and calls.
+    - [~] 2.3.3.4.4 Compile and run IR-to-C tests where the skipped operand would divide by zero.
 - [x] 2.3.4 Lower nested conditionals and merge changed values with block parameters.
 - [~] 2.3.5 Lower `while`, `for`, `loop()`, `break`, and `continue`; expand nested-loop and scope edge-case tests.
 - [~] 2.3.6 Lower direct user-function calls with scalar signatures.
   - [~] 2.3.6.1 Add typed direct-call opcode metadata and SSA argument validation.
-  - [~] 2.3.6.2 Lower nested calls with scalar int/bool arguments and int/bool/void returns.
+  - [~] 2.3.6.2 Lower nested calls with scalar int/float/bool arguments and int/float/bool/void returns.
   - [~] 2.3.6.3 Print calls in textual MIR and cover the call verifier and lowerer with unit tests.
   - [~] 2.3.6.4 Resolve direct callees against the loaded IR module.
   - [~] 2.3.6.4.1 Verify every call target exists exactly once in the module.
@@ -96,7 +103,11 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [ ] 2.3.6.5.4 Define a stable built-in call namespace and lower built-in signatures.
   - [ ] 2.3.6.5.5 Define external function declarations and lower external ABI calls.
   - [ ] 2.3.6.6 Add calling-convention metadata and call-site ABI validation.
-- [ ] 2.3.7 Lower floating-point expressions and values.
+- [~] 2.3.7 Complete floating-point semantics beyond the initial finite-f64 lowering slice.
+  - [~] 2.3.7.1 Implement finite f64 literals, parameters, locals, arithmetic, comparisons, and direct calls.
+  - [ ] 2.3.7.2 Specify NaN, infinities, subnormals, signed zero, and floating-point overflow behavior across backends.
+  - [ ] 2.3.7.3 Add explicit int/float conversion operations and diagnostics.
+  - [ ] 2.3.7.4 Add float formatting, parsing, and standard-library I/O.
 - [ ] 2.3.8 Lower strings, arrays, tuples, structs, enums, and indexing.
 - [ ] 2.3.9 Lower imports and cross-module symbol references.
 - [ ] 2.3.10 Lower ownership moves, borrows, and deterministic drops.
@@ -119,25 +130,26 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 ### 3.2 C reference backend migration
 - [ ] 3.2.1 Preserve the current AST-to-C path as a reference during migration.
 - [~] 3.2.2 Implement the first standalone IR-to-C emitter slice.
-  - [~] 3.2.2.1 Emit i64/bool/void functions with constants, checked i64 arithmetic/division/modulo/negation, comparisons, bool negation, branches, block-parameter copies, direct calls, and returns.
-  - [~] 3.2.2.1.1 Encode module-qualified IR symbols as collision-free C identifiers.
-  - [~] 3.2.2.1.2 Preserve checked overflow and division/modulo-by-zero behavior for arithmetic operations.
-    - [~] 3.2.2.1.2.1 Preserve `INT64_MIN / -1` and `-INT64_MIN` overflow failures.
-    - [~] 3.2.2.1.2.2 Preserve `INT64_MIN % -1 == 0` and modulo-by-zero failure.
-  - [~] 3.2.2.1.2.3 Add generated-C runtime regressions for all division/modulo/negation error and edge cases.
-  - [~] 3.2.2.1.3 Reject unsupported IR types and opcodes explicitly.
-  - [~] 3.2.2.1.4 Add unit tests for arithmetic, direct calls, branch edges, and unsupported signatures.
-- [~] 3.2.2.1.5 Compile and run imported-module calls, including transitive imports and identical function names in separate modules.
+  - [~] 3.2.2.1 Emit i64/f64/bool/void functions with constants, checked integer arithmetic/division/modulo/negation, f64 arithmetic/comparisons, bool/f64 negation, branches, block-parameter copies, direct calls, and returns.
+    - [~] 3.2.2.1.1 Encode module-qualified IR symbols as collision-free C identifiers.
+    - [~] 3.2.2.1.2 Preserve checked integer and floating-point runtime behavior implemented by the existing runtime.
+      - [~] 3.2.2.1.2.1 Preserve `INT64_MIN / -1` and `-INT64_MIN` overflow failures.
+      - [~] 3.2.2.1.2.2 Preserve `INT64_MIN % -1 == 0` and modulo-by-zero failure.
+      - [~] 3.2.2.1.2.3 Preserve the floating-point division-by-zero diagnostic for both signs of zero.
+      - [ ] 3.2.2.1.2.4 Specify and test NaN, infinity, subnormal, signed-zero, and floating-overflow behavior across backends.
+    - [~] 3.2.2.1.3 Reject unsupported IR types and opcodes explicitly.
+    - [~] 3.2.2.1.4 Add unit tests for integer/f64 arithmetic, direct calls, branch edges, and unsupported signatures.
+    - [~] 3.2.2.1.5 Compile and run imported-module calls, including transitive imports and identical function names in separate modules.
 - [~] 3.2.3 Add an `emit-ir-c` CLI command that writes verified IR-generated C to a requested file.
   - [~] 3.2.3.1 Register the command and require an explicit `-o` destination.
   - [~] 3.2.3.2 Lower every function and verify the complete module before writing.
   - [~] 3.2.3.3 Generate through a temporary stream and avoid leaving partial output on emission failure.
-- [~] 3.2.4 Add compile/run regressions for generated C arithmetic and checked division/modulo/negation; wait for Linux GCC/Clang CI before marking them validated.
+- [~] 3.2.4 Add compile/run regressions for generated C integer/f64 arithmetic, checked division/modulo/negation, imported calls, and short-circuit behavior; wait for Linux GCC/Clang CI before marking them validated.
 - [~] 3.2.5 Compare IR-to-C output against the existing AST-to-C backend for matching fixtures; the differential runner is added and awaits CI validation.
   - [~] 3.2.5.1 Build each supported fixture through the reference AST-to-C path.
   - [~] 3.2.5.2 Build and link the same fixture through verified IR-to-C.
-  - [~] 3.2.5.3 Compare exit status, stdout, and stderr byte-for-byte across arithmetic, runtime errors, branches, loops, calls, and imported modules.
-- [~] 3.2.6 Add branch, loop, short-circuit, and imported-call differential fixtures; expand sanitizer coverage.
+  - [~] 3.2.5.3 Compare exit status, stdout, and stderr byte-for-byte across arithmetic, runtime errors, branches, loops, calls, imported modules, short-circuit expressions, and the initial finite-f64 subset.
+- [~] 3.2.6 Add branch, loop, short-circuit, imported-call, and f64 differential fixtures; expand sanitizer coverage.
 - [ ] 3.2.7 Expand parity feature-by-feature until the supported C subset is covered.
 - [ ] 3.2.8 Switch the default build path only after parity and compatibility gates pass.
 
