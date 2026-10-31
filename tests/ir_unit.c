@@ -487,41 +487,7 @@ static void accept_module_qualified_same_name_call_targets(void)
     assert(yir_verify_module(module,3,error,sizeof(error)));
 }
 
-static void accept_module_qualified_same_name_call_targets(void)
-{
-    const YIRInstruction return_instructions[] = {
-        {.opcode=YIR_OP_RETURN}
-    };
-    const YIRBlock target_block = {
-        .id=0,.instructions=return_instructions,.instruction_count=1
-    };
-    const YIRFunction first_target = {
-        .name="helper",.symbol="lib_a::helper",
-        .return_type=YIR_TYPE_VOID,
-        .blocks=&target_block,.block_count=1
-    };
-    const YIRFunction second_target = {
-        .name="helper",.symbol="lib_b::helper",
-        .return_type=YIR_TYPE_VOID,
-        .blocks=&target_block,.block_count=1
-    };
-    const YIRInstruction caller_instructions[] = {
-        {.opcode=YIR_OP_CALL,.result_type=YIR_TYPE_VOID,
-         .callee="helper",.callee_symbol="lib_b::helper"},
-        {.opcode=YIR_OP_RETURN}
-    };
-    const YIRBlock caller_block = {
-        .id=0,.instructions=caller_instructions,.instruction_count=2
-    };
-    const YIRFunction caller = {
-        .name="main",.symbol="app::main",
-        .return_type=YIR_TYPE_VOID,
-        .blocks=&caller_block,.block_count=1
-    };
-    const YIRFunction module[] = {first_target,second_target,caller};
-    char error[192];
-    assert(yir_verify_module(module,3,error,sizeof(error)));
-}
+
 
 static void reject_duplicate_qualified_function_symbols(void)
 {
@@ -940,6 +906,5 @@ int main(void)
     reject_numeric_conversion_operand_type_mismatch();
     reject_i64_to_f64_with_float_operand();
     reject_duplicate_qualified_function_symbols();
-    accept_module_qualified_same_name_call_targets();
     puts("YLang IR verifier tests passed"); return 0;
 }
