@@ -47,19 +47,19 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     memset(false_arguments, 0, sizeof(false_arguments));
     memset(call_parameter_types, 0, sizeof(call_parameter_types));
 
-    size_t block_count = 1 + byte_at(data, size, 0) % MAX_BLOCKS;
-    size_t parameter_count = byte_at(data, size, 1) % (MAX_PARAMETERS + 1);
+    size_t block_count = 1u + (size_t)(byte_at(data, size, 0) % MAX_BLOCKS);
+    size_t parameter_count = (size_t)(byte_at(data, size, 1) % (MAX_PARAMETERS + 1));
     for (size_t pi = 0; pi < MAX_PARAMETERS; ++pi) {
-        function_parameters[pi].id = byte_at(data, size, 2 + pi);
+        function_parameters[pi].id = (uint32_t)byte_at(data, size, 2 + pi);
         function_parameters[pi].type =
             (YIRType)(byte_at(data, size, 5 + pi) % (YIR_TYPE_PTR + 2));
     }
 
     size_t cursor = 8;
     for (size_t bi = 0; bi < block_count; ++bi) {
-        blocks[bi].id = byte_at(data, size, cursor++);
+        blocks[bi].id = (uint32_t)byte_at(data, size, cursor++);
         blocks[bi].parameter_count = bi == 0 ? 0 :
-            byte_at(data, size, cursor++) % (MAX_PARAMETERS + 1);
+            (size_t)(byte_at(data, size, cursor++) % (MAX_PARAMETERS + 1));
         for (size_t pi = 0; pi < MAX_PARAMETERS; ++pi) {
             block_parameters[bi][pi].id = byte_at(data, size, cursor++);
             block_parameters[bi][pi].type =
@@ -70,7 +70,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
             block_parameters[bi];
 
         blocks[bi].instruction_count =
-            1 + byte_at(data, size, cursor++) % MAX_INSTRUCTIONS;
+            1u + (size_t)(byte_at(data, size, cursor++) % MAX_INSTRUCTIONS);
         blocks[bi].instructions =
             byte_at(data, size, cursor++) % 7 == 0 ? NULL :
             instructions[bi];
@@ -79,16 +79,16 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
             YIRInstruction *ins = &instructions[bi][ii];
             ins->opcode = (YIROpcode)(
                 byte_at(data, size, cursor++) % (YIR_OP_CALL + 2));
-            ins->result_id = byte_at(data, size, cursor++);
+            ins->result_id = (uint32_t)byte_at(data, size, cursor++);
             ins->result_type = (YIRType)(
                 byte_at(data, size, cursor++) % (YIR_TYPE_PTR + 2));
-            ins->lhs = byte_at(data, size, cursor++);
-            ins->rhs = byte_at(data, size, cursor++);
+            ins->lhs = (uint32_t)byte_at(data, size, cursor++);
+            ins->rhs = (uint32_t)byte_at(data, size, cursor++);
             ins->immediate = (int64_t)(int8_t)byte_at(data, size, cursor++);
             ins->floating_immediate = float_at(data, size, cursor);
             cursor += sizeof(uint64_t);
-            ins->target = byte_at(data, size, cursor++);
-            ins->false_target = byte_at(data, size, cursor++);
+            ins->target = (uint32_t)byte_at(data, size, cursor++);
+            ins->false_target = (uint32_t)byte_at(data, size, cursor++);
             ins->argument_count =
                 byte_at(data, size, cursor++) % (MAX_ARGUMENTS + 1);
             ins->false_argument_count =
@@ -114,8 +114,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
                 NULL : "fuzz";
             ins->callee_symbol = byte_at(data, size, cursor++) % 3 == 0 ?
                 NULL : (char *)"fuzz";
-            ins->source_line = byte_at(data, size, cursor++);
-            ins->source_column = byte_at(data, size, cursor++);
+            ins->source_line = (size_t)byte_at(data, size, cursor++);
+            ins->source_column = (size_t)byte_at(data, size, cursor++);
         }
     }
 
