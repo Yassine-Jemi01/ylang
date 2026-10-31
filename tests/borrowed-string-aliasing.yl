@@ -1,0 +1,9 @@
+function inspect_pair(borrowed_string left, borrowed_string right) -> int {
+    return string.length(left) + string.length(right);
+}
+
+function main() -> int {
+    let owned_string owner = string.own("borrow");
+    print(inspect_pair(owner, owner));
+    return 0;
+}
