@@ -115,7 +115,13 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [ ] 2.3.6.6 Add calling-convention metadata and call-site ABI validation.
 - [~] 2.3.7 Complete floating-point semantics beyond the initial finite-f64 lowering slice.
   - [~] 2.3.7.1 Implement finite f64 literals, parameters, locals, arithmetic, comparisons, and direct calls.
-  - [ ] 2.3.7.2 Specify NaN, infinities, subnormals, signed zero, and floating-point overflow behavior across backends.
+  - [~] 2.3.7.2 Specify and test the supported IEEE-754 binary64 runtime behavior across AST and scalar IR backends.
+  - [~] 2.3.7.2.1 Preserve runtime overflow to positive/negative infinity; reject non-finite source literals.
+  - [~] 2.3.7.2.2 Preserve NaN comparison rules, including NaN != NaN.
+  - [~] 2.3.7.2.3 Preserve subnormal values without unsafe constant folding.
+  - [~] 2.3.7.2.4 Preserve underflow-to-zero operations and signed-zero behavior.
+  - [~] 2.3.7.2.5 Keep division by positive and negative zero as a checked runtime error.
+  - [~] 2.3.7.2.6 Add AST/IR/optimized-IR parity tests for overflow, NaN, subnormals, and underflow.
   - [~] 2.3.7.3 Add explicit int/float conversion operations and diagnostics.
   - [~] 2.3.7.3.1 Add a verified i64-to-f64 operation with source locations.
   - [~] 2.3.7.3.2 Add checked f64-to-i64 conversion with finite/range validation.

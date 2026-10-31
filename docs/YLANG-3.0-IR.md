@@ -81,3 +81,8 @@ The typed IR represents `to_float(int)` as `i64.to_f64` and `to_int(float)` as `
 Copy propagation removes a block parameter only when every incoming true and false CFG edge supplies the exact same SSA value. It rewrites uses, removes the corresponding argument position from each predecessor edge, and compacts the target parameter list. Joins with differing incoming values (including loop-carried values) remain unchanged.
 
 Integer algebraic simplification currently handles adding/subtracting zero, multiplying by zero or one, dividing/modulo by one, and reflexive integer comparisons. It does not apply floating-point identities, where NaN and signed-zero semantics would make familiar rewrites unsafe. Checked divisions/modulo by zero and other potentially trapping operations are not rewritten away.
+
+
+## Floating-point runtime semantics tested by the IR backend
+
+The current scalar backend uses C's IEEE-754 binary64 operations without fast-math transformations. Finite source literals are accepted; arithmetic may produce infinities or NaN. NaN comparisons follow IEEE rules (in particular, NaN is unequal to itself), while subnormal values are preserved and multiplication may underflow to signed or positive zero. Division by either positive or negative zero remains a YLang runtime error. The optimizer deliberately declines to fold subnormal constants, operations producing subnormals, non-finite results, and underflow-to-zero operations. The `emit-ir-c-f64-ieee.yl` parity fixture checks overflow, NaN inequality, a positive subnormal, and underflow-to-zero with AST, IR, and optimized IR backends.

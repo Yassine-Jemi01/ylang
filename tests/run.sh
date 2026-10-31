@@ -334,6 +334,18 @@ emit_ir_c_f64_status=$?
 set -e
 [ "$emit_ir_c_f64_status" -eq 42 ]
 
+# IEEE f64 behavior: overflow to infinity, NaN comparisons, subnormals, and underflow.
+./build/ylang emit-mir tests/emit-ir-c-f64-ieee.yl > build/emit-ir-c-f64-ieee.mir
+grep -Fq 'mul.f64' build/emit-ir-c-f64-ieee.mir
+grep -Fq 'ne.f64' build/emit-ir-c-f64-ieee.mir
+./build/ylang emit-ir-c-opt tests/emit-ir-c-f64-ieee.yl -o build/emit-ir-c-f64-ieee.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-f64-ieee.c -o build/test-emit-ir-c-f64-ieee
+set +e
+./build/test-emit-ir-c-f64-ieee
+emit_ir_c_f64_ieee_status=$?
+set -e
+[ "$emit_ir_c_f64_ieee_status" -eq 42 ]
+
 # Explicit int/float conversions lower to IR and preserve truncation toward zero.
 ./build/ylang emit-mir tests/emit-ir-c-conversions.yl > build/emit-ir-c-conversions.mir
 grep -Fq 'i64.to_f64' build/emit-ir-c-conversions.mir

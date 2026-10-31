@@ -24,6 +24,7 @@ FIXTURES = (
     "tests/emit-ir-c-neg-overflow.yl",
     "tests/emit-ir-c-modulo-edge.yl",
     "tests/emit-ir-c-f64.yl",
+    "tests/emit-ir-c-f64-ieee.yl",
     "tests/emit-ir-c-conversions.yl",
     "tests/emit-ir-c-conversions-overflow.yl",
     "tests/emit-ir-c-conversions-nonfinite.yl",

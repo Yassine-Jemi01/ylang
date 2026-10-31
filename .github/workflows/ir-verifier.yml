@@ -30,6 +30,7 @@ on:
       - "tests/emit-ir-c-conversions.yl"
       - "tests/emit-ir-c-conversions-overflow.yl"
       - "tests/emit-ir-c-conversions-nonfinite.yl"
+      - "tests/emit-ir-c-f64-ieee.yl"
       - "tests/run-ir-unit.sh"
       - ".github/workflows/ir-verifier.yml"
 
