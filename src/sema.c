@@ -1219,8 +1219,11 @@ static void check_stmt(Checker *checker, Stmt *stmt)
         case STMT_BLOCK: {
             Scope *outer = checker->scope;
             checker->scope = scope_new(c, outer);
-            for (size_t i = 0; i < stmt->as.block.count; i++)
+            for (size_t i = 0; i < stmt->as.block.count; i++) {
                 check_stmt(checker, stmt->as.block.items[i]);
+                /* A guaranteed return makes later statements unreachable. */
+                if (stmt_guarantees_return(stmt->as.block.items[i])) break;
+            }
             checker->scope = outer;
             break;
         }
@@ -1297,6 +1300,8 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 before[i] = c->all_vars[i]->initialized;
                 before_moved[i] = c->all_vars[i]->moved;
             }
+            bool then_returns =
+                stmt_guarantees_return(stmt->as.if_stmt.then_branch);
             check_stmt(checker, stmt->as.if_stmt.then_branch);
             for (size_t i = 0; i < n; i++) {
                 after_then[i] = c->all_vars[i]->initialized;
@@ -1307,8 +1312,26 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 c->all_vars[i]->moved = before_moved[i];
             }
             if (stmt->as.if_stmt.else_branch) {
+                bool else_returns =
+                    stmt_guarantees_return(stmt->as.if_stmt.else_branch);
                 check_stmt(checker, stmt->as.if_stmt.else_branch);
                 for (size_t i = 0; i < n; i++) {
+                    if (then_returns && !else_returns) {
+                        /* Only the else path reaches the statement after this if. */
+                        continue;
+                    }
+                    if (!then_returns && else_returns) {
+                        /* The then path is the only path that falls through. */
+                        c->all_vars[i]->initialized = after_then[i];
+                        c->all_vars[i]->moved = after_then_moved[i];
+                        continue;
+                    }
+                    if (then_returns && else_returns) {
+                        /* No path reaches the statement after this if. */
+                        c->all_vars[i]->initialized = before[i];
+                        c->all_vars[i]->moved = before_moved[i];
+                        continue;
+                    }
                     c->all_vars[i]->initialized =
                         after_then[i] && c->all_vars[i]->initialized;
                     c->all_vars[i]->moved =
@@ -1316,9 +1339,15 @@ static void check_stmt(Checker *checker, Stmt *stmt)
                 }
             } else {
                 for (size_t i = 0; i < n; i++) {
-                    c->all_vars[i]->initialized = before[i];
-                    c->all_vars[i]->moved =
-                        before_moved[i] || after_then_moved[i];
+                    if (then_returns) {
+                        /* The implicit else path leaves ownership unchanged. */
+                        c->all_vars[i]->initialized = before[i];
+                        c->all_vars[i]->moved = before_moved[i];
+                    } else {
+                        c->all_vars[i]->initialized = before[i];
+                        c->all_vars[i]->moved =
+                            before_moved[i] || after_then_moved[i];
+                    }
                 }
             }
             break;
