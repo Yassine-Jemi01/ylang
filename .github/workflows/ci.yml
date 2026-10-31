@@ -7,6 +7,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Keep only the newest CI run for a pull request. Rapid commits should not
+# leave several full platform matrices waiting for hosted runners.
+concurrency:
+  group: ylang-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     strategy:
