@@ -66,3 +66,8 @@ Run `make ir-unit-test ir-lower-unit-test ir-print-unit-test ir-c-unit-test` or 
 
 
 The optimizer API also exposes `yir_run_opt_pipeline` and the ordered pass IDs `YIR_OPT_CONSTANT_FOLD`, `YIR_OPT_SIMPLIFY_CFG`, `YIR_OPT_COMMON_SUBEXPRESSION`, and `YIR_OPT_DEAD_CODE`. Callers can select a subset or order; unknown pass IDs are rejected. Common-subexpression elimination is scoped to one basic block, rewrites every later SSA use including branch-edge arguments, and deliberately excludes checked arithmetic, floating-point division, and calls. The default `yir_optimize_function` sequence runs all three passes. CFG cleanup uses the verified branch targets and preserves the chosen edge arguments when replacing a constant conditional branch. Dead-code elimination traces live SSA values back through operands and branch-edge arguments, while retaining calls and operations that can trap.
+
+
+## Verifier robustness and fuzzing
+
+The verifier rejects metadata that does not belong to an instruction kind: call metadata is call-only, and edge-argument metadata is restricted to branch terminators. It checks call argument arity and backing arrays before reading operands, and validates both true and false branch-edge storage before following arguments. `tests/ir_fuzz_smoke.c` generates bounded arbitrary IR shapes with valid in-process backing arrays, runs 4,096 deterministic smoke inputs, and checks block/value count overflow cases. The same input entry point can be compiled with libFuzzer (`make fuzz-ir`) for longer ASan/UBSan-guided runs.

@@ -697,6 +697,99 @@ static void reject_f64_operation_with_i64_operand(void)
     assert(strstr(error,"operand type") != NULL);
 }
 
+
+static void reject_invalid_opcode_value(void)
+{
+    const YIRInstruction instructions[] = {
+        {.opcode=(YIROpcode)255},
+        {.opcode=YIR_OP_RETURN}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=2
+    };
+    const YIRFunction function = {
+        .name="bad_opcode",.return_type=YIR_TYPE_VOID,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,"invalid opcode")!=NULL);
+}
+
+static void reject_branch_metadata_on_arithmetic_instruction(void)
+{
+    const uint32_t edge_value[] = {1};
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_I64}
+    };
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_ADD_I64,.result_id=2,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=1,.arguments=edge_value,.argument_count=1},
+        {.opcode=YIR_OP_RETURN,.lhs=2}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=2
+    };
+    const YIRFunction function = {
+        .name="bad_edge_metadata",.return_type=YIR_TYPE_I64,
+        .parameters=parameters,.parameter_count=1,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,"edge argument metadata")!=NULL);
+}
+
+static void reject_module_symbol_on_non_call_instruction(void)
+{
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+         .immediate=42,.callee_symbol=(char *)"unexpected"},
+        {.opcode=YIR_OP_RETURN,.lhs=1}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=2
+    };
+    const YIRFunction function = {
+        .name="bad_symbol_metadata",.return_type=YIR_TYPE_I64,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,"call metadata")!=NULL);
+}
+
+static void reject_missing_false_edge_argument_storage(void)
+{
+    const YIRBlockParameter target_parameter[] = {
+        {.id=3,.type=YIR_TYPE_I64}
+    };
+    const YIRInstruction entry[] = {
+        {.opcode=YIR_OP_CONST_BOOL,.result_id=1,.result_type=YIR_TYPE_BOOL,
+         .immediate=1},
+        {.opcode=YIR_OP_CONST_I64,.result_id=2,.result_type=YIR_TYPE_I64,
+         .immediate=7},
+        {.opcode=YIR_OP_COND_BRANCH,.lhs=1,.target=1,.false_target=2,
+         .arguments=(const uint32_t[]){2},.argument_count=1,
+         .false_argument_count=1}
+    };
+    const YIRInstruction selected[] = {{.opcode=YIR_OP_RETURN,.lhs=3}};
+    const YIRInstruction fallback[] = {{.opcode=YIR_OP_RETURN}};
+    const YIRBlock blocks[] = {
+        {.id=0,.instructions=entry,.instruction_count=3},
+        {.id=1,.parameters=target_parameter,.parameter_count=1,
+         .instructions=selected,.instruction_count=1},
+        {.id=2,.instructions=fallback,.instruction_count=1}
+    };
+    const YIRFunction function = {
+        .name="missing_false_edge_storage",.return_type=YIR_TYPE_I64,
+        .blocks=blocks,.block_count=3
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,"branch argument counts require argument arrays")!=NULL);
+}
+
 int main(void)
 {
     valid_arithmetic_return(); reject_use_before_definition();
@@ -723,6 +816,10 @@ int main(void)
     accept_typed_f64_arithmetic_and_comparison();
     reject_non_finite_f64_constant();
     reject_f64_operation_with_i64_operand();
+    reject_invalid_opcode_value();
+    reject_branch_metadata_on_arithmetic_instruction();
+    reject_module_symbol_on_non_call_instruction();
+    reject_missing_false_edge_argument_storage();
     reject_duplicate_qualified_function_symbols();
     accept_module_qualified_same_name_call_targets();
     puts("YLang IR verifier tests passed"); return 0;

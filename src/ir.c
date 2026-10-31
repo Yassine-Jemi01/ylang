@@ -173,10 +173,19 @@ bool yir_verify_function(const YIRFunction *function, char *error,
                                "call instructions require a callee and matching argument metadata");
                     goto cleanup;
                 }
-            } else if (ins->callee || ins->call_parameter_types ||
-                       ins->call_parameter_count) {
+            } else if (ins->callee || ins->callee_symbol ||
+                       ins->call_parameter_types || ins->call_parameter_count) {
                 (void)fail(error, error_capacity,
                            "call metadata is only valid on call instructions");
+                goto cleanup;
+            }
+            if (ins->opcode != YIR_OP_CALL &&
+                ins->opcode != YIR_OP_BRANCH &&
+                ins->opcode != YIR_OP_COND_BRANCH &&
+                (ins->argument_count || ins->arguments ||
+                 ins->false_argument_count || ins->false_arguments)) {
+                (void)fail(error, error_capacity,
+                           "edge argument metadata is only valid on branches");
                 goto cleanup;
             }
             if (is_terminator(ins->opcode) != last) {

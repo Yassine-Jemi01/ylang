@@ -15,6 +15,7 @@ on:
       - "src/lexer.c"
       - "include/ylang/ir.h"
       - "tests/ir_unit.c"
+      - "tests/ir_fuzz_smoke.c"
       - "tests/ir_backend_parity.py"
       - "tests/run.sh"
       - "tests/ir_opt_unit.c"

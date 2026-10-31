@@ -18,7 +18,7 @@ else
 GAME2D_OUTPUT ?= build/dodge
 endif
 
-.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test ir-unit-test ir-lower-unit-test ir-print-unit-test ir-c-unit-test ir-opt-unit-test ir-json-unit-test fuzz-frontend fuzz-smoke
+.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test ir-unit-test ir-lower-unit-test ir-print-unit-test ir-c-unit-test ir-opt-unit-test ir-json-unit-test ir-fuzz-smoke fuzz-frontend fuzz-ir fuzz-smoke
 
 all: $(BIN)
 
@@ -94,7 +94,14 @@ build/ir-json-unit: tests/ir_json_unit.c src/ir_json.c src/ir.c include/ylang/ir
 ir-json-unit-test: build/ir-json-unit
 	./build/ir-json-unit
 
-test: $(BIN) frontend-unit-test ir-unit-test ir-lower-unit-test ir-print-unit-test ir-c-unit-test ir-opt-unit-test ir-json-unit-test
+build/ir-fuzz-smoke: tests/ir_fuzz_smoke.c src/ir.c include/ylang/ir.h
+	@mkdir -p build
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ir_fuzz_smoke.c src/ir.c $(LDFLAGS) -o $@
+
+ir-fuzz-smoke: build/ir-fuzz-smoke
+	./build/ir-fuzz-smoke
+
+test: $(BIN) frontend-unit-test ir-unit-test ir-lower-unit-test ir-print-unit-test ir-c-unit-test ir-opt-unit-test ir-json-unit-test ir-fuzz-smoke
 	sh tests/run.sh
 
 FUZZ_CC ?= clang
@@ -104,10 +111,15 @@ fuzz-frontend:
 	@mkdir -p build
 	$(FUZZ_CC) $(CPPFLAGS) -Isrc $(FUZZ_CFLAGS) tests/fuzz_frontend.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c src/sema.c -o build/fuzz-frontend
 
-fuzz-smoke: fuzz-frontend
+fuzz-ir:
+	@mkdir -p build
+	$(FUZZ_CC) $(CPPFLAGS) $(FUZZ_CFLAGS) -DYLANG_IR_FUZZ_LIBFUZZER tests/ir_fuzz_smoke.c src/ir.c -o build/fuzz-ir
+
+fuzz-smoke: fuzz-frontend fuzz-ir
 	@mkdir -p build/fuzz-corpus
 	cp tests/fuzz-corpus/* build/fuzz-corpus/
 	./build/fuzz-frontend -runs=1000 -max_len=4096 build/fuzz-corpus
+	./build/fuzz-ir -runs=1000
 
 sanitize:
 	$(MAKE) clean

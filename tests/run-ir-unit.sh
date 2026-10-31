@@ -21,3 +21,6 @@ $CC $CFLAGS -Iinclude tests/ir_opt_unit.c src/ir_opt.c src/ir.c -o /tmp/ylang-ir
 
 $CC $CFLAGS -Iinclude tests/ir_json_unit.c src/ir_json.c src/ir.c -o /tmp/ylang-ir-json-unit
 /tmp/ylang-ir-json-unit
+
+$CC $CFLAGS -Iinclude tests/ir_fuzz_smoke.c src/ir.c -o /tmp/ylang-ir-fuzz-smoke
+/tmp/ylang-ir-fuzz-smoke

@@ -59,8 +59,18 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [x] 2.2.2 Check block reachability and terminators.
 - [x] 2.2.3 Check CFG dominance and same-block definition order.
 - [x] 2.2.4 Check typed block-parameter edge arguments.
-- [ ] 2.2.5 Add adversarial malformed-IR tests for every opcode and edge shape.
-- [ ] 2.2.6 Add verifier fuzzing and resource-limit tests.
+- [~] 2.2.5 Add adversarial malformed-IR tests for every opcode and edge shape.
+  - [~] 2.2.5.1 Reject unknown opcode tags and malformed result definitions.
+  - [~] 2.2.5.2 Reject branch-edge metadata on arithmetic and other non-branch instructions.
+  - [~] 2.2.5.3 Reject call-only metadata attached to non-call instructions.
+  - [~] 2.2.5.4 Reject missing true/false edge argument storage and malformed edge shapes.
+  - [~] 2.2.5.5 Cover source spans, type mismatches, dominance, and module call signatures.
+  - [~] 2.2.5.6 Reject misplaced callee symbols and mismatched instruction metadata before operand access.
+- [~] 2.2.6 Add verifier fuzzing and resource-limit tests.
+  - [~] 2.2.6.1 Build a bounded IR generator that never creates out-of-range test pointers.
+  - [~] 2.2.6.2 Run a deterministic 4,096-input verifier fuzz smoke test in the normal test suite.
+  - [~] 2.2.6.3 Exercise block-count and value-count overflow limits before large memory access.
+  - [~] 2.2.6.4 Provide a libFuzzer entry point for extended ASan/UBSan fuzzing.
 
 ### 2.3 AST-to-IR lowering
 - [x] 2.3.1 Lower integer and boolean literals and scalar parameters.
