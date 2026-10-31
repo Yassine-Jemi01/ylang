@@ -787,9 +787,57 @@ static void reject_missing_false_edge_argument_storage(void)
     };
     char error[192];
     assert(!yir_verify_function(&function,error,sizeof(error)));
-    assert(strstr(error,"branch argument counts require argument arrays")!=NULL);
+    assert(strstr(error,"branch argument counts and arrays must agree")!=NULL);
 }
 
+
+static void reject_unexpected_true_edge_argument_storage(void)
+{
+    const uint32_t unused_arguments[] = {1};
+    const YIRInstruction entry[] = {
+        {.opcode=YIR_OP_CONST_BOOL,.result_id=1,.result_type=YIR_TYPE_BOOL,
+         .immediate=1},
+        {.opcode=YIR_OP_COND_BRANCH,.lhs=1,.target=1,.false_target=2,
+         .arguments=unused_arguments,.argument_count=0}
+    };
+    const YIRInstruction exit[] = {{.opcode=YIR_OP_RETURN}};
+    const YIRBlock blocks[] = {
+        {.id=0,.instructions=entry,.instruction_count=2},
+        {.id=1,.instructions=exit,.instruction_count=1},
+        {.id=2,.instructions=exit,.instruction_count=1}
+    };
+    const YIRFunction function = {
+        .name="unexpected_true_edge_storage",.return_type=YIR_TYPE_VOID,
+        .blocks=blocks,.block_count=3
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,"branch argument counts and arrays must agree")!=NULL);
+}
+
+static void reject_unexpected_false_edge_argument_storage(void)
+{
+    const uint32_t unused_arguments[] = {1};
+    const YIRInstruction entry[] = {
+        {.opcode=YIR_OP_CONST_BOOL,.result_id=1,.result_type=YIR_TYPE_BOOL,
+         .immediate=1},
+        {.opcode=YIR_OP_COND_BRANCH,.lhs=1,.target=1,.false_target=2,
+         .false_arguments=unused_arguments,.false_argument_count=0}
+    };
+    const YIRInstruction exit[] = {{.opcode=YIR_OP_RETURN}};
+    const YIRBlock blocks[] = {
+        {.id=0,.instructions=entry,.instruction_count=2},
+        {.id=1,.instructions=exit,.instruction_count=1},
+        {.id=2,.instructions=exit,.instruction_count=1}
+    };
+    const YIRFunction function = {
+        .name="unexpected_false_edge_storage",.return_type=YIR_TYPE_VOID,
+        .blocks=blocks,.block_count=3
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,"branch argument counts and arrays must agree")!=NULL);
+}
 
 static void accept_explicit_numeric_conversion_ops(void)
 {
@@ -886,6 +934,8 @@ int main(void)
     reject_branch_metadata_on_arithmetic_instruction();
     reject_module_symbol_on_non_call_instruction();
     reject_missing_false_edge_argument_storage();
+    reject_unexpected_true_edge_argument_storage();
+    reject_unexpected_false_edge_argument_storage();
     accept_explicit_numeric_conversion_ops();
     reject_numeric_conversion_operand_type_mismatch();
     reject_i64_to_f64_with_float_operand();
