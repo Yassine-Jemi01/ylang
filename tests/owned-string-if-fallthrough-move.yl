@@ -1,0 +1,10 @@
+function main() -> int {
+    let bool take = true;
+    let owned_string current = string.own("value");
+    if (take) {
+        let owned_string taken = move(current);
+        print(taken);
+    }
+    print(current);
+    return 0;
+}
