@@ -106,6 +106,18 @@ static void print_instruction(FILE *stream, const YIRInstruction *instruction)
                        instruction->false_arguments,
                        instruction->false_argument_count);
             break;
+        case YIR_OP_CALL:
+            (void)fprintf(stream, "call @%s(", instruction->callee ?
+                          instruction->callee : "<missing-callee>");
+            for (size_t i = 0; i < instruction->argument_count; ++i) {
+                if (i != 0) (void)fputs(", ", stream);
+                if (instruction->arguments)
+                    print_value(stream, instruction->arguments[i]);
+                else
+                    (void)fputs("<missing-argument>", stream);
+            }
+            (void)fputc(')', stream);
+            break;
         case YIR_OP_RETURN:
             (void)fputs("return", stream);
             if (instruction->lhs != 0) {

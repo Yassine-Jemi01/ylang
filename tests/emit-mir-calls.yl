@@ -1,0 +1,19 @@
+fn add(int left, int right) -> int {
+    return left + right;
+}
+
+fn identity(bool value) -> bool {
+    return value;
+}
+
+fn notify() -> void {
+    return;
+}
+
+fn main() -> int {
+    notify();
+    if (identity(true)) {
+        return add(20, 22);
+    }
+    return 0;
+}

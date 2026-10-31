@@ -158,6 +158,25 @@ bool yir_verify_function(const YIRFunction *function, char *error,
                            "IR source line and column must both be present or absent");
                 goto cleanup;
             }
+
+            if (ins->opcode == YIR_OP_CALL) {
+                if (!ins->callee || ins->callee[0] == '\0' ||
+                    ins->argument_count != ins->call_parameter_count ||
+                    (ins->argument_count &&
+                     (!ins->arguments || !ins->call_parameter_types)) ||
+                    (ins->argument_count == 0 &&
+                     (ins->arguments || ins->call_parameter_types)) ||
+                    ins->false_argument_count || ins->false_arguments) {
+                    (void)fail(error, error_capacity,
+                               "call instructions require a callee and matching argument metadata");
+                    goto cleanup;
+                }
+            } else if (ins->callee || ins->call_parameter_types ||
+                       ins->call_parameter_count) {
+                (void)fail(error, error_capacity,
+                           "call metadata is only valid on call instructions");
+                goto cleanup;
+            }
             if (is_terminator(ins->opcode) != last) {
                 (void)fail(error, error_capacity,
                            "each block must end with exactly one terminator");
@@ -346,6 +365,22 @@ bool yir_verify_function(const YIRFunction *function, char *error,
                         operands_ok = check_operand(values, value_count,
                             dominators, block_count, bi, ii, ins->lhs,
                             function->return_type);
+                    }
+                    break;
+                case YIR_OP_CALL:
+                    operands_ok = valid_type(ins->result_type) &&
+                        ((ins->result_type == YIR_TYPE_VOID &&
+                          ins->result_id == 0) ||
+                         (ins->result_type != YIR_TYPE_VOID &&
+                          ins->result_id != 0));
+                    for (size_t ai = 0;
+                         operands_ok && ai < ins->argument_count; ++ai) {
+                        YIRType argument_type = ins->call_parameter_types[ai];
+                        operands_ok = valid_type(argument_type) &&
+                            argument_type != YIR_TYPE_VOID &&
+                            check_operand(values, value_count, dominators,
+                                          block_count, bi, ii,
+                                          ins->arguments[ai], argument_type);
                     }
                     break;
                 default:

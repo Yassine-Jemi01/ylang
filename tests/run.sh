@@ -181,7 +181,1398 @@ grep -q "emit-mir does not accept -o" build/emit-mir-argument.out
 ./build/ylang emit-mir tests/emit-mir-control-flow.yl > build/emit-mir-control-flow.out
 grep -q 'cond_br' build/emit-mir-control-flow.out
 grep -q 'br bb' build/emit-mir-control-flow.out
-grep -Eq '^bb[0-9]+\(%[0-9]+: i64\):$' build/emit-mir-control-flow.out
+grep -Eq '^bb[0-9]+\(%[0-9]+: i64\):
+./build/ylang check tests/explicit-mut.yl >/dev/null
+./build/ylang build tests/explicit-mut.yl -o build/test-explicit-mut >/dev/null
+./build/test-explicit-mut > build/explicit-mut.out
+diff -u tests/expected-explicit-mut.txt build/explicit-mut.out
+
+./build/ylang check examples/demo.yl
+./build/ylang build examples/demo.yl -o build/test-demo >/dev/null
+./build/test-demo > build/test-demo.out
+diff -u tests/expected-demo.txt build/test-demo.out
+
+# Calls, arithmetic operands, struct initializers, and array initializers evaluate left to right.
+./build/ylang check tests/evaluation-order.yl >/dev/null
+./build/ylang build tests/evaluation-order.yl -o build/test-evaluation-order >/dev/null
+./build/test-evaluation-order > build/evaluation-order.out
+diff -u tests/expected-evaluation-order.txt build/evaluation-order.out
+
+# Safe auto-fix: replace a common typo in code, but leave strings/comments alone.
+./build/ylang fix tests/typo-print.yl -o build/typo-print-fixed.yl > build/fix.out 2> build/fix.err
+grep -q "replaced 'pritn' with 'print'" build/fix.err
+grep -q 'print(age);' build/typo-print-fixed.yl
+grep -q 'The literal word pritn must remain unchanged.' build/typo-print-fixed.yl
+grep -q 'pritn(age) inside a comment' build/typo-print-fixed.yl
+grep -q 'pritn(age);' tests/typo-print.yl
+./build/ylang check build/typo-print-fixed.yl >/dev/null
+./build/ylang build build/typo-print-fixed.yl -o build/test-typo-print >/dev/null
+./build/test-typo-print > build/test-typo-print.out
+diff -u tests/expected-typo-print.txt build/test-typo-print.out
+
+# Do not rewrite a deliberately declared function called pritn.
+./build/ylang fix tests/declared-pritn.yl -o build/declared-pritn-fixed.yl > build/declared-fix.out 2>&1
+cmp tests/declared-pritn.yl build/declared-pritn-fixed.yl
+
+./build/ylang build examples/types.yl -o build/test-types >/dev/null
+./build/test-types > build/test-types.out
+diff -u tests/expected-types.txt build/test-types.out
+
+./build/ylang build tests/int-min.yl -o build/test-int-min >/dev/null
+./build/test-int-min > build/int-min.out
+diff -u tests/expected-int-min.txt build/int-min.out
+
+./build/ylang build examples/conditions.yl -o build/test-conditions >/dev/null
+./build/test-conditions > build/test-conditions.out
+diff -u tests/expected-conditions.txt build/test-conditions.out
+
+./build/ylang check tests/branch-init.yl >/dev/null
+
+# Definite initialization merges nested if/else paths, but not a one-sided assignment.
+cat > build/branch-init-nested.yl <<'EOF'
+function main() -> int {
+    let int score;
+    if (true) {
+        if (false) {
+            score = 10;
+        } else {
+            score = 20;
+        }
+    } else {
+        score = 30;
+    }
+    print(score);
+    return 0;
+}
+EOF
+./build/ylang check build/branch-init-nested.yl >/dev/null
+
+cat > build/branch-init-missing-else.yl <<'EOF'
+function main() -> int {
+    let int score;
+    if (true) {
+        score = 10;
+    }
+    print(score);
+    return 0;
+}
+EOF
+if ./build/ylang check build/branch-init-missing-else.yl > build/branch-init-missing-else.out 2>&1; then
+    echo "FAIL: a variable assigned on only one if path was accepted" >&2
+    exit 1
+fi
+grep -q 'E2021' build/branch-init-missing-else.out
+if ./build/ylang check tests/type-error.yl > build/type-error.out 2>&1; then
+    echo "FAIL: type-error.yl was accepted" >&2
+    exit 1
+fi
+grep -q 'E2001' build/type-error.out
+grep -q "Did you mean 'print(value);'" build/type-error.out
+grep -q 'check failed with' build/type-error.out
+if grep -q 'no executable was produced' build/type-error.out; then
+    echo "FAIL: check reported a build-only message" >&2
+    exit 1
+fi
+
+rm -f build/invalid-program
+if ./build/ylang build tests/type-error.yl -o build/invalid-program > build/build-type-error.out 2>&1; then
+    echo "FAIL: build accepted invalid source" >&2
+    exit 1
+fi
+grep -q 'build failed with' build/build-type-error.out
+grep -q 'no executable was produced' build/build-type-error.out
+if [ -e build/invalid-program ]; then
+    echo "FAIL: invalid source produced an executable" >&2
+    exit 1
+fi
+
+if ./build/ylang check tests/const-assignment.yl > build/const-assignment.out 2>&1; then
+    echo "FAIL: assignment to const was accepted" >&2
+    exit 1
+fi
+grep -q 'E2022' build/const-assignment.out
+grep -q "Keep 'const' and remove this assignment" build/const-assignment.out
+
+if ./build/ylang check tests/missing-semicolon.yl > build/missing-semicolon.out 2>&1; then
+    echo "FAIL: missing semicolon was accepted" >&2
+    exit 1
+fi
+grep -q 'E1002' build/missing-semicolon.out
+grep -q "missing ';' before this token" build/missing-semicolon.out
+
+if ./build/ylang check tests/uninitialized.yl > build/uninitialized.out 2>&1; then
+    echo "FAIL: uninitialized read was accepted" >&2
+    exit 1
+fi
+grep -q 'E2021' build/uninitialized.out
+
+./build/ylang build tests/div-zero.yl -o build/test-div-zero >/dev/null
+set +e
+./build/test-div-zero > build/div-zero.out 2>&1
+status=$?
+set -e
+[ "$status" -eq 70 ]
+grep -q 'integer division by zero' build/div-zero.out
+
+./build/ylang build tests/overflow.yl -o build/test-overflow >/dev/null
+set +e
+./build/test-overflow > build/overflow.out 2>&1
+status=$?
+set -e
+[ "$status" -eq 70 ]
+grep -q 'integer overflow in addition' build/overflow.out
+
+if command -v clang >/dev/null 2>&1; then
+    ./build/ylang build examples/demo.yl -o build/test-demo-clang --cc clang >/dev/null
+    ./build/test-demo-clang > build/test-demo-clang.out
+    diff -u tests/expected-demo.txt build/test-demo-clang.out
+fi
+
+
+# Pure Game2D helpers currently share the SDL2-linked game2d module.
+# Skip this integration test when the SDL2 development package is unavailable.
+if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists sdl2; then
+    cat > build/game2d-collision.yl <<'EOF'
+from game2d.yl import game2d_rects_overlap, game2d_point_in_rect;
+function main() -> int {
+    print(game2d_rects_overlap(0, 0, 10, 10, 5, 5, 10, 10));
+    print(game2d_rects_overlap(0, 0, 10, 10, 10, 0, 4, 4));
+    print(game2d_rects_overlap(0, 0, 0, 10, 5, 5, 10, 10));
+    print(game2d_point_in_rect(5, 5, 0, 0, 10, 10));
+    print(game2d_point_in_rect(10, 5, 0, 0, 10, 10));
+    return 0;
+}
+EOF
+    YLANG_PATH=stdlib ./build/ylang check build/game2d-collision.yl >/dev/null
+    YLANG_PATH=stdlib ./build/ylang build build/game2d-collision.yl -o build/test-game2d-collision >/dev/null
+    ./build/test-game2d-collision > build/game2d-collision.out
+    printf 'true\nfalse\nfalse\ntrue\nfalse\n' > build/game2d-collision.expected
+    diff -u build/game2d-collision.expected build/game2d-collision.out
+else
+    echo "SKIP: Game2D collision integration test requires SDL2 development files and pkg-config." >&2
+fi
+
+# Global negative literals and negative array elements must remain C constant expressions.
+cat > build/global-negative-initializers.yl <<'EOF'
+let int global_negative = -5;
+let int global_minimum = -9223372036854775808;
+let int values[] = [-1, -2];
+function main() -> int {
+    print(global_negative, global_minimum, values[0]);
+    return 0;
+}
+EOF
+./build/ylang check build/global-negative-initializers.yl >/dev/null
+./build/ylang build build/global-negative-initializers.yl -o build/test-global-negative-initializers >/dev/null
+./build/test-global-negative-initializers > build/global-negative-initializers.out
+printf '%s\n' '-5 -9223372036854775808 -1' > build/global-negative-initializers.expected
+diff -u build/global-negative-initializers.expected build/global-negative-initializers.out
+
+# Struct equality is rejected by sema rather than passed to the generated-C compiler.
+cat > build/struct-equality-error.yl <<'EOF'
+struct Point { int x; int y; }
+function main() -> int {
+    let Point left = Point(1, 2);
+    let Point right = Point(1, 2);
+    if (left == right) { print("same"); }
+    return 0;
+}
+EOF
+if ./build/ylang check build/struct-equality-error.yl > build/struct-equality-error.out 2>&1; then
+    echo "FAIL: struct equality should be rejected until structural equality is implemented" >&2
+    exit 1
+fi
+grep -q 'E2036' build/struct-equality-error.out
+grep -q 'Struct values do not support equality comparisons yet' build/struct-equality-error.out
+if ./build/ylang build build/struct-equality-error.yl -o build/struct-equality-error > build/struct-equality-build.out 2>&1; then
+    echo "FAIL: build accepted unsupported struct equality" >&2
+    exit 1
+fi
+if grep -Eqi 'invalid operands|initializer element is not constant' build/struct-equality-build.out; then
+    echo "FAIL: struct equality escaped semantic checking and failed in the C compiler" >&2
+    cat build/struct-equality-build.out >&2
+    exit 1
+fi
+
+# Enum type mismatch diagnostics should name the actual declared enum types.
+cat > build/enum-type-mismatch.yl <<'EOF'
+enum Direction { North, East }
+enum Color { Red, Blue }
+function main() -> int {
+    let Direction facing = Color.Red;
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-type-mismatch.yl > build/enum-type-mismatch.out 2>&1; then
+    echo "FAIL: assigning one enum type to another should be rejected" >&2
+    exit 1
+fi
+grep -q 'E2001' build/enum-type-mismatch.out
+grep -q 'Direction' build/enum-type-mismatch.out
+grep -q 'Color' build/enum-type-mismatch.out
+if grep -q '<enum>' build/enum-type-mismatch.out; then
+    echo "FAIL: enum mismatch diagnostic printed a generic <enum> placeholder" >&2
+    cat build/enum-type-mismatch.out >&2
+    exit 1
+fi
+
+# Chained postfix syntax is parsed as a single expression; semantic errors stay focused.
+cat > build/postfix-index-member.yl <<'EOF'
+function main() -> int {
+    let int arr[] = [1, 2];
+    print(arr[1].x);
+    return 0;
+}
+EOF
+if ./build/ylang check build/postfix-index-member.yl > build/postfix-index-member.out 2>&1; then
+    echo "FAIL: member access on an int should be rejected semantically" >&2
+    exit 1
+fi
+grep -q 'E2076' build/postfix-index-member.out
+if grep -q 'E1002' build/postfix-index-member.out; then
+    echo "FAIL: arr[index].field caused cascading parser errors" >&2
+    cat build/postfix-index-member.out >&2
+    exit 1
+fi
+
+cat > build/postfix-chain.yl <<'EOF'
+function main() -> int {
+    let int a = 1;
+    print(a.b.c);
+    return 0;
+}
+EOF
+if ./build/ylang check build/postfix-chain.yl > build/postfix-chain.out 2>&1; then
+    echo "FAIL: member access on an int should be rejected semantically" >&2
+    exit 1
+fi
+grep -q 'E2076' build/postfix-chain.out
+if grep -q 'E1002' build/postfix-chain.out; then
+    echo "FAIL: a.b.c caused cascading parser errors" >&2
+    cat build/postfix-chain.out >&2
+    exit 1
+fi
+
+# Distinct semantic failures should have distinct stable diagnostic codes.
+cat > build/invalid-increment-target.yl <<'EOF'
+function main() -> int {
+    print(1++);
+    return 0;
+}
+EOF
+if ./build/ylang check build/invalid-increment-target.yl > build/invalid-increment-target.out 2>&1; then
+    echo "FAIL: invalid increment target was accepted" >&2
+    exit 1
+fi
+grep -q 'E2093' build/invalid-increment-target.out
+
+cat > build/array-argument-type.yl <<'EOF'
+function total(int values[]) -> int {
+    return length(values);
+}
+function main() -> int {
+    let int scalar = 1;
+    total(scalar);
+    return 0;
+}
+EOF
+if ./build/ylang check build/array-argument-type.yl > build/array-argument-type.out 2>&1; then
+    echo "FAIL: scalar was accepted as an array argument" >&2
+    exit 1
+fi
+grep -q 'E2094' build/array-argument-type.out
+
+cat > build/plus-equal-bool.yl <<'EOF'
+function main() -> int {
+    let bool enabled = true;
+    enabled += false;
+    return 0;
+}
+EOF
+if ./build/ylang check build/plus-equal-bool.yl > build/plus-equal-bool.out 2>&1; then
+    echo "FAIL: += accepted a boolean target" >&2
+    exit 1
+fi
+grep -q 'E2095' build/plus-equal-bool.out
+
+cat > build/length-non-array.yl <<'EOF'
+function main() -> int {
+    let int value = 5;
+    print(length(value));
+    return 0;
+}
+EOF
+if ./build/ylang check build/length-non-array.yl > build/length-non-array.out 2>&1; then
+    echo "FAIL: length accepted a non-array value" >&2
+    exit 1
+fi
+grep -q 'E2096' build/length-non-array.out
+
+cat > build/math-wrong-arity.yl <<'EOF'
+function main() -> int {
+    let float value = math.sqrt();
+    print(value);
+    return 0;
+}
+EOF
+if ./build/ylang check build/math-wrong-arity.yl > build/math-wrong-arity.out 2>&1; then
+    echo "FAIL: math.sqrt accepted a missing argument" >&2
+    exit 1
+fi
+grep -q 'E2097' build/math-wrong-arity.out
+
+cat > build/math-non-float.yl <<'EOF'
+function main() -> int {
+    let float value = math.sqrt(9);
+    print(value);
+    return 0;
+}
+EOF
+if ./build/ylang check build/math-non-float.yl > build/math-non-float.out 2>&1; then
+    echo "FAIL: math.sqrt accepted an int without explicit conversion" >&2
+    exit 1
+fi
+grep -q 'E2098' build/math-non-float.out
+
+cat > build/array-element-type.yl <<'EOF'
+function total(int values[]) -> int {
+    return length(values);
+}
+function main() -> int {
+    let string names[] = ["Ada"];
+    total(names);
+    return 0;
+}
+EOF
+if ./build/ylang check build/array-element-type.yl > build/array-element-type.out 2>&1; then
+    echo "FAIL: function accepted an array with the wrong element type" >&2
+    exit 1
+fi
+grep -q 'E2099' build/array-element-type.out
+
+# User-defined enums have distinct types and can be passed, compared, and lowered.
+cat > build/enum-basic.yl <<'EOF'
+enum Direction { North, East, South, West }
+function is_east(Direction direction) -> bool {
+    return direction == Direction.East;
+}
+function main() -> int {
+    let Direction facing = Direction.North;
+    if (facing == Direction.North) { print("north"); }
+    if (is_east(Direction.East)) { print("east"); }
+    if (facing != Direction.South) { print("not-south"); }
+    match (facing) {
+        Direction.North -> { print("match-north"); }
+        Direction.East -> { print("match-east"); }
+        Direction.South -> { print("match-south"); }
+        Direction.West -> { print("match-west"); }
+    }
+    return 0;
+}
+EOF
+./build/ylang check build/enum-basic.yl >/dev/null
+./build/ylang build build/enum-basic.yl -o build/test-enum-basic >/dev/null
+./build/test-enum-basic > build/enum-basic.out
+printf 'north\neast\nnot-south\nmatch-north\n' > build/enum-basic.expected
+diff -u build/enum-basic.expected build/enum-basic.out
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+    ./build/ylang build-asm build/enum-basic.yl -o build/test-enum-basic-asm >/dev/null
+    ./build/test-enum-basic-asm > build/enum-basic-asm.out
+    diff -u build/enum-basic.expected build/enum-basic-asm.out
+fi
+cat > build/enum-non-exhaustive.yl <<'EOF'
+enum Direction { North, East, South }
+function main() -> int {
+    let Direction facing = Direction.North;
+    match (facing) {
+        Direction.North -> { print("north"); }
+        Direction.East -> { print("east"); }
+    }
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-non-exhaustive.yl > build/enum-non-exhaustive.out 2>&1; then
+    echo "FAIL: non-exhaustive enum match was accepted" >&2
+    exit 1
+fi
+grep -q 'E2063' build/enum-non-exhaustive.out
+cat > build/enum-mismatch.yl <<'EOF'
+enum Direction { North, East }
+enum Color { Red, Blue }
+function main() -> int {
+    let Direction direction = Color.Red;
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-mismatch.yl > build/enum-mismatch.out 2>&1; then
+    echo "FAIL: assigning one enum type to another was accepted" >&2
+    exit 1
+fi
+cat > build/enum-unknown-variant.yl <<'EOF'
+enum Direction { North, East }
+function main() -> int {
+    let Direction direction = Direction.West;
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-unknown-variant.yl > build/enum-unknown-variant.out 2>&1; then
+    echo "FAIL: unknown enum variant was accepted" >&2
+    exit 1
+fi
+grep -q 'E2080' build/enum-unknown-variant.out
+
+# Public enum example must type-check and execute as documented.
+./build/ylang check examples/enums.yl >/dev/null
+./build/ylang build examples/enums.yl -o build/test-enums-example >/dev/null
+./build/test-enums-example > build/enums-example.out
+printf 'vertical\nnorth\n' > build/enums-example.expected
+diff -u build/enums-example.expected build/enums-example.out
+
+cat > build/enum-wrong-match-type.yl <<'EOF'
+enum Direction { North, East }
+enum Color { Red, Blue }
+function main() -> int {
+    let Direction facing = Direction.North;
+    match (facing) {
+        Color.Red -> { print("red"); }
+        Direction.East -> { print("east"); }
+    }
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-wrong-match-type.yl > build/enum-wrong-match-type.out 2>&1; then
+    echo "FAIL: match accepted a variant from another enum" >&2
+    exit 1
+fi
+grep -q 'E2058' build/enum-wrong-match-type.out
+
+cat > build/enum-duplicate-arm.yl <<'EOF'
+enum Direction { North, East }
+function main() -> int {
+    let Direction facing = Direction.North;
+    match (facing) {
+        Direction.North -> { print("north"); }
+        Direction.North -> { print("again"); }
+        Direction.East -> { print("east"); }
+    }
+    return 0;
+}
+EOF
+if ./build/ylang check build/enum-duplicate-arm.yl > build/enum-duplicate-arm.out 2>&1; then
+    echo "FAIL: duplicate enum match arm was accepted" >&2
+    exit 1
+fi
+grep -q 'E2059' build/enum-duplicate-arm.out
+
+# Struct values: declaration, constructor, field access, parameters, and returns.
+./build/ylang check examples/structs.yl >/dev/null
+./build/ylang build examples/structs.yl -o build/test-structs-example >/dev/null
+./build/test-structs-example > build/structs-example.out
+printf '9 , 4\n' > build/structs-example.expected
+diff -u build/structs-example.expected build/structs-example.out
+
+# Mutable struct field assignment: update one field without changing the others.
+cat > build/struct-field-assignment.yl <<'EOF'
+struct Point { int x; int y; }
+function main() -> int {
+    let Point p = Point(2, 7);
+    p.x = 12;
+    p.x += 3;
+    p.y++;
+    print(p.x, ",", p.y);
+    return 0;
+}
+EOF
+./build/ylang check build/struct-field-assignment.yl >/dev/null
+./build/ylang build build/struct-field-assignment.yl -o build/test-struct-field-assignment >/dev/null
+./build/test-struct-field-assignment > build/struct-field-assignment.out
+printf '15 , 8\n' > build/struct-field-assignment.expected
+diff -u build/struct-field-assignment.expected build/struct-field-assignment.out
+
+# Nested struct field writes should resolve through the root mutable struct variable.
+cat > build/nested-struct-field-assignment.yl <<'EOF'
+struct Position { int x; int y; }
+struct Hero { Position pos; int hp; }
+function main() -> int {
+    let Hero hero = Hero(Position(2, 7), 100);
+    hero.pos.x = 9;
+    hero.pos.y += 3;
+    hero.pos.x++;
+    print(hero.pos.x, ",", hero.pos.y, ",", hero.hp);
+    return 0;
+}
+EOF
+./build/ylang check build/nested-struct-field-assignment.yl >/dev/null
+./build/ylang build build/nested-struct-field-assignment.yl -o build/test-nested-struct-field-assignment >/dev/null
+./build/test-nested-struct-field-assignment > build/nested-struct-field-assignment.out
+printf '10 , 10 , 100\n' > build/nested-struct-field-assignment.expected
+diff -u build/nested-struct-field-assignment.expected build/nested-struct-field-assignment.out
+
+# Nested assignment still enforces the final field's type.
+cat > build/nested-struct-field-type-error.yl <<'EOF'
+struct Position { int x; int y; }
+struct Hero { Position pos; }
+function main() -> int {
+    let Hero hero = Hero(Position(2, 7));
+    hero.pos.x = "wrong";
+    return 0;
+}
+EOF
+if ./build/ylang check build/nested-struct-field-type-error.yl > build/nested-struct-field-type-error.out 2>&1; then
+    echo "FAIL: nested struct field assignment accepted a mismatched type" >&2
+    exit 1
+fi
+grep -q 'E2001' build/nested-struct-field-type-error.out
+
+cat > build/struct-wrong-field-type.yl <<'EOF'
+struct Point { int x; string label; }
+function main() -> int {
+    let Point p = Point("wrong", "origin");
+    print(p.x);
+    return 0;
+}
+EOF
+if ./build/ylang check build/struct-wrong-field-type.yl > build/struct-wrong-field-type.out 2>&1; then
+    echo "FAIL: struct constructor accepted a field type mismatch" >&2
+    exit 1
+fi
+grep -q 'E2075' build/struct-wrong-field-type.out
+
+cat > build/struct-unknown-field.yl <<'EOF'
+struct Point { int x; int y; }
+function main() -> int {
+    let Point p = Point(1, 2);
+    print(p.z);
+    return 0;
+}
+EOF
+if ./build/ylang check build/struct-unknown-field.yl > build/struct-unknown-field.out 2>&1; then
+    echo "FAIL: unknown struct field was accepted" >&2
+    exit 1
+fi
+grep -q 'E2077' build/struct-unknown-field.out
+
+cat > build/struct-arity-error.yl <<'EOF'
+struct Point { int x; int y; }
+function main() -> int {
+    let Point p = Point(1);
+    print(p.x);
+    return 0;
+}
+EOF
+if ./build/ylang check build/struct-arity-error.yl > build/struct-arity-error.out 2>&1; then
+    echo "FAIL: struct constructor accepted the wrong number of values" >&2
+    exit 1
+fi
+grep -q 'E2074' build/struct-arity-error.out
+
+# Standard math library: native calls, namespacing, and argument type checks.
+./build/ylang check examples/math.yl >/dev/null
+./build/ylang build examples/math.yl -o build/test-math >/dev/null
+./build/test-math > build/test-math.out
+diff -u tests/expected-math.txt build/test-math.out
+if ./build/ylang check tests/math-type-error.yl > build/math-type-error.out 2>&1; then
+    echo "FAIL: math.sqrt accepted an int argument without an explicit conversion" >&2
+    exit 1
+fi
+grep -q 'Math functions require float arguments' build/math-type-error.out
+
+# Fixed-size arrays: homogeneous initialization, indexed mutation, globals, and bounds checks.
+./build/ylang check examples/arrays.yl >/dev/null
+./build/ylang build examples/arrays.yl -o build/test-arrays >/dev/null
+./build/test-arrays > build/test-arrays.out
+diff -u tests/expected-arrays.txt build/test-arrays.out
+./build/ylang build tests/array-out-of-bounds.yl -o build/test-array-oob >/dev/null
+if ./build/test-array-oob > build/array-oob.out 2>&1; then
+    echo "FAIL: out-of-bounds array access was accepted at runtime" >&2
+    exit 1
+else
+    array_status=$?
+    [ "$array_status" -eq 70 ]
+fi
+grep -q 'array index out of bounds' build/array-oob.out
+
+if ./build/ylang check tests/array-scalar-init.yl > build/array-scalar-init.out 2>&1; then
+    echo "FAIL: scalar initializer for an array was accepted" >&2
+    exit 1
+fi
+grep -q 'Array declarations require an array literal initializer' build/array-scalar-init.out
+if ./build/ylang check tests/array-mixed-types.yl > build/array-mixed-types.out 2>&1; then
+    echo "FAIL: mixed-type array literal was accepted" >&2
+    exit 1
+fi
+grep -q 'All array elements must have the same type' build/array-mixed-types.out
+
+# Native optimization levels are selectable without changing source code.
+YLANG_OPT_LEVEL=3 ./build/ylang build examples/loops.yl -o build/test-loops-o3 >/dev/null
+./build/test-loops-o3 > build/loops-o3.out
+diff -u tests/expected-loops.txt build/loops-o3.out
+if YLANG_OPT_LEVEL=invalid ./build/ylang build examples/loops.yl -o build/invalid-opt > build/invalid-opt.out 2>&1; then
+    echo "FAIL: invalid optimization level was accepted" >&2
+    exit 1
+fi
+grep -q 'invalid YLANG_OPT_LEVEL' build/invalid-opt.out
+
+# C-style for loops and condition-driven while loops.
+./build/ylang check examples/loops.yl >/dev/null
+./build/ylang build examples/loops.yl -o build/test-loops >/dev/null
+./build/test-loops > build/loops.out
+diff -u tests/expected-loops.txt build/loops.out
+if ./build/ylang check tests/loop-condition-error.yl > build/loop-condition-error.out 2>&1; then
+    echo "FAIL: while accepted a non-bool condition" >&2
+    exit 1
+fi
+grep -q 'while condition must have type bool' build/loop-condition-error.out
+
+# Text file I/O: writing returns a status, reading returns a string.
+./build/ylang check tests/file-io.yl >/dev/null
+./build/ylang build tests/file-io.yl -o build/test-file-io >/dev/null
+./build/test-file-io > build/file-io.out
+diff -u tests/expected-file-io.txt build/file-io.out
+printf 'YLang file I/O' > build/io-expected.txt
+cmp build/io-output.txt build/io-expected.txt
+
+# String standard library: replacement is non-overlapping and handles empty needles safely.
+./build/ylang check examples/string-replace.yl >/dev/null
+./build/ylang build examples/string-replace.yl -o build/test-string-replace >/dev/null
+./build/test-string-replace > build/string-replace.out
+diff -u tests/expected-string-replace.txt build/string-replace.out
+
+# String standard library and stdin line input.
+./build/ylang check examples/strings.yl >/dev/null
+./build/ylang build examples/strings.yl -o build/test-strings >/dev/null
+./build/test-strings > build/test-strings.out
+diff -u tests/expected-strings.txt build/test-strings.out
+if ./build/ylang check tests/string-type-error.yl > build/string-type-error.out 2>&1; then
+    echo "FAIL: string.length accepted an int argument" >&2
+    exit 1
+fi
+grep -q 'requires string arguments' build/string-type-error.out
+./build/ylang check tests/read-line.yl >/dev/null
+./build/ylang build tests/read-line.yl -o build/test-read-line >/dev/null
+printf 'YLang\n' | ./build/test-read-line > build/read-line.out
+diff -u tests/expected-read-line.txt build/read-line.out
+
+
+
+# Path utilities and safe OS image-opening integration.
+./build/ylang check examples/image-preview.yl >/dev/null
+./build/ylang build examples/path-utils.yl -o build/test-path-utils >/dev/null
+./build/test-path-utils > build/path-utils.out
+diff -u tests/expected-path-utils.txt build/path-utils.out
+if ./build/ylang check tests/path-type-error.yl > build/path-type-error.out 2>&1; then
+    echo "FAIL: path.exists accepted a non-string argument" >&2
+    exit 1
+fi
+grep -q 'requires string arguments' build/path-type-error.out
+
+# Compound assignment evaluates an indexed lvalue exactly once.
+./build/ylang check tests/array-compound-side-effect.yl >/dev/null
+./build/ylang build tests/array-compound-side-effect.yl -o build/test-array-compound-side-effect >/dev/null
+./build/test-array-compound-side-effect > build/array-compound-side-effect.out
+diff -u tests/expected-array-compound-side-effect.txt build/array-compound-side-effect.out
+
+# Capacity-aware vectors should handle larger declaration lists without quadratic copying.
+: > build/many-globals.yl
+i=0
+while [ "$i" -lt 1000 ]; do
+    printf 'let int global_%s = %s;\n' "$i" "$i" >> build/many-globals.yl
+    i=$((i + 1))
+done
+printf 'function main() -> int { return 0; }\n' >> build/many-globals.yl
+./build/ylang check build/many-globals.yl >/dev/null
+
+# Refuse attempts to overwrite an input file through output commands.
+cat > build/same-path.yl <<'EOF'
+function main() -> int {
+    return 0;
+}
+EOF
+cp build/same-path.yl build/same-path.before
+if ./build/ylang emit-c build/same-path.yl -o build/same-path.yl > build/same-path-emit.out 2>&1; then
+    echo "FAIL: emit-c overwrote its input file" >&2
+    exit 1
+fi
+cmp build/same-path.yl build/same-path.before
+if ./build/ylang fix build/same-path.yl -o build/same-path.yl > build/same-path-fix.out 2>&1; then
+    echo "FAIL: fix overwrote its input file" >&2
+    exit 1
+fi
+cmp build/same-path.yl build/same-path.before
+
+# Array parameters pass a checked pointer and length; length() works in callers and callees.
+./build/ylang check examples/array-functions.yl >/dev/null
+./build/ylang build examples/array-functions.yl -o build/test-array-functions >/dev/null
+./build/test-array-functions > build/array-functions.out
+diff -u tests/expected-array-functions.txt build/array-functions.out
+if ./build/ylang check tests/array-param-type-error.yl > build/array-param-type-error.out 2>&1; then
+    echo "FAIL: scalar passed to array parameter" >&2
+    exit 1
+fi
+grep -q 'This parameter expects an array argument' build/array-param-type-error.out
+
+# Numeric literal forms and multiline comments.
+cat > build/literals-comments.yl <<'EOF'
+/* Block comments may
+   span multiple lines. */
+function main() -> int {
+    let int hex = 0xFF;
+    let float scientific = 1e3;
+    let float tiny = 2.5e-4;
+    print(hex, scientific, tiny);
+    return 0;
+}
+EOF
+./build/ylang check build/literals-comments.yl >/dev/null
+./build/ylang build build/literals-comments.yl -o build/test-literals-comments >/dev/null
+./build/test-literals-comments > build/literals-comments.out
+grep -q '255 1000 0.00025' build/literals-comments.out
+cat > build/unterminated-comment.yl <<'EOF'
+function main() -> int {
+    /* never closed
+    return 0;
+}
+EOF
+if ./build/ylang check build/unterminated-comment.yl > build/unterminated-comment.out 2>&1; then
+    echo "FAIL: unterminated block comment was accepted" >&2
+    exit 1
+fi
+grep -q 'Unterminated block comment' build/unterminated-comment.out
+
+# Compound addition and postfix increment.
+cat > build/compound-operators.yl <<'EOF'
+function main() -> int {
+    let int count = 2;
+    count += 3;
+    count++;
+    print(count);
+    let float ratio = 1.5;
+    ratio += 0.5;
+    print(ratio);
+    return 0;
+}
+EOF
+./build/ylang check build/compound-operators.yl >/dev/null
+./build/ylang build build/compound-operators.yl -o build/test-compound-operators >/dev/null
+./build/test-compound-operators > build/compound-operators.out
+grep -q '^6$' build/compound-operators.out
+grep -q '^2$' build/compound-operators.out
+
+
+# Multi-file imports resolve relative to the importing source file.
+mkdir -p build/imports
+cat > build/imports/suffix.yl <<'EOF'
+let const string suffix_prefix = "-";
+function make_suffix() -> string {
+    return string.concat(suffix_prefix, "YLang");
+}
+function private_helper() -> string {
+    return "suffix-private";
+}
+EOF
+cat > build/imports/data.yl <<'EOF'
+from "./suffix.yl" import make_suffix;
+let const string system_prefix = "module";
+function system_data() -> string {
+    return string.concat(private_helper(), make_suffix());
+}
+function private_helper() -> string {
+    return "data-private";
+}
+let int imported_counter = 4;
+function bump_counter(int amount) -> int {
+    imported_counter += amount;
+    return imported_counter;
+}
+EOF
+cat > build/imports/main.yl <<'EOF'
+from "./data.yl" import system_data(), system_prefix, imported_counter, bump_counter;
+function m1_private_helper() -> string {
+    return "root-collision-test";
+}
+function main() -> int {
+    print(system_data(), system_prefix);
+    print(m1_private_helper());
+    print(bump_counter(3), imported_counter);
+    return 0;
+}
+EOF
+./build/ylang check build/imports/main.yl >/dev/null
+./build/ylang build build/imports/main.yl -o build/test-module-imports >/dev/null
+./build/test-module-imports > build/module-imports.out
+printf 'data-private-YLang module\nroot-collision-test\n7 7\n' > build/module-imports.expected
+diff -u build/module-imports.expected build/module-imports.out
+
+# Semantic diagnostics inside an imported module must point at that module's file and line.
+cat > build/imports/diagnostic-module.yl <<'EOF'
+function imported_value() -> int {
+    let int result = true;
+    return result;
+}
+EOF
+cat > build/imports/diagnostic-main.yl <<'EOF'
+from "./diagnostic-module.yl" import imported_value;
+function main() -> int {
+    return imported_value();
+}
+EOF
+if ./build/ylang check build/imports/diagnostic-main.yl > build/imports/diagnostic-attribution.out 2>&1; then
+    echo "FAIL: a type error in an imported module was accepted" >&2
+    exit 1
+fi
+grep -q 'E2001' build/imports/diagnostic-attribution.out
+grep -Fq 'diagnostic-module.yl:2:' build/imports/diagnostic-attribution.out
+if grep -Fq 'diagnostic-main.yl:2:' build/imports/diagnostic-attribution.out; then
+    echo "FAIL: imported-module type error was attributed to the root file" >&2
+    exit 1
+fi
+
+
+# Names from a module remain private unless imported.
+cat > build/imports/private-name.yl <<'EOF'
+from "./data.yl" import system_data;
+function main() -> int {
+    print(private_helper());
+    return 0;
+}
+EOF
+if ./build/ylang check build/imports/private-name.yl > build/imports/private-name.out 2>&1; then
+    echo "FAIL: an unimported module-private function was visible" >&2
+    exit 1
+fi
+grep -q 'Call to an unknown function' build/imports/private-name.out
+
+# Missing imported names and import cycles must produce diagnostics.
+cat > build/imports/missing-name.yl <<'EOF'
+from "./data.yl" import does_not_exist;
+function main() -> int { return 0; }
+EOF
+if ./build/ylang check build/imports/missing-name.yl > build/imports/missing-name.out 2>&1; then
+    echo "FAIL: an unknown imported symbol was accepted" >&2
+    exit 1
+fi
+grep -q 'E1024' build/imports/missing-name.out
+
+cat > build/imports/duplicate-import.yl <<'EOF'
+from "./data.yl" import system_data;
+from "./suffix.yl" import system_data;
+function main() -> int { return 0; }
+EOF
+if ./build/ylang check build/imports/duplicate-import.yl > build/imports/duplicate-import.out 2>&1; then
+    echo "FAIL: the same imported name was accepted twice" >&2
+    exit 1
+fi
+grep -q 'E1025' build/imports/duplicate-import.out
+
+cat > build/imports/missing-file.yl <<'EOF'
+from "./not-here.yl" import missing;
+function main() -> int { return 0; }
+EOF
+if ./build/ylang check build/imports/missing-file.yl > build/imports/missing-file.out 2>&1; then
+    echo "FAIL: a missing imported file was accepted" >&2
+    exit 1
+fi
+grep -q 'E1022' build/imports/missing-file.out
+
+cat > build/imports/contains-main.yl <<'EOF'
+function main() -> int { return 0; }
+function helper() -> int { return 1; }
+EOF
+cat > build/imports/import-main.yl <<'EOF'
+from "./contains-main.yl" import helper;
+function main() -> int { return helper(); }
+EOF
+if ./build/ylang check build/imports/import-main.yl > build/imports/import-main.out 2>&1; then
+    echo "FAIL: imported module entry point was accepted" >&2
+    exit 1
+fi
+grep -q 'E1026' build/imports/import-main.out
+
+cat > build/imports/cycle-a.yl <<'EOF'
+from "./cycle-b.yl" import cycle_b;
+function cycle_a() -> int { return 1; }
+function main() -> int { return cycle_b(); }
+EOF
+cat > build/imports/cycle-b.yl <<'EOF'
+from "./cycle-a.yl" import cycle_a;
+function cycle_b() -> int { return cycle_a(); }
+EOF
+if ./build/ylang check build/imports/cycle-a.yl > build/imports/cycle.out 2>&1; then
+    echo "FAIL: a circular module import was accepted" >&2
+    exit 1
+fi
+grep -q 'E1023' build/imports/cycle.out
+
+# Repeated imports of one canonical file should reuse the module and bind different names.
+cat > build/imports/reusable.yl <<'EOF'
+let int reusable_counter = 3;
+function reusable_one() -> int { return 11; }
+function reusable_two() -> int { return 22; }
+function increment_reusable(int amount) -> int {
+    reusable_counter += amount;
+    return reusable_counter;
+}
+EOF
+cat > build/imports/repeated.yl <<'EOF'
+from "./reusable.yl" import reusable_one;
+from "./reusable.yl" import reusable_two, reusable_counter, increment_reusable;
+function main() -> int {
+    print(reusable_one(), reusable_two());
+    print(reusable_counter);
+    print(increment_reusable(4));
+    return 0;
+}
+EOF
+./build/ylang build build/imports/repeated.yl -o build/test-repeated-imports >/dev/null
+./build/test-repeated-imports > build/repeated-imports.out
+printf '11 22\n3\n7\n' > build/repeated-imports.expected
+diff -u build/repeated-imports.expected build/repeated-imports.out
+
+# Quoted import paths must preserve spaces in filenames.
+cat > "build/imports/string tools.yl" <<'EOF'
+function spaced_import() -> string { return "path with spaces"; }
+EOF
+cat > build/imports/spaced-path.yl <<'EOF'
+from "./string tools.yl" import spaced_import();
+function main() -> int {
+    print(spaced_import());
+    return 0;
+}
+EOF
+./build/ylang build build/imports/spaced-path.yl -o build/test-spaced-import >/dev/null
+./build/test-spaced-import > build/spaced-import.out
+printf 'path with spaces\n' > build/spaced-import.expected
+diff -u build/spaced-import.expected build/spaced-import.out
+
+# Dotted filenames and YLANG_PATH support reusable local libraries.
+cat > build/imports/dotted-path.yl <<'EOF'
+from reusable.yl import reusable_one;
+function main() -> int {
+    print(reusable_one());
+    return 0;
+}
+EOF
+./build/ylang build build/imports/dotted-path.yl -o build/test-dotted-import >/dev/null
+./build/test-dotted-import > build/dotted-import.out
+printf '11\n' > build/dotted-import.expected
+diff -u build/dotted-import.expected build/dotted-import.out
+
+mkdir -p build/imports/library
+cat > build/imports/library/mathlib.yl <<'EOF'
+function library_value() -> int { return 314; }
+EOF
+cat > build/imports/library-main.yl <<'EOF'
+from mathlib.yl import library_value;
+function main() -> int {
+    print(library_value());
+    return 0;
+}
+EOF
+YLANG_PATH=build/imports/library ./build/ylang build build/imports/library-main.yl -o build/test-library-import >/dev/null
+./build/test-library-import > build/library-import.out
+printf '314\n' > build/library-import.expected
+diff -u build/library-import.expected build/library-import.out
+
+# The NASM backend supports imported functions when their modules use its subset.
+cat > build/imports/reusable-functions.yl <<'EOF'
+function reusable_one() -> int { return 11; }
+function reusable_two() -> int { return 22; }
+EOF
+cat > build/imports/repeated-asm.yl <<'EOF'
+from "./reusable-functions.yl" import reusable_one;
+from "./reusable-functions.yl" import reusable_two;
+function main() -> int {
+    print(reusable_one(), reusable_two());
+    return 0;
+}
+EOF
+./build/ylang emit-asm build/imports/repeated-asm.yl -o build/imports/repeated.asm >/dev/null
+grep -q 'yl_fn_m' build/imports/repeated.asm
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+    ./build/ylang build-asm build/imports/repeated-asm.yl -o build/test-repeated-imports-asm >/dev/null
+    ./build/test-repeated-imports-asm > build/repeated-imports-asm.out
+    printf '11 22\n' > build/repeated-imports-asm.expected
+    diff -u build/repeated-imports-asm.expected build/repeated-imports-asm.out
+fi
+
+# Experimental NASM backend: test emission everywhere and execute it when NASM is present.
+./build/ylang check tests/asm-basic.yl >/dev/null
+./build/ylang emit-asm tests/asm-basic.yl -o build/asm-basic.asm >/dev/null
+grep -q '^global _start$' build/asm-basic.asm
+grep -q '^__yl_runtime_error:' build/asm-basic.asm
+grep -q '^yl_print_i64:' build/asm-basic.asm
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nasm >/dev/null 2>&1 && command -v ld >/dev/null 2>&1; then
+    if ! nasm -f elf64 build/asm-basic.asm -o build/asm-basic.o; then
+        nl -ba build/asm-basic.asm | sed -n '108,132p' >&2
+        exit 1
+    fi
+    ld -o build/test-asm-basic build/asm-basic.o
+    ./build/test-asm-basic > build/asm-basic.out
+    diff -u tests/expected-asm-basic.txt build/asm-basic.out
+    ./build/ylang build-asm tests/asm-basic.yl -o build/test-asm-basic-cli >/dev/null
+    ./build/test-asm-basic-cli > build/asm-basic-cli.out
+    diff -u tests/expected-asm-basic.txt build/asm-basic-cli.out
+
+    # Empty string literals must emit exactly one terminator and print a blank line.
+    cat > build/asm-empty-string.yl <<'EOF'
+function main() -> int {
+    print("");
+    return 0;
+}
+EOF
+    ./build/ylang emit-asm build/asm-empty-string.yl -o build/asm-empty-string.asm >/dev/null
+    grep -Fq "yl_str_0: db 0" build/asm-empty-string.asm
+    ./build/ylang build-asm build/asm-empty-string.yl -o build/test-asm-empty-string >/dev/null
+    ./build/test-asm-empty-string > build/asm-empty-string.out
+    : > build/asm-empty-string.expected
+    echo >> build/asm-empty-string.expected
+    diff -u build/asm-empty-string.expected build/asm-empty-string.out
+
+    # Differential parity tests: programs in the shared subset must behave the same
+    # when compiled by the default C backend and the experimental NASM backend.
+    run_backend_parity() {
+        parity_source=$1
+
+        parity_label=$2
+        ./build/ylang build "$parity_source" -o "build/parity-$parity_label-c" >/dev/null
+        ./build/ylang build-asm "$parity_source" -o "build/parity-$parity_label-asm" >/dev/null
+        "build/parity-$parity_label-c" > "build/parity-$parity_label-c.out"
+        "build/parity-$parity_label-asm" > "build/parity-$parity_label-asm.out"
+        diff -u "build/parity-$parity_label-c.out" "build/parity-$parity_label-asm.out"
+    }
+    run_backend_parity tests/asm-basic.yl arithmetic
+    run_backend_parity tests/escape-parity.yl escapes
+    run_backend_parity build/enum-basic.yl enums-match
+    run_backend_parity build/imports/repeated-asm.yl imported-functions
+    echo "PASS: C/NASM differential parity samples"
+
+    ./build/ylang build-asm benchmarks/nasm-speed.yl -o build/test-nasm-speed >/dev/null
+    ./build/test-nasm-speed > build/nasm-speed.out
+    diff -u benchmarks/expected-nasm-speed.txt build/nasm-speed.out
+    if command -v python3 >/dev/null 2>&1; then
+        python3 benchmarks/bench-nasm.py build/test-nasm-speed --runs 5 --warmup 1 --target-ms 1000 > build/bench-nasm-smoke.out
+        grep -q 'Samples: 5' build/bench-nasm-smoke.out
+    fi
+
+    ./build/ylang build-asm tests/asm-overflow.yl -o build/test-asm-overflow >/dev/null
+    if ./build/test-asm-overflow > build/asm-overflow.out 2>&1; then
+        echo "FAIL: unary negation of INT64_MIN did not trap" >&2
+        exit 1
+    else
+        status=$?
+        test "$status" -eq 70
+    fi
+    grep -q 'YLang runtime error' build/asm-overflow.out
+
+    ./build/ylang build-asm tests/asm-increment-overflow.yl -o build/test-asm-increment-overflow >/dev/null
+    if ./build/test-asm-increment-overflow > build/asm-increment-overflow.out 2>&1; then
+        echo "FAIL: incrementing INT64_MAX did not trap" >&2
+        exit 1
+    else
+        status=$?
+        test "$status" -eq 70
+    fi
+    grep -q 'YLang runtime error' build/asm-increment-overflow.out
+
+    ./build/ylang build-asm tests/asm-division-overflow.yl -o build/test-asm-division-overflow >/dev/null
+    if ./build/test-asm-division-overflow > build/asm-division-overflow.out 2>&1; then
+        echo "FAIL: INT64_MIN / -1 did not trap" >&2
+        exit 1
+    else
+        status=$?
+        test "$status" -eq 70
+    fi
+    grep -q 'YLang runtime error' build/asm-division-overflow.out
+fi
+if ./build/ylang emit-asm examples/math.yl -o build/asm-unsupported.asm > build/asm-unsupported.out 2>&1; then
+    echo "FAIL: NASM backend accepted float/math features that are not implemented" >&2
+    exit 1
+fi
+grep -q 'NASM backend does not support float values' build/asm-unsupported.out
+test ! -e build/asm-unsupported.asm
+
+# Game2D input/timing wrappers compile through the imported optional GUI API.
+YLANG_PATH=stdlib ./build/ylang check examples/game2d.yl >/dev/null
+YLANG_PATH=stdlib ./build/ylang emit-c examples/game2d.yl -o build/game2d-generated.c >/dev/null
+grep -q 'ylgui_api_key_down' build/game2d-generated.c
+grep -q 'ylgui_api_mouse_button_down' build/game2d-generated.c
+grep -q 'ylgui_api_ticks_ms' build/game2d-generated.c
+
+# The playable Dodge sample must parse and generate the required GUI/collision calls.
+YLANG_PATH=stdlib ./build/ylang check examples/games/dodge.yl >/dev/null
+YLANG_PATH=stdlib ./build/ylang emit-c examples/games/dodge.yl -o build/dodge-generated.c >/dev/null
+grep -q 'ylgui_api_draw_rect' build/dodge-generated.c
+grep -q 'game2d_rects_overlap' build/dodge-generated.c
+
+cat > build/gui-key-type-error.yl <<'EOF'
+function main() -> int {
+    gui.key_down(123);
+    return 0;
+}
+EOF
+if ./build/ylang check build/gui-key-type-error.yl > build/gui-key-type-error.out 2>&1; then
+    echo "FAIL: gui.key_down accepted a non-string key name" >&2
+    exit 1
+fi
+grep -q 'E2090' build/gui-key-type-error.out
+
+# GUI namespace checking must not require SDL2; type errors are caught before build.
+./build/ylang check examples/gui.yl >/dev/null
+./build/ylang emit-c examples/gui.yl -o build/gui-generated.c >/dev/null
+grep -q 'ylgui_api_draw_rect' build/gui-generated.c
+if ./build/ylang check tests/gui-type-error.yl > build/gui-type-error.out 2>&1; then
+    echo "FAIL: GUI accepted a string for an integer color channel" >&2
+    exit 1
+fi
+grep -q 'E2090' build/gui-type-error.out
+
+# The experimental NASM backend must reject GUI calls explicitly on its supported target.
+if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
+    if ./build/ylang build-asm tests/gui-nasm-reject.yl -o build/gui-nasm > build/gui-nasm.out 2>&1; then
+        echo "FAIL: NASM backend accepted unsupported GUI calls" >&2
+        exit 1
+    fi
+    if ! grep -qi 'GUI calls' build/gui-nasm.out; then
+        cat build/gui-nasm.out >&2
+        echo "FAIL: NASM rejection message did not identify GUI calls" >&2
+        exit 1
+    fi
+
+    if ./build/ylang build-asm examples/structs.yl -o build/structs-nasm > build/structs-nasm.out 2>&1; then
+        echo "FAIL: NASM backend accepted unsupported struct values" >&2
+        exit 1
+    fi
+    if ! grep -qi 'struct values' build/structs-nasm.out; then
+        cat build/structs-nasm.out >&2
+        echo "FAIL: NASM rejection message did not identify struct values" >&2
+        exit 1
+    fi
+else
+    if ./build/ylang build-asm examples/gui.yl -o build/gui-nasm > build/gui-nasm.out 2>&1; then
+        echo "FAIL: NASM backend unexpectedly built on an unsupported platform" >&2
+        exit 1
+    fi
+    grep -q 'build-asm currently supports Linux x86-64 only' build/gui-nasm.out
+fi
+
+# Build the SDL2-backed GUI integration only where its development package exists.
+if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists sdl2; then
+    ./build/ylang build tests/gui-smoke.yl -o build/test-gui >/dev/null
+    if [ "$(uname -s)" = "Linux" ]; then
+        SDL_VIDEODRIVER=dummy ./build/test-gui
+    else
+        echo "SKIP: GUI runtime smoke test needs a display; SDL2 compile/type checks already ran."
+    fi
+else
+    echo "SKIP: SDL2 integration test (install SDL2 development files and pkg-config to enable)." >&2
+fi
+
+
+# Explicit string moves transfer the binding statically and permit reinitialization.
+./build/ylang build tests/move-string.yl -o build/test-move-string >/dev/null
+./build/test-move-string > build/move-string.out
+printf 'YLang newvalue\n' > build/move-string.expected
+diff -u build/move-string.expected build/move-string.out
+
+# A moved binding must be rejected on later use, before code generation.
+if ./build/ylang check tests/move-after-use.yl > build/move-after-use.out 2>&1; then
+    echo "FAIL: YLang accepted use after move" >&2
+    exit 1
+fi
+grep -q 'E2110' build/move-after-use.out
+
+# Move state is path-sensitive within mutually exclusive branches.
+./build/ylang build tests/move-branch-alternatives.yl -o build/test-move-branch-alternatives >/dev/null
+./build/test-move-branch-alternatives > build/move-branch-alternatives.out
+printf 'YLang\n' > build/move-branch-alternatives.expected
+diff -u build/move-branch-alternatives.expected build/move-branch-alternatives.out
+
+# A move on only one path makes the source unavailable after the control-flow join.
+if ./build/ylang check tests/move-branch-join.yl > build/move-branch-join.out 2>&1; then
+    echo "FAIL: YLang accepted use after move at a branch join" >&2
+    exit 1
+fi
+grep -q 'E2110' build/move-branch-join.out
+
+# A move in a loop may execute, so the source is unavailable after the loop.
+if ./build/ylang check tests/move-loop-join.yl > build/move-loop-join.out 2>&1; then
+    echo "FAIL: YLang accepted use after a possible loop move" >&2
+    exit 1
+fi
+grep -q 'E2110' build/move-loop-join.out
+
+# Exhaustive match arms must each start from the same incoming ownership state.
+./build/ylang build tests/move-match-alternatives.yl -o build/test-move-match-alternatives >/dev/null
+./build/test-move-match-alternatives > build/move-match-alternatives.out
+printf 'YLang\n' > build/move-match-alternatives.expected
+diff -u build/move-match-alternatives.expected build/move-match-alternatives.out
+
+# A binding moved before match is initialized again when every arm reassigns it.
+./build/ylang build tests/move-match-reinitialize.yl -o build/test-move-match-reinitialize >/dev/null
+./build/test-move-match-reinitialize > build/move-match-reinitialize.out
+printf 'oldvalue newvalue\n' > build/move-match-reinitialize.expected
+diff -u build/move-match-reinitialize.expected build/move-match-reinitialize.out
+
+# A move in any exhaustive match arm makes the source unavailable after the join.
+if ./build/ylang check tests/move-match-join.yl > build/move-match-join.out 2>&1; then
+    echo "FAIL: YLang accepted use after a possible match-arm move" >&2
+    exit 1
+fi
+grep -q 'E2110' build/move-match-join.out
+
+# A self-move assignment would invalidate its target and is rejected.
+if ./build/ylang check tests/move-self-assignment.yl > build/move-self-assignment.out 2>&1; then
+    echo "FAIL: YLang accepted self-move assignment" >&2
+    exit 1
+fi
+grep -q 'E2114' build/move-self-assignment.out
+
+# Invalid move operations must have targeted diagnostics.
+if ./build/ylang check tests/move-rejections.yl > build/move-rejections.out 2>&1; then
+    echo "FAIL: YLang accepted unsupported move operations" >&2
+    exit 1
+fi
+grep -q 'E2111' build/move-rejections.out
+grep -q 'E2112' build/move-rejections.out
+grep -q 'E2113' build/move-rejections.out
+
+# The ownership primitive does not reserve the name of an existing user function.
+./build/ylang build tests/move-name-collision.yl -o build/test-move-name-collision >/dev/null
+test "$(./build/test-move-name-collision)" = "42"
+
+# borrowed_string is a read-only, parameter-only view and does not steal its owner.
+./build/ylang build tests/borrowed-string.yl -o build/test-borrowed-string >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-borrowed-string > build/borrowed-string.stdout 2> build/borrowed-string.stderr
+printf 'Borrowed\n8\nBorrowed Borrowed\n' > build/borrowed-string.expected
+diff -u build/borrowed-string.expected build/borrowed-string.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/borrowed-string.stderr
+
+if ./build/ylang check tests/borrowed-string-move.yl > build/borrowed-string-move.out 2>&1; then
+    echo "FAIL: YLang allowed move() on a borrowed_string parameter" >&2
+    exit 1
+fi
+grep -q 'E2112' build/borrowed-string-move.out
+
+if ./build/ylang check tests/borrowed-string-array.yl > build/borrowed-string-array.out 2>&1; then
+    echo "FAIL: YLang accepted an array of borrowed_string parameters" >&2
+    exit 1
+fi
+grep -q 'E2120' build/borrowed-string-array.out
+
+# A borrowed value cannot be forwarded to a legacy parameter that may retain it.
+if ./build/ylang check tests/borrowed-string-escape.yl > build/borrowed-string-escape.out 2>&1; then
+    echo "FAIL: YLang allowed borrowed_string to escape through a legacy string parameter" >&2
+    exit 1
+fi
+grep -q 'E2042' build/borrowed-string-escape.out
+
+# Owned values require an explicit borrowed_string parameter when passing a non-owning view.
+if ./build/ylang check tests/owned-string-legacy-parameter.yl > build/owned-string-legacy-parameter.out 2>&1; then
+    echo "FAIL: YLang accepted owned_string for a legacy string parameter" >&2
+    exit 1
+fi
+grep -q 'E2042' build/owned-string-legacy-parameter.out
+
+if ./build/ylang check tests/borrowed-string-mutate.yl > build/borrowed-string-mutate.out 2>&1; then
+    echo "FAIL: YLang allowed mutation of a borrowed_string parameter" >&2
+    exit 1
+fi
+grep -q 'E2022' build/borrowed-string-mutate.out
+
+for fixture in borrowed-string-local borrowed-string-return; do
+    if ./build/ylang check "tests/$fixture.yl" > "build/$fixture.out" 2>&1; then
+        echo "FAIL: YLang accepted unsupported borrowed_string form in $fixture" >&2
+        exit 1
+    fi
+    grep -q 'E2120' "build/$fixture.out"
+done
+
+if ./build/ylang check tests/borrowed-string-temporary.yl > build/borrowed-string-temporary.out 2>&1; then
+    echo "FAIL: YLang accepted a temporary owned string as a borrowed argument" >&2
+    exit 1
+fi
+grep -q 'E2119' build/borrowed-string-temporary.out
+
+# Owned strings transfer ownership explicitly and are released at scope exit.
+./build/ylang build tests/owned-string-basic.yl -o build/test-owned-string >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string > build/owned-string.stdout 2> build/owned-string.stderr
+printf 'alpha alphabeta\nALPHABETA\nalpha\nALPHA\nlocal\ntemporary argument\n' > build/owned-string.expected
+diff -u build/owned-string.expected build/owned-string.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string.stderr
+
+if ./build/ylang check tests/owned-string-after-move.yl > build/owned-string-after-move.out 2>&1; then
+    echo "FAIL: YLang accepted use after move for owned_string" >&2
+    exit 1
+fi
+grep -q 'E2110' build/owned-string-after-move.out
+
+if ./build/ylang check tests/owned-string-lost-temporary.yl > build/owned-string-lost-temporary.out 2>&1; then
+    echo "FAIL: YLang accepted a dropped owned_string temporary inside a comparison" >&2
+    exit 1
+fi
+grep -q 'E2119' build/owned-string-lost-temporary.out
+
+# Copying an owned string requires an explicit clone or move.
+if ./build/ylang check tests/owned-string-copy.yl > build/owned-string-copy.out 2>&1; then
+    echo "FAIL: YLang accepted an implicit owned_string copy" >&2
+    exit 1
+fi
+grep -q 'E2115' build/owned-string-copy.out
+
+if ./build/ylang check tests/owned-string-return-copy.yl > build/owned-string-return-copy.out 2>&1; then
+    echo "FAIL: YLang accepted returning an owned_string without move" >&2
+    exit 1
+fi
+grep -q 'E2116' build/owned-string-return-copy.out
+
+# Ownership in structs, globals and arrays is rejected until their cleanup rules exist.
+for fixture in owned-string-struct-field owned-string-global owned-string-array; do
+    if ./build/ylang check "tests/$fixture.yl" > "build/$fixture.out" 2>&1; then
+        echo "FAIL: YLang accepted unsupported owned_string storage in $fixture" >&2
+        exit 1
+    fi
+    grep -q 'E2118' "build/$fixture.out"
+done
+
+# Branch and match-arm exits release each locally owned value.
+./build/ylang build tests/owned-string-control-flow-cleanup.yl -o build/test-owned-string-control-flow-cleanup >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string-control-flow-cleanup > build/owned-string-control-flow-cleanup.stdout 2> build/owned-string-control-flow-cleanup.stderr
+printf 'then-branch\nelse-branch\nfirst-arm\nsecond-arm\n' > build/owned-string-control-flow-cleanup.expected
+diff -u build/owned-string-control-flow-cleanup.expected build/owned-string-control-flow-cleanup.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-control-flow-cleanup.stderr
+
+# Early returns clean only active lexical scopes, and transfer the return owner.
+./build/ylang build tests/owned-string-early-return.yl -o build/test-owned-string-early-return >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string-early-return > build/owned-string-early-return.stdout 2> build/owned-string-early-return.stderr
+printf 'returned\n' > build/owned-string-early-return.expected
+diff -u build/owned-string-early-return.expected build/owned-string-early-return.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-early-return.stderr
+
+# Break and continue release loop-local owners; nested scopes preserve outer owners.
+./build/ylang build tests/owned-string-loop-cleanup.yl -o build/test-owned-string-loop-cleanup >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string-loop-cleanup > build/owned-string-loop-cleanup.stdout 2> build/owned-string-loop-cleanup.stderr
+printf 'iteration\ninner\nouter\n' > build/owned-string-loop-cleanup.expected
+diff -u build/owned-string-loop-cleanup.expected build/owned-string-loop-cleanup.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-loop-cleanup.stderr
+
+# Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
+./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-memory-stats > build/memory-stats.stdout 2> build/memory-stats.stderr
+printf 'value=42\n' > build/memory-stats.expected
+diff -u build/memory-stats.expected build/memory-stats.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=[1-9][0-9]* tracked_bytes=[1-9][0-9]*' build/memory-stats.stderr
+env -u YLANG_MEMORY_STATS ./build/test-memory-stats > build/memory-stats-default.stdout 2> build/memory-stats-default.stderr
+diff -u build/memory-stats.expected build/memory-stats-default.stdout
+[ ! -s build/memory-stats-default.stderr ]
+
+echo "All YLang tests passed."
+ build/emit-mir-control-flow.out
+
+# Direct user-function calls preserve typed parameters and return values in MIR.
+./build/ylang emit-mir tests/emit-mir-calls.yl > build/emit-mir-calls.out
+grep -Fq 'call @notify()' build/emit-mir-calls.out
+grep -Fq 'call @identity(' build/emit-mir-calls.out
+grep -Fq 'call @add(' build/emit-mir-calls.out
 
 # Explicit mut is the preferred 3.0 spelling; legacy mutable let remains compatible.
 ./build/ylang check tests/explicit-mut.yl >/dev/null

@@ -289,6 +289,71 @@ static void reject_incomplete_source_location(void)
     assert(strstr(error,"source line and column")!=NULL);
 }
 
+static void accept_typed_direct_call(void)
+{
+    const uint32_t call_arguments[] = {1};
+    const YIRType call_parameter_types[] = {YIR_TYPE_I64};
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+         .immediate=41},
+        {.opcode=YIR_OP_CALL,.result_id=2,.result_type=YIR_TYPE_I64,
+         .callee="increment",.arguments=call_arguments,.argument_count=1,
+         .call_parameter_types=call_parameter_types,.call_parameter_count=1},
+        {.opcode=YIR_OP_RETURN,.lhs=2}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=3
+    };
+    const YIRFunction function = {
+        .name="caller",.return_type=YIR_TYPE_I64,
+        .blocks=&block,.block_count=1
+    };
+    char error[160];
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
+static void reject_call_argument_type_mismatch(void)
+{
+    const uint32_t call_arguments[] = {1};
+    const YIRType call_parameter_types[] = {YIR_TYPE_BOOL};
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64},
+        {.opcode=YIR_OP_CALL,.result_id=2,.result_type=YIR_TYPE_I64,
+         .callee="expects_bool",.arguments=call_arguments,.argument_count=1,
+         .call_parameter_types=call_parameter_types,.call_parameter_count=1},
+        {.opcode=YIR_OP_RETURN,.lhs=2}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=3
+    };
+    const YIRFunction function = {
+        .name="bad_call",.return_type=YIR_TYPE_I64,
+        .blocks=&block,.block_count=1
+    };
+    char error[160];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,"SSA dominance")!=NULL);
+}
+
+static void reject_call_without_callee(void)
+{
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CALL,.callee=NULL,
+         .result_type=YIR_TYPE_VOID},
+        {.opcode=YIR_OP_RETURN}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=2
+    };
+    const YIRFunction function = {
+        .name="bad_call_metadata",.return_type=YIR_TYPE_VOID,
+        .blocks=&block,.block_count=1
+    };
+    char error[160];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,"call instructions require")!=NULL);
+}
+
 int main(void)
 {
     valid_arithmetic_return(); reject_use_before_definition();
@@ -302,5 +367,8 @@ int main(void)
     reject_incomplete_source_location();
     accept_block_parameter_join(); reject_block_parameter_type_mismatch();
     reject_entry_block_parameters(); reject_missing_block_argument();
+    accept_typed_direct_call();
+    reject_call_argument_type_mismatch();
+    reject_call_without_callee();
     puts("YLang IR verifier tests passed"); return 0;
 }

@@ -30,7 +30,8 @@ typedef enum {
     YIR_OP_NOT_BOOL,
     YIR_OP_BRANCH,
     YIR_OP_COND_BRANCH,
-    YIR_OP_RETURN
+    YIR_OP_RETURN,
+    YIR_OP_CALL
 } YIROpcode;
 
 typedef struct {
@@ -51,6 +52,10 @@ typedef struct {
     size_t argument_count;
     const uint32_t *false_arguments;
     size_t false_argument_count;
+    /* Direct user-function call metadata; arguments stores SSA value IDs. */
+    const char *callee;
+    const YIRType *call_parameter_types;
+    size_t call_parameter_count;
     size_t source_line;
     size_t source_column;
 } YIRInstruction;

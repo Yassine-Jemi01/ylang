@@ -785,6 +785,84 @@ static void lowers_loop_with_break_and_continue(void)
     arena_destroy(&compiler.arena);
 }
 
+static void lowers_nested_direct_function_calls(void)
+{
+    static const char source[] =
+        "fn add(int left, int right) -> int { return left + right; }\n"
+        "fn scale(int value) -> int { return value * 2; }\n"
+        "fn main() -> int { return scale(add(20, 22)); }\n";
+    Compiler compiler;
+    YIRFunction lowered = lower_checked_source(&compiler, source, "main");
+    size_t call_count = 0;
+    bool saw_add = false;
+    bool saw_scale = false;
+    for (size_t bi = 0; bi < lowered.block_count; ++bi) {
+        for (size_t ii = 0; ii < lowered.blocks[bi].instruction_count; ++ii) {
+            const YIRInstruction *instruction =
+                &lowered.blocks[bi].instructions[ii];
+            if (instruction->opcode != YIR_OP_CALL) continue;
+            call_count++;
+            if (strcmp(instruction->callee, "add") == 0)
+                saw_add = instruction->argument_count == 2;
+            if (strcmp(instruction->callee, "scale") == 0)
+                saw_scale = instruction->argument_count == 1;
+        }
+    }
+    assert(call_count == 2);
+    assert(saw_add && saw_scale);
+    yir_destroy_function(&lowered);
+    arena_destroy(&compiler.arena);
+}
+
+static void lowers_boolean_function_call_in_condition(void)
+{
+    static const char source[] =
+        "fn ready(bool state) -> bool { return state; }\n"
+        "fn main() -> int {\n"
+        "    if (ready(true)) { return 1; } else { return 0; }\n"
+        "}\n";
+    Compiler compiler;
+    YIRFunction lowered = lower_checked_source(&compiler, source, "main");
+    bool saw_bool_call = false;
+    for (size_t bi = 0; bi < lowered.block_count; ++bi) {
+        for (size_t ii = 0; ii < lowered.blocks[bi].instruction_count; ++ii) {
+            const YIRInstruction *instruction =
+                &lowered.blocks[bi].instructions[ii];
+            if (instruction->opcode == YIR_OP_CALL &&
+                strcmp(instruction->callee, "ready") == 0 &&
+                instruction->result_type == YIR_TYPE_BOOL)
+                saw_bool_call = true;
+        }
+    }
+    assert(saw_bool_call);
+    yir_destroy_function(&lowered);
+    arena_destroy(&compiler.arena);
+}
+
+static void lowers_void_function_call_statement(void)
+{
+    static const char source[] =
+        "fn tick() -> void { return; }\n"
+        "fn main() -> int { tick(); return 42; }\n";
+    Compiler compiler;
+    YIRFunction lowered = lower_checked_source(&compiler, source, "main");
+    bool saw_void_call = false;
+    for (size_t bi = 0; bi < lowered.block_count; ++bi) {
+        for (size_t ii = 0; ii < lowered.blocks[bi].instruction_count; ++ii) {
+            const YIRInstruction *instruction =
+                &lowered.blocks[bi].instructions[ii];
+            if (instruction->opcode == YIR_OP_CALL &&
+                strcmp(instruction->callee, "tick") == 0) {
+                saw_void_call = instruction->result_id == 0 &&
+                                instruction->result_type == YIR_TYPE_VOID;
+            }
+        }
+    }
+    assert(saw_void_call);
+    yir_destroy_function(&lowered);
+    arena_destroy(&compiler.arena);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
@@ -810,6 +888,9 @@ int main(void)
     lowers_loop_with_break_and_continue();
     lowers_nested_loops_and_inner_break_scope();
     lowers_for_initializer_scope();
+    lowers_nested_direct_function_calls();
+    lowers_boolean_function_call_in_condition();
+    lowers_void_function_call_statement();
     puts("YLang IR lowering tests passed");
     return 0;
 }

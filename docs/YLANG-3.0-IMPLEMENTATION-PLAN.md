@@ -68,7 +68,13 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [x] 2.3.3 Lower integer arithmetic and comparison conditions.
 - [x] 2.3.4 Lower nested conditionals and merge changed values with block parameters.
 - [~] 2.3.5 Lower `while`, `for`, `loop()`, `break`, and `continue`; expand nested-loop and scope edge-case tests.
-- [ ] 2.3.6 Lower function calls after the IR call and ABI contract is defined.
+- [~] 2.3.6 Lower direct user-function calls with scalar signatures.
+  - [~] 2.3.6.1 Add typed direct-call opcode metadata and SSA argument validation.
+  - [~] 2.3.6.2 Lower nested calls with scalar int/bool arguments and int/bool/void returns.
+  - [~] 2.3.6.3 Print calls in textual MIR and cover the call verifier and lowerer with unit tests.
+  - [ ] 2.3.6.4 Resolve direct callees against a module-level symbol/signature table.
+  - [ ] 2.3.6.5 Add imported-function, built-in, and external ABI call lowering.
+  - [ ] 2.3.6.6 Add calling-convention metadata and call-site ABI validation.
 - [ ] 2.3.7 Lower floating-point expressions and values.
 - [ ] 2.3.8 Lower strings, arrays, tuples, structs, enums, and indexing.
 - [ ] 2.3.9 Lower imports and cross-module symbol references.

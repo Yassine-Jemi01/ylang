@@ -236,11 +236,16 @@ static bool append_instruction(Lowerer *lowerer, YIRInstruction instruction,
                                uint32_t *result_id)
 {
     BuildingBlock *block = current_block(lowerer);
-    if (!block)
+    if (!block) {
+        free((void *)instruction.arguments);
+        free((void *)instruction.false_arguments);
+        free((void *)instruction.call_parameter_types);
         return lower_fail(lowerer, "internal error: no current IR block");
+    }
     if (block_is_terminated(block)) {
         free((void *)instruction.arguments);
         free((void *)instruction.false_arguments);
+        free((void *)instruction.call_parameter_types);
         return lower_fail(lowerer, "attempted to emit an instruction after a block terminator");
     }
     if (block->instruction_count == block->instruction_capacity) {
@@ -250,6 +255,7 @@ static bool append_instruction(Lowerer *lowerer, YIRInstruction instruction,
             next > SIZE_MAX / sizeof(*block->instructions)) {
             free((void *)instruction.arguments);
             free((void *)instruction.false_arguments);
+            free((void *)instruction.call_parameter_types);
             return lower_fail(lowerer, "too many instructions in an IR block");
         }
         YIRInstruction *instructions = realloc(
@@ -257,6 +263,7 @@ static bool append_instruction(Lowerer *lowerer, YIRInstruction instruction,
         if (!instructions) {
             free((void *)instruction.arguments);
             free((void *)instruction.false_arguments);
+            free((void *)instruction.call_parameter_types);
             return lower_fail(lowerer, "out of memory while lowering IR instructions");
         }
         block->instructions = instructions;
@@ -266,6 +273,7 @@ static bool append_instruction(Lowerer *lowerer, YIRInstruction instruction,
         if (!allocate_value_id(lowerer, &instruction.result_id)) {
             free((void *)instruction.arguments);
             free((void *)instruction.false_arguments);
+            free((void *)instruction.call_parameter_types);
             return false;
         }
         *result_id = instruction.result_id;
@@ -334,6 +342,7 @@ static bool emit_cond_branch(Lowerer *lowerer, uint32_t condition,
         (false_argument_count && !instruction.false_arguments)) {
         free((void *)instruction.arguments);
         free((void *)instruction.false_arguments);
+        free((void *)instruction.call_parameter_types);
         return false;
     }
     return append_instruction(lowerer, instruction, NULL);
@@ -367,10 +376,98 @@ static bool parse_integer_literal(const Expr *expression, int64_t *value)
 }
 
 static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
+                               uint32_t *value_id);
+static bool lower_boolean_expr(Lowerer *lowerer, const Expr *expression,
+                               uint32_t *value_id);
+
+static bool lower_call_expression(Lowerer *lowerer, const Expr *expression,
+                                  uint32_t *value_id)
+{
+    if (!expression || expression->kind != EXPR_CALL)
+        return lower_fail(lowerer, "missing function call expression");
+
+    const Function *callee = expression->as.call.function;
+    if (!callee || !callee->name)
+        return lower_fail(lowerer,
+            "only resolved direct user-function calls are supported by the scalar IR lowerer");
+    if (callee->param_count != expression->as.call.count ||
+        (callee->param_count && (!callee->params || !expression->as.call.args)))
+        return lower_fail(lowerer,
+            "function call argument count or parameter metadata is invalid");
+
+    YIRType return_type = YIR_TYPE_VOID;
+    if (callee->return_type != TYPE_VOID &&
+        !map_scalar_type(callee->return_type, &return_type))
+        return lower_fail(lowerer,
+            "only int, bool, and void user-function return types are supported by the scalar IR lowerer");
+
+    uint32_t *arguments = callee->param_count ?
+        calloc(callee->param_count, sizeof(*arguments)) : NULL;
+    YIRType *parameter_types = callee->param_count ?
+        calloc(callee->param_count, sizeof(*parameter_types)) : NULL;
+    if (callee->param_count && (!arguments || !parameter_types)) {
+        free(arguments);
+        free(parameter_types);
+        return lower_fail(lowerer,
+            "out of memory while lowering function call arguments");
+    }
+
+    for (size_t i = 0; i < callee->param_count; ++i) {
+        const VarDecl *parameter = callee->params[i];
+        const Expr *argument = expression->as.call.args[i];
+        if (!parameter || !argument || parameter->is_array ||
+            !map_scalar_type(parameter->type, &parameter_types[i]) ||
+            argument->type != parameter->type) {
+            free(arguments);
+            free(parameter_types);
+            return lower_fail(lowerer,
+                "function calls in the initial IR lowerer require matching scalar int or bool parameters");
+        }
+
+        bool lowered = parameter->type == TYPE_INT ?
+            lower_integer_expr(lowerer, argument, &arguments[i]) :
+            lower_boolean_expr(lowerer, argument, &arguments[i]);
+        if (!lowered) {
+            free(arguments);
+            free(parameter_types);
+            return false;
+        }
+    }
+
+    YIRInstruction instruction = {
+        .opcode=YIR_OP_CALL,
+        .result_type=return_type,
+        .arguments=arguments,
+        .argument_count=callee->param_count,
+        .callee=callee->name,
+        .call_parameter_types=parameter_types,
+        .call_parameter_count=callee->param_count,
+        .source_line=expression->token.line,
+        .source_column=expression->token.column
+    };
+
+    if (return_type == YIR_TYPE_VOID) {
+        if (value_id) *value_id = 0;
+        return append_instruction(lowerer, instruction, NULL);
+    }
+
+    uint32_t ignored_result = 0;
+    return append_instruction(lowerer, instruction,
+                              value_id ? value_id : &ignored_result);
+}
+
+static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
                                uint32_t *value_id)
 {
     if (!expression)
         return lower_fail(lowerer, "missing expression in IR lowering");
+
+    if (expression->kind == EXPR_CALL) {
+        if (expression->type != TYPE_INT)
+            return lower_fail(lowerer,
+                "integer expression call must return int");
+        return lower_call_expression(lowerer, expression, value_id);
+    }
 
     if (expression->kind == EXPR_NAME) {
         if (expression->type != TYPE_INT || !expression->as.name.variable)
@@ -463,6 +560,13 @@ static bool lower_boolean_expr(Lowerer *lowerer, const Expr *expression,
 {
     if (!expression || expression->type != TYPE_BOOL)
         return lower_fail(lowerer, "control-flow condition must lower to bool");
+
+    if (expression->kind == EXPR_CALL) {
+        if (expression->type != TYPE_BOOL)
+            return lower_fail(lowerer,
+                "boolean expression call must return bool");
+        return lower_call_expression(lowerer, expression, value_id);
+    }
 
     if (expression->kind == EXPR_BOOL) {
         if (expression->token.type != TOKEN_TRUE &&
@@ -676,6 +780,8 @@ static bool lower_return_statement(Lowerer *lowerer,
 static bool lower_expression_statement(Lowerer *lowerer,
                                        const Expr *expression)
 {
+    if (expression && expression->kind == EXPR_CALL)
+        return lower_call_expression(lowerer, expression, NULL);
     if (!expression || expression->kind != EXPR_ASSIGN ||
         expression->as.assign.is_compound ||
         !expression->as.assign.target ||
@@ -1261,6 +1367,7 @@ static void destroy_building_blocks(BuildingBlock *blocks, size_t block_count)
         for (size_t ii = 0; ii < blocks[bi].instruction_count; ++ii) {
             free((void *)blocks[bi].instructions[ii].arguments);
             free((void *)blocks[bi].instructions[ii].false_arguments);
+            free((void *)blocks[bi].instructions[ii].call_parameter_types);
         }
         free(blocks[bi].parameters);
         free(blocks[bi].instructions);
@@ -1279,6 +1386,7 @@ void yir_destroy_function(YIRFunction *function)
             for (size_t ii = 0; ii < blocks[bi].instruction_count; ++ii) {
                 free((void *)instructions[ii].arguments);
                 free((void *)instructions[ii].false_arguments);
+                free((void *)instructions[ii].call_parameter_types);
             }
             free(instructions);
             free((void *)blocks[bi].parameters);

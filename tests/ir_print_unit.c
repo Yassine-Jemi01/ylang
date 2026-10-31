@@ -153,10 +153,42 @@ static void prints_typed_control_flow_edges(void)
     assert(fclose(stream) == 0);
 }
 
+static void prints_direct_function_calls(void)
+{
+    const uint32_t arguments[] = {1};
+    const YIRType parameter_types[] = {YIR_TYPE_I64};
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+         .immediate=7},
+        {.opcode=YIR_OP_CALL,.result_id=2,.result_type=YIR_TYPE_I64,
+         .callee="increment",.arguments=arguments,.argument_count=1,
+         .call_parameter_types=parameter_types,.call_parameter_count=1},
+        {.opcode=YIR_OP_RETURN,.lhs=2}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=3
+    };
+    const YIRFunction function = {
+        .name="caller",.return_type=YIR_TYPE_I64,
+        .blocks=&block,.block_count=1
+    };
+    FILE *stream = tmpfile();
+    assert(stream != NULL);
+    yir_print_function(stream, &function);
+    rewind(stream);
+
+    char output[512] = {0};
+    size_t length = fread(output, 1, sizeof(output) - 1, stream);
+    output[length] = '\0';
+    assert(strstr(output, "%2 = call @increment(%1)") != NULL);
+    assert(fclose(stream) == 0);
+}
+
 int main(void)
 {
     prints_scalar_function();
     prints_typed_control_flow_edges();
+    prints_direct_function_calls();
     puts("YLang IR printer tests passed");
     return 0;
 }
