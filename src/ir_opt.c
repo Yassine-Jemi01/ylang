@@ -393,8 +393,7 @@ static bool constant_fold_function(YIRFunction *function, char *error,
                             "constant table exceeded the instruction count");
                     }
                     if (constant_count != previous_count)
-                        changed = true;
-                    continue;
+                                continue;
                 }
                 if (instruction->opcode == YIR_OP_CONST_F64) {
                     if (safe_f64_constant(instruction->floating_immediate)) {
@@ -921,6 +920,254 @@ static bool eliminate_common_subexpressions(YIRFunction *function,
     return yir_verify_function(function, error, error_capacity);
 }
 
+static void remove_edge_argument(YIRInstruction *terminator,
+                                 bool false_edge, size_t argument_index)
+{
+    size_t *count = false_edge ? &terminator->false_argument_count :
+                                 &terminator->argument_count;
+    uint32_t *arguments = false_edge ?
+        (uint32_t *)terminator->false_arguments :
+        (uint32_t *)terminator->arguments;
+    if (!arguments || argument_index >= *count) return;
+    if (argument_index + 1 < *count) {
+        memmove(&arguments[argument_index], &arguments[argument_index + 1],
+                (*count - argument_index - 1) * sizeof(*arguments));
+    }
+    --*count;
+}
+
+static void remove_target_edge_argument(YIRFunction *function,
+                                        uint32_t target_id,
+                                        size_t argument_index)
+{
+    for (size_t bi = 0; bi < function->block_count; ++bi) {
+        YIRBlock *block = (YIRBlock *)function->blocks + bi;
+        YIRInstruction *term =
+            (YIRInstruction *)block->instructions +
+            block->instruction_count - 1;
+        if (term->opcode == YIR_OP_BRANCH ||
+            term->opcode == YIR_OP_COND_BRANCH) {
+            if (term->target == target_id)
+                remove_edge_argument(term, false, argument_index);
+            if (term->opcode == YIR_OP_COND_BRANCH &&
+                term->false_target == target_id)
+                remove_edge_argument(term, true, argument_index);
+        }
+    }
+}
+
+static bool propagate_identical_block_arguments(YIRFunction *function,
+                                                char *error,
+                                                size_t error_capacity)
+{
+    for (size_t target_index = 0;
+         target_index < function->block_count; ++target_index) {
+        YIRBlock *target = (YIRBlock *)function->blocks + target_index;
+        size_t parameter_index = 0;
+        while (parameter_index < target->parameter_count) {
+            const YIRBlockParameter *parameter =
+                &target->parameters[parameter_index];
+            uint32_t common_value = 0;
+            bool saw_predecessor = false;
+            bool identical = true;
+
+            for (size_t bi = 0; bi < function->block_count; ++bi) {
+                const YIRBlock *predecessor = &function->blocks[bi];
+                const YIRInstruction *term =
+                    &predecessor->instructions[
+                        predecessor->instruction_count - 1];
+                if ((term->opcode == YIR_OP_BRANCH ||
+                     term->opcode == YIR_OP_COND_BRANCH) &&
+                    term->target == target->id) {
+                    uint32_t value = term->arguments[parameter_index];
+                    if (!saw_predecessor) {
+                        common_value = value;
+                        saw_predecessor = true;
+                    } else if (value != common_value) {
+                        identical = false;
+                    }
+                }
+                if (term->opcode == YIR_OP_COND_BRANCH &&
+                    term->false_target == target->id) {
+                    uint32_t value = term->false_arguments[parameter_index];
+                    if (!saw_predecessor) {
+                        common_value = value;
+                        saw_predecessor = true;
+                    } else if (value != common_value) {
+                        identical = false;
+                    }
+                }
+            }
+
+            if (!saw_predecessor || !identical ||
+                common_value == parameter->id) {
+                ++parameter_index;
+                continue;
+            }
+
+            replace_value_uses(function, parameter->id, common_value);
+            remove_target_edge_argument(function, target->id, parameter_index);
+            YIRBlockParameter *parameters =
+                (YIRBlockParameter *)target->parameters;
+            if (parameter_index + 1 < target->parameter_count) {
+                memmove(&parameters[parameter_index],
+                        &parameters[parameter_index + 1],
+                        (target->parameter_count - parameter_index - 1) *
+                            sizeof(*parameters));
+            }
+            --target->parameter_count;
+            changed = true;
+        }
+    }
+
+    if (!yir_verify_function(function, error, error_capacity)) return false;
+    return true;
+}
+
+static bool find_local_i64_constant(const YIRBlock *block,
+                                    size_t before_instruction,
+                                    uint32_t value_id, int64_t *value)
+{
+    for (size_t i = before_instruction; i > 0; --i) {
+        const YIRInstruction *candidate = &block->instructions[i - 1];
+        if (candidate->result_id == value_id &&
+            candidate->opcode == YIR_OP_CONST_I64) {
+            *value = candidate->immediate;
+            return true;
+        }
+    }
+    return false;
+}
+
+static void rewrite_instruction_constant(YIRInstruction *instruction,
+                                         YIROpcode opcode, YIRType type,
+                                         int64_t value)
+{
+    uint32_t result_id = instruction->result_id;
+    size_t source_line = instruction->source_line;
+    size_t source_column = instruction->source_column;
+    free_instruction_storage(instruction);
+    *instruction = (YIRInstruction){
+        .opcode=opcode,
+        .result_id=result_id,
+        .result_type=type,
+        .immediate=value,
+        .source_line=source_line,
+        .source_column=source_column
+    };
+}
+
+static void erase_instruction(YIRBlock *block, size_t instruction_index)
+{
+    YIRInstruction *instructions = (YIRInstruction *)block->instructions;
+    free_instruction_storage(&instructions[instruction_index]);
+    if (instruction_index + 1 < block->instruction_count) {
+        memmove(&instructions[instruction_index],
+                &instructions[instruction_index + 1],
+                (block->instruction_count - instruction_index - 1) *
+                    sizeof(*instructions));
+    }
+    --block->instruction_count;
+}
+
+static bool simplify_integer_algebra(YIRFunction *function, char *error,
+                                     size_t error_capacity)
+{
+    for (size_t bi = 0; bi < function->block_count; ++bi) {
+        YIRBlock *block = (YIRBlock *)function->blocks + bi;
+        size_t ii = 0;
+        while (ii + 1 < block->instruction_count) {
+            YIRInstruction *instruction =
+                (YIRInstruction *)block->instructions + ii;
+            if (!instruction->result_id) {
+                ++ii;
+                continue;
+            }
+
+            int64_t lhs_constant = 0;
+            int64_t rhs_constant = 0;
+            bool lhs_is_constant = find_local_i64_constant(
+                block, ii, instruction->lhs, &lhs_constant);
+            bool rhs_is_constant = find_local_i64_constant(
+                block, ii, instruction->rhs, &rhs_constant);
+            bool removed = false;
+
+            switch (instruction->opcode) {
+                case YIR_OP_ADD_I64:
+                    if (lhs_is_constant && lhs_constant == 0) {
+                        replace_value_uses(function, instruction->result_id,
+                                           instruction->rhs);
+                        erase_instruction(block, ii);
+                        removed = true;
+                    } else if (rhs_is_constant && rhs_constant == 0) {
+                        replace_value_uses(function, instruction->result_id,
+                                           instruction->lhs);
+                        erase_instruction(block, ii);
+                        removed = true;
+                    }
+                    break;
+                case YIR_OP_SUB_I64:
+                    if (rhs_is_constant && rhs_constant == 0) {
+                        replace_value_uses(function, instruction->result_id,
+                                           instruction->lhs);
+                        erase_instruction(block, ii);
+                        removed = true;
+                    }
+                    break;
+                case YIR_OP_MUL_I64:
+                    if ((lhs_is_constant && lhs_constant == 0) ||
+                        (rhs_is_constant && rhs_constant == 0)) {
+                        rewrite_instruction_constant(instruction,
+                            YIR_OP_CONST_I64, YIR_TYPE_I64, 0);
+                    } else if (lhs_is_constant && lhs_constant == 1) {
+                        replace_value_uses(function, instruction->result_id,
+                                           instruction->rhs);
+                        erase_instruction(block, ii);
+                        removed = true;
+                    } else if (rhs_is_constant && rhs_constant == 1) {
+                        replace_value_uses(function, instruction->result_id,
+                                           instruction->lhs);
+                        erase_instruction(block, ii);
+                        removed = true;
+                    }
+                    break;
+                case YIR_OP_DIV_I64:
+                    if (rhs_is_constant && rhs_constant == 1) {
+                        replace_value_uses(function, instruction->result_id,
+                                           instruction->lhs);
+                        erase_instruction(block, ii);
+                        removed = true;
+                    }
+                    break;
+                case YIR_OP_MOD_I64:
+                    if (rhs_is_constant && rhs_constant == 1)
+                        rewrite_instruction_constant(instruction,
+                            YIR_OP_CONST_I64, YIR_TYPE_I64, 0);
+                    break;
+                case YIR_OP_EQ_I64:
+                case YIR_OP_NE_I64:
+                case YIR_OP_LT_I64:
+                case YIR_OP_LE_I64:
+                case YIR_OP_GT_I64:
+                case YIR_OP_GE_I64:
+                    if (instruction->lhs == instruction->rhs) {
+                        bool truth = instruction->opcode == YIR_OP_EQ_I64 ||
+                                     instruction->opcode == YIR_OP_LE_I64 ||
+                                     instruction->opcode == YIR_OP_GE_I64;
+                        rewrite_instruction_constant(instruction,
+                            YIR_OP_CONST_BOOL, YIR_TYPE_BOOL, truth ? 1 : 0);
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+            if (!removed) ++ii;
+        }
+    }
+    return yir_verify_function(function, error, error_capacity);
+}
+
 bool yir_run_opt_pipeline(YIRFunction *function, const YIROptPass *passes,
                           size_t pass_count, char *error,
                           size_t error_capacity)
@@ -946,6 +1193,12 @@ bool yir_run_opt_pipeline(YIRFunction *function, const YIROptPass *passes,
             case YIR_OPT_COMMON_SUBEXPRESSION:
                 success = eliminate_common_subexpressions(function, error, error_capacity);
                 break;
+            case YIR_OPT_COPY_PROPAGATION:
+                success = propagate_identical_block_arguments(function, error, error_capacity);
+                break;
+            case YIR_OPT_ALGEBRAIC_SIMPLIFY:
+                success = simplify_integer_algebra(function, error, error_capacity);
+                break;
             case YIR_OPT_DEAD_CODE:
                 success = eliminate_dead_code(function, error, error_capacity);
                 break;
@@ -966,6 +1219,8 @@ bool yir_optimize_function(YIRFunction *function, char *error,
         YIR_OPT_CONSTANT_FOLD,
         YIR_OPT_SIMPLIFY_CFG,
         YIR_OPT_COMMON_SUBEXPRESSION,
+        YIR_OPT_COPY_PROPAGATION,
+        YIR_OPT_ALGEBRAIC_SIMPLIFY,
         YIR_OPT_DEAD_CODE
     };
     return yir_run_opt_pipeline(function, default_pipeline,

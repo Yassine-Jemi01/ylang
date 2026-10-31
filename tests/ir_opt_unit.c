@@ -767,6 +767,251 @@ static void folds_safe_numeric_conversions_and_preserves_range_traps(void)
     assert(yir_verify_function(&trap_function,error,sizeof(error)));
 }
 
+
+static void copy_propagates_identical_values_from_all_predecessor_edges(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_BOOL}
+    };
+    const YIRBlockParameter join_parameters[] = {
+        {.id=4,.type=YIR_TYPE_I64}
+    };
+    const uint32_t first_edge_args[] = {2};
+    const uint32_t second_edge_args[] = {2};
+    YIRInstruction entry[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=2,.result_type=YIR_TYPE_I64,
+         .immediate=42},
+        {.opcode=YIR_OP_COND_BRANCH,.lhs=1,.target=1,.false_target=2}
+    };
+    YIRInstruction first_predecessor[] = {
+        {.opcode=YIR_OP_BRANCH,.target=3,
+         .arguments=first_edge_args,.argument_count=1}
+    };
+    YIRInstruction second_predecessor[] = {
+        {.opcode=YIR_OP_BRANCH,.target=3,
+         .arguments=second_edge_args,.argument_count=1}
+    };
+    YIRInstruction join[] = {
+        {.opcode=YIR_OP_RETURN,.lhs=4}
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=entry,.instruction_count=2},
+        {.id=1,.instructions=first_predecessor,.instruction_count=1},
+        {.id=2,.instructions=second_predecessor,.instruction_count=1},
+        {.id=3,.parameters=join_parameters,.parameter_count=1,
+         .instructions=join,.instruction_count=1}
+    };
+    YIRFunction function = {
+        .name="copy_propagation",.return_type=YIR_TYPE_I64,
+        .parameters=parameters,.parameter_count=1,
+        .blocks=blocks,.block_count=4
+    };
+    char error[256];
+
+    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(blocks[3].parameter_count==0);
+    assert(join[0].lhs==2);
+    assert(first_predecessor[0].argument_count==0);
+    assert(second_predecessor[0].argument_count==0);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
+static void copy_propagation_keeps_join_parameters_with_different_inputs(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_BOOL}
+    };
+    const YIRBlockParameter join_parameters[] = {
+        {.id=5,.type=YIR_TYPE_I64}
+    };
+    const uint32_t first_edge_args[] = {3};
+    const uint32_t second_edge_args[] = {4};
+    YIRInstruction entry[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=2,.result_type=YIR_TYPE_I64,
+         .immediate=7},
+        {.opcode=YIR_OP_CONST_I64,.result_id=3,.result_type=YIR_TYPE_I64,
+         .immediate=10},
+        {.opcode=YIR_OP_CONST_I64,.result_id=4,.result_type=YIR_TYPE_I64,
+         .immediate=11},
+        {.opcode=YIR_OP_COND_BRANCH,.lhs=1,.target=1,.false_target=2}
+    };
+    YIRInstruction first_predecessor[] = {
+        {.opcode=YIR_OP_BRANCH,.target=3,
+         .arguments=first_edge_args,.argument_count=1}
+    };
+    YIRInstruction second_predecessor[] = {
+        {.opcode=YIR_OP_BRANCH,.target=3,
+         .arguments=second_edge_args,.argument_count=1}
+    };
+    YIRInstruction join[] = {
+        {.opcode=YIR_OP_RETURN,.lhs=5}
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=entry,.instruction_count=4},
+        {.id=1,.instructions=first_predecessor,.instruction_count=1},
+        {.id=2,.instructions=second_predecessor,.instruction_count=1},
+        {.id=3,.parameters=join_parameters,.parameter_count=1,
+         .instructions=join,.instruction_count=1}
+    };
+    YIRFunction function = {
+        .name="copy_propagation_mismatch",.return_type=YIR_TYPE_I64,
+        .parameters=parameters,.parameter_count=1,
+        .blocks=blocks,.block_count=4
+    };
+    char error[256];
+
+    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(blocks[3].parameter_count==1);
+    assert(join[0].lhs==5);
+    assert(first_predecessor[0].argument_count==1);
+    assert(second_predecessor[0].argument_count==1);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
+
+static void algebraic_simplification_applies_safe_integer_identities(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_I64}
+    };
+    YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=2,.result_type=YIR_TYPE_I64,
+         .immediate=0},
+        {.opcode=YIR_OP_CONST_I64,.result_id=3,.result_type=YIR_TYPE_I64,
+         .immediate=1},
+        {.opcode=YIR_OP_ADD_I64,.result_id=4,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_SUB_I64,.result_id=5,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_MUL_I64,.result_id=6,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=3},
+        {.opcode=YIR_OP_DIV_I64,.result_id=7,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=3},
+        {.opcode=YIR_OP_MUL_I64,.result_id=8,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_MOD_I64,.result_id=9,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=3},
+        {.opcode=YIR_OP_EQ_I64,.result_id=10,.result_type=YIR_TYPE_BOOL,
+         .lhs=1,.rhs=1},
+        {.opcode=YIR_OP_LT_I64,.result_id=11,.result_type=YIR_TYPE_BOOL,
+         .lhs=1,.rhs=1},
+        {.opcode=YIR_OP_RETURN,.lhs=8}
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,
+         .instruction_count=sizeof(instructions)/sizeof(instructions[0])}
+    };
+    YIRFunction function = {
+        .name="integer_algebra",.return_type=YIR_TYPE_I64,
+        .parameters=parameters,.parameter_count=1,
+        .blocks=blocks,.block_count=1
+    };
+    const YIROptPass pass[] = {YIR_OPT_ALGEBRAIC_SIMPLIFY};
+    char error[256];
+
+    assert(yir_run_opt_pipeline(&function,pass,1,error,sizeof(error)));
+    assert(blocks[0].instruction_count==7);
+    bool saw_zero_mul = false;
+    bool saw_zero_mod = false;
+    bool saw_true_compare = false;
+    bool saw_false_compare = false;
+    for (size_t i=0;i<blocks[0].instruction_count;i++) {
+        const YIRInstruction *ins=&blocks[0].instructions[i];
+        if (ins->result_id==8) {
+            assert(ins->opcode==YIR_OP_CONST_I64 && ins->immediate==0);
+            saw_zero_mul=true;
+        } else if (ins->result_id==9) {
+            assert(ins->opcode==YIR_OP_CONST_I64 && ins->immediate==0);
+            saw_zero_mod=true;
+        } else if (ins->result_id==10) {
+            assert(ins->opcode==YIR_OP_CONST_BOOL && ins->immediate==1);
+            saw_true_compare=true;
+        } else if (ins->result_id==11) {
+            assert(ins->opcode==YIR_OP_CONST_BOOL && ins->immediate==0);
+            saw_false_compare=true;
+        }
+    }
+    assert(saw_zero_mul && saw_zero_mod &&
+           saw_true_compare && saw_false_compare);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
+static void algebraic_simplification_does_not_hide_divide_by_zero(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_I64}
+    };
+    YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=2,.result_type=YIR_TYPE_I64,
+         .immediate=0},
+        {.opcode=YIR_OP_DIV_I64,.result_id=3,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_MOD_I64,.result_id=4,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_RETURN,.lhs=3}
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,.instruction_count=4}
+    };
+    YIRFunction function = {
+        .name="algebra_keeps_traps",.return_type=YIR_TYPE_I64,
+        .parameters=parameters,.parameter_count=1,
+        .blocks=blocks,.block_count=1
+    };
+    const YIROptPass pass[] = {YIR_OPT_ALGEBRAIC_SIMPLIFY};
+    char error[256];
+
+    assert(yir_run_opt_pipeline(&function,pass,1,error,sizeof(error)));
+    assert(blocks[0].instruction_count==4);
+    assert(instructions[1].opcode==YIR_OP_DIV_I64);
+    assert(instructions[2].opcode==YIR_OP_MOD_I64);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
+
+static void copy_propagation_compacts_multiple_parameters_on_true_and_false_edges(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_BOOL}
+    };
+    YIRBlockParameter join_parameters[] = {
+        {.id=3,.type=YIR_TYPE_I64},
+        {.id=4,.type=YIR_TYPE_I64}
+    };
+    uint32_t true_arguments[] = {2,2};
+    uint32_t false_arguments[] = {2,2};
+    YIRInstruction entry[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=2,.result_type=YIR_TYPE_I64,
+         .immediate=21},
+        {.opcode=YIR_OP_COND_BRANCH,.lhs=1,.target=1,.false_target=1,
+         .arguments=true_arguments,.argument_count=2,
+         .false_arguments=false_arguments,.false_argument_count=2}
+    };
+    YIRInstruction join[] = {
+        {.opcode=YIR_OP_ADD_I64,.result_id=5,.result_type=YIR_TYPE_I64,
+         .lhs=3,.rhs=4},
+        {.opcode=YIR_OP_RETURN,.lhs=5}
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=entry,.instruction_count=2},
+        {.id=1,.parameters=join_parameters,.parameter_count=2,
+         .instructions=join,.instruction_count=2}
+    };
+    YIRFunction function = {
+        .name="copy_propagation_multiple",.return_type=YIR_TYPE_I64,
+        .parameters=parameters,.parameter_count=1,
+        .blocks=blocks,.block_count=2
+    };
+    char error[256];
+
+    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(blocks[1].parameter_count==0);
+    assert(join[0].lhs==2 && join[0].rhs==2);
+    assert(entry[1].argument_count==0);
+    assert(entry[1].false_argument_count==0);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
 int main(void)
 {
     folds_safe_integer_and_boolean_constants();
@@ -787,6 +1032,11 @@ int main(void)
     common_subexpressions_rewrite_block_edge_uses();
     common_subexpression_pass_does_not_merge_checked_divisions();
     folds_safe_numeric_conversions_and_preserves_range_traps();
+    copy_propagates_identical_values_from_all_predecessor_edges();
+    copy_propagation_keeps_join_parameters_with_different_inputs();
+    copy_propagation_compacts_multiple_parameters_on_true_and_false_edges();
+    algebraic_simplification_applies_safe_integer_identities();
+    algebraic_simplification_does_not_hide_divide_by_zero();
     puts("YLang IR optimizer tests passed");
     return 0;
 }

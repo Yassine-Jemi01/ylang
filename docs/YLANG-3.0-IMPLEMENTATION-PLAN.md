@@ -246,13 +246,28 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [~] 5.2.1 Constant folding, including safe scalar integer, boolean, and conservative f64 cases.
 - [~] 5.2.2 Dominance-aware constant propagation in scalar SSA values.
 - [~] 5.2.3 Dead-code elimination after CFG simplification with trap/effect preservation.
-- [ ] 5.2.4 Copy propagation.
+- [~] 5.2.4 Copy propagation for identical values at CFG joins.
+  - [~] 5.2.4.1 Inspect all incoming true and false edges before replacing a join value.
+  - [~] 5.2.4.2 Propagate only when every predecessor supplies the identical SSA value.
+  - [~] 5.2.4.3 Remove the matching edge argument and block parameter while preserving order.
+  - [~] 5.2.4.4 Keep join parameters when incoming values differ or are loop-carried.
 - [~] 5.2.5 Safe local common-subexpression elimination with SSA-use rewriting and trapping-op exclusions.
 - [ ] 5.2.6 Inlining and devirtualization.
 - [ ] 5.2.7 Loop-invariant code motion and induction-variable simplification.
 - [ ] 5.2.8 Vectorization with target-feature checks.
 - [ ] 5.2.9 LTO and optional PGO.
-- [ ] 5.2.10 Validate every optimization with correctness and performance tests.
+- [~] 5.2.10 Validate optimizer passes with correctness tests; full performance baselines remain open.
+  - [~] 5.2.10.1 Verify pass outputs after every optimization stage.
+  - [~] 5.2.10.2 Add negative tests proving potentially trapping operations remain observable.
+  - [ ] 5.2.10.3 Add reproducible optimization-on/off benchmarks and performance regression thresholds.
+
+- [~] 5.2.11 Add conservative integer algebraic simplification.
+  - [~] 5.2.11.1 Simplify addition/subtraction by zero using SSA copy replacement.
+  - [~] 5.2.11.2 Simplify multiplication by zero/one without hiding integer overflow.
+  - [~] 5.2.11.3 Simplify division/modulo by one, while retaining zero-divisor traps.
+  - [~] 5.2.11.4 Fold reflexive signed-integer comparisons.
+  - [~] 5.2.11.5 Avoid floating-point identities that can alter NaN or signed-zero semantics.
+  - [~] 5.2.11.6 Add positive, negative, and verifier-regression tests.
 
 ## 6. Standard library and desktop application development
 
