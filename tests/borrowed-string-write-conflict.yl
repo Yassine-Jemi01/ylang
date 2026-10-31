@@ -1,0 +1,9 @@
+function inspect_and_replace(borrowed_string view, string replacement) -> int {
+    return string.length(view);
+}
+
+function main() -> int {
+    let string owner = "before";
+    inspect_and_replace(owner, owner = "after");
+    return 0;
+}
