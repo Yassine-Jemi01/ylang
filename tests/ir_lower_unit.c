@@ -911,6 +911,42 @@ static void lowers_function_with_module_qualified_symbol(void)
     yir_destroy_function(&lowered);
 }
 
+static void lowers_short_circuit_boolean_operators(void)
+{
+    static const char source[] =
+        "fn explode() -> bool {\n"
+        "    let int value = 1 / 0;\n"
+        "    return value == 0;\n"
+        "}\n"
+        "fn main() -> int {\n"
+        "    let bool either = true or explode();\n"
+        "    let bool both = false and explode();\n"
+        "    if (either and not both) { return 42; }\n"
+        "    return 0;\n"
+        "}\n";
+    Compiler compiler;
+    YIRFunction lowered = lower_checked_source(&compiler, source, "main");
+    size_t conditional_branches = 0;
+    size_t calls = 0;
+    size_t bool_merge_parameters = 0;
+    for (size_t bi = 0; bi < lowered.block_count; ++bi) {
+        const YIRBlock *block = &lowered.blocks[bi];
+        for (size_t pi = 0; pi < block->parameter_count; ++pi)
+            if (block->parameters[pi].type == YIR_TYPE_BOOL)
+                bool_merge_parameters++;
+        for (size_t ii = 0; ii < block->instruction_count; ++ii) {
+            YIROpcode opcode = block->instructions[ii].opcode;
+            if (opcode == YIR_OP_COND_BRANCH) conditional_branches++;
+            if (opcode == YIR_OP_CALL) calls++;
+        }
+    }
+    assert(conditional_branches >= 4);
+    assert(calls == 2);
+    assert(bool_merge_parameters >= 3);
+    yir_destroy_function(&lowered);
+    arena_destroy(&compiler.arena);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
@@ -941,6 +977,7 @@ int main(void)
     lowers_void_function_call_statement();
     lowers_function_with_module_qualified_symbol();
     lowers_division_modulo_and_general_integer_negation();
+    lowers_short_circuit_boolean_operators();
     puts("YLang IR lowering tests passed");
     return 0;
 }

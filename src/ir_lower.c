@@ -671,12 +671,66 @@ static bool lower_boolean_expr(Lowerer *lowerer, const Expr *expression,
     }
 
     if (expression->kind == EXPR_BINARY) {
+        TokenType operator_type = expression->as.binary.op.type;
+        if (operator_type == TOKEN_AND || operator_type == TOKEN_OR) {
+            uint32_t lhs = 0;
+            if (!lower_boolean_expr(lowerer, expression->as.binary.left,
+                                    &lhs))
+                return false;
+
+            uint32_t rhs_block = 0, merge_block = 0, merged_value = 0;
+            if (!new_block(lowerer, &rhs_block) ||
+                !new_block(lowerer, &merge_block) ||
+                !add_block_parameter(lowerer, merge_block, YIR_TYPE_BOOL,
+                                     &merged_value))
+                return false;
+
+            const bool is_and = operator_type == TOKEN_AND;
+            YIRInstruction short_value = {
+                .opcode=YIR_OP_CONST_BOOL,
+                .result_type=YIR_TYPE_BOOL,
+                .immediate=is_and ? 0 : 1,
+                .source_line=expression->as.binary.op.line,
+                .source_column=expression->as.binary.op.column
+            };
+            uint32_t short_value_id = 0;
+            if (!append_instruction(lowerer, short_value, &short_value_id))
+                return false;
+
+            const uint32_t short_argument[] = {short_value_id};
+            if (is_and) {
+                if (!emit_cond_branch(lowerer, lhs,
+                        rhs_block, NULL, 0,
+                        merge_block, short_argument, 1,
+                        expression->as.binary.op))
+                    return false;
+            } else {
+                if (!emit_cond_branch(lowerer, lhs,
+                        merge_block, short_argument, 1,
+                        rhs_block, NULL, 0,
+                        expression->as.binary.op))
+                    return false;
+            }
+
+            select_block(lowerer, rhs_block);
+            uint32_t rhs = 0;
+            if (!lower_boolean_expr(lowerer, expression->as.binary.right,
+                                    &rhs) ||
+                !emit_branch(lowerer, merge_block, &rhs, 1,
+                             expression->as.binary.op))
+                return false;
+
+            select_block(lowerer, merge_block);
+            *value_id = merged_value;
+            return true;
+        }
+
         uint32_t lhs = 0, rhs = 0;
         if (!lower_integer_expr(lowerer, expression->as.binary.left, &lhs) ||
             !lower_integer_expr(lowerer, expression->as.binary.right, &rhs))
             return false;
         YIROpcode opcode;
-        switch (expression->as.binary.op.type) {
+        switch (operator_type) {
             case TOKEN_EQUAL_EQUAL: opcode = YIR_OP_EQ_I64; break;
             case TOKEN_BANG_EQUAL: opcode = YIR_OP_NE_I64; break;
             case TOKEN_LESS: opcode = YIR_OP_LT_I64; break;

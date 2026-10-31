@@ -73,6 +73,11 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
     - [~] 2.3.3.2.3 Add stable textual MIR output for the new operations.
     - [~] 2.3.3.2.4 Add checked C helpers for divide/modulo-by-zero and signed overflow edge cases.
     - [~] 2.3.3.2.5 Add runtime tests for divide-by-zero, `INT64_MIN / -1`, negation overflow, and `INT64_MIN % -1 == 0`.
+  - [~] 2.3.3.3 Lower short-circuit boolean `and` / `or` using conditional branches and typed merge parameters.
+    - [~] 2.3.3.3.1 Skip the right operand of `and` when the left operand is false.
+    - [~] 2.3.3.3.2 Skip the right operand of `or` when the left operand is true.
+    - [~] 2.3.3.3.3 Preserve left-to-right evaluation for nested logical expressions and calls.
+    - [~] 2.3.3.3.4 Compile and run IR-to-C tests where the skipped operand would divide by zero.
 - [x] 2.3.4 Lower nested conditionals and merge changed values with block parameters.
 - [~] 2.3.5 Lower `while`, `for`, `loop()`, `break`, and `continue`; expand nested-loop and scope edge-case tests.
 - [~] 2.3.6 Lower direct user-function calls with scalar signatures.

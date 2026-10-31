@@ -1,0 +1,15 @@
+fn explode() -> bool {
+    let int value = 1 / 0;
+    return value == 0;
+}
+
+fn main() -> int {
+    let bool either = true or explode();
+    let bool both = false and explode();
+
+    if (either and not both) {
+        return 42;
+    }
+
+    return 0;
+}

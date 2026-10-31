@@ -207,6 +207,18 @@ ir_module_calls_status=$?
 set -e
 [ "$ir_module_calls_status" -eq 84 ]
 
+# Boolean and/or use control-flow edges so the right operand is truly short-circuited.
+./build/ylang emit-mir tests/emit-ir-c-short-circuit.yl > build/emit-ir-c-short-circuit.mir
+[ "$(grep -c 'cond_br' build/emit-ir-c-short-circuit.mir)" -ge 4 ]
+./build/ylang emit-ir-c tests/emit-ir-c-short-circuit.yl -o build/emit-ir-c-short-circuit.c >/dev/null
+grep -Fq 'yir_div_i64' build/emit-ir-c-short-circuit.c
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-short-circuit.c -o build/test-emit-ir-c-short-circuit
+set +e
+./build/test-emit-ir-c-short-circuit
+short_circuit_status=$?
+set -e
+[ "$short_circuit_status" -eq 42 ]
+
 # Emit standalone C from verified IR, compile it, and run the generated executable.
 ./build/ylang emit-ir-c tests/emit-ir-c.yl -o build/emit-ir-c.c > build/emit-ir-c.out
 grep -Fq 'yir_add_i64' build/emit-ir-c.c
