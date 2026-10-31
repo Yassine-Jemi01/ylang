@@ -101,12 +101,18 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 
 ### 3.2 C reference backend migration
 - [ ] 3.2.1 Preserve the current AST-to-C path as a reference during migration.
-- [ ] 3.2.2 Add an IR-to-C emitter for constants, arithmetic, and returns.
-- [ ] 3.2.3 Compile and run the first IR-generated C executable.
-- [ ] 3.2.4 Compare IR-to-C output against the existing C backend.
-- [ ] 3.2.5 Add branches and loops to IR-to-C with differential tests.
-- [ ] 3.2.6 Expand parity feature-by-feature until the supported C subset is covered.
-- [ ] 3.2.7 Switch the default build path only after parity and compatibility gates pass.
+- [~] 3.2.2 Implement the first standalone IR-to-C emitter slice.
+  - [~] 3.2.2.1 Emit i64/bool/void functions with constants, checked i64 arithmetic, comparisons, bool negation, branches, block-parameter copies, direct calls, and returns.
+  - [~] 3.2.2.1.1 Encode module-qualified IR symbols as collision-free C identifiers.
+  - [~] 3.2.2.1.2 Preserve checked overflow behavior for add/subtract/multiply.
+  - [~] 3.2.2.1.3 Reject unsupported IR types and opcodes explicitly.
+  - [~] 3.2.2.1.4 Add unit tests for arithmetic, direct calls, branch edges, and unsupported signatures.
+- [ ] 3.2.3 Add an `emit-ir-c` CLI command that writes verified IR-generated C to a requested file.
+- [ ] 3.2.4 Compile and run the first IR-generated C executable on Linux GCC and Clang.
+- [ ] 3.2.5 Compare IR-to-C output against the existing AST-to-C backend for matching fixtures.
+- [ ] 3.2.6 Expand branches and loops with differential tests and sanitizer coverage.
+- [ ] 3.2.7 Expand parity feature-by-feature until the supported C subset is covered.
+- [ ] 3.2.8 Switch the default build path only after parity and compatibility gates pass.
 
 ### 3.3 LLVM backend
 - [ ] 3.3.1 Add LLVM toolchain discovery and version checks.
