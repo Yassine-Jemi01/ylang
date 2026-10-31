@@ -39,7 +39,7 @@ The verifier computes CFG reachability and iterative dominator sets. It rejects 
 
 ## Remaining work before frontend integration
 
-This IR is not ready to replace the current AST-to-C path. Full calling-convention and ABI metadata, source spans, floating-point and string operations, memory and aggregate operations, calls, ownership/drop metadata, debug locations, and complete frontend lowering for the supported language are still required; current source locations cover lowered instructions, not every IR entity. Backends must consume the same verified IR before the architecture can be considered integrated.
+This IR is not ready to replace the current AST-to-C path. Full calling-convention and ABI metadata, source spans, floating-point and string operations, memory and aggregate operations, calls, ownership/drop metadata, debug locations, and complete frontend lowering for the supported language are still required; current source locations cover lowered instructions, not every IR entity. Backends must consume the same verified IR before the architecture can be considered integrated. The `emit-mir` CLI command is a developer inspection path only; normal `build` and `emit-c` still use the established AST-to-C pipeline.
 
 ## AST lowering scope
 
@@ -47,8 +47,8 @@ This IR is not ready to replace the current AST-to-C path. Full calling-conventi
 
 ## Textual IR output
 
-`yir_print_function(FILE *, const YIRFunction *)` writes a stable, human-readable dump of function signatures, typed block parameters, instructions, branch arguments, and available source locations. The printer is a debugging aid for the current IR model; it does not imply that the compiler CLI or a backend consumes the IR yet.
+`yir_print_function(FILE *, const YIRFunction *)` writes a stable, human-readable dump of function signatures, typed block parameters, instructions, branch arguments, and available source locations. `ylang emit-mir <file.yl>` runs the existing frontend and semantic checker, lowers every function in the loaded program, verifies every result, and then prints the MIR to standard output. It rejects `-o`; unsupported functions produce a source-located error and no partial MIR output. The command currently works only when every function is inside the documented initial scalar lowering subset.
 
 ## Build and tests
 
-Run `make ir-unit-test ir-lower-unit-test ir-print-unit-test` or `sh tests/run-ir-unit.sh`. Verifier tests cover arithmetic and return, same-block ordering, cross-block dominance, unreachable blocks, invalid joins, and typed block-parameter joins. Lowering tests cover integer arithmetic returns, scalar locals and assignments, immutable assignment rejection, integer and boolean function parameters, negative literals, empty void functions, if/else returns, boolean literals, boolean negation, integer comparison conditions, and explicit rejection of unsupported bodies. One integration test parses and semantically checks real YLang source before lowering its function AST.
+Run `make ir-unit-test ir-lower-unit-test ir-print-unit-test` or `sh tests/run-ir-unit.sh`. The full `make test` suite also exercises the `emit-mir` CLI. Verifier tests cover arithmetic and return, same-block ordering, cross-block dominance, unreachable blocks, invalid joins, and typed block-parameter joins. Lowering tests cover integer arithmetic returns, scalar locals and assignments, immutable assignment rejection, integer and boolean function parameters, negative literals, empty void functions, if/else returns, boolean literals, boolean negation, integer comparison conditions, and explicit rejection of unsupported bodies. One integration test parses and semantically checks real YLang source before lowering its function AST.
