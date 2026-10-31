@@ -50,7 +50,7 @@ int main(int argc, char **argv)
     const char *command = argv[1];
     if (strcmp(command, "check") != 0 && strcmp(command, "build") != 0 &&
         strcmp(command, "debug") != 0 && strcmp(command, "emit-c") != 0 &&
-        strcmp(command, "emit-mir") != 0 && strcmp(command, "emit-asm") != 0 && strcmp(command, "build-asm") != 0 &&
+        strcmp(command, "emit-mir") != 0 && strcmp(command, "emit-asm") != 0 &&\n        strcmp(command, "build-asm") != 0 &&
         strcmp(command, "fix") != 0) {
         fprintf(stderr, "ylang: unknown command '%s'\n\n", command);
         usage(stderr);
