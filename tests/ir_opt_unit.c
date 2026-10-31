@@ -1,7 +1,9 @@
 #include "ylang/ir.h"
 
 #include <assert.h>
+#include <float.h>
 #include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -250,7 +252,7 @@ static void does_not_fold_block_parameter_as_a_constant(void)
     assert(yir_verify_function(&function,error,sizeof(error)));
 }
 
-static void preserves_f64_operations_until_ieee_rules_are_defined(void)
+static void folds_safe_f64_arithmetic_and_comparisons(void)
 {
     YIRInstruction instructions[] = {
         {.opcode=YIR_OP_CONST_F64,.result_id=1,.result_type=YIR_TYPE_F64,
@@ -259,22 +261,113 @@ static void preserves_f64_operations_until_ieee_rules_are_defined(void)
          .floating_immediate=2.5},
         {.opcode=YIR_OP_ADD_F64,.result_id=3,.result_type=YIR_TYPE_F64,
          .lhs=1,.rhs=2},
-        {.opcode=YIR_OP_RETURN,.lhs=3}
+        {.opcode=YIR_OP_CONST_F64,.result_id=4,.result_type=YIR_TYPE_F64,
+         .floating_immediate=2.0},
+        {.opcode=YIR_OP_MUL_F64,.result_id=5,.result_type=YIR_TYPE_F64,
+         .lhs=3,.rhs=4},
+        {.opcode=YIR_OP_CONST_F64,.result_id=6,.result_type=YIR_TYPE_F64,
+         .floating_immediate=3.0},
+        {.opcode=YIR_OP_DIV_F64,.result_id=7,.result_type=YIR_TYPE_F64,
+         .lhs=5,.rhs=6},
+        {.opcode=YIR_OP_NEG_F64,.result_id=8,.result_type=YIR_TYPE_F64,
+         .lhs=7},
+        {.opcode=YIR_OP_CONST_F64,.result_id=9,.result_type=YIR_TYPE_F64,
+         .floating_immediate=2.5},
+        {.opcode=YIR_OP_EQ_F64,.result_id=10,.result_type=YIR_TYPE_BOOL,
+         .lhs=8,.rhs=9},
+        {.opcode=YIR_OP_RETURN,.lhs=10}
     };
     YIRBlock blocks[] = {
-        {.id=0,.instructions=instructions,.instruction_count=4}
+        {.id=0,.instructions=instructions,
+         .instruction_count=sizeof(instructions)/sizeof(instructions[0])}
     };
     YIRFunction function = {
-        .name="unoptimized_f64",.return_type=YIR_TYPE_F64,
+        .name="safe_f64_folding",.return_type=YIR_TYPE_BOOL,
         .blocks=blocks,.block_count=1
     };
     char error[256];
 
     assert(yir_optimize_function(&function,error,sizeof(error)));
-    assert(instructions[0].opcode==YIR_OP_CONST_F64);
+    assert(instructions[2].opcode==YIR_OP_CONST_F64);
+    assert(instructions[2].floating_immediate==3.75);
+    assert(instructions[4].opcode==YIR_OP_CONST_F64);
+    assert(instructions[4].floating_immediate==7.5);
+    assert(instructions[6].opcode==YIR_OP_CONST_F64);
+    assert(instructions[6].floating_immediate==2.5);
+    assert(instructions[7].opcode==YIR_OP_CONST_F64);
+    assert(instructions[7].floating_immediate==-2.5);
+    assert(instructions[9].opcode==YIR_OP_CONST_BOOL);
+    assert(instructions[9].immediate==0);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
+static void folds_f64_negation_without_losing_signed_zero(void)
+{
+    YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_F64,.result_id=1,.result_type=YIR_TYPE_F64,
+         .floating_immediate=0.0},
+        {.opcode=YIR_OP_NEG_F64,.result_id=2,.result_type=YIR_TYPE_F64,
+         .lhs=1},
+        {.opcode=YIR_OP_RETURN,.lhs=2}
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,.instruction_count=3}
+    };
+    YIRFunction function = {
+        .name="signed_zero_folding",.return_type=YIR_TYPE_F64,
+        .blocks=blocks,.block_count=1
+    };
+    char error[256];
+
+    assert(yir_optimize_function(&function,error,sizeof(error)));
     assert(instructions[1].opcode==YIR_OP_CONST_F64);
-    assert(instructions[2].opcode==YIR_OP_ADD_F64);
-    assert(instructions[2].floating_immediate==0.0);
+    assert(instructions[1].floating_immediate==0.0);
+    assert(signbit(instructions[1].floating_immediate));
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
+static void preserves_f64_traps_overflow_and_subnormal_results(void)
+{
+    YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_F64,.result_id=1,.result_type=YIR_TYPE_F64,
+         .floating_immediate=1.0},
+        {.opcode=YIR_OP_CONST_F64,.result_id=2,.result_type=YIR_TYPE_F64,
+         .floating_immediate=0.0},
+        {.opcode=YIR_OP_DIV_F64,.result_id=3,.result_type=YIR_TYPE_F64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_CONST_F64,.result_id=4,.result_type=YIR_TYPE_F64,
+         .floating_immediate=-0.0},
+        {.opcode=YIR_OP_DIV_F64,.result_id=5,.result_type=YIR_TYPE_F64,
+         .lhs=1,.rhs=4},
+        {.opcode=YIR_OP_CONST_F64,.result_id=6,.result_type=YIR_TYPE_F64,
+         .floating_immediate=DBL_MAX},
+        {.opcode=YIR_OP_CONST_F64,.result_id=7,.result_type=YIR_TYPE_F64,
+         .floating_immediate=2.0},
+        {.opcode=YIR_OP_MUL_F64,.result_id=8,.result_type=YIR_TYPE_F64,
+         .lhs=6,.rhs=7},
+        {.opcode=YIR_OP_CONST_F64,.result_id=9,.result_type=YIR_TYPE_F64,
+         .floating_immediate=DBL_MIN},
+        {.opcode=YIR_OP_CONST_F64,.result_id=10,.result_type=YIR_TYPE_F64,
+         .floating_immediate=0.5},
+        {.opcode=YIR_OP_MUL_F64,.result_id=11,.result_type=YIR_TYPE_F64,
+         .lhs=9,.rhs=10},
+        {.opcode=YIR_OP_RETURN,.lhs=3}
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,
+         .instruction_count=sizeof(instructions)/sizeof(instructions[0])}
+    };
+    YIRFunction function = {
+        .name="f64_traps_and_edges",.return_type=YIR_TYPE_F64,
+        .blocks=blocks,.block_count=1
+    };
+    char error[256];
+
+    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(instructions[2].opcode==YIR_OP_DIV_F64);
+    assert(instructions[4].opcode==YIR_OP_DIV_F64);
+    assert(instructions[7].opcode==YIR_OP_MUL_F64);
+    assert(instructions[10].opcode==YIR_OP_MUL_F64);
     assert(yir_verify_function(&function,error,sizeof(error)));
 }
 
@@ -333,7 +426,9 @@ int main(void)
     folds_the_defined_minimum_modulo_negative_one_case();
     folds_constants_across_dominating_blocks();
     does_not_fold_block_parameter_as_a_constant();
-    preserves_f64_operations_until_ieee_rules_are_defined();
+    folds_safe_f64_arithmetic_and_comparisons();
+    folds_f64_negation_without_losing_signed_zero();
+    preserves_f64_traps_overflow_and_subnormal_results();
     preserves_calls_and_module_symbols();
     puts("YLang IR optimizer tests passed");
     return 0;

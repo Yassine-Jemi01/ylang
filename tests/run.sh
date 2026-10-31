@@ -169,10 +169,13 @@ diff -u tests/expected-emit-mir.txt build/emit-mir.out
 ./build/ylang emit-mir tests/emit-mir-opt.yl > build/emit-mir-opt-before.out
 grep -Fq 'add.i64' build/emit-mir-opt-before.out
 grep -Fq 'mul.i64' build/emit-mir-opt-before.out
+grep -Fq 'add.f64' build/emit-mir-opt-before.out
+grep -Fq 'mul.f64' build/emit-mir-opt-before.out
 ./build/ylang emit-mir-opt tests/emit-mir-opt.yl > build/emit-mir-opt-after.out
 grep -Fq 'const.i64 84' build/emit-mir-opt-after.out
 grep -Fq 'div.i64' build/emit-mir-opt-after.out
-if grep -Eq 'add[.]i64|mul[.]i64' build/emit-mir-opt-after.out; then
+grep -Fq 'const.f64 0x1.ep+2' build/emit-mir-opt-after.out
+if grep -Eq 'add[.]i64|mul[.]i64|add[.]f64|mul[.]f64' build/emit-mir-opt-after.out; then
     echo "FAIL: emit-mir-opt left foldable arithmetic in the MIR" >&2
     exit 1
 fi

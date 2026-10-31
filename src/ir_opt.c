@@ -1,6 +1,7 @@
 #include "ylang/ir.h"
 
 #include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -8,6 +9,7 @@ typedef struct {
     uint32_t id;
     YIRType type;
     int64_t value;
+    double floating_value;
 } KnownConstant;
 
 static bool optimize_fail(char *error, size_t capacity, const char *message)
@@ -25,6 +27,11 @@ static const KnownConstant *find_constant(const KnownConstant *constants,
     return NULL;
 }
 
+static bool safe_f64_constant(double value)
+{
+    return isfinite(value) && fpclassify(value) != FP_SUBNORMAL;
+}
+
 static bool remember_constant(KnownConstant *constants, size_t capacity,
                               size_t *count, uint32_t id, YIRType type,
                               int64_t value)
@@ -33,6 +40,19 @@ static bool remember_constant(KnownConstant *constants, size_t capacity,
     if (*count >= capacity) return false;
     constants[*count] = (KnownConstant){
         .id=id, .type=type, .value=value
+    };
+    (*count)++;
+    return true;
+}
+
+static bool remember_f64_constant(KnownConstant *constants, size_t capacity,
+                                  size_t *count, uint32_t id, double value)
+{
+    if (!safe_f64_constant(value)) return true;
+    if (find_constant(constants, *count, id)) return true;
+    if (*count >= capacity) return false;
+    constants[*count] = (KnownConstant){
+        .id=id, .type=YIR_TYPE_F64, .floating_value=value
     };
     (*count)++;
     return true;
@@ -79,7 +99,8 @@ static bool fold_instruction(const YIRInstruction *instruction,
                              const KnownConstant *constants,
                              size_t constant_count,
                              YIROpcode *opcode, YIRType *type,
-                             int64_t *immediate)
+                             int64_t *immediate,
+                             double *floating_immediate)
 {
     const KnownConstant *left = NULL;
     const KnownConstant *right = NULL;
@@ -105,6 +126,18 @@ static bool fold_instruction(const YIRInstruction *instruction,
             *immediate = -left->value;
             return true;
 
+        case YIR_OP_NEG_F64:
+            left = find_constant(constants, constant_count,
+                                 instruction->lhs);
+            if (!left || left->type != YIR_TYPE_F64 ||
+                !safe_f64_constant(left->floating_value))
+                return false;
+            *floating_immediate = -left->floating_value;
+            if (!safe_f64_constant(*floating_immediate)) return false;
+            *opcode = YIR_OP_CONST_F64;
+            *type = YIR_TYPE_F64;
+            return true;
+
         case YIR_OP_ADD_I64:
         case YIR_OP_SUB_I64:
         case YIR_OP_MUL_I64:
@@ -122,6 +155,27 @@ static bool fold_instruction(const YIRInstruction *instruction,
                                   instruction->rhs);
             if (!left || !right || left->type != YIR_TYPE_I64 ||
                 right->type != YIR_TYPE_I64)
+                return false;
+            break;
+
+        case YIR_OP_ADD_F64:
+        case YIR_OP_SUB_F64:
+        case YIR_OP_MUL_F64:
+        case YIR_OP_DIV_F64:
+        case YIR_OP_EQ_F64:
+        case YIR_OP_NE_F64:
+        case YIR_OP_LT_F64:
+        case YIR_OP_LE_F64:
+        case YIR_OP_GT_F64:
+        case YIR_OP_GE_F64:
+            left = find_constant(constants, constant_count,
+                                 instruction->lhs);
+            right = find_constant(constants, constant_count,
+                                  instruction->rhs);
+            if (!left || !right || left->type != YIR_TYPE_F64 ||
+                right->type != YIR_TYPE_F64 ||
+                !safe_f64_constant(left->floating_value) ||
+                !safe_f64_constant(right->floating_value))
                 return false;
             break;
 
@@ -187,6 +241,63 @@ static bool fold_instruction(const YIRInstruction *instruction,
         case YIR_OP_GE_I64:
             *immediate = left->value >= right->value;
             break;
+
+        case YIR_OP_ADD_F64:
+        case YIR_OP_SUB_F64:
+        case YIR_OP_MUL_F64:
+        case YIR_OP_DIV_F64: {
+            double result = 0.0;
+            if (instruction->opcode == YIR_OP_DIV_F64 &&
+                right->floating_value == 0.0)
+                return false;
+            switch (instruction->opcode) {
+                case YIR_OP_ADD_F64:
+                    result = left->floating_value + right->floating_value;
+                    break;
+                case YIR_OP_SUB_F64:
+                    result = left->floating_value - right->floating_value;
+                    break;
+                case YIR_OP_MUL_F64:
+                    result = left->floating_value * right->floating_value;
+                    break;
+                case YIR_OP_DIV_F64:
+                    result = left->floating_value / right->floating_value;
+                    break;
+                default:
+                    return false;
+            }
+            if (!safe_f64_constant(result)) return false;
+            if (result == 0.0 &&
+                instruction->opcode != YIR_OP_ADD_F64 &&
+                instruction->opcode != YIR_OP_SUB_F64 &&
+                left->floating_value != 0.0 &&
+                right->floating_value != 0.0)
+                return false;
+            *floating_immediate = result;
+            *opcode = YIR_OP_CONST_F64;
+            *type = YIR_TYPE_F64;
+            return true;
+        }
+
+        case YIR_OP_EQ_F64:
+            *immediate = left->floating_value == right->floating_value;
+            break;
+        case YIR_OP_NE_F64:
+            *immediate = left->floating_value != right->floating_value;
+            break;
+        case YIR_OP_LT_F64:
+            *immediate = left->floating_value < right->floating_value;
+            break;
+        case YIR_OP_LE_F64:
+            *immediate = left->floating_value <= right->floating_value;
+            break;
+        case YIR_OP_GT_F64:
+            *immediate = left->floating_value > right->floating_value;
+            break;
+        case YIR_OP_GE_F64:
+            *immediate = left->floating_value >= right->floating_value;
+            break;
+
         default:
             return false;
     }
@@ -262,13 +373,30 @@ bool yir_optimize_function(YIRFunction *function, char *error,
                         changed = true;
                     continue;
                 }
+                if (instruction->opcode == YIR_OP_CONST_F64) {
+                    if (safe_f64_constant(instruction->floating_immediate)) {
+                        size_t previous_count = constant_count;
+                        if (!remember_f64_constant(constants,
+                                instruction_count, &constant_count,
+                                instruction->result_id,
+                                instruction->floating_immediate)) {
+                            free(constants);
+                            return optimize_fail(error, error_capacity,
+                                "constant table exceeded the instruction count");
+                        }
+                        if (constant_count != previous_count)
+                            changed = true;
+                    }
+                    continue;
+                }
 
                 YIROpcode folded_opcode = instruction->opcode;
                 YIRType folded_type = instruction->result_type;
                 int64_t folded_value = 0;
+                double folded_float = 0.0;
                 if (!fold_instruction(instruction, constants,
                         constant_count, &folded_opcode, &folded_type,
-                        &folded_value))
+                        &folded_value, &folded_float))
                     continue;
 
                 size_t source_line = instruction->source_line;
@@ -279,12 +407,16 @@ bool yir_optimize_function(YIRFunction *function, char *error,
                     .result_id=result_id,
                     .result_type=folded_type,
                     .immediate=folded_value,
+                    .floating_immediate=folded_float,
                     .source_line=source_line,
                     .source_column=source_column
                 };
-                if (!remember_constant(constants, instruction_count,
-                        &constant_count, result_id, folded_type,
-                        folded_value)) {
+                bool remembered = folded_opcode == YIR_OP_CONST_F64 ?
+                    remember_f64_constant(constants, instruction_count,
+                        &constant_count, result_id, folded_float) :
+                    remember_constant(constants, instruction_count,
+                        &constant_count, result_id, folded_type, folded_value);
+                if (!remembered) {
                     free(constants);
                     return optimize_fail(error, error_capacity,
                         "constant table exceeded the instruction count");

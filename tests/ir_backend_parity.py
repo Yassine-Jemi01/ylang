@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 YLANG = ROOT / "build" / ("ylang.exe" if os.name == "nt" else "ylang")
 FIXTURES = (
     "tests/emit-ir-c.yl",
+    "tests/emit-mir-opt.yl",
     "tests/emit-ir-c-arithmetic.yl",
     "tests/emit-ir-c-div-zero.yl",
     "tests/emit-ir-c-div-overflow.yl",

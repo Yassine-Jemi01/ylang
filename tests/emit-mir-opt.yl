@@ -5,3 +5,7 @@ fn main() -> int {
 fn preserve_trap() -> int {
     return 1 / 0;
 }
+
+fn f64_safe() -> float {
+    return (1.25 + 2.5) * 2.0;
+}

@@ -121,7 +121,8 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 2.3.12.1.4 Preserve division-by-zero and signed-overflow operations for runtime diagnostics.
   - [~] 2.3.12.1.5 Verify the function/module before and after optimization.
   - [~] 2.3.12.1.6 Add positive, negative, dominance, overflow, and call-preservation tests.
-  - [~] 2.3.12.1.7 Keep f64 folding disabled until IEEE-754 behavior is specified.
+  - [~] 2.3.12.1.7 Fold finite, non-subnormal f64 arithmetic, negation, and comparisons while preserving signed zero.
+  - [~] 2.3.12.1.8 Preserve f64 division by either signed zero, non-finite overflow, subnormal results, and possible underflow-to-zero operations.
 - [~] 2.3.12.2 Add a developer-only `emit-mir-opt` command to inspect the optimized MIR.
 - [ ] 2.3.12.3 Add constant-branch simplification and unreachable-block cleanup.
 - [ ] 2.3.12.4 Add dead-code elimination after CFG cleanup.
