@@ -1,4 +1,4 @@
-function selected() -> int {
+fn selected() -> int {
     if (false) {
         return 11;
     } else {
@@ -6,6 +6,6 @@ function selected() -> int {
     }
 }
 
-function main() -> int {
+fn main() -> int {
     return selected();
 }

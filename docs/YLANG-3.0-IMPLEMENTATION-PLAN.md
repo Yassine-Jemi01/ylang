@@ -231,7 +231,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [~] 5.2.2 Dominance-aware constant propagation in scalar SSA values.
 - [~] 5.2.3 Dead-code elimination after CFG simplification with trap/effect preservation.
 - [ ] 5.2.4 Copy propagation.
-- [ ] 5.2.5 Common-subexpression elimination.
+- [~] 5.2.5 Safe local common-subexpression elimination with SSA-use rewriting and trapping-op exclusions.
 - [ ] 5.2.6 Inlining and devirtualization.
 - [ ] 5.2.7 Loop-invariant code motion and induction-variable simplification.
 - [ ] 5.2.8 Vectorization with target-feature checks.

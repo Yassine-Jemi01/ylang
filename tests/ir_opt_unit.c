@@ -642,6 +642,79 @@ static void exposes_ordered_and_validated_optimizer_pipelines(void)
     assert(yir_verify_function(&function,error,sizeof(error)));
 }
 
+
+static void common_subexpressions_rewrite_block_edge_uses(void)
+{
+    uint32_t edge_arguments[] = {3};
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_BOOL}
+    };
+    const YIRBlockParameter join_parameters[] = {
+        {.id=4,.type=YIR_TYPE_BOOL}
+    };
+    YIRInstruction entry_instructions[] = {
+        {.opcode=YIR_OP_NOT_BOOL,.result_id=2,.result_type=YIR_TYPE_BOOL,
+         .lhs=1},
+        {.opcode=YIR_OP_NOT_BOOL,.result_id=3,.result_type=YIR_TYPE_BOOL,
+         .lhs=1},
+        {.opcode=YIR_OP_BRANCH,.target=1,
+         .arguments=edge_arguments,.argument_count=1}
+    };
+    YIRInstruction join_instructions[] = {
+        {.opcode=YIR_OP_RETURN,.lhs=4}
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=entry_instructions,.instruction_count=3},
+        {.id=1,.parameters=join_parameters,.parameter_count=1,
+         .instructions=join_instructions,.instruction_count=1}
+    };
+    YIRFunction function = {
+        .name="cse_edge_use",.return_type=YIR_TYPE_BOOL,
+        .parameters=parameters,.parameter_count=1,
+        .blocks=blocks,.block_count=2
+    };
+    char error[256];
+
+    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(blocks[0].instruction_count==2);
+    assert(entry_instructions[0].opcode==YIR_OP_NOT_BOOL);
+    assert(entry_instructions[0].result_id==2);
+    assert(entry_instructions[1].opcode==YIR_OP_BRANCH);
+    assert(entry_instructions[1].argument_count==1);
+    assert(edge_arguments[0]==2);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
+static void common_subexpression_pass_does_not_merge_checked_divisions(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_I64},
+        {.id=2,.type=YIR_TYPE_I64}
+    };
+    YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_DIV_I64,.result_id=3,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_DIV_I64,.result_id=4,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_RETURN}
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,.instruction_count=3}
+    };
+    YIRFunction function = {
+        .name="cse_must_keep_traps",.return_type=YIR_TYPE_VOID,
+        .parameters=parameters,.parameter_count=2,
+        .blocks=blocks,.block_count=1
+    };
+    char error[256];
+
+    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(blocks[0].instruction_count==3);
+    assert(instructions[0].opcode==YIR_OP_DIV_I64);
+    assert(instructions[1].opcode==YIR_OP_DIV_I64);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
 int main(void)
 {
     folds_safe_integer_and_boolean_constants();
@@ -659,6 +732,8 @@ int main(void)
     keeps_unused_floating_division_that_can_trap();
     keeps_void_calls_even_when_their_result_is_unused();
     exposes_ordered_and_validated_optimizer_pipelines();
+    common_subexpressions_rewrite_block_edge_uses();
+    common_subexpression_pass_does_not_merge_checked_divisions();
     puts("YLang IR optimizer tests passed");
     return 0;
 }

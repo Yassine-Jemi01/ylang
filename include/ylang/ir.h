@@ -116,6 +116,7 @@ bool yir_verify_module(const YIRFunction *functions, size_t function_count,
 typedef enum {
     YIR_OPT_CONSTANT_FOLD,
     YIR_OPT_SIMPLIFY_CFG,
+    YIR_OPT_COMMON_SUBEXPRESSION,
     YIR_OPT_DEAD_CODE
 } YIROptPass;
 

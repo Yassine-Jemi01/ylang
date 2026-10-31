@@ -783,6 +783,117 @@ static bool eliminate_dead_code(YIRFunction *function, char *error,
     return yir_verify_function(function, error, error_capacity);
 }
 
+static bool is_cse_safe_opcode(YIROpcode opcode)
+{
+    switch (opcode) {
+        case YIR_OP_ADD_F64:
+        case YIR_OP_SUB_F64:
+        case YIR_OP_MUL_F64:
+        case YIR_OP_NEG_F64:
+        case YIR_OP_EQ_F64:
+        case YIR_OP_NE_F64:
+        case YIR_OP_LT_F64:
+        case YIR_OP_LE_F64:
+        case YIR_OP_GT_F64:
+        case YIR_OP_GE_F64:
+        case YIR_OP_EQ_I64:
+        case YIR_OP_NE_I64:
+        case YIR_OP_LT_I64:
+        case YIR_OP_LE_I64:
+        case YIR_OP_GT_I64:
+        case YIR_OP_GE_I64:
+        case YIR_OP_NOT_BOOL:
+            return true;
+        default:
+            return false;
+    }
+}
+
+static bool same_pure_expression(const YIRInstruction *left,
+                                 const YIRInstruction *right)
+{
+    if (!is_cse_safe_opcode(left->opcode) ||
+        left->opcode != right->opcode ||
+        left->result_type != right->result_type ||
+        left->lhs != right->lhs)
+        return false;
+
+    switch (left->opcode) {
+        case YIR_OP_ADD_F64:
+        case YIR_OP_SUB_F64:
+        case YIR_OP_MUL_F64:
+        case YIR_OP_EQ_F64:
+        case YIR_OP_NE_F64:
+        case YIR_OP_LT_F64:
+        case YIR_OP_LE_F64:
+        case YIR_OP_GT_F64:
+        case YIR_OP_GE_F64:
+        case YIR_OP_EQ_I64:
+        case YIR_OP_NE_I64:
+        case YIR_OP_LT_I64:
+        case YIR_OP_LE_I64:
+        case YIR_OP_GT_I64:
+        case YIR_OP_GE_I64:
+            return left->rhs == right->rhs;
+        case YIR_OP_NEG_F64:
+        case YIR_OP_NOT_BOOL:
+            return true;
+        default:
+            return false;
+    }
+}
+
+static void replace_value_uses(YIRFunction *function, uint32_t old_id,
+                               uint32_t replacement_id)
+{
+    for (size_t bi = 0; bi < function->block_count; ++bi) {
+        YIRBlock *block = (YIRBlock *)function->blocks + bi;
+        YIRInstruction *instructions = (YIRInstruction *)block->instructions;
+        for (size_t ii = 0; ii < block->instruction_count; ++ii) {
+            YIRInstruction *ins = &instructions[ii];
+            if (ins->lhs == old_id) ins->lhs = replacement_id;
+            if (ins->rhs == old_id) ins->rhs = replacement_id;
+            for (size_t ai = 0; ai < ins->argument_count; ++ai) {
+                if (ins->arguments[ai] == old_id)
+                    ((uint32_t *)ins->arguments)[ai] = replacement_id;
+            }
+            for (size_t ai = 0; ai < ins->false_argument_count; ++ai) {
+                if (ins->false_arguments[ai] == old_id)
+                    ((uint32_t *)ins->false_arguments)[ai] = replacement_id;
+            }
+        }
+    }
+}
+
+static bool eliminate_common_subexpressions(YIRFunction *function,
+                                            char *error,
+                                            size_t error_capacity)
+{
+    if (!yir_verify_function(function, error, error_capacity)) return false;
+
+    for (size_t bi = 0; bi < function->block_count; ++bi) {
+        const YIRBlock *block = &function->blocks[bi];
+        YIRInstruction *instructions = (YIRInstruction *)block->instructions;
+        for (size_t ii = 0; ii < block->instruction_count; ++ii) {
+            YIRInstruction *candidate = &instructions[ii];
+            if (!candidate->result_id ||
+                !is_cse_safe_opcode(candidate->opcode))
+                continue;
+
+            for (size_t prior = 0; prior < ii; ++prior) {
+                const YIRInstruction *available = &instructions[prior];
+                if (!available->result_id ||
+                    !same_pure_expression(available, candidate))
+                    continue;
+                replace_value_uses(function, candidate->result_id,
+                                   available->result_id);
+                break;
+            }
+        }
+    }
+    return yir_verify_function(function, error, error_capacity);
+}
+
 bool yir_run_opt_pipeline(YIRFunction *function, const YIROptPass *passes,
                           size_t pass_count, char *error,
                           size_t error_capacity)
@@ -805,6 +916,9 @@ bool yir_run_opt_pipeline(YIRFunction *function, const YIROptPass *passes,
             case YIR_OPT_SIMPLIFY_CFG:
                 success = simplify_constant_branches(function, error, error_capacity);
                 break;
+            case YIR_OPT_COMMON_SUBEXPRESSION:
+                success = eliminate_common_subexpressions(function, error, error_capacity);
+                break;
             case YIR_OPT_DEAD_CODE:
                 success = eliminate_dead_code(function, error, error_capacity);
                 break;
@@ -824,6 +938,7 @@ bool yir_optimize_function(YIRFunction *function, char *error,
     static const YIROptPass default_pipeline[] = {
         YIR_OPT_CONSTANT_FOLD,
         YIR_OPT_SIMPLIFY_CFG,
+        YIR_OPT_COMMON_SUBEXPRESSION,
         YIR_OPT_DEAD_CODE
     };
     return yir_run_opt_pipeline(function, default_pipeline,
