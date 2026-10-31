@@ -109,6 +109,8 @@ struct VarDecl {
     bool is_const;
     bool initialized;
     bool moved; /* True after ownership is explicitly transferred with move(name). */
+    size_t shared_borrow_count; /* Temporary call-scoped immutable loans. */
+    Token shared_borrow_token; /* First active loan, for conflict diagnostics. */
     bool is_global;
     bool is_array;
     size_t array_length;
