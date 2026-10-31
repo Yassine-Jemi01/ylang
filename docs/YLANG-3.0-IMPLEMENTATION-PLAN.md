@@ -65,7 +65,14 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 ### 2.3 AST-to-IR lowering
 - [x] 2.3.1 Lower integer and boolean literals and scalar parameters.
 - [x] 2.3.2 Lower scalar local declarations and simple assignments.
-- [x] 2.3.3 Lower integer arithmetic and comparison conditions.
+- [~] 2.3.3 Lower integer arithmetic and comparison conditions.
+  - [x] 2.3.3.1 Lower addition, subtraction, and multiplication.
+  - [~] 2.3.3.2 Lower integer division, modulo, and general unary negation with checked runtime semantics.
+    - [~] 2.3.3.2.1 Add typed `div.i64`, `mod.i64`, and `neg.i64` IR operations and verifier rules.
+    - [~] 2.3.3.2.2 Lower `/`, `%`, and negation of non-literal integer expressions.
+    - [~] 2.3.3.2.3 Add stable textual MIR output for the new operations.
+    - [~] 2.3.3.2.4 Add checked C helpers for divide/modulo-by-zero and signed overflow edge cases.
+    - [~] 2.3.3.2.5 Add runtime tests for divide-by-zero, `INT64_MIN / -1`, negation overflow, and `INT64_MIN % -1 == 0`.
 - [x] 2.3.4 Lower nested conditionals and merge changed values with block parameters.
 - [~] 2.3.5 Lower `while`, `for`, `loop()`, `break`, and `continue`; expand nested-loop and scope edge-case tests.
 - [~] 2.3.6 Lower direct user-function calls with scalar signatures.
@@ -102,16 +109,19 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 ### 3.2 C reference backend migration
 - [ ] 3.2.1 Preserve the current AST-to-C path as a reference during migration.
 - [~] 3.2.2 Implement the first standalone IR-to-C emitter slice.
-  - [~] 3.2.2.1 Emit i64/bool/void functions with constants, checked i64 arithmetic, comparisons, bool negation, branches, block-parameter copies, direct calls, and returns.
+  - [~] 3.2.2.1 Emit i64/bool/void functions with constants, checked i64 arithmetic/division/modulo/negation, comparisons, bool negation, branches, block-parameter copies, direct calls, and returns.
   - [~] 3.2.2.1.1 Encode module-qualified IR symbols as collision-free C identifiers.
-  - [~] 3.2.2.1.2 Preserve checked overflow behavior for add/subtract/multiply.
+  - [~] 3.2.2.1.2 Preserve checked overflow and division/modulo-by-zero behavior for arithmetic operations.
+    - [~] 3.2.2.1.2.1 Preserve `INT64_MIN / -1` and `-INT64_MIN` overflow failures.
+    - [~] 3.2.2.1.2.2 Preserve `INT64_MIN % -1 == 0` and modulo-by-zero failure.
+  - [~] 3.2.2.1.2.3 Add generated-C runtime regressions for all division/modulo/negation error and edge cases.
   - [~] 3.2.2.1.3 Reject unsupported IR types and opcodes explicitly.
   - [~] 3.2.2.1.4 Add unit tests for arithmetic, direct calls, branch edges, and unsupported signatures.
 - [~] 3.2.3 Add an `emit-ir-c` CLI command that writes verified IR-generated C to a requested file.
   - [~] 3.2.3.1 Register the command and require an explicit `-o` destination.
   - [~] 3.2.3.2 Lower every function and verify the complete module before writing.
   - [~] 3.2.3.3 Generate through a temporary stream and avoid leaving partial output on emission failure.
-- [~] 3.2.4 Add a compile/run regression that builds generated C and checks the process result; wait for Linux GCC/Clang CI before marking it validated.
+- [~] 3.2.4 Add compile/run regressions for generated C arithmetic and checked division/modulo/negation; wait for Linux GCC/Clang CI before marking them validated.
 - [ ] 3.2.5 Compare IR-to-C output against the existing AST-to-C backend for matching fixtures.
 - [ ] 3.2.6 Expand branches and loops with differential tests and sanitizer coverage.
 - [ ] 3.2.7 Expand parity feature-by-feature until the supported C subset is covered.

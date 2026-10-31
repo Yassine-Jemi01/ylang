@@ -199,6 +199,54 @@ emit_ir_c_status=$?
 set -e
 [ "$emit_ir_c_status" -eq 42 ]
 
+# Checked division, modulo, and general integer negation work in IR-generated C.
+./build/ylang emit-ir-c tests/emit-ir-c-arithmetic.yl -o build/emit-ir-c-arithmetic.c > build/emit-ir-c-arithmetic.out
+grep -Fq 'yir_div_i64' build/emit-ir-c-arithmetic.c
+grep -Fq 'yir_mod_i64' build/emit-ir-c-arithmetic.c
+grep -Fq 'yir_neg_i64' build/emit-ir-c-arithmetic.c
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-arithmetic.c -o build/test-emit-ir-c-arithmetic
+set +e
+./build/test-emit-ir-c-arithmetic
+emit_ir_c_arithmetic_status=$?
+set -e
+[ "$emit_ir_c_arithmetic_status" -eq 8 ]
+
+# Division by zero must retain YLang's checked runtime failure.
+./build/ylang emit-ir-c tests/emit-ir-c-div-zero.yl -o build/emit-ir-c-div-zero.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-div-zero.c -o build/test-emit-ir-c-div-zero
+set +e
+./build/test-emit-ir-c-div-zero > build/emit-ir-c-div-zero.stdout 2> build/emit-ir-c-div-zero.stderr
+emit_ir_c_div_zero_status=$?
+set -e
+[ "$emit_ir_c_div_zero_status" -eq 70 ]
+grep -Fq 'YLang runtime error: integer division by zero' build/emit-ir-c-div-zero.stderr
+
+# INT64_MIN / -1 must fail rather than invoking C undefined behavior.
+./build/ylang emit-ir-c tests/emit-ir-c-div-overflow.yl -o build/emit-ir-c-div-overflow.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-div-overflow.c -o build/test-emit-ir-c-div-overflow
+set +e
+./build/test-emit-ir-c-div-overflow > build/emit-ir-c-div-overflow.stdout 2> build/emit-ir-c-div-overflow.stderr
+emit_ir_c_div_overflow_status=$?
+set -e
+[ "$emit_ir_c_div_overflow_status" -eq 70 ]
+grep -Fq 'YLang runtime error: integer overflow in division' build/emit-ir-c-div-overflow.stderr
+
+# Negating INT64_MIN must retain the checked overflow diagnostic.
+./build/ylang emit-ir-c tests/emit-ir-c-neg-overflow.yl -o build/emit-ir-c-neg-overflow.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-neg-overflow.c -o build/test-emit-ir-c-neg-overflow
+set +e
+./build/test-emit-ir-c-neg-overflow > build/emit-ir-c-neg-overflow.stdout 2> build/emit-ir-c-neg-overflow.stderr
+emit_ir_c_neg_overflow_status=$?
+set -e
+[ "$emit_ir_c_neg_overflow_status" -eq 70 ]
+grep -Fq 'YLang runtime error: integer overflow in negation' build/emit-ir-c-neg-overflow.stderr
+
+# INT64_MIN % -1 is defined as zero by YLang's current runtime.
+./build/ylang emit-ir-c tests/emit-ir-c-modulo-edge.yl -o build/emit-ir-c-modulo-edge.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-modulo-edge.c -o build/test-emit-ir-c-modulo-edge
+./build/test-emit-ir-c-modulo-edge
+[ "$?" -eq 0 ]
+
 # emit-ir-c requires an explicit output path.
 if ./build/ylang emit-ir-c tests/emit-ir-c.yl > build/emit-ir-c-no-output.out 2>&1; then
     echo "FAIL: emit-ir-c accepted a missing output path" >&2

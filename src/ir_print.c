@@ -61,6 +61,22 @@ static void print_instruction(FILE *stream, const YIRInstruction *instruction)
             (void)fputs(", ", stream);
             print_value(stream, instruction->rhs);
             break;
+        case YIR_OP_DIV_I64:
+            (void)fputs("div.i64 ", stream);
+            print_value(stream, instruction->lhs);
+            (void)fputs(", ", stream);
+            print_value(stream, instruction->rhs);
+            break;
+        case YIR_OP_MOD_I64:
+            (void)fputs("mod.i64 ", stream);
+            print_value(stream, instruction->lhs);
+            (void)fputs(", ", stream);
+            print_value(stream, instruction->rhs);
+            break;
+        case YIR_OP_NEG_I64:
+            (void)fputs("neg.i64 ", stream);
+            print_value(stream, instruction->lhs);
+            break;
         case YIR_OP_EQ_I64:
         case YIR_OP_NE_I64:
         case YIR_OP_LT_I64:

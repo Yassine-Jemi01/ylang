@@ -863,6 +863,31 @@ static void lowers_void_function_call_statement(void)
     arena_destroy(&compiler.arena);
 }
 
+static void lowers_division_modulo_and_general_integer_negation(void)
+{
+    static const char source[] =
+        "fn calculate(int value, int divisor) -> int {\n"
+        "    return -(value / divisor) + (value % divisor);\n"
+        "}\n";
+    Compiler compiler;
+    YIRFunction lowered =
+        lower_checked_source(&compiler, source, "calculate");
+    bool saw_division = false;
+    bool saw_modulo = false;
+    bool saw_negation = false;
+    for (size_t bi = 0; bi < lowered.block_count; ++bi) {
+        for (size_t ii = 0; ii < lowered.blocks[bi].instruction_count; ++ii) {
+            YIROpcode opcode = lowered.blocks[bi].instructions[ii].opcode;
+            if (opcode == YIR_OP_DIV_I64) saw_division = true;
+            if (opcode == YIR_OP_MOD_I64) saw_modulo = true;
+            if (opcode == YIR_OP_NEG_I64) saw_negation = true;
+        }
+    }
+    assert(saw_division && saw_modulo && saw_negation);
+    yir_destroy_function(&lowered);
+    arena_destroy(&compiler.arena);
+}
+
 static void lowers_function_with_module_qualified_symbol(void)
 {
     Expr value = {
@@ -915,6 +940,7 @@ int main(void)
     lowers_boolean_function_call_in_condition();
     lowers_void_function_call_statement();
     lowers_function_with_module_qualified_symbol();
+    lowers_division_modulo_and_general_integer_negation();
     puts("YLang IR lowering tests passed");
     return 0;
 }

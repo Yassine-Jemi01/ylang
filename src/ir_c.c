@@ -190,10 +190,14 @@ static bool emit_instruction(FILE *stream, const YIRFunction *function,
 
         case YIR_OP_ADD_I64:
         case YIR_OP_SUB_I64:
-        case YIR_OP_MUL_I64: {
+        case YIR_OP_MUL_I64:
+        case YIR_OP_DIV_I64:
+        case YIR_OP_MOD_I64: {
             const char *helper = instruction->opcode == YIR_OP_ADD_I64 ?
                 "yir_add_i64" : instruction->opcode == YIR_OP_SUB_I64 ?
-                "yir_sub_i64" : "yir_mul_i64";
+                "yir_sub_i64" : instruction->opcode == YIR_OP_MUL_I64 ?
+                "yir_mul_i64" : instruction->opcode == YIR_OP_DIV_I64 ?
+                "yir_div_i64" : "yir_mod_i64";
             (void)fputs("    ", stream);
             emit_value(stream, instruction->result_id);
             (void)fprintf(stream, " = %s(", helper);
@@ -219,6 +223,14 @@ static bool emit_instruction(FILE *stream, const YIRFunction *function,
             (void)fputs(");\n", stream);
             return true;
         }
+
+        case YIR_OP_NEG_I64:
+            (void)fputs("    ", stream);
+            emit_value(stream, instruction->result_id);
+            (void)fputs(" = yir_neg_i64(", stream);
+            emit_value(stream, instruction->lhs);
+            (void)fputs(");\n", stream);
+            return true;
 
         case YIR_OP_NOT_BOOL:
             (void)fputs("    ", stream);
@@ -307,9 +319,12 @@ static bool emit_function(FILE *stream, const YIRFunction *function,
 }
 
 static void emit_runtime_helpers(FILE *stream, bool need_add,
-                                 bool need_sub, bool need_mul)
+                                 bool need_sub, bool need_mul,
+                                 bool need_div, bool need_mod,
+                                 bool need_neg)
 {
-    if (need_add || need_sub || need_mul) {
+    if (need_add || need_sub || need_mul ||
+        need_div || need_mod || need_neg) {
         (void)fputs(
             "static void yir_runtime_error(const char *message) {\n"
             "    (void)fprintf(stderr, \"YLang runtime error: %s\\n\", message);\n"
@@ -349,7 +364,33 @@ static void emit_runtime_helpers(FILE *stream, bool need_add,
             "    return a * b;\n"
             "}\n", stream);
     }
-    if (need_add || need_sub || need_mul) (void)fputc('\n', stream);
+    if (need_div) {
+        (void)fputs(
+            "static int64_t yir_div_i64(int64_t a, int64_t b) {\n"
+            "    if (b == 0) yir_runtime_error(\"integer division by zero\");\n"
+            "    if (a == INT64_MIN && b == -1)\n"
+            "        yir_runtime_error(\"integer overflow in division\");\n"
+            "    return a / b;\n"
+            "}\n", stream);
+    }
+    if (need_mod) {
+        (void)fputs(
+            "static int64_t yir_mod_i64(int64_t a, int64_t b) {\n"
+            "    if (b == 0) yir_runtime_error(\"integer modulo by zero\");\n"
+            "    if (a == INT64_MIN && b == -1) return 0;\n"
+            "    return a % b;\n"
+            "}\n", stream);
+    }
+    if (need_neg) {
+        (void)fputs(
+            "static int64_t yir_neg_i64(int64_t value) {\n"
+            "    if (value == INT64_MIN)\n"
+            "        yir_runtime_error(\"integer overflow in negation\");\n"
+            "    return -value;\n"
+            "}\n", stream);
+    }
+    if (need_add || need_sub || need_mul ||
+        need_div || need_mod || need_neg) (void)fputc('\n', stream);
 }
 
 bool yir_emit_c_module(FILE *stream, const YIRFunction *functions,
@@ -391,6 +432,7 @@ bool yir_emit_c_module(FILE *stream, const YIRFunction *functions,
         "#include <stdio.h>\n"
         "#include <stdlib.h>\n\n", stream);
     bool need_add = false, need_sub = false, need_mul = false;
+    bool need_div = false, need_mod = false, need_neg = false;
     for (size_t fi = 0; fi < function_count; ++fi) {
         for (size_t bi = 0; bi < functions[fi].block_count; ++bi) {
             const YIRBlock *block = &functions[fi].blocks[bi];
@@ -399,12 +441,16 @@ bool yir_emit_c_module(FILE *stream, const YIRFunction *functions,
                     case YIR_OP_ADD_I64: need_add = true; break;
                     case YIR_OP_SUB_I64: need_sub = true; break;
                     case YIR_OP_MUL_I64: need_mul = true; break;
+                    case YIR_OP_DIV_I64: need_div = true; break;
+                    case YIR_OP_MOD_I64: need_mod = true; break;
+                    case YIR_OP_NEG_I64: need_neg = true; break;
                     default: break;
                 }
             }
         }
     }
-    emit_runtime_helpers(stream, need_add, need_sub, need_mul);
+    emit_runtime_helpers(stream, need_add, need_sub, need_mul,
+                         need_div, need_mod, need_neg);
 
     for (size_t fi = 0; fi < function_count; ++fi) {
         emit_signature(stream, &functions[fi], true);

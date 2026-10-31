@@ -184,11 +184,49 @@ static void prints_direct_function_calls(void)
     assert(fclose(stream) == 0);
 }
 
+static void prints_division_modulo_and_negation(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_I64},
+        {.id=2,.type=YIR_TYPE_I64}
+    };
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_DIV_I64,.result_id=3,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_MOD_I64,.result_id=4,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_NEG_I64,.result_id=5,.result_type=YIR_TYPE_I64,
+         .lhs=3},
+        {.opcode=YIR_OP_RETURN,.lhs=5}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=4
+    };
+    const YIRFunction function = {
+        .name="integer_ops",.return_type=YIR_TYPE_I64,
+        .parameters=parameters,.parameter_count=2,
+        .blocks=&block,.block_count=1
+    };
+    FILE *stream = tmpfile();
+    assert(stream != NULL);
+    yir_print_function(stream,&function);
+    assert_stream_equals(stream,
+        "fn integer_ops(%1: i64, %2: i64) -> i64 {\n"
+        "bb0:\n"
+        "  %3 = div.i64 %1, %2\n"
+        "  %4 = mod.i64 %1, %2\n"
+        "  %5 = neg.i64 %3\n"
+        "  return %5\n"
+        "}\n");
+    assert(fclose(stream) == 0);
+}
+
 int main(void)
 {
     prints_scalar_function();
     prints_typed_control_flow_edges();
     prints_direct_function_calls();
+    prints_division_modulo_and_negation();
     puts("YLang IR printer tests passed");
     return 0;
 }

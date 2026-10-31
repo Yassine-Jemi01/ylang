@@ -574,6 +574,57 @@ static void reject_duplicate_symbol_module_call_target(void)
     assert(strstr(error,"duplicate function symbol 'duplicate'")!=NULL);
 }
 
+static void accept_integer_division_modulo_and_negation(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_I64},
+        {.id=2,.type=YIR_TYPE_I64}
+    };
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_DIV_I64,.result_id=3,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_MOD_I64,.result_id=4,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_NEG_I64,.result_id=5,.result_type=YIR_TYPE_I64,
+         .lhs=3},
+        {.opcode=YIR_OP_RETURN,.lhs=5}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=4
+    };
+    const YIRFunction function = {
+        .name="integer_ops",.symbol="math::integer_ops",
+        .return_type=YIR_TYPE_I64,
+        .parameters=parameters,.parameter_count=2,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
+static void reject_non_integer_negation_operand(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_BOOL}
+    };
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_NEG_I64,.result_id=2,.result_type=YIR_TYPE_I64,
+         .lhs=1},
+        {.opcode=YIR_OP_RETURN,.lhs=2}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=2
+    };
+    const YIRFunction function = {
+        .name="bad_negation",.return_type=YIR_TYPE_I64,
+        .parameters=parameters,.parameter_count=1,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,"operand type")!=NULL);
+}
+
 int main(void)
 {
     valid_arithmetic_return(); reject_use_before_definition();
@@ -595,6 +646,8 @@ int main(void)
     reject_module_call_signature_mismatch();
     reject_duplicate_symbol_module_call_target();
     accept_module_qualified_same_name_call_targets();
+    accept_integer_division_modulo_and_negation();
+    reject_non_integer_negation_operand();
     reject_duplicate_qualified_function_symbols();
     accept_module_qualified_same_name_call_targets();
     puts("YLang IR verifier tests passed"); return 0;

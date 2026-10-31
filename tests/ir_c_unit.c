@@ -128,6 +128,46 @@ static void emits_control_flow_and_block_parameter_assignments(void)
     assert(fclose(stream) == 0);
 }
 
+static void emits_division_modulo_and_negation_runtime_checks(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_I64},
+        {.id=2,.type=YIR_TYPE_I64}
+    };
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_DIV_I64,.result_id=3,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_MOD_I64,.result_id=4,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_NEG_I64,.result_id=5,.result_type=YIR_TYPE_I64,
+         .lhs=3},
+        {.opcode=YIR_OP_RETURN,.lhs=5}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=4
+    };
+    const YIRFunction function = {
+        .name="integer_ops",.symbol="math::integer_ops",
+        .return_type=YIR_TYPE_I64,
+        .parameters=parameters,.parameter_count=2,
+        .blocks=&block,.block_count=1
+    };
+    FILE *stream = tmpfile();
+    assert(stream != NULL);
+    char error[256];
+    assert(yir_emit_c_module(stream,&function,1,error,sizeof(error)));
+    char output[8192];
+    (void)read_stream(stream,output,sizeof(output));
+    assert(strstr(output,"yir_div_i64(") != NULL);
+    assert(strstr(output,"yir_mod_i64(") != NULL);
+    assert(strstr(output,"yir_neg_i64(") != NULL);
+    assert(strstr(output,"integer division by zero") != NULL);
+    assert(strstr(output,"integer modulo by zero") != NULL);
+    assert(strstr(output,"integer overflow in division") != NULL);
+    assert(strstr(output,"integer overflow in negation") != NULL);
+    assert(fclose(stream) == 0);
+}
+
 static void rejects_float_signatures_until_lowering_exists(void)
 {
     const YIRFunctionParameter parameters[] = {
@@ -159,6 +199,7 @@ int main(void)
     emits_scalar_arithmetic_and_direct_calls();
     emits_control_flow_and_block_parameter_assignments();
     rejects_float_signatures_until_lowering_exists();
+    emits_division_modulo_and_negation_runtime_checks();
     puts("YLang IR C emitter tests passed");
     return 0;
 }

@@ -550,20 +550,34 @@ static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
             };
             return append_instruction(lowerer, instruction, value_id);
         }
+        if (expression->type != TYPE_INT)
+            return lower_fail(lowerer,
+                "integer negation requires an int operand");
+
         int64_t immediate = 0;
-        if (expression->type != TYPE_INT ||
-            !parse_integer_literal(expression->as.unary.right, &immediate))
-            return lower_fail(lowerer,
-                "only in-range negative integer literals are supported by the initial IR lowerer");
-        if (immediate == INT64_MIN)
-            return lower_fail(lowerer,
-                "negative integer literal is outside the initial IR literal range");
+        if (parse_integer_literal(expression->as.unary.right, &immediate)) {
+            if (immediate == INT64_MIN)
+                return lower_fail(lowerer,
+                    "negative integer literal is outside the initial IR literal range");
+            YIRInstruction literal = {
+                .opcode=YIR_OP_CONST_I64,
+                .result_type=YIR_TYPE_I64,
+                .immediate=-immediate,
+                .source_line=expression->token.line,
+                .source_column=expression->token.column
+            };
+            return append_instruction(lowerer, literal, value_id);
+        }
+
+        uint32_t operand = 0;
+        if (!lower_integer_expr(lowerer, expression->as.unary.right, &operand))
+            return false;
         YIRInstruction instruction = {
-            .opcode=YIR_OP_CONST_I64,
+            .opcode=YIR_OP_NEG_I64,
             .result_type=YIR_TYPE_I64,
-            .immediate=-immediate,
-            .source_line=expression->token.line,
-            .source_column=expression->token.column
+            .lhs=operand,
+            .source_line=expression->as.unary.op.line,
+            .source_column=expression->as.unary.op.column
         };
         return append_instruction(lowerer, instruction, value_id);
     }
@@ -581,6 +595,8 @@ static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
             case TOKEN_PLUS: opcode = YIR_OP_ADD_I64; break;
             case TOKEN_MINUS: opcode = YIR_OP_SUB_I64; break;
             case TOKEN_STAR: opcode = YIR_OP_MUL_I64; break;
+            case TOKEN_SLASH: opcode = YIR_OP_DIV_I64; break;
+            case TOKEN_PERCENT: opcode = YIR_OP_MOD_I64; break;
             default:
                 return lower_fail(lowerer,
                     "operator is not supported by the scalar IR lowerer");
