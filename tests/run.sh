@@ -1834,6 +1834,13 @@ printf 'value\nvalue\n' > build/owned-string-if-return-branch.expected
 diff -u build/owned-string-if-return-branch.expected build/owned-string-if-return-branch.stdout
 grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-if-return-branch.stderr
 
+# A move in a branch that can fall through must still invalidate the source owner.
+if ./build/ylang check tests/owned-string-if-fallthrough-move.yl > build/owned-string-if-fallthrough-move.out 2>&1; then
+    echo "FAIL: YLang accepted use of an owner moved on a fallthrough branch" >&2
+    exit 1
+fi
+grep -q 'E2110' build/owned-string-if-fallthrough-move.out
+
 # Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
 ./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-memory-stats > build/memory-stats.stdout 2> build/memory-stats.stderr
