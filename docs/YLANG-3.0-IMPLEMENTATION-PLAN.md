@@ -159,7 +159,12 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 3.2.3.1 Register the command and require an explicit `-o` destination.
   - [~] 3.2.3.2 Lower every function and verify the complete module before writing.
   - [~] 3.2.3.3 Generate through a temporary stream and avoid leaving partial output on emission failure.
+  - [~] 3.2.3.4 Add emit-ir-c-opt, which runs the verified integer/boolean constant-folding pass before emission.
+  - [~] 3.2.3.5 Keep emit-ir-c unchanged as the unoptimized reference path.
 - [~] 3.2.4 Add compile/run regressions for generated C integer/f64 arithmetic, checked division/modulo/negation, imported calls, and short-circuit behavior; wait for Linux GCC/Clang CI before marking them validated.
+  - [~] 3.2.4.1 Compile and run optimized IR-generated C for safe constant expressions.
+  - [~] 3.2.4.2 Confirm optimized IR-generated C preserves divide-by-zero runtime errors.
+  - [~] 3.2.4.3 Compare the optimized and unoptimized IR-C outputs with the reference backend.
 - [~] 3.2.5 Compare IR-to-C output against the existing AST-to-C backend for matching fixtures; the differential runner is added and awaits CI validation.
   - [~] 3.2.5.1 Build each supported fixture through the reference AST-to-C path.
   - [~] 3.2.5.2 Build and link the same fixture through verified IR-to-C.

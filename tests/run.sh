@@ -10,6 +10,7 @@ EXPECTED_VERSION=$(cat VERSION)
 grep -q 'ylang check' build/help.out
 grep -q 'ylang debug' build/help.out
 grep -q 'ylang emit-mir-opt' build/help.out
+grep -q 'ylang emit-ir-c-opt' build/help.out
 grep -Fq "YLang v${EXPECTED_VERSION} — compiled language toolchain" build/help.out
 ./build/ylang check examples/type-conversions.yl >/dev/null
 ./build/ylang build examples/type-conversions.yl -o build/test-type-conversions >/dev/null
@@ -240,6 +241,32 @@ set +e
 short_circuit_status=$?
 set -e
 [ "$short_circuit_status" -eq 42 ]
+
+# The optimized IR-to-C path runs constant folding before C emission.
+./build/ylang emit-ir-c-opt tests/emit-mir-opt.yl -o build/emit-ir-c-opt.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-opt.c -o build/test-emit-ir-c-opt
+set +e
+./build/test-emit-ir-c-opt
+ir_c_opt_status=$?
+set -e
+[ "$ir_c_opt_status" -eq 84 ]
+
+# Optimization must preserve a runtime division-by-zero failure.
+./build/ylang emit-ir-c-opt tests/emit-ir-c-div-zero.yl -o build/emit-ir-c-opt-div-zero.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-opt-div-zero.c -o build/test-emit-ir-c-opt-div-zero
+set +e
+./build/test-emit-ir-c-opt-div-zero > build/emit-ir-c-opt-div-zero.stdout 2> build/emit-ir-c-opt-div-zero.stderr
+ir_c_opt_div_zero_status=$?
+set -e
+[ "$ir_c_opt_div_zero_status" -eq 70 ]
+grep -Fq 'YLang runtime error: integer division by zero' build/emit-ir-c-opt-div-zero.stderr
+
+# emit-ir-c-opt requires an explicit output path.
+if ./build/ylang emit-ir-c-opt tests/emit-mir-opt.yl > build/emit-ir-c-opt-no-output.out 2>&1; then
+    echo "FAIL: emit-ir-c-opt accepted a missing output path" >&2
+    exit 1
+fi
+grep -q 'emit-ir-c-opt requires -o' build/emit-ir-c-opt-no-output.out
 
 # Emit standalone C from verified IR, compile it, and run the generated executable.
 ./build/ylang emit-ir-c tests/emit-ir-c.yl -o build/emit-ir-c.c > build/emit-ir-c.out

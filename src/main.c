@@ -20,6 +20,7 @@ static void usage(FILE *stream)
         "  ylang emit-mir <file.yl>\n"
         "  ylang emit-mir-opt <file.yl>\n"
         "  ylang emit-ir-c <file.yl> -o generated-ir.c\n"
+        "  ylang emit-ir-c-opt <file.yl> -o generated-opt.c\n"
         "  ylang emit-asm <file.yl> [-o generated.asm]\n"
         "  ylang fix <file.yl> -o fixed.yl\n"
         "  ylang --version\n\n"
@@ -32,6 +33,7 @@ static void usage(FILE *stream)
         "  emit-mir Lower supported functions to verified YLang MIR and print it.\n"
         "  emit-mir-opt Lower, verify, constant-fold, and print supported YLang MIR.\n"
         "  emit-ir-c Lower the supported subset to verified MIR and emit standalone C.\n"
+        "  emit-ir-c-opt Emit C after the verified scalar constant-folding pass.\n"
         "  emit-asm Emit experimental Linux x86-64 NASM assembly for the supported subset.\n"
         "  fix     Apply high-confidence safe fixes to a new source file.\n",
         stream);
@@ -57,6 +59,7 @@ int main(int argc, char **argv)
         strcmp(command, "emit-mir") != 0 &&
         strcmp(command, "emit-mir-opt") != 0 &&
         strcmp(command, "emit-ir-c") != 0 &&
+        strcmp(command, "emit-ir-c-opt") != 0 &&
         strcmp(command, "emit-asm") != 0 &&
         strcmp(command, "build-asm") != 0 &&
         strcmp(command, "fix") != 0) {
@@ -99,8 +102,9 @@ int main(int argc, char **argv)
         fprintf(stderr, "ylang: %s does not accept -o\n", command);
         return 64;
     }
-    if (strcmp(command, "emit-ir-c") == 0 && !output) {
-        fputs("ylang: emit-ir-c requires -o <generated.c>\n", stderr);
+    if ((strcmp(command, "emit-ir-c") == 0 ||
+         strcmp(command, "emit-ir-c-opt") == 0) && !output) {
+        fprintf(stderr, "ylang: %s requires -o <generated.c>\n", command);
         return 64;
     }
     if (strcmp(command, "fix") == 0 && !output) {
