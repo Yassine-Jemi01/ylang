@@ -87,7 +87,7 @@ int main(int argc, char **argv)
         }
     }
     if ((strcmp(command, "check") == 0 || strcmp(command, "emit-mir") == 0) && output) {
-        fprintf(stderr, "ylang: %s does not accept -o\\n", command);
+        fprintf(stderr, "ylang: %s does not accept -o\n", command);
         return 64;
     }
     if (strcmp(command, "fix") == 0 && !output) {
