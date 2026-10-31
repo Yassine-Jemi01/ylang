@@ -15,3 +15,6 @@ $CC $CFLAGS -Iinclude tests/ir_print_unit.c src/ir_print.c -o /tmp/ylang-ir-prin
 
 $CC $CFLAGS -Iinclude tests/ir_c_unit.c src/ir_c.c src/ir.c -o /tmp/ylang-ir-c-unit
 /tmp/ylang-ir-c-unit
+
+$CC $CFLAGS -Iinclude tests/ir_opt_unit.c src/ir_opt.c src/ir.c -o /tmp/ylang-ir-opt-unit
+/tmp/ylang-ir-opt-unit

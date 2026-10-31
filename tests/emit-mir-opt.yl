@@ -1,0 +1,7 @@
+fn main() -> int {
+    return (20 + 22) * 2;
+}
+
+fn preserve_trap() -> int {
+    return 1 / 0;
+}

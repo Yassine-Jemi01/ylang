@@ -113,11 +113,26 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [ ] 2.3.10 Lower ownership moves, borrows, and deterministic drops.
 - [ ] 2.3.11 Match the full stable language feature matrix with explicit unsupported-feature diagnostics.
 
+### 2.3.12 Initial IR optimization
+- [~] 2.3.12.1 Add verified constant folding for scalar integer and boolean operations.
+  - [~] 2.3.12.1.1 Fold checked add/sub/mul/div/mod/neg only when the result is non-trapping.
+  - [~] 2.3.12.1.2 Fold integer comparisons and boolean negation.
+  - [~] 2.3.12.1.3 Propagate constants through dominating basic blocks while leaving block parameters unknown.
+  - [~] 2.3.12.1.4 Preserve division-by-zero and signed-overflow operations for runtime diagnostics.
+  - [~] 2.3.12.1.5 Verify the function/module before and after optimization.
+  - [~] 2.3.12.1.6 Add positive, negative, dominance, overflow, and call-preservation tests.
+  - [~] 2.3.12.1.7 Keep f64 folding disabled until IEEE-754 behavior is specified.
+- [~] 2.3.12.2 Add a developer-only `emit-mir-opt` command to inspect the optimized MIR.
+- [ ] 2.3.12.3 Add constant-branch simplification and unreachable-block cleanup.
+- [ ] 2.3.12.4 Add dead-code elimination after CFG cleanup.
+- [ ] 2.3.12.5 Add a pass manager and ordered optimization pipelines.
+
 ### 2.4 IR developer interface
 - [x] 2.4.1 Print typed IR in a stable readable format.
 - [x] 2.4.2 Add `ylang emit-mir` as a developer inspection command.
-- [ ] 2.4.3 Add machine-readable IR output for tooling.
-- [ ] 2.4.4 Add IR snapshots and canonical formatting tests.
+- [~] 2.4.3 Add `ylang emit-mir-opt` for the verified initial scalar constant-folding pass.
+- [ ] 2.4.4 Add machine-readable IR output for tooling.
+- [ ] 2.4.5 Add IR snapshots and canonical formatting tests.
 
 ## 3. Backend integration
 

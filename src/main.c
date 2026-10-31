@@ -18,6 +18,7 @@ static void usage(FILE *stream)
         "  ylang build-asm <file.yl> [-o executable]\n"
         "  ylang emit-c <file.yl> [-o generated.c]\n"
         "  ylang emit-mir <file.yl>\n"
+        "  ylang emit-mir-opt <file.yl>\n"
         "  ylang emit-ir-c <file.yl> -o generated-ir.c\n"
         "  ylang emit-asm <file.yl> [-o generated.asm]\n"
         "  ylang fix <file.yl> -o fixed.yl\n"
@@ -29,6 +30,7 @@ static void usage(FILE *stream)
         "  build-asm Build the supported subset with NASM and ld (Linux x86-64).\n"
         "  emit-c  Write the generated C source for inspection.\n"
         "  emit-mir Lower supported functions to verified YLang MIR and print it.\n"
+        "  emit-mir-opt Lower, verify, constant-fold, and print supported YLang MIR.\n"
         "  emit-ir-c Lower the supported subset to verified MIR and emit standalone C.\n"
         "  emit-asm Emit experimental Linux x86-64 NASM assembly for the supported subset.\n"
         "  fix     Apply high-confidence safe fixes to a new source file.\n",
@@ -52,7 +54,9 @@ int main(int argc, char **argv)
     const char *command = argv[1];
     if (strcmp(command, "check") != 0 && strcmp(command, "build") != 0 &&
         strcmp(command, "debug") != 0 && strcmp(command, "emit-c") != 0 &&
-        strcmp(command, "emit-mir") != 0 && strcmp(command, "emit-ir-c") != 0 &&
+        strcmp(command, "emit-mir") != 0 &&
+        strcmp(command, "emit-mir-opt") != 0 &&
+        strcmp(command, "emit-ir-c") != 0 &&
         strcmp(command, "emit-asm") != 0 &&
         strcmp(command, "build-asm") != 0 &&
         strcmp(command, "fix") != 0) {
@@ -89,7 +93,9 @@ int main(int argc, char **argv)
             return 64;
         }
     }
-    if ((strcmp(command, "check") == 0 || strcmp(command, "emit-mir") == 0) && output) {
+    if ((strcmp(command, "check") == 0 ||
+         strcmp(command, "emit-mir") == 0 ||
+         strcmp(command, "emit-mir-opt") == 0) && output) {
         fprintf(stderr, "ylang: %s does not accept -o\n", command);
         return 64;
     }

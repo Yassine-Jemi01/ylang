@@ -9,6 +9,7 @@ EXPECTED_VERSION=$(cat VERSION)
 ./build/ylang --help > build/help.out
 grep -q 'ylang check' build/help.out
 grep -q 'ylang debug' build/help.out
+grep -q 'ylang emit-mir-opt' build/help.out
 grep -Fq "YLang v${EXPECTED_VERSION} — compiled language toolchain" build/help.out
 ./build/ylang check examples/type-conversions.yl >/dev/null
 ./build/ylang build examples/type-conversions.yl -o build/test-type-conversions >/dev/null
@@ -162,6 +163,26 @@ diff -u tests/expected-fn-keyword.txt build/fn-keyword.out
 # The emit-mir CLI lowers, verifies, and prints the currently supported subset.
 ./build/ylang emit-mir tests/emit-mir.yl > build/emit-mir.out
 diff -u tests/expected-emit-mir.txt build/emit-mir.out
+
+# The opt-in MIR printer folds safe integer constants while preserving traps and f64 operations.
+./build/ylang emit-mir tests/emit-mir-opt.yl > build/emit-mir-opt-before.out
+grep -Fq 'add.i64' build/emit-mir-opt-before.out
+grep -Fq 'mul.i64' build/emit-mir-opt-before.out
+./build/ylang emit-mir-opt tests/emit-mir-opt.yl > build/emit-mir-opt-after.out
+grep -Fq 'const.i64 84' build/emit-mir-opt-after.out
+grep -Fq 'div.i64' build/emit-mir-opt-after.out
+if grep -Eq 'add[.]i64|mul[.]i64' build/emit-mir-opt-after.out; then
+    echo "FAIL: emit-mir-opt left foldable arithmetic in the MIR" >&2
+    exit 1
+fi
+./build/ylang emit-mir tests/emit-ir-c-f64.yl > build/emit-mir-f64-before.out
+./build/ylang emit-mir-opt tests/emit-ir-c-f64.yl > build/emit-mir-f64-after.out
+diff -u build/emit-mir-f64-before.out build/emit-mir-f64-after.out
+if ./build/ylang emit-mir-opt tests/emit-mir-opt.yl -o build/optimized-mir.txt > build/emit-mir-opt-argument.out 2>&1; then
+    echo "FAIL: emit-mir-opt accepted -o" >&2
+    exit 1
+fi
+grep -q 'emit-mir-opt does not accept -o' build/emit-mir-opt-argument.out
 
 # Unsupported functions fail before any partial MIR is written.
 if ./build/ylang emit-mir tests/fn-keyword.yl > build/emit-mir-unsupported.out 2> build/emit-mir-unsupported.err; then

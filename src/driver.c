@@ -495,7 +495,7 @@ static int run_external(char *const argv[])
 }
 
 
-static int emit_mir(Compiler *compiler)
+static int emit_mir(Compiler *compiler, bool optimize)
 {
     if (!compiler->program || compiler->program->function_count == 0) {
         fputs("ylang: emit-mir: the program contains no functions to lower.\n", stderr);
@@ -554,6 +554,19 @@ static int emit_mir(Compiler *compiler)
             yir_destroy_function(&lowered[i]);
         free(lowered);
         return 1;
+    }
+
+    if (optimize) {
+        char optimize_error[512];
+        if (!yir_optimize_module(lowered, function_count,
+                                 optimize_error, sizeof(optimize_error))) {
+            fprintf(stderr, "ylang: emit-mir-opt: optimizer rejected the module: %s\n",
+                    optimize_error[0] ? optimize_error : "unknown optimization error");
+            for (size_t i = 0; i < lowered_count; ++i)
+                yir_destroy_function(&lowered[i]);
+            free(lowered);
+            return 1;
+        }
     }
 
     for (size_t i = 0; i < function_count; ++i) {
@@ -750,9 +763,10 @@ int ylang_run(const char *command, const char *input_path,
         } else if (strcmp(command, "emit-c") == 0) {
             fprintf(stderr, "ylang: emit-c failed with %u error(s); no C source was generated.\n",
                     compiler.error_count);
-        } else if (strcmp(command, "emit-mir") == 0) {
-            fprintf(stderr, "ylang: emit-mir failed with %u error(s); no MIR was generated.\n",
-                    compiler.error_count);
+        } else if (strcmp(command, "emit-mir") == 0 ||
+                   strcmp(command, "emit-mir-opt") == 0) {
+            fprintf(stderr, "ylang: %s failed with %u error(s); no MIR was generated.\n",
+                    command, compiler.error_count);
         } else if (strcmp(command, "emit-ir-c") == 0) {
             fprintf(stderr, "ylang: emit-ir-c failed with %u error(s); no C source was generated.\n",
                     compiler.error_count);
@@ -778,8 +792,10 @@ int ylang_run(const char *command, const char *input_path,
         return 0;
     }
 
-    if (strcmp(command, "emit-mir") == 0) {
-        int result = emit_mir(&compiler);
+    if (strcmp(command, "emit-mir") == 0 ||
+        strcmp(command, "emit-mir-opt") == 0) {
+        int result = emit_mir(&compiler,
+                              strcmp(command, "emit-mir-opt") == 0);
         arena_destroy(&compiler.arena);
         free(source);
         return result;
