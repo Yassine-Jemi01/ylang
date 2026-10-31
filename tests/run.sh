@@ -1712,6 +1712,13 @@ if ./build/ylang check tests/borrowed-string-move-conflict.yl > build/borrowed-s
 fi
 grep -q 'E2130' build/borrowed-string-move-conflict.out
 
+# The later borrowed argument must reserve its owner before an earlier move argument.
+if ./build/ylang check tests/borrowed-string-move-conflict-order.yl > build/borrowed-string-move-conflict-order.out 2>&1; then
+    echo "FAIL: YLang allowed moving an owner before a later argument borrows it" >&2
+    exit 1
+fi
+grep -q 'E2130' build/borrowed-string-move-conflict-order.out
+
 if ./build/ylang check tests/borrowed-string-write-conflict.yl > build/borrowed-string-write-conflict.out 2>&1; then
     echo "FAIL: YLang allowed mutation of an owner while the same call borrows it" >&2
     exit 1
