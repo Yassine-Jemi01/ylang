@@ -184,6 +184,17 @@ if grep -Eq 'add[.]i64|mul[.]i64|add[.]f64|mul[.]f64' build/emit-mir-opt-after.o
     echo "FAIL: emit-mir-opt left foldable arithmetic in the MIR" >&2
     exit 1
 fi
+
+# Constant boolean branches become unconditional edges; unused pure values disappear.
+./build/ylang emit-mir tests/emit-mir-opt-cfg.yl > build/emit-mir-opt-cfg-before.out
+grep -Fq 'cond_br' build/emit-mir-opt-cfg-before.out
+./build/ylang emit-mir-opt tests/emit-mir-opt-cfg.yl > build/emit-mir-opt-cfg-after.out
+if grep -Fq 'cond_br' build/emit-mir-opt-cfg-after.out; then
+    echo "FAIL: emit-mir-opt did not simplify a constant conditional branch" >&2
+    exit 1
+fi
+grep -Fq 'br bb' build/emit-mir-opt-cfg-after.out
+
 ./build/ylang emit-mir tests/emit-ir-c-f64.yl > build/emit-mir-f64-before.out
 ./build/ylang emit-mir-opt tests/emit-ir-c-f64.yl > build/emit-mir-f64-after.out
 diff -u build/emit-mir-f64-before.out build/emit-mir-f64-after.out

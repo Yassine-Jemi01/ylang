@@ -5,7 +5,15 @@
 #include <limits.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
+static bool run_constant_fold_only(YIRFunction *function, char *error,
+                                   size_t error_capacity)
+{
+    const YIROptPass pass[] = {YIR_OPT_CONSTANT_FOLD};
+    return yir_run_opt_pipeline(function, pass, 1, error, error_capacity);
+}
 
 static void folds_safe_integer_and_boolean_constants(void)
 {
@@ -46,7 +54,7 @@ static void folds_safe_integer_and_boolean_constants(void)
     };
     char error[256];
 
-    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(run_constant_fold_only(&function,error,sizeof(error)));
     assert(instructions[2].opcode==YIR_OP_CONST_I64);
     assert(instructions[2].immediate==42);
     assert(instructions[2].source_line==1);
@@ -105,7 +113,7 @@ static void preserves_operations_that_may_trap(void)
     };
     char error[256];
 
-    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(run_constant_fold_only(&function,error,sizeof(error)));
     assert(instructions[2].opcode==YIR_OP_ADD_I64);
     assert(instructions[4].opcode==YIR_OP_NEG_I64);
     assert(instructions[6].opcode==YIR_OP_DIV_I64);
@@ -134,7 +142,7 @@ static void folds_negative_multiplication_without_signed_overflow(void)
     };
     char error[256];
 
-    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(run_constant_fold_only(&function,error,sizeof(error)));
     assert(instructions[2].opcode==YIR_OP_CONST_I64);
     assert(instructions[2].immediate==-42);
     assert(yir_verify_function(&function,error,sizeof(error)));
@@ -160,7 +168,7 @@ static void folds_the_defined_minimum_modulo_negative_one_case(void)
     };
     char error[256];
 
-    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(run_constant_fold_only(&function,error,sizeof(error)));
     assert(instructions[2].opcode==YIR_OP_CONST_I64);
     assert(instructions[2].immediate==0);
     assert(yir_verify_function(&function,error,sizeof(error)));
@@ -195,7 +203,7 @@ static void folds_constants_across_dominating_blocks(void)
     };
     char error[256];
 
-    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(run_constant_fold_only(&function,error,sizeof(error)));
     assert(use_instructions[1].opcode==YIR_OP_CONST_I64);
     assert(use_instructions[1].immediate==42);
     assert(yir_verify_function(&function,error,sizeof(error)));
@@ -246,7 +254,7 @@ static void does_not_fold_block_parameter_as_a_constant(void)
     };
     char error[256];
 
-    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(run_constant_fold_only(&function,error,sizeof(error)));
     assert(join_instructions[1].opcode==YIR_OP_ADD_I64);
     assert(join_instructions[1].lhs==4);
     assert(yir_verify_function(&function,error,sizeof(error)));
@@ -299,7 +307,7 @@ static void folds_safe_f64_arithmetic_and_comparisons(void)
     };
     char error[256];
 
-    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(run_constant_fold_only(&function,error,sizeof(error)));
     assert(instructions[2].opcode==YIR_OP_CONST_F64);
     assert(instructions[2].floating_immediate==3.75);
     assert(instructions[4].opcode==YIR_OP_CONST_F64);
@@ -343,7 +351,7 @@ static void folds_f64_negation_without_losing_signed_zero(void)
     };
     char error[256];
 
-    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(run_constant_fold_only(&function,error,sizeof(error)));
     assert(instructions[1].opcode==YIR_OP_CONST_F64);
     assert(instructions[1].floating_immediate==0.0);
     assert(signbit(instructions[1].floating_immediate));
@@ -387,7 +395,7 @@ static void preserves_f64_traps_overflow_and_subnormal_results(void)
     };
     char error[256];
 
-    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(run_constant_fold_only(&function,error,sizeof(error)));
     assert(instructions[2].opcode==YIR_OP_DIV_F64);
     assert(instructions[4].opcode==YIR_OP_DIV_F64);
     assert(instructions[7].opcode==YIR_OP_MUL_F64);
@@ -442,6 +450,198 @@ static void preserves_calls_and_module_symbols(void)
     assert(yir_verify_module(functions,2,error,sizeof(error)));
 }
 
+
+
+static uint32_t *owned_id(uint32_t value)
+{
+    uint32_t *id = malloc(sizeof(*id));
+    assert(id != NULL);
+    *id = value;
+    return id;
+}
+
+static void simplifies_constant_branch_and_frees_unreachable_block(void)
+{
+    YIRBlock *blocks = calloc(3, sizeof(*blocks));
+    assert(blocks != NULL);
+
+    YIRInstruction *entry = calloc(3, sizeof(*entry));
+    YIRInstruction *selected = calloc(1, sizeof(*selected));
+    YIRInstruction *discarded = calloc(1, sizeof(*discarded));
+    YIRBlockParameter *selected_parameter = calloc(1, sizeof(*selected_parameter));
+    YIRBlockParameter *discarded_parameter = calloc(1, sizeof(*discarded_parameter));
+    assert(entry && selected && discarded &&
+           selected_parameter && discarded_parameter);
+
+    selected_parameter[0] = (YIRBlockParameter){.id=3,.type=YIR_TYPE_I64};
+    discarded_parameter[0] = (YIRBlockParameter){.id=4,.type=YIR_TYPE_I64};
+
+    entry[0] = (YIRInstruction){
+        .opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+        .immediate=42
+    };
+    entry[1] = (YIRInstruction){
+        .opcode=YIR_OP_CONST_BOOL,.result_id=2,.result_type=YIR_TYPE_BOOL,
+        .immediate=1
+    };
+    entry[2] = (YIRInstruction){
+        .opcode=YIR_OP_COND_BRANCH,.lhs=2,
+        .target=1,.false_target=2,
+        .arguments=owned_id(1),.argument_count=1,
+        .false_arguments=owned_id(1),.false_argument_count=1
+    };
+    selected[0] = (YIRInstruction){.opcode=YIR_OP_RETURN,.lhs=3};
+    discarded[0] = (YIRInstruction){.opcode=YIR_OP_RETURN,.lhs=4};
+
+    blocks[0] = (YIRBlock){
+        .id=0,.instructions=entry,.instruction_count=3
+    };
+    blocks[1] = (YIRBlock){
+        .id=1,.parameters=selected_parameter,.parameter_count=1,
+        .instructions=selected,.instruction_count=1
+    };
+    blocks[2] = (YIRBlock){
+        .id=2,.parameters=discarded_parameter,.parameter_count=1,
+        .instructions=discarded,.instruction_count=1
+    };
+    YIRFunction function = {
+        .name="constant_branch",.return_type=YIR_TYPE_I64,
+        .blocks=blocks,.block_count=3
+    };
+    char error[256];
+
+    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(function.block_count==2);
+    assert(function.blocks[0].id==0);
+    assert(function.blocks[0].instruction_count==2);
+    assert(function.blocks[0].instructions[0].opcode==YIR_OP_CONST_I64);
+    assert(function.blocks[0].instructions[1].opcode==YIR_OP_BRANCH);
+    assert(function.blocks[0].instructions[1].target==1);
+    assert(function.blocks[0].instructions[1].argument_count==1);
+    assert(function.blocks[0].instructions[1].arguments[0]==1);
+    assert(function.blocks[0].instructions[1].false_arguments==NULL);
+    assert(function.blocks[1].id==1);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+    yir_destroy_function(&function);
+}
+
+static void eliminates_dead_pure_values_but_keeps_checked_arithmetic(void)
+{
+    YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+         .immediate=INT64_MAX},
+        {.opcode=YIR_OP_CONST_I64,.result_id=2,.result_type=YIR_TYPE_I64,
+         .immediate=1},
+        {.opcode=YIR_OP_ADD_I64,.result_id=3,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_EQ_I64,.result_id=4,.result_type=YIR_TYPE_BOOL,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_RETURN,.lhs=3}
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,.instruction_count=5}
+    };
+    YIRFunction function = {
+        .name="dead_pure_values",.return_type=YIR_TYPE_I64,
+        .blocks=blocks,.block_count=1
+    };
+    char error[256];
+
+    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(blocks[0].instruction_count==4);
+    assert(instructions[0].opcode==YIR_OP_CONST_I64);
+    assert(instructions[1].opcode==YIR_OP_CONST_I64);
+    assert(instructions[2].opcode==YIR_OP_ADD_I64);
+    assert(instructions[3].opcode==YIR_OP_RETURN);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
+static void keeps_unused_floating_division_that_can_trap(void)
+{
+    YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_F64,.result_id=1,.result_type=YIR_TYPE_F64,
+         .floating_immediate=1.0},
+        {.opcode=YIR_OP_CONST_F64,.result_id=2,.result_type=YIR_TYPE_F64,
+         .floating_immediate=-0.0},
+        {.opcode=YIR_OP_DIV_F64,.result_id=3,.result_type=YIR_TYPE_F64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_RETURN}
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,.instruction_count=4}
+    };
+    YIRFunction function = {
+        .name="unused_float_division",.return_type=YIR_TYPE_VOID,
+        .blocks=blocks,.block_count=1
+    };
+    char error[256];
+
+    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(blocks[0].instruction_count==4);
+    assert(instructions[2].opcode==YIR_OP_DIV_F64);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
+static void keeps_void_calls_even_when_their_result_is_unused(void)
+{
+    YIRInstruction callee_instructions[] = {
+        {.opcode=YIR_OP_RETURN}
+    };
+    YIRInstruction caller_instructions[] = {
+        {.opcode=YIR_OP_CALL,.result_type=YIR_TYPE_VOID,
+         .callee="notify",.callee_symbol="lib::notify"},
+        {.opcode=YIR_OP_RETURN}
+    };
+    YIRBlock callee_blocks[] = {
+        {.id=0,.instructions=callee_instructions,.instruction_count=1}
+    };
+    YIRBlock caller_blocks[] = {
+        {.id=0,.instructions=caller_instructions,.instruction_count=2}
+    };
+    YIRFunction functions[] = {
+        {.name="notify",.symbol="lib::notify",.return_type=YIR_TYPE_VOID,
+         .blocks=callee_blocks,.block_count=1},
+        {.name="main",.symbol="app::main",.return_type=YIR_TYPE_VOID,
+         .blocks=caller_blocks,.block_count=1}
+    };
+    char error[256];
+
+    assert(yir_optimize_module(functions,2,error,sizeof(error)));
+    assert(caller_blocks[0].instruction_count==2);
+    assert(caller_instructions[0].opcode==YIR_OP_CALL);
+    assert(yir_verify_module(functions,2,error,sizeof(error)));
+}
+
+static void exposes_ordered_and_validated_optimizer_pipelines(void)
+{
+    YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+         .immediate=40},
+        {.opcode=YIR_OP_CONST_I64,.result_id=2,.result_type=YIR_TYPE_I64,
+         .immediate=2},
+        {.opcode=YIR_OP_ADD_I64,.result_id=3,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=2},
+        {.opcode=YIR_OP_RETURN,.lhs=3}
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,.instruction_count=4}
+    };
+    YIRFunction function = {
+        .name="custom_pipeline",.return_type=YIR_TYPE_I64,
+        .blocks=blocks,.block_count=1
+    };
+    const YIROptPass fold_only[] = {YIR_OPT_CONSTANT_FOLD};
+    const YIROptPass invalid[] = {(YIROptPass)99};
+    char error[256];
+
+    assert(yir_run_opt_pipeline(&function,fold_only,1,error,sizeof(error)));
+    assert(instructions[2].opcode==YIR_OP_CONST_I64);
+    assert(instructions[2].immediate==42);
+    assert(!yir_run_opt_pipeline(&function,invalid,1,error,sizeof(error)));
+    assert(strstr(error,"unknown pass")!=NULL);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
 int main(void)
 {
     folds_safe_integer_and_boolean_constants();
@@ -454,6 +654,11 @@ int main(void)
     folds_f64_negation_without_losing_signed_zero();
     preserves_f64_traps_overflow_and_subnormal_results();
     preserves_calls_and_module_symbols();
+    simplifies_constant_branch_and_frees_unreachable_block();
+    eliminates_dead_pure_values_but_keeps_checked_arithmetic();
+    keeps_unused_floating_division_that_can_trap();
+    keeps_void_calls_even_when_their_result_is_unused();
+    exposes_ordered_and_validated_optimizer_pipelines();
     puts("YLang IR optimizer tests passed");
     return 0;
 }

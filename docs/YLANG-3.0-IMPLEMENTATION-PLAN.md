@@ -124,9 +124,9 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 2.3.12.1.7 Fold finite, non-subnormal f64 arithmetic, negation, and comparisons while preserving signed zero.
   - [~] 2.3.12.1.8 Preserve f64 division by either signed zero, non-finite overflow, subnormal results, and possible underflow-to-zero operations.
 - [~] 2.3.12.2 Add a developer-only `emit-mir-opt` command to inspect the optimized MIR.
-- [ ] 2.3.12.3 Add constant-branch simplification and unreachable-block cleanup.
-- [ ] 2.3.12.4 Add dead-code elimination after CFG cleanup.
-- [ ] 2.3.12.5 Add a pass manager and ordered optimization pipelines.
+- [~] 2.3.12.3 Add constant-branch simplification and unreachable-block cleanup; preserve selected edge arguments and verify the compacted CFG.
+- [~] 2.3.12.4 Add dead-code elimination after CFG cleanup; retain calls and potentially trapping operations.
+- [~] 2.3.12.5 Add a pass manager and ordered optimization pipelines with per-pass verification.
 
 ### 2.4 IR developer interface
 - [x] 2.4.1 Print typed IR in a stable readable format.
@@ -227,9 +227,9 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [ ] 5.1.4 Record CPU, OS, compiler, flags, warmups, and result spread.
 
 ### 5.2 Optimization passes
-- [ ] 5.2.1 Constant folding.
-- [ ] 5.2.2 Constant propagation.
-- [ ] 5.2.3 Dead-code elimination.
+- [~] 5.2.1 Constant folding, including safe scalar integer, boolean, and conservative f64 cases.
+- [~] 5.2.2 Dominance-aware constant propagation in scalar SSA values.
+- [~] 5.2.3 Dead-code elimination after CFG simplification with trap/effect preservation.
 - [ ] 5.2.4 Copy propagation.
 - [ ] 5.2.5 Common-subexpression elimination.
 - [ ] 5.2.6 Inlining and devirtualization.

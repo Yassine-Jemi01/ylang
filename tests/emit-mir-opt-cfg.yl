@@ -1,0 +1,11 @@
+function selected() -> int {
+    if (false) {
+        return 11;
+    } else {
+        return 22;
+    }
+}
+
+function main() -> int {
+    return selected();
+}

@@ -17,6 +17,7 @@ YLANG = ROOT / "build" / ("ylang.exe" if os.name == "nt" else "ylang")
 FIXTURES = (
     "tests/emit-ir-c.yl",
     "tests/emit-mir-opt.yl",
+    "tests/emit-mir-opt-cfg.yl",
     "tests/emit-ir-c-arithmetic.yl",
     "tests/emit-ir-c-div-zero.yl",
     "tests/emit-ir-c-div-overflow.yl",

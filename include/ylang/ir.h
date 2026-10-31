@@ -113,7 +113,18 @@ bool yir_verify_function(const YIRFunction *function, char *error,
 bool yir_verify_module(const YIRFunction *functions, size_t function_count,
                        char *error, size_t error_capacity);
 
-/* Folds safe scalar integer and boolean constants without removing traps. */
+typedef enum {
+    YIR_OPT_CONSTANT_FOLD,
+    YIR_OPT_SIMPLIFY_CFG,
+    YIR_OPT_DEAD_CODE
+} YIROptPass;
+
+/* Runs a caller-selected sequence of verified optimizer passes. */
+bool yir_run_opt_pipeline(YIRFunction *function, const YIROptPass *passes,
+                          size_t pass_count, char *error,
+                          size_t error_capacity);
+
+/* Folds safe scalar constants and runs the default verified pass pipeline. */
 bool yir_optimize_function(YIRFunction *function, char *error,
                            size_t error_capacity);
 bool yir_optimize_module(YIRFunction *functions, size_t function_count,
