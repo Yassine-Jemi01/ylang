@@ -132,7 +132,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [x] 2.4.1 Print typed IR in a stable readable format.
 - [x] 2.4.2 Add `ylang emit-mir` as a developer inspection command.
 - [~] 2.4.3 Add `ylang emit-mir-opt` for the verified initial scalar constant-folding pass.
-- [ ] 2.4.4 Add machine-readable IR output for tooling.
+- [~] 2.4.4 Add machine-readable, versioned JSON IR output for tooling; schema validation and CLI coverage are added, pending CI.
 - [ ] 2.4.5 Add IR snapshots and canonical formatting tests.
 
 ## 3. Backend integration

@@ -122,6 +122,11 @@ bool yir_optimize_module(YIRFunction *functions, size_t function_count,
 /* Writes a human-readable textual representation of a function's IR. */
 void yir_print_function(FILE *stream, const YIRFunction *function);
 
+/* Writes a verified module as versioned, machine-readable JSON. */
+bool yir_write_json_module(FILE *stream, const YIRFunction *functions,
+                           size_t function_count, char *error,
+                           size_t error_capacity);
+
 /* Emits standalone C for the verified scalar IR module subset. */
 bool yir_emit_c_module(FILE *stream, const YIRFunction *functions,
                        size_t function_count, char *error,

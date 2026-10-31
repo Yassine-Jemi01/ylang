@@ -495,22 +495,24 @@ static int run_external(char *const argv[])
 }
 
 
-static int emit_mir(Compiler *compiler, bool optimize)
+static int emit_mir(Compiler *compiler, bool optimize, bool json_output)
 {
+    const char *command = json_output ? "emit-mir-json" :
+                          optimize ? "emit-mir-opt" : "emit-mir";
     if (!compiler->program || compiler->program->function_count == 0) {
-        fputs("ylang: emit-mir: the program contains no functions to lower.\n", stderr);
+        fprintf(stderr, "ylang: %s: the program contains no functions to lower.\n", command);
         return 1;
     }
 
     const size_t function_count = compiler->program->function_count;
     if (function_count > SIZE_MAX / sizeof(YIRFunction)) {
-        fputs("ylang: emit-mir: too many functions to lower.\n", stderr);
+        fprintf(stderr, "ylang: %s: too many functions to lower.\n", command);
         return 70;
     }
 
     YIRFunction *lowered = calloc(function_count, sizeof(*lowered));
     if (!lowered) {
-        fputs("ylang: emit-mir: out of memory while preparing MIR output.\n", stderr);
+        fprintf(stderr, "ylang: %s: out of memory while preparing MIR output.\n", command);
         return 70;
     }
 
@@ -522,8 +524,8 @@ static int emit_mir(Compiler *compiler, bool optimize)
 
         if (!yir_lower_function(function, &lowered[i], error, sizeof(error))) {
             fprintf(stderr,
-                    "ylang: emit-mir: cannot lower function '%s' at %zu:%zu: %s\n",
-                    name,
+                    "ylang: %s: cannot lower function '%s' at %zu:%zu: %s\n",
+                    command, name,
                     function ? function->token.line : 0,
                     function ? function->token.column : 0,
                     error[0] ? error : "unknown lowering error");
@@ -536,8 +538,8 @@ static int emit_mir(Compiler *compiler, bool optimize)
 
         if (!yir_verify_function(&lowered[i], error, sizeof(error))) {
             fprintf(stderr,
-                    "ylang: emit-mir: verifier rejected function '%s': %s\n",
-                    name, error[0] ? error : "unknown verification error");
+                    "ylang: %s: verifier rejected function '%s': %s\n",
+                    command, name, error[0] ? error : "unknown verification error");
             for (size_t j = 0; j < lowered_count; ++j)
                 yir_destroy_function(&lowered[j]);
             free(lowered);
@@ -548,8 +550,8 @@ static int emit_mir(Compiler *compiler, bool optimize)
     char module_error[512];
     if (!yir_verify_module(lowered, function_count,
                            module_error, sizeof(module_error))) {
-        fprintf(stderr, "ylang: emit-mir: module verifier rejected the program: %s\n",
-                module_error[0] ? module_error : "unknown module verification error");
+        fprintf(stderr, "ylang: %s: module verifier rejected the program: %s\n",
+                command, module_error[0] ? module_error : "unknown module verification error");
         for (size_t i = 0; i < lowered_count; ++i)
             yir_destroy_function(&lowered[i]);
         free(lowered);
@@ -560,8 +562,8 @@ static int emit_mir(Compiler *compiler, bool optimize)
         char optimize_error[512];
         if (!yir_optimize_module(lowered, function_count,
                                  optimize_error, sizeof(optimize_error))) {
-            fprintf(stderr, "ylang: emit-mir-opt: optimizer rejected the module: %s\n",
-                    optimize_error[0] ? optimize_error : "unknown optimization error");
+            fprintf(stderr, "ylang: %s: optimizer rejected the module: %s\n",
+                    command, optimize_error[0] ? optimize_error : "unknown optimization error");
             for (size_t i = 0; i < lowered_count; ++i)
                 yir_destroy_function(&lowered[i]);
             free(lowered);
@@ -569,14 +571,24 @@ static int emit_mir(Compiler *compiler, bool optimize)
         }
     }
 
-    for (size_t i = 0; i < function_count; ++i) {
-        if (i != 0) (void)fputc('\n', stdout);
-        yir_print_function(stdout, &lowered[i]);
-    }
-
     int result = 0;
+    if (json_output) {
+        char json_error[512];
+        if (!yir_write_json_module(stdout, lowered, function_count,
+                                   json_error, sizeof(json_error))) {
+            fprintf(stderr, "ylang: %s: cannot write JSON IR: %s\n",
+                    command, json_error[0] ? json_error : "unknown JSON error");
+            result = 1;
+        }
+    } else {
+        for (size_t i = 0; i < function_count; ++i) {
+            if (i != 0) (void)fputc('\n', stdout);
+            yir_print_function(stdout, &lowered[i]);
+        }
+    }
     if (fflush(stdout) != 0 || ferror(stdout)) {
-        fputs("ylang: emit-mir: failed while writing MIR to standard output.\n", stderr);
+        fprintf(stderr, "ylang: %s: failed while writing IR to standard output.\n",
+                command);
         result = 74;
     }
 
@@ -780,8 +792,9 @@ int ylang_run(const char *command, const char *input_path,
             fprintf(stderr, "ylang: emit-c failed with %u error(s); no C source was generated.\n",
                     compiler.error_count);
         } else if (strcmp(command, "emit-mir") == 0 ||
-                   strcmp(command, "emit-mir-opt") == 0) {
-            fprintf(stderr, "ylang: %s failed with %u error(s); no MIR was generated.\n",
+                   strcmp(command, "emit-mir-opt") == 0 ||
+                   strcmp(command, "emit-mir-json") == 0) {
+            fprintf(stderr, "ylang: %s failed with %u error(s); no IR was generated.\n",
                     command, compiler.error_count);
         } else if (strcmp(command, "emit-ir-c") == 0 ||
                    strcmp(command, "emit-ir-c-opt") == 0) {
@@ -810,9 +823,11 @@ int ylang_run(const char *command, const char *input_path,
     }
 
     if (strcmp(command, "emit-mir") == 0 ||
-        strcmp(command, "emit-mir-opt") == 0) {
+        strcmp(command, "emit-mir-opt") == 0 ||
+        strcmp(command, "emit-mir-json") == 0) {
         int result = emit_mir(&compiler,
-                              strcmp(command, "emit-mir-opt") == 0);
+                              strcmp(command, "emit-mir-opt") == 0,
+                              strcmp(command, "emit-mir-json") == 0);
         arena_destroy(&compiler.arena);
         free(source);
         return result;

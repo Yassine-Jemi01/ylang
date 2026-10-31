@@ -10,6 +10,7 @@ EXPECTED_VERSION=$(cat VERSION)
 grep -q 'ylang check' build/help.out
 grep -q 'ylang debug' build/help.out
 grep -q 'ylang emit-mir-opt' build/help.out
+grep -q 'ylang emit-mir-json' build/help.out
 grep -q 'ylang emit-ir-c-opt' build/help.out
 grep -Fq "YLang v${EXPECTED_VERSION} — compiled language toolchain" build/help.out
 ./build/ylang check examples/type-conversions.yl >/dev/null
@@ -89,6 +90,9 @@ grep -q 'E2123' build/await-type-error.out
 python3 tests/run_http_integration.py
 python3 tests/benchmark-smoke.py
 python3 tests/ir_backend_parity.py
+# Machine-readable MIR is versioned JSON and carries module-qualified call metadata.
+./build/ylang emit-mir-json tests/ir-module-calls/main.yl > build/ir-module-calls.json
+python3 tests/check_ir_json.py build/ir-module-calls.json
 if ./build/ylang > build/no-args.out 2>&1; then
     echo "FAIL: ylang without arguments should return usage error" >&2
     exit 1

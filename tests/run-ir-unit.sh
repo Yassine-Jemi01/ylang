@@ -18,3 +18,6 @@ $CC $CFLAGS -Iinclude tests/ir_c_unit.c src/ir_c.c src/ir.c -o /tmp/ylang-ir-c-u
 
 $CC $CFLAGS -Iinclude tests/ir_opt_unit.c src/ir_opt.c src/ir.c -o /tmp/ylang-ir-opt-unit
 /tmp/ylang-ir-opt-unit
+
+$CC $CFLAGS -Iinclude tests/ir_json_unit.c src/ir_json.c src/ir.c -o /tmp/ylang-ir-json-unit
+/tmp/ylang-ir-json-unit
