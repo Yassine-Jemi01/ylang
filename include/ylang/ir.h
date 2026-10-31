@@ -24,6 +24,8 @@ typedef enum {
     YIR_OP_DIV_I64,
     YIR_OP_MOD_I64,
     YIR_OP_NEG_I64,
+    YIR_OP_I64_TO_F64,
+    YIR_OP_F64_TO_I64,
     YIR_OP_ADD_F64,
     YIR_OP_SUB_F64,
     YIR_OP_MUL_F64,

@@ -1,0 +1,3 @@
+fn main() -> int {
+    return to_int(1e308 * 1e308);
+}

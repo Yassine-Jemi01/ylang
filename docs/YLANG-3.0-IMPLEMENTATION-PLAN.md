@@ -116,7 +116,13 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [~] 2.3.7 Complete floating-point semantics beyond the initial finite-f64 lowering slice.
   - [~] 2.3.7.1 Implement finite f64 literals, parameters, locals, arithmetic, comparisons, and direct calls.
   - [ ] 2.3.7.2 Specify NaN, infinities, subnormals, signed zero, and floating-point overflow behavior across backends.
-  - [ ] 2.3.7.3 Add explicit int/float conversion operations and diagnostics.
+  - [~] 2.3.7.3 Add explicit int/float conversion operations and diagnostics.
+  - [~] 2.3.7.3.1 Add a verified i64-to-f64 operation with source locations.
+  - [~] 2.3.7.3.2 Add checked f64-to-i64 conversion with finite/range validation.
+  - [~] 2.3.7.3.3 Lower the existing to_float(int) and to_int(float) built-ins into typed IR.
+  - [~] 2.3.7.3.4 Fold only conversions with statically safe, representable constants.
+  - [~] 2.3.7.3.5 Emit C conversions with the same truncation and overflow behavior as the AST backend.
+  - [~] 2.3.7.3.6 Add three-way AST/IR/optimized-IR runtime parity tests for valid and out-of-range values.
   - [ ] 2.3.7.4 Add float formatting, parsing, and standard-library I/O.
 - [ ] 2.3.8 Lower strings, arrays, tuples, structs, enums, and indexing.
 - [ ] 2.3.9 Lower imports and cross-module symbol references.
@@ -251,7 +257,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 ## 6. Standard library and desktop application development
 
 ### 6.1 Core library
-- [ ] 6.1.1 Stabilize strings, formatting, conversion, and comparison.
+- [~] 6.1.1 Stabilize strings, formatting, numeric conversion, and comparison; IR conversion support now shares AST range and truncation rules.
 - [ ] 6.1.2 Implement Option, Result, and collection APIs.
 - [ ] 6.1.3 Stabilize file, path, process, and environment APIs.
 - [ ] 6.1.4 Stabilize time, math, random, and serialization APIs.

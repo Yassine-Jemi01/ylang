@@ -263,6 +263,40 @@ static void prints_f64_constants_arithmetic_and_comparisons(void)
     assert(fclose(stream) == 0);
 }
 
+
+static void prints_explicit_numeric_conversion_ops(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_I64}
+    };
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_I64_TO_F64,.result_id=2,.result_type=YIR_TYPE_F64,
+         .lhs=1},
+        {.opcode=YIR_OP_F64_TO_I64,.result_id=3,.result_type=YIR_TYPE_I64,
+         .lhs=2},
+        {.opcode=YIR_OP_RETURN,.lhs=3}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=3
+    };
+    const YIRFunction function = {
+        .name="convert",.return_type=YIR_TYPE_I64,
+        .parameters=parameters,.parameter_count=1,
+        .blocks=&block,.block_count=1
+    };
+    FILE *stream=tmpfile();
+    assert(stream!=NULL);
+    yir_print_function(stream,&function);
+    char output[1024];
+    assert(fflush(stream)==0);
+    rewind(stream);
+    size_t length=fread(output,1,sizeof(output)-1,stream);
+    output[length]='\0';
+    assert(strstr(output,"i64.to_f64 %1")!=NULL);
+    assert(strstr(output,"f64.to_i64 %2")!=NULL);
+    assert(fclose(stream)==0);
+}
+
 int main(void)
 {
     prints_scalar_function();
@@ -270,6 +304,7 @@ int main(void)
     prints_direct_function_calls();
     prints_division_modulo_and_negation();
     prints_f64_constants_arithmetic_and_comparisons();
+    prints_explicit_numeric_conversion_ops();
     puts("YLang IR printer tests passed");
     return 0;
 }

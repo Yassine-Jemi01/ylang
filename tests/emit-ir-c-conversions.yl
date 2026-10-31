@@ -1,0 +1,9 @@
+fn main() -> int {
+    let float precise = to_float(9);
+    let int positive = to_int(3.9);
+    let int negative = to_int(-3.9);
+    if (precise == 9.0 and positive == 3 and negative == -3) {
+        return 42;
+    }
+    return 0;
+}

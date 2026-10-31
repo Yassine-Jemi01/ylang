@@ -114,11 +114,47 @@ static void rejects_invalid_modules_before_writing(void)
     assert(fclose(stream)==0);
 }
 
+
+static void serializes_numeric_conversion_opcode_names(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_I64}
+    };
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_I64_TO_F64,.result_id=2,.result_type=YIR_TYPE_F64,
+         .lhs=1},
+        {.opcode=YIR_OP_F64_TO_I64,.result_id=3,.result_type=YIR_TYPE_I64,
+         .lhs=2},
+        {.opcode=YIR_OP_RETURN,.lhs=3}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=3
+    };
+    const YIRFunction function = {
+        .name="convert",.return_type=YIR_TYPE_I64,
+        .parameters=parameters,.parameter_count=1,
+        .blocks=&block,.block_count=1
+    };
+    FILE *stream=tmpfile();
+    assert(stream!=NULL);
+    char error[256];
+    assert(yir_write_json_module(stream,&function,1,error,sizeof(error)));
+    char output[2048]={0};
+    assert(fflush(stream)==0);
+    rewind(stream);
+    size_t length=fread(output,1,sizeof(output)-1,stream);
+    output[length]='\0';
+    assert(strstr(output,"i64.to_f64")!=NULL);
+    assert(strstr(output,"f64.to_i64")!=NULL);
+    assert(fclose(stream)==0);
+}
+
 int main(void)
 {
     writes_escaped_names_and_call_metadata();
     preserves_negative_zero_as_a_json_number();
     rejects_invalid_modules_before_writing();
+    serializes_numeric_conversion_opcode_names();
     puts("YLang JSON IR tests passed");
     return 0;
 }

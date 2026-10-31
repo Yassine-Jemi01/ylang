@@ -236,6 +236,47 @@ static void rejects_pointer_signatures_until_lowering_exists(void)
     assert(fclose(stream) == 0);
 }
 
+
+static void emits_checked_numeric_conversions(void)
+{
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+         .immediate=9},
+        {.opcode=YIR_OP_I64_TO_F64,.result_id=2,.result_type=YIR_TYPE_F64,
+         .lhs=1},
+        {.opcode=YIR_OP_F64_TO_I64,.result_id=3,.result_type=YIR_TYPE_I64,
+         .lhs=2},
+        {.opcode=YIR_OP_CONST_F64,.result_id=4,.result_type=YIR_TYPE_F64,
+         .floating_immediate=3.9},
+        {.opcode=YIR_OP_F64_TO_I64,.result_id=5,.result_type=YIR_TYPE_I64,
+         .lhs=4},
+        {.opcode=YIR_OP_ADD_I64,.result_id=6,.result_type=YIR_TYPE_I64,
+         .lhs=3,.rhs=5},
+        {.opcode=YIR_OP_RETURN,.lhs=6}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=7
+    };
+    const YIRFunction function = {
+        .name="main",.symbol="app::main",.return_type=YIR_TYPE_I64,
+        .blocks=&block,.block_count=1
+    };
+    FILE *stream=tmpfile();
+    assert(stream!=NULL);
+    char error[256];
+    assert(yir_emit_c_module(stream,&function,1,error,sizeof(error)));
+    char output[8192];
+    (void)read_stream(stream,output,sizeof(output));
+    assert(strstr(output,"#include <math.h>")!=NULL);
+    assert(strstr(output," = (double)yir_v_1;")!=NULL);
+    assert(strstr(output,"yir_f64_to_i64(yir_v_2)")!=NULL);
+    assert(strstr(output,"yir_f64_to_i64(yir_v_4)")!=NULL);
+    assert(strstr(output,"!isfinite(value)")!=NULL);
+    assert(strstr(output,"value < -0x1p63 || value >= 0x1p63")!=NULL);
+    assert(strstr(output,"to_int value is outside the signed 64-bit range")!=NULL);
+    assert(fclose(stream)==0);
+}
+
 int main(void)
 {
     emits_scalar_arithmetic_and_direct_calls();
@@ -243,6 +284,7 @@ int main(void)
     rejects_pointer_signatures_until_lowering_exists();
     emits_division_modulo_and_negation_runtime_checks();
     emits_f64_arithmetic_calls_and_zero_checks();
+    emits_checked_numeric_conversions();
     puts("YLang IR C emitter tests passed");
     return 0;
 }

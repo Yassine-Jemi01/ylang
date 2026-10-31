@@ -34,6 +34,8 @@ static const char *opcode_name(YIROpcode opcode)
         case YIR_OP_DIV_I64: return "div.i64";
         case YIR_OP_MOD_I64: return "mod.i64";
         case YIR_OP_NEG_I64: return "neg.i64";
+        case YIR_OP_I64_TO_F64: return "i64.to_f64";
+        case YIR_OP_F64_TO_I64: return "f64.to_i64";
         case YIR_OP_ADD_F64: return "add.f64";
         case YIR_OP_SUB_F64: return "sub.f64";
         case YIR_OP_MUL_F64: return "mul.f64";

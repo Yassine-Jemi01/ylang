@@ -541,6 +541,27 @@ static bool lower_integer_expr(Lowerer *lowerer, const Expr *expression,
         return lower_fail(lowerer, "missing expression in IR lowering");
 
     if (expression->kind == EXPR_CALL) {
+        if (expression->as.call.name &&
+            strcmp(expression->as.call.name, "to_int") == 0) {
+            if (expression->type != TYPE_INT ||
+                expression->as.call.count != 1 ||
+                !expression->as.call.args || !expression->as.call.args[0] ||
+                expression->as.call.args[0]->type != TYPE_FLOAT)
+                return lower_fail(lowerer,
+                    "to_int requires exactly one float argument");
+            uint32_t operand = 0;
+            if (!lower_float_expr(lowerer, expression->as.call.args[0],
+                                  &operand))
+                return false;
+            YIRInstruction conversion = {
+                .opcode=YIR_OP_F64_TO_I64,
+                .result_type=YIR_TYPE_I64,
+                .lhs=operand,
+                .source_line=expression->token.line,
+                .source_column=expression->token.column
+            };
+            return append_instruction(lowerer, conversion, value_id);
+        }
         if (expression->type != TYPE_INT)
             return lower_fail(lowerer,
                 "integer expression call must return int");
@@ -655,8 +676,29 @@ static bool lower_float_expr(Lowerer *lowerer, const Expr *expression,
     if (!expression || expression->type != TYPE_FLOAT)
         return lower_fail(lowerer, "floating-point expression must have type float");
 
-    if (expression->kind == EXPR_CALL)
+    if (expression->kind == EXPR_CALL) {
+        if (expression->as.call.name &&
+            strcmp(expression->as.call.name, "to_float") == 0) {
+            if (expression->as.call.count != 1 ||
+                !expression->as.call.args || !expression->as.call.args[0] ||
+                expression->as.call.args[0]->type != TYPE_INT)
+                return lower_fail(lowerer,
+                    "to_float requires exactly one int argument");
+            uint32_t operand = 0;
+            if (!lower_integer_expr(lowerer, expression->as.call.args[0],
+                                    &operand))
+                return false;
+            YIRInstruction conversion = {
+                .opcode=YIR_OP_I64_TO_F64,
+                .result_type=YIR_TYPE_F64,
+                .lhs=operand,
+                .source_line=expression->token.line,
+                .source_column=expression->token.column
+            };
+            return append_instruction(lowerer, conversion, value_id);
+        }
         return lower_call_expression(lowerer, expression, value_id);
+    }
 
     if (expression->kind == EXPR_NAME) {
         uint32_t value = 0;

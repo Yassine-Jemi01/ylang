@@ -1018,6 +1018,42 @@ static void lowers_float_function_locals_calls_and_comparisons(void)
     arena_destroy(&compiler.arena);
 }
 
+
+static void lowers_explicit_numeric_conversions(void)
+{
+    static const char source[] =
+        "fn main() -> int {\n"
+        "    let float precise = to_float(9);\n"
+        "    let int positive = to_int(3.9);\n"
+        "    let int negative = to_int(-3.9);\n"
+        "    return positive + negative + to_int(precise);\n"
+        "}\n";
+    Compiler compiler;
+    YIRFunction lowered = lower_checked_source(&compiler, source, "main");
+    size_t i64_to_f64 = 0;
+    size_t f64_to_i64 = 0;
+    for (size_t bi = 0; bi < lowered.block_count; ++bi) {
+        const YIRBlock *block = &lowered.blocks[bi];
+        for (size_t ii = 0; ii < block->instruction_count; ++ii) {
+            const YIRInstruction *ins = &block->instructions[ii];
+            if (ins->opcode == YIR_OP_I64_TO_F64) {
+                i64_to_f64++;
+                assert(ins->source_line > 0 && ins->source_column > 0);
+            }
+            if (ins->opcode == YIR_OP_F64_TO_I64) {
+                f64_to_i64++;
+                assert(ins->source_line > 0 && ins->source_column > 0);
+            }
+        }
+    }
+    assert(i64_to_f64 == 1);
+    assert(f64_to_i64 == 3);
+    char error[256];
+    assert(yir_verify_function(&lowered,error,sizeof(error)));
+    yir_destroy_function(&lowered);
+    arena_destroy(&compiler.arena);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
@@ -1050,6 +1086,7 @@ int main(void)
     lowers_division_modulo_and_general_integer_negation();
     lowers_short_circuit_boolean_operators();
     lowers_float_function_locals_calls_and_comparisons();
+    lowers_explicit_numeric_conversions();
     puts("YLang IR lowering tests passed");
     return 0;
 }

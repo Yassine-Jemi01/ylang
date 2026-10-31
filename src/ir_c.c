@@ -68,6 +68,7 @@ static const YIRFunction *find_callee(const YIRFunction *functions,
 static bool supported_function_type(const YIRFunction *function)
 {
     if (function->return_type != YIR_TYPE_I64 &&
+        function->return_type != YIR_TYPE_F64 &&
         function->return_type != YIR_TYPE_BOOL &&
         function->return_type != YIR_TYPE_VOID)
         return false;
@@ -294,6 +295,22 @@ static bool emit_instruction(FILE *stream, const YIRFunction *function,
             (void)fputs(");\n", stream);
             return true;
 
+        case YIR_OP_I64_TO_F64:
+            (void)fputs("    ", stream);
+            emit_value(stream, instruction->result_id);
+            (void)fputs(" = (double)", stream);
+            emit_value(stream, instruction->lhs);
+            (void)fputs(";\n", stream);
+            return true;
+
+        case YIR_OP_F64_TO_I64:
+            (void)fputs("    ", stream);
+            emit_value(stream, instruction->result_id);
+            (void)fputs(" = yir_f64_to_i64(", stream);
+            emit_value(stream, instruction->lhs);
+            (void)fputs(");\n", stream);
+            return true;
+
         case YIR_OP_NOT_BOOL:
             (void)fputs("    ", stream);
             emit_value(stream, instruction->result_id);
@@ -383,10 +400,12 @@ static bool emit_function(FILE *stream, const YIRFunction *function,
 static void emit_runtime_helpers(FILE *stream, bool need_add,
                                  bool need_sub, bool need_mul,
                                  bool need_div, bool need_mod,
-                                 bool need_neg, bool need_f64_div)
+                                 bool need_neg, bool need_f64_div,
+                                 bool need_f64_to_i64)
 {
     if (need_add || need_sub || need_mul ||
-        need_div || need_mod || need_neg || need_f64_div) {
+        need_div || need_mod || need_neg || need_f64_div ||
+        need_f64_to_i64) {
         (void)fputs(
             "static void yir_runtime_error(const char *message) {\n"
             "    (void)fprintf(stderr, \"YLang runtime error: %s\\n\", message);\n"
@@ -458,8 +477,16 @@ static void emit_runtime_helpers(FILE *stream, bool need_add,
             "    return a / b;\n"
             "}\n", stream);
     }
+    if (need_f64_to_i64) {
+        (void)fputs(
+            "static int64_t yir_f64_to_i64(double value) {\n"
+            "    if (!isfinite(value) || value < -9223372036854775808.0 || value >= 9223372036854775808.0)\n"
+            "        yir_runtime_error(\"to_int value is outside the signed 64-bit range\");\n"
+            "    return (int64_t)value;\n"
+            "}\n", stream);
+    }
     if (need_add || need_sub || need_mul ||
-        need_div || need_mod || need_neg || need_f64_div)
+        need_div || need_mod || need_neg || need_f64_div || need_f64_to_i64)
         (void)fputc('\n', stream);
 }
 
@@ -499,11 +526,13 @@ bool yir_emit_c_module(FILE *stream, const YIRFunction *functions,
         "#include <stdint.h>\n"
         "#include <inttypes.h>\n"
         "#include <limits.h>\n"
+        "#include <math.h>\n"
         "#include <stdio.h>\n"
         "#include <stdlib.h>\n\n", stream);
     bool need_add = false, need_sub = false, need_mul = false;
     bool need_div = false, need_mod = false, need_neg = false;
     bool need_f64_div = false;
+    bool need_f64_to_i64 = false;
     for (size_t fi = 0; fi < function_count; ++fi) {
         for (size_t bi = 0; bi < functions[fi].block_count; ++bi) {
             const YIRBlock *block = &functions[fi].blocks[bi];
@@ -516,13 +545,15 @@ bool yir_emit_c_module(FILE *stream, const YIRFunction *functions,
                     case YIR_OP_MOD_I64: need_mod = true; break;
                     case YIR_OP_NEG_I64: need_neg = true; break;
                     case YIR_OP_DIV_F64: need_f64_div = true; break;
+                    case YIR_OP_F64_TO_I64: need_f64_to_i64 = true; break;
                     default: break;
                 }
             }
         }
     }
     emit_runtime_helpers(stream, need_add, need_sub, need_mul,
-                         need_div, need_mod, need_neg, need_f64_div);
+                         need_div, need_mod, need_neg, need_f64_div,
+                         need_f64_to_i64);
 
     for (size_t fi = 0; fi < function_count; ++fi) {
         emit_signature(stream, &functions[fi], true);

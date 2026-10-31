@@ -790,6 +790,72 @@ static void reject_missing_false_edge_argument_storage(void)
     assert(strstr(error,"branch argument counts require argument arrays")!=NULL);
 }
 
+
+static void accept_explicit_numeric_conversion_ops(void)
+{
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+         .immediate=17},
+        {.opcode=YIR_OP_I64_TO_F64,.result_id=2,.result_type=YIR_TYPE_F64,
+         .lhs=1},
+        {.opcode=YIR_OP_F64_TO_I64,.result_id=3,.result_type=YIR_TYPE_I64,
+         .lhs=2},
+        {.opcode=YIR_OP_RETURN,.lhs=3}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=4
+    };
+    const YIRFunction function = {
+        .name="numeric_conversions",.return_type=YIR_TYPE_I64,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
+static void reject_numeric_conversion_operand_type_mismatch(void)
+{
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+         .immediate=17},
+        {.opcode=YIR_OP_F64_TO_I64,.result_id=2,.result_type=YIR_TYPE_I64,
+         .lhs=1},
+        {.opcode=YIR_OP_RETURN,.lhs=2}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=3
+    };
+    const YIRFunction function = {
+        .name="bad_numeric_conversion",.return_type=YIR_TYPE_I64,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,"operand type") != NULL);
+}
+
+
+static void reject_i64_to_f64_with_float_operand(void)
+{
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_F64,.result_id=1,.result_type=YIR_TYPE_F64,
+         .floating_immediate=2.5},
+        {.opcode=YIR_OP_I64_TO_F64,.result_id=2,.result_type=YIR_TYPE_F64,
+         .lhs=1},
+        {.opcode=YIR_OP_RETURN,.lhs=2}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=3
+    };
+    const YIRFunction function = {
+        .name="bad_i64_to_f64",.return_type=YIR_TYPE_F64,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,"operand type") != NULL);
+}
+
 int main(void)
 {
     valid_arithmetic_return(); reject_use_before_definition();
@@ -820,6 +886,9 @@ int main(void)
     reject_branch_metadata_on_arithmetic_instruction();
     reject_module_symbol_on_non_call_instruction();
     reject_missing_false_edge_argument_storage();
+    accept_explicit_numeric_conversion_ops();
+    reject_numeric_conversion_operand_type_mismatch();
+    reject_i64_to_f64_with_float_operand();
     reject_duplicate_qualified_function_symbols();
     accept_module_qualified_same_name_call_targets();
     puts("YLang IR verifier tests passed"); return 0;

@@ -71,3 +71,8 @@ The optimizer API also exposes `yir_run_opt_pipeline` and the ordered pass IDs `
 ## Verifier robustness and fuzzing
 
 The verifier rejects metadata that does not belong to an instruction kind: call metadata is call-only, and edge-argument metadata is restricted to branch terminators. It checks call argument arity and backing arrays before reading operands, and validates both true and false branch-edge storage before following arguments. `tests/ir_fuzz_smoke.c` generates bounded arbitrary IR shapes with valid in-process backing arrays, runs 4,096 deterministic smoke inputs, and checks block/value count overflow cases. The same input entry point can be compiled with libFuzzer (`make fuzz-ir`) for longer ASan/UBSan-guided runs.
+
+
+## Explicit numeric conversions
+
+The typed IR represents `to_float(int)` as `i64.to_f64` and `to_int(float)` as `f64.to_i64`. The verifier checks both source and destination types. The C backend emits a standard integer-to-double cast and uses a checked helper for float-to-integer conversion: non-finite values and values outside `[-2^63, 2^63)` fail with the same runtime diagnostic as the AST backend; accepted values truncate toward zero. The optimizer folds only conversions whose constants are statically representable, leaving out-of-range conversions as runtime checks. The conversion fixtures are run through AST-to-C, IR-to-C, and optimized IR-to-C parity paths.

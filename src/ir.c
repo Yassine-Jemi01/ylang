@@ -348,6 +348,20 @@ bool yir_verify_function(const YIRFunction *function, char *error,
                                       block_count, bi, ii, ins->lhs,
                                       YIR_TYPE_I64);
                     break;
+                case YIR_OP_I64_TO_F64:
+                    operands_ok = ins->result_id != 0 &&
+                        ins->result_type == YIR_TYPE_F64 &&
+                        check_operand(values, value_count, dominators,
+                                      block_count, bi, ii, ins->lhs,
+                                      YIR_TYPE_I64);
+                    break;
+                case YIR_OP_F64_TO_I64:
+                    operands_ok = ins->result_id != 0 &&
+                        ins->result_type == YIR_TYPE_I64 &&
+                        check_operand(values, value_count, dominators,
+                                      block_count, bi, ii, ins->lhs,
+                                      YIR_TYPE_F64);
+                    break;
                 case YIR_OP_ADD_F64:
                 case YIR_OP_SUB_F64:
                 case YIR_OP_MUL_F64:

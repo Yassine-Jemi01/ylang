@@ -334,6 +334,45 @@ emit_ir_c_f64_status=$?
 set -e
 [ "$emit_ir_c_f64_status" -eq 42 ]
 
+# Explicit int/float conversions lower to IR and preserve truncation toward zero.
+./build/ylang emit-mir tests/emit-ir-c-conversions.yl > build/emit-ir-c-conversions.mir
+grep -Fq 'i64.to_f64' build/emit-ir-c-conversions.mir
+grep -Fq 'f64.to_i64' build/emit-ir-c-conversions.mir
+./build/ylang emit-ir-c tests/emit-ir-c-conversions.yl -o build/emit-ir-c-conversions.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-conversions.c -o build/test-emit-ir-c-conversions
+set +e
+./build/test-emit-ir-c-conversions
+emit_ir_c_conversions_status=$?
+set -e
+[ "$emit_ir_c_conversions_status" -eq 42 ]
+./build/ylang emit-ir-c-opt tests/emit-ir-c-conversions.yl -o build/emit-ir-c-conversions-opt.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-conversions-opt.c -o build/test-emit-ir-c-conversions-opt
+set +e
+./build/test-emit-ir-c-conversions-opt
+emit_ir_c_conversions_opt_status=$?
+set -e
+[ "$emit_ir_c_conversions_opt_status" -eq 42 ]
+
+# Conversion overflow must fail identically in the normal and optimized IR backends.
+./build/ylang emit-ir-c-opt tests/emit-ir-c-conversions-overflow.yl -o build/emit-ir-c-conversions-overflow.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-conversions-overflow.c -o build/test-emit-ir-c-conversions-overflow
+set +e
+./build/test-emit-ir-c-conversions-overflow > build/emit-ir-c-conversions-overflow.stdout 2> build/emit-ir-c-conversions-overflow.stderr
+emit_ir_c_conversions_overflow_status=$?
+set -e
+[ "$emit_ir_c_conversions_overflow_status" -eq 70 ]
+grep -Fq 'YLang runtime error: to_int value is outside the signed 64-bit range' build/emit-ir-c-conversions-overflow.stderr
+
+# Float overflow to infinity must be rejected by the same checked conversion.
+./build/ylang emit-ir-c-opt tests/emit-ir-c-conversions-nonfinite.yl -o build/emit-ir-c-conversions-nonfinite.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-conversions-nonfinite.c -o build/test-emit-ir-c-conversions-nonfinite
+set +e
+./build/test-emit-ir-c-conversions-nonfinite > build/emit-ir-c-conversions-nonfinite.stdout 2> build/emit-ir-c-conversions-nonfinite.stderr
+emit_ir_c_conversions_nonfinite_status=$?
+set -e
+[ "$emit_ir_c_conversions_nonfinite_status" -eq 70 ]
+grep -Fq 'YLang runtime error: to_int value is outside the signed 64-bit range' build/emit-ir-c-conversions-nonfinite.stderr
+
 # Division by zero must retain YLang's checked runtime failure.
 ./build/ylang emit-ir-c tests/emit-ir-c-div-zero.yl -o build/emit-ir-c-div-zero.c >/dev/null
 cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-div-zero.c -o build/test-emit-ir-c-div-zero

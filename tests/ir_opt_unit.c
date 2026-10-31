@@ -715,6 +715,58 @@ static void common_subexpression_pass_does_not_merge_checked_divisions(void)
     assert(yir_verify_function(&function,error,sizeof(error)));
 }
 
+
+static void folds_safe_numeric_conversions_and_preserves_range_traps(void)
+{
+    YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+         .immediate=9},
+        {.opcode=YIR_OP_I64_TO_F64,.result_id=2,.result_type=YIR_TYPE_F64,
+         .lhs=1},
+        {.opcode=YIR_OP_CONST_F64,.result_id=3,.result_type=YIR_TYPE_F64,
+         .floating_immediate=-3.9},
+        {.opcode=YIR_OP_F64_TO_I64,.result_id=4,.result_type=YIR_TYPE_I64,
+         .lhs=3},
+        {.opcode=YIR_OP_ADD_I64,.result_id=5,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=4},
+        {.opcode=YIR_OP_RETURN,.lhs=5}
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,.instruction_count=6}
+    };
+    YIRFunction function = {
+        .name="safe_conversions",.return_type=YIR_TYPE_I64,
+        .blocks=blocks,.block_count=1
+    };
+    char error[256];
+    assert(run_constant_fold_only(&function,error,sizeof(error)));
+    assert(instructions[1].opcode==YIR_OP_CONST_F64);
+    assert(instructions[1].floating_immediate==9.0);
+    assert(instructions[3].opcode==YIR_OP_CONST_I64);
+    assert(instructions[3].immediate==-3);
+    assert(instructions[4].opcode==YIR_OP_CONST_I64);
+    assert(instructions[4].immediate==6);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+
+    YIRInstruction trapping[] = {
+        {.opcode=YIR_OP_CONST_F64,.result_id=1,.result_type=YIR_TYPE_F64,
+         .floating_immediate=0x1p63},
+        {.opcode=YIR_OP_F64_TO_I64,.result_id=2,.result_type=YIR_TYPE_I64,
+         .lhs=1},
+        {.opcode=YIR_OP_RETURN,.lhs=2}
+    };
+    YIRBlock trap_blocks[] = {
+        {.id=0,.instructions=trapping,.instruction_count=3}
+    };
+    YIRFunction trap_function = {
+        .name="conversion_range_trap",.return_type=YIR_TYPE_I64,
+        .blocks=trap_blocks,.block_count=1
+    };
+    assert(run_constant_fold_only(&trap_function,error,sizeof(error)));
+    assert(trapping[1].opcode==YIR_OP_F64_TO_I64);
+    assert(yir_verify_function(&trap_function,error,sizeof(error)));
+}
+
 int main(void)
 {
     folds_safe_integer_and_boolean_constants();
@@ -734,6 +786,7 @@ int main(void)
     exposes_ordered_and_validated_optimizer_pipelines();
     common_subexpressions_rewrite_block_edge_uses();
     common_subexpression_pass_does_not_merge_checked_divisions();
+    folds_safe_numeric_conversions_and_preserves_range_traps();
     puts("YLang IR optimizer tests passed");
     return 0;
 }

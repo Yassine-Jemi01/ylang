@@ -126,6 +126,29 @@ static bool fold_instruction(const YIRInstruction *instruction,
             *immediate = -left->value;
             return true;
 
+        case YIR_OP_I64_TO_F64:
+            left = find_constant(constants, constant_count,
+                                 instruction->lhs);
+            if (!left || left->type != YIR_TYPE_I64) return false;
+            *floating_immediate = (double)left->value;
+            if (!safe_f64_constant(*floating_immediate)) return false;
+            *opcode = YIR_OP_CONST_F64;
+            *type = YIR_TYPE_F64;
+            return true;
+
+        case YIR_OP_F64_TO_I64:
+            left = find_constant(constants, constant_count,
+                                 instruction->lhs);
+            if (!left || left->type != YIR_TYPE_F64 ||
+                !isfinite(left->floating_value) ||
+                left->floating_value < -9223372036854775808.0 ||
+                left->floating_value >= 9223372036854775808.0)
+                return false;
+            *immediate = (int64_t)left->floating_value;
+            *opcode = YIR_OP_CONST_I64;
+            *type = YIR_TYPE_I64;
+            return true;
+
         case YIR_OP_NEG_F64:
             left = find_constant(constants, constant_count,
                                  instruction->lhs);
@@ -647,6 +670,8 @@ static bool mark_instruction_inputs(const YIRInstruction *ins,
                    mark_live_value(live_values, capacity, live_count, ins->rhs);
         case YIR_OP_NEG_I64:
         case YIR_OP_NEG_F64:
+        case YIR_OP_I64_TO_F64:
+        case YIR_OP_F64_TO_I64:
         case YIR_OP_NOT_BOOL:
             return mark_live_value(live_values, capacity, live_count, ins->lhs);
         case YIR_OP_COND_BRANCH:
@@ -689,6 +714,7 @@ static bool instruction_may_have_effects_or_trap(YIROpcode opcode)
         case YIR_OP_MOD_I64:
         case YIR_OP_NEG_I64:
         case YIR_OP_DIV_F64:
+        case YIR_OP_F64_TO_I64:
         case YIR_OP_CALL:
             return true;
         default:
@@ -836,6 +862,7 @@ static bool same_pure_expression(const YIRInstruction *left,
         case YIR_OP_GE_I64:
             return left->rhs == right->rhs;
         case YIR_OP_NEG_F64:
+        case YIR_OP_I64_TO_F64:
         case YIR_OP_NOT_BOOL:
             return true;
         default:
