@@ -621,11 +621,19 @@ static YIRFunction lower_checked_source(Compiler *compiler,
     compiler->filename = "ir-control-flow-test.yl";
     compiler->source = (char *)source;
     compiler->source_length = strlen(source);
-    compiler->quiet_diagnostics = true;
+    /* Keep diagnostics enabled so a failing lowering fixture reports the
+       semantic error instead of stopping at an opaque assertion. */
+    compiler->quiet_diagnostics = false;
     compiler->program = parse_program(compiler);
     assert(compiler->program != NULL);
     assert(!compiler->had_error);
-    assert(check_program(compiler));
+    if (!check_program(compiler)) {
+        fprintf(stderr,
+                "Semantic analysis failed for IR lowering fixture '%s' "
+                "(%u error(s)).\nSource:\n%s\n",
+                function_name, compiler->error_count, source);
+        assert(false);
+    }
     Function *function = find_function(compiler, function_name);
     assert(function != NULL);
 
