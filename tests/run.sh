@@ -189,6 +189,23 @@ grep -Fq 'call @notify()' build/emit-mir-calls.out
 grep -Fq 'call @identity(' build/emit-mir-calls.out
 grep -Fq 'call @add(' build/emit-mir-calls.out
 
+# Emit standalone C from verified IR, compile it, and run the generated executable.
+./build/ylang emit-ir-c tests/emit-ir-c.yl -o build/emit-ir-c.c > build/emit-ir-c.out
+grep -Fq 'yir_add_i64' build/emit-ir-c.c
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c.c -o build/test-emit-ir-c
+set +e
+./build/test-emit-ir-c
+emit_ir_c_status=$?
+set -e
+[ "$emit_ir_c_status" -eq 42 ]
+
+# emit-ir-c requires an explicit output path.
+if ./build/ylang emit-ir-c tests/emit-ir-c.yl > build/emit-ir-c-no-output.out 2>&1; then
+    echo "FAIL: emit-ir-c accepted a missing output path" >&2
+    exit 1
+fi
+grep -q "emit-ir-c requires -o" build/emit-ir-c-no-output.out
+
 # Explicit mut is the preferred 3.0 spelling; legacy mutable let remains compatible.
 ./build/ylang check tests/explicit-mut.yl >/dev/null
 ./build/ylang build tests/explicit-mut.yl -o build/test-explicit-mut >/dev/null

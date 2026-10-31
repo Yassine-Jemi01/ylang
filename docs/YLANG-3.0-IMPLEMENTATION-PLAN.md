@@ -107,8 +107,11 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 3.2.2.1.2 Preserve checked overflow behavior for add/subtract/multiply.
   - [~] 3.2.2.1.3 Reject unsupported IR types and opcodes explicitly.
   - [~] 3.2.2.1.4 Add unit tests for arithmetic, direct calls, branch edges, and unsupported signatures.
-- [ ] 3.2.3 Add an `emit-ir-c` CLI command that writes verified IR-generated C to a requested file.
-- [ ] 3.2.4 Compile and run the first IR-generated C executable on Linux GCC and Clang.
+- [~] 3.2.3 Add an `emit-ir-c` CLI command that writes verified IR-generated C to a requested file.
+  - [~] 3.2.3.1 Register the command and require an explicit `-o` destination.
+  - [~] 3.2.3.2 Lower every function and verify the complete module before writing.
+  - [~] 3.2.3.3 Generate through a temporary stream and avoid leaving partial output on emission failure.
+- [~] 3.2.4 Add a compile/run regression that builds generated C and checks the process result; wait for Linux GCC/Clang CI before marking it validated.
 - [ ] 3.2.5 Compare IR-to-C output against the existing AST-to-C backend for matching fixtures.
 - [ ] 3.2.6 Expand branches and loops with differential tests and sanitizer coverage.
 - [ ] 3.2.7 Expand parity feature-by-feature until the supported C subset is covered.
