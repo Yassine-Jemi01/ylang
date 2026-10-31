@@ -158,6 +158,25 @@ fi
 ./build/test-fn-keyword > build/fn-keyword.out
 diff -u tests/expected-fn-keyword.txt build/fn-keyword.out
 
+# The emit-mir CLI lowers, verifies, and prints the currently supported subset.
+./build/ylang emit-mir tests/emit-mir.yl > build/emit-mir.out
+diff -u tests/expected-emit-mir.txt build/emit-mir.out
+
+# Unsupported functions fail before any partial MIR is written.
+if ./build/ylang emit-mir tests/fn-keyword.yl > build/emit-mir-unsupported.out 2> build/emit-mir-unsupported.err; then
+    echo "FAIL: emit-mir accepted a function outside the initial lowering subset" >&2
+    exit 1
+fi
+test ! -s build/emit-mir-unsupported.out
+grep -q "cannot lower function 'main'" build/emit-mir-unsupported.err
+
+# emit-mir writes to stdout and does not accept an output path.
+if ./build/ylang emit-mir tests/emit-mir.yl -o build/emit-mir.txt > build/emit-mir-argument.out 2>&1; then
+    echo "FAIL: emit-mir accepted -o" >&2
+    exit 1
+fi
+grep -q "emit-mir does not accept -o" build/emit-mir-argument.out
+
 # Explicit mut is the preferred 3.0 spelling; legacy mutable let remains compatible.
 ./build/ylang check tests/explicit-mut.yl >/dev/null
 ./build/ylang build tests/explicit-mut.yl -o build/test-explicit-mut >/dev/null
