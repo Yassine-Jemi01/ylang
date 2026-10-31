@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 /* Backend-neutral typed SSA IR. The first block is the function entry. */
 typedef enum {
@@ -85,5 +86,8 @@ void yir_destroy_function(YIRFunction *function);
 /* Writes a NUL-terminated explanation on failure when a buffer is supplied. */
 bool yir_verify_function(const YIRFunction *function, char *error,
                          size_t error_capacity);
+
+/* Writes a human-readable textual representation of a function's IR. */
+void yir_print_function(FILE *stream, const YIRFunction *function);
 
 #endif
