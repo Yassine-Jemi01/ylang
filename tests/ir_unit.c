@@ -354,6 +354,135 @@ static void reject_call_without_callee(void)
     assert(strstr(error,"call instructions require")!=NULL);
 }
 
+static void accept_module_resolved_call(void)
+{
+    const YIRFunctionParameter callee_parameters[] = {
+        {.id=1,.type=YIR_TYPE_I64}
+    };
+    const YIRInstruction callee_instructions[] = {
+        {.opcode=YIR_OP_RETURN,.lhs=1}
+    };
+    const YIRBlock callee_block = {
+        .id=0,.instructions=callee_instructions,.instruction_count=1
+    };
+    const YIRFunction callee = {
+        .name="identity",.return_type=YIR_TYPE_I64,
+        .parameters=callee_parameters,.parameter_count=1,
+        .blocks=&callee_block,.block_count=1
+    };
+
+    const uint32_t arguments[] = {1};
+    const YIRType argument_types[] = {YIR_TYPE_I64};
+    const YIRInstruction caller_instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+         .immediate=42},
+        {.opcode=YIR_OP_CALL,.result_id=2,.result_type=YIR_TYPE_I64,
+         .callee="identity",.arguments=arguments,.argument_count=1,
+         .call_parameter_types=argument_types,.call_parameter_count=1},
+        {.opcode=YIR_OP_RETURN,.lhs=2}
+    };
+    const YIRBlock caller_block = {
+        .id=0,.instructions=caller_instructions,.instruction_count=3
+    };
+    const YIRFunction caller = {
+        .name="main",.return_type=YIR_TYPE_I64,
+        .blocks=&caller_block,.block_count=1
+    };
+    const YIRFunction module[] = {callee,caller};
+    char error[192];
+    assert(yir_verify_module(module,2,error,sizeof(error)));
+}
+
+static void reject_module_missing_call_target(void)
+{
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CALL,.result_type=YIR_TYPE_VOID,.callee="missing"},
+        {.opcode=YIR_OP_RETURN}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=2
+    };
+    const YIRFunction function = {
+        .name="caller",.return_type=YIR_TYPE_VOID,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(!yir_verify_module(&function,1,error,sizeof(error)));
+    assert(strstr(error,"calls missing function 'missing'")!=NULL);
+}
+
+static void reject_module_call_signature_mismatch(void)
+{
+    const YIRFunctionParameter callee_parameters[] = {
+        {.id=1,.type=YIR_TYPE_BOOL}
+    };
+    const YIRInstruction callee_instructions[] = {
+        {.opcode=YIR_OP_RETURN,.lhs=1}
+    };
+    const YIRBlock callee_block = {
+        .id=0,.instructions=callee_instructions,.instruction_count=1
+    };
+    const YIRFunction callee = {
+        .name="expects_bool",.return_type=YIR_TYPE_BOOL,
+        .parameters=callee_parameters,.parameter_count=1,
+        .blocks=&callee_block,.block_count=1
+    };
+
+    const uint32_t arguments[] = {1};
+    const YIRType argument_types[] = {YIR_TYPE_I64};
+    const YIRInstruction caller_instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64},
+        {.opcode=YIR_OP_CALL,.result_id=2,.result_type=YIR_TYPE_BOOL,
+         .callee="expects_bool",.arguments=arguments,.argument_count=1,
+         .call_parameter_types=argument_types,.call_parameter_count=1},
+        {.opcode=YIR_OP_RETURN,.lhs=2}
+    };
+    const YIRBlock caller_block = {
+        .id=0,.instructions=caller_instructions,.instruction_count=3
+    };
+    const YIRFunction caller = {
+        .name="caller",.return_type=YIR_TYPE_BOOL,
+        .blocks=&caller_block,.block_count=1
+    };
+    const YIRFunction module[] = {callee,caller};
+    char error[192];
+    assert(!yir_verify_module(module,2,error,sizeof(error)));
+    assert(strstr(error,"wrong type")!=NULL);
+}
+
+static void reject_ambiguous_module_call_target(void)
+{
+    const YIRInstruction return_instructions[] = {
+        {.opcode=YIR_OP_RETURN}
+    };
+    const YIRBlock target_block = {
+        .id=0,.instructions=return_instructions,.instruction_count=1
+    };
+    const YIRFunction first_target = {
+        .name="duplicate",.return_type=YIR_TYPE_VOID,
+        .blocks=&target_block,.block_count=1
+    };
+    const YIRFunction second_target = {
+        .name="duplicate",.return_type=YIR_TYPE_VOID,
+        .blocks=&target_block,.block_count=1
+    };
+    const YIRInstruction caller_instructions[] = {
+        {.opcode=YIR_OP_CALL,.result_type=YIR_TYPE_VOID,.callee="duplicate"},
+        {.opcode=YIR_OP_RETURN}
+    };
+    const YIRBlock caller_block = {
+        .id=0,.instructions=caller_instructions,.instruction_count=2
+    };
+    const YIRFunction caller = {
+        .name="caller",.return_type=YIR_TYPE_VOID,
+        .blocks=&caller_block,.block_count=1
+    };
+    const YIRFunction module[] = {first_target,second_target,caller};
+    char error[192];
+    assert(!yir_verify_module(module,3,error,sizeof(error)));
+    assert(strstr(error,"ambiguous function name 'duplicate'")!=NULL);
+}
+
 int main(void)
 {
     valid_arithmetic_return(); reject_use_before_definition();
@@ -370,5 +499,9 @@ int main(void)
     accept_typed_direct_call();
     reject_call_argument_type_mismatch();
     reject_call_without_callee();
+    accept_module_resolved_call();
+    reject_module_missing_call_target();
+    reject_module_call_signature_mismatch();
+    reject_ambiguous_module_call_target();
     puts("YLang IR verifier tests passed"); return 0;
 }

@@ -91,6 +91,9 @@ void yir_destroy_function(YIRFunction *function);
 /* Writes a NUL-terminated explanation on failure when a buffer is supplied. */
 bool yir_verify_function(const YIRFunction *function, char *error,
                          size_t error_capacity);
+/* Verifies a set of functions and resolves every direct call by unique name. */
+bool yir_verify_module(const YIRFunction *functions, size_t function_count,
+                       char *error, size_t error_capacity);
 
 /* Writes a human-readable textual representation of a function's IR. */
 void yir_print_function(FILE *stream, const YIRFunction *function);

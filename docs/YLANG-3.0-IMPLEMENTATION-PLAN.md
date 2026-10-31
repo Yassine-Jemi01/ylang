@@ -72,7 +72,10 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 2.3.6.1 Add typed direct-call opcode metadata and SSA argument validation.
   - [~] 2.3.6.2 Lower nested calls with scalar int/bool arguments and int/bool/void returns.
   - [~] 2.3.6.3 Print calls in textual MIR and cover the call verifier and lowerer with unit tests.
-  - [ ] 2.3.6.4 Resolve direct callees against a module-level symbol/signature table.
+  - [~] 2.3.6.4 Resolve direct callees against the loaded IR module.
+  - [~] 2.3.6.4.1 Verify every call target exists exactly once in the module.
+  - [~] 2.3.6.4.2 Compare call arity, parameter types, and return type with the target signature.
+  - [ ] 2.3.6.4.3 Add module-qualified symbol IDs so same-named functions in separate imports remain distinguishable.
   - [ ] 2.3.6.5 Add imported-function, built-in, and external ABI call lowering.
   - [ ] 2.3.6.6 Add calling-convention metadata and call-site ABI validation.
 - [ ] 2.3.7 Lower floating-point expressions and values.

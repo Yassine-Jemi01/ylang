@@ -453,3 +453,91 @@ cleanup:
     free(values); free(edges); free(reachable); free(dominators); free(queue);
     return ok;
 }
+
+bool yir_verify_module(const YIRFunction *functions, size_t function_count,
+                      char *error, size_t error_capacity)
+{
+    if (error && error_capacity) error[0] = '\0';
+    if (!functions || function_count == 0)
+        return fail(error, error_capacity,
+                    "IR module must contain at least one function");
+
+    for (size_t fi = 0; fi < function_count; ++fi) {
+        const YIRFunction *function = &functions[fi];
+        char function_error[256];
+        if (!function->name || function->name[0] == '\0') {
+            (void)fail(error, error_capacity,
+                       "IR module functions require non-empty names");
+            return false;
+        }
+        if (!yir_verify_function(function, function_error,
+                                 sizeof(function_error))) {
+            if (error && error_capacity)
+                (void)snprintf(error, error_capacity,
+                    "function '%s' failed verification: %s",
+                    function->name,
+                    function_error[0] ? function_error : "unknown verifier error");
+            return false;
+        }
+    }
+
+    for (size_t fi = 0; fi < function_count; ++fi) {
+        const YIRFunction *caller = &functions[fi];
+        for (size_t bi = 0; bi < caller->block_count; ++bi) {
+            const YIRBlock *block = &caller->blocks[bi];
+            for (size_t ii = 0; ii < block->instruction_count; ++ii) {
+                const YIRInstruction *instruction = &block->instructions[ii];
+                if (instruction->opcode != YIR_OP_CALL) continue;
+
+                const YIRFunction *callee = NULL;
+                size_t matches = 0;
+                for (size_t target_index = 0;
+                     target_index < function_count; ++target_index) {
+                    if (strcmp(functions[target_index].name,
+                               instruction->callee) == 0) {
+                        callee = &functions[target_index];
+                        matches++;
+                    }
+                }
+
+                if (matches == 0) {
+                    if (error && error_capacity)
+                        (void)snprintf(error, error_capacity,
+                            "function '%s' calls missing function '%s'",
+                            caller->name, instruction->callee);
+                    return false;
+                }
+                if (matches > 1) {
+                    if (error && error_capacity)
+                        (void)snprintf(error, error_capacity,
+                            "function '%s' calls ambiguous function name '%s'",
+                            caller->name, instruction->callee);
+                    return false;
+                }
+
+                if (instruction->argument_count != callee->parameter_count ||
+                    instruction->call_parameter_count != callee->parameter_count ||
+                    instruction->result_type != callee->return_type) {
+                    if (error && error_capacity)
+                        (void)snprintf(error, error_capacity,
+                            "call to '%s' in function '%s' does not match the callee signature",
+                            callee->name, caller->name);
+                    return false;
+                }
+
+                for (size_t pi = 0; pi < callee->parameter_count; ++pi) {
+                    if (instruction->call_parameter_types[pi] !=
+                        callee->parameters[pi].type) {
+                        if (error && error_capacity)
+                            (void)snprintf(error, error_capacity,
+                                "argument %zu of call to '%s' in function '%s' has the wrong type",
+                                pi + 1, callee->name, caller->name);
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
+    return true;
+}

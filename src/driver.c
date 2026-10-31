@@ -545,6 +545,17 @@ static int emit_mir(Compiler *compiler)
         }
     }
 
+    char module_error[512];
+    if (!yir_verify_module(lowered, function_count,
+                           module_error, sizeof(module_error))) {
+        fprintf(stderr, "ylang: emit-mir: module verifier rejected the program: %s\n",
+                module_error[0] ? module_error : "unknown module verification error");
+        for (size_t i = 0; i < lowered_count; ++i)
+            yir_destroy_function(&lowered[i]);
+        free(lowered);
+        return 1;
+    }
+
     for (size_t i = 0; i < function_count; ++i) {
         if (i != 0) (void)fputc('\n', stdout);
         yir_print_function(stdout, &lowered[i]);
