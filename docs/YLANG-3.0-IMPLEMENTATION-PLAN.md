@@ -133,8 +133,11 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 3.2.3.2 Lower every function and verify the complete module before writing.
   - [~] 3.2.3.3 Generate through a temporary stream and avoid leaving partial output on emission failure.
 - [~] 3.2.4 Add compile/run regressions for generated C arithmetic and checked division/modulo/negation; wait for Linux GCC/Clang CI before marking them validated.
-- [ ] 3.2.5 Compare IR-to-C output against the existing AST-to-C backend for matching fixtures.
-- [ ] 3.2.6 Expand branches and loops with differential tests and sanitizer coverage.
+- [~] 3.2.5 Compare IR-to-C output against the existing AST-to-C backend for matching fixtures; the differential runner is added and awaits CI validation.
+  - [~] 3.2.5.1 Build each supported fixture through the reference AST-to-C path.
+  - [~] 3.2.5.2 Build and link the same fixture through verified IR-to-C.
+  - [~] 3.2.5.3 Compare exit status, stdout, and stderr byte-for-byte across arithmetic, runtime errors, branches, loops, calls, and imported modules.
+- [~] 3.2.6 Add branch, loop, short-circuit, and imported-call differential fixtures; expand sanitizer coverage.
 - [ ] 3.2.7 Expand parity feature-by-feature until the supported C subset is covered.
 - [ ] 3.2.8 Switch the default build path only after parity and compatibility gates pass.
 

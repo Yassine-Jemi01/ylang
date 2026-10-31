@@ -86,6 +86,7 @@ grep -q 'E2123' build/await-type-error.out
 # HTTP integration runs its loopback server in-process to avoid background process leakage.
 python3 tests/run_http_integration.py
 python3 tests/benchmark-smoke.py
+python3 tests/ir_backend_parity.py
 if ./build/ylang > build/no-args.out 2>&1; then
     echo "FAIL: ylang without arguments should return usage error" >&2
     exit 1
