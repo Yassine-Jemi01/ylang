@@ -2,6 +2,8 @@
 
 Status: active development plan. This document is a target specification, not a claim that any listed feature is implemented or stable.
 
+The recursively decomposed, task-by-task implementation checklist is maintained in [YLANG-3.0-IMPLEMENTATION-PLAN.md](YLANG-3.0-IMPLEMENTATION-PLAN.md). Use that document to select small implementation leaves and track validation separately from code completion.
+
 ## Release objective
 
 YLang 3.0 aims to become a fast, safe, production-oriented compiled language with first-class Linux, Windows, and macOS support; a shared compiler IR; mature LLVM and NASM backends; a comprehensive standard library; and dependable developer tooling.

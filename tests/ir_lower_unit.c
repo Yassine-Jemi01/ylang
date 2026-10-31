@@ -724,6 +724,49 @@ static void lowers_for_with_break_and_increment_block(void)
     arena_destroy(&compiler.arena);
 }
 
+static void lowers_nested_loops_and_inner_break_scope(void)
+{
+    static const char source[] =
+        "fn main() -> int {\n"
+        "    let mut int outer = 0;\n"
+        "    while (outer < 2) {\n"
+        "        let mut int inner = 0;\n"
+        "        while (inner < 3) {\n"
+        "            inner = inner + 1;\n"
+        "            break;\n"
+        "        }\n"
+        "        outer = outer + 1;\n"
+        "    }\n"
+        "    return outer;\n"
+        "}\n";
+    Compiler compiler;
+    YIRFunction lowered = lower_checked_source(&compiler, source, "main");
+    size_t conditional_blocks = 0;
+    for (size_t bi = 0; bi < lowered.block_count; ++bi) {
+        for (size_t ii = 0; ii < lowered.blocks[bi].instruction_count; ++ii)
+            if (lowered.blocks[bi].instructions[ii].opcode == YIR_OP_COND_BRANCH)
+                conditional_blocks++;
+    }
+    assert(conditional_blocks >= 2);
+    yir_destroy_function(&lowered);
+    arena_destroy(&compiler.arena);
+}
+
+static void lowers_for_initializer_scope(void)
+{
+    static const char source[] =
+        "fn main() -> int {\n"
+        "    for (let mut int index = 0; index < 3; index = index + 1) { }\n"
+        "    return 42;\n"
+        "}\n";
+    Compiler compiler;
+    YIRFunction lowered = lower_checked_source(&compiler, source, "main");
+    assert(lowered.block_count >= 4);
+    assert(lowered.blocks[lowered.block_count - 1].instruction_count != 0);
+    yir_destroy_function(&lowered);
+    arena_destroy(&compiler.arena);
+}
+
 static void lowers_loop_with_break_and_continue(void)
 {
     static const char source[] =
@@ -765,6 +808,8 @@ int main(void)
     lowers_while_with_continue_and_loop_carried_value();
     lowers_for_with_break_and_increment_block();
     lowers_loop_with_break_and_continue();
+    lowers_nested_loops_and_inner_break_scope();
+    lowers_for_initializer_scope();
     puts("YLang IR lowering tests passed");
     return 0;
 }
