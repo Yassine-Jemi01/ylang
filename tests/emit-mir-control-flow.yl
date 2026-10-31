@@ -1,0 +1,17 @@
+fn main() -> int {
+    let mut int index = 0;
+
+    while (index < 6) {
+        index = index + 1;
+
+        if (index == 3) {
+            continue;
+        }
+
+        if (index == 5) {
+            break;
+        }
+    }
+
+    return index;
+}

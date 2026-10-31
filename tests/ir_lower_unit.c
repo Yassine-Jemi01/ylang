@@ -96,7 +96,7 @@ static void rejects_unsupported_function_body(void)
     YIRFunction lowered;
     char error[192];
     assert(!yir_lower_function(&function,&lowered,error,sizeof(error)));
-    assert(strstr(error,"one return statement")!=NULL);
+    assert(strstr(error,"current scalar IR lowering subset")!=NULL);
 }
 
 
@@ -168,7 +168,7 @@ static void lowers_if_else_returns(void)
     yir_destroy_function(&lowered);
 }
 
-static void rejects_if_without_else(void)
+static void lowers_if_without_else(void)
 {
     Expr condition = {
         .kind=EXPR_BOOL,
@@ -185,8 +185,10 @@ static void rejects_if_without_else(void)
     Function function = {.name="missing_else",.return_type=TYPE_VOID,.body=&body};
     YIRFunction lowered;
     char error[192];
-    assert(!yir_lower_function(&function,&lowered,error,sizeof(error)));
-    assert(strstr(error,"else branch")!=NULL);
+    assert(yir_lower_function(&function,&lowered,error,sizeof(error)));
+    assert(lowered.block_count==3);
+    assert(yir_verify_function(&lowered,error,sizeof(error)));
+    yir_destroy_function(&lowered);
 }
 
 
@@ -611,6 +613,135 @@ static void lowers_boolean_negation_condition(void)
     yir_destroy_function(&lowered);
 }
 
+static YIRFunction lower_checked_source(Compiler *compiler,
+                                         const char *source,
+                                         const char *function_name)
+{
+    memset(compiler, 0, sizeof(*compiler));
+    compiler->filename = "ir-control-flow-test.yl";
+    compiler->source = (char *)source;
+    compiler->source_length = strlen(source);
+    compiler->quiet_diagnostics = true;
+    compiler->program = parse_program(compiler);
+    assert(compiler->program != NULL);
+    assert(!compiler->had_error);
+    assert(check_program(compiler));
+    Function *function = find_function(compiler, function_name);
+    assert(function != NULL);
+
+    YIRFunction lowered = {0};
+    char error[256];
+    if (!yir_lower_function(function, &lowered, error, sizeof(error))) {
+        fprintf(stderr, "IR lowering failed: %s\n", error);
+        assert(false);
+    }
+    assert(yir_verify_function(&lowered, error, sizeof(error)));
+    return lowered;
+}
+
+static void lowers_nested_if_with_ssa_merge(void)
+{
+    static const char source[] =
+        "fn main() -> int {\n"
+        "    let mut int value = 0;\n"
+        "    if (true) {\n"
+        "        if (value < 10) { value = 1; } else { value = 2; }\n"
+        "    }\n"
+        "    return value;\n"
+        "}\n";
+    Compiler compiler;
+    YIRFunction lowered = lower_checked_source(&compiler, source, "main");
+    bool saw_merge_parameter = false;
+    for (size_t i = 0; i < lowered.block_count; ++i)
+        if (lowered.blocks[i].parameter_count != 0)
+            saw_merge_parameter = true;
+    assert(lowered.block_count >= 6);
+    assert(saw_merge_parameter);
+    yir_destroy_function(&lowered);
+    arena_destroy(&compiler.arena);
+}
+
+static void lowers_while_with_continue_and_loop_carried_value(void)
+{
+    static const char source[] =
+        "fn main() -> int {\n"
+        "    let mut int index = 0;\n"
+        "    while (index < 6) {\n"
+        "        index = index + 1;\n"
+        "        if (index == 3) { continue; }\n"
+        "    }\n"
+        "    return index;\n"
+        "}\n";
+    Compiler compiler;
+    YIRFunction lowered = lower_checked_source(&compiler, source, "main");
+    bool saw_backedge = false;
+    bool saw_conditional_branch = false;
+    for (size_t bi = 0; bi < lowered.block_count; ++bi) {
+        const YIRBlock *block = &lowered.blocks[bi];
+        for (size_t ii = 0; ii < block->instruction_count; ++ii) {
+            const YIRInstruction *instruction = &block->instructions[ii];
+            if (instruction->opcode == YIR_OP_BRANCH &&
+                instruction->target <= block->id)
+                saw_backedge = true;
+            if (instruction->opcode == YIR_OP_COND_BRANCH)
+                saw_conditional_branch = true;
+        }
+    }
+    assert(saw_backedge);
+    assert(saw_conditional_branch);
+    yir_destroy_function(&lowered);
+    arena_destroy(&compiler.arena);
+}
+
+static void lowers_for_with_break_and_increment_block(void)
+{
+    static const char source[] =
+        "fn main() -> int {\n"
+        "    let mut int index = 0;\n"
+        "    for (; index < 7; index = index + 1) {\n"
+        "        if (index == 4) { break; }\n"
+        "    }\n"
+        "    return index;\n"
+        "}\n";
+    Compiler compiler;
+    YIRFunction lowered = lower_checked_source(&compiler, source, "main");
+    bool saw_exit_parameters = false;
+    bool saw_increment_block = false;
+    for (size_t bi = 0; bi < lowered.block_count; ++bi) {
+        const YIRBlock *block = &lowered.blocks[bi];
+        if (block->parameter_count != 0 && block->id != 0)
+            saw_exit_parameters = true;
+        for (size_t ii = 0; ii < block->instruction_count; ++ii) {
+            const YIRInstruction *instruction = &block->instructions[ii];
+            if (instruction->opcode == YIR_OP_ADD_I64 &&
+                instruction->source_line >= 3)
+                saw_increment_block = true;
+        }
+    }
+    assert(saw_exit_parameters);
+    assert(saw_increment_block);
+    yir_destroy_function(&lowered);
+    arena_destroy(&compiler.arena);
+}
+
+static void lowers_loop_with_break_and_continue(void)
+{
+    static const char source[] =
+        "fn main() -> int {\n"
+        "    let mut int index = 0;\n"
+        "    loop() {\n"
+        "        index = index + 1;\n"
+        "        if (index < 3) { continue; } else { break; }\n"
+        "    }\n"
+        "    return index;\n"
+        "}\n";
+    Compiler compiler;
+    YIRFunction lowered = lower_checked_source(&compiler, source, "main");
+    assert(lowered.block_count >= 5);
+    yir_destroy_function(&lowered);
+    arena_destroy(&compiler.arena);
+}
+
 int main(void)
 {
     lowers_integer_arithmetic_return();
@@ -619,7 +750,7 @@ int main(void)
     lowers_empty_void_function();
     rejects_unsupported_function_body();
     lowers_if_else_returns();
-    rejects_if_without_else();
+    lowers_if_without_else();
     lowers_integer_function_parameters();
     lowers_boolean_literal_condition();
     lowers_boolean_function_parameter_and_return();
@@ -630,6 +761,10 @@ int main(void)
     rejects_global_assignment_as_local_ssa();
     lowers_real_checked_frontend_function();
     lowers_boolean_negation_condition();
+    lowers_nested_if_with_ssa_merge();
+    lowers_while_with_continue_and_loop_carried_value();
+    lowers_for_with_break_and_increment_block();
+    lowers_loop_with_break_and_continue();
     puts("YLang IR lowering tests passed");
     return 0;
 }

@@ -177,6 +177,12 @@ if ./build/ylang emit-mir tests/emit-mir.yl -o build/emit-mir.txt > build/emit-m
 fi
 grep -q "emit-mir does not accept -o" build/emit-mir-argument.out
 
+# Nested control flow and loop-carried scalar values are represented in verified MIR.
+./build/ylang emit-mir tests/emit-mir-control-flow.yl > build/emit-mir-control-flow.out
+grep -q 'cond_br' build/emit-mir-control-flow.out
+grep -q 'br bb' build/emit-mir-control-flow.out
+grep -Eq '^bb[0-9]+\(%[0-9]+: i64\):$' build/emit-mir-control-flow.out
+
 # Explicit mut is the preferred 3.0 spelling; legacy mutable let remains compatible.
 ./build/ylang check tests/explicit-mut.yl >/dev/null
 ./build/ylang build tests/explicit-mut.yl -o build/test-explicit-mut >/dev/null
