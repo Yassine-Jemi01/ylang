@@ -23,6 +23,7 @@ FIXTURES = (
     "tests/emit-ir-c-neg-overflow.yl",
     "tests/emit-ir-c-modulo-edge.yl",
     "tests/emit-ir-c-f64.yl",
+    "tests/emit-ir-c-opt-f64-div-zero.yl",
     "tests/emit-ir-c-short-circuit.yl",
     "tests/emit-mir-calls.yl",
     "tests/emit-mir-control-flow.yl",

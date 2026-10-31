@@ -275,6 +275,18 @@ static void folds_safe_f64_arithmetic_and_comparisons(void)
          .floating_immediate=2.5},
         {.opcode=YIR_OP_EQ_F64,.result_id=10,.result_type=YIR_TYPE_BOOL,
          .lhs=8,.rhs=9},
+        {.opcode=YIR_OP_SUB_F64,.result_id=11,.result_type=YIR_TYPE_F64,
+         .lhs=3,.rhs=2},
+        {.opcode=YIR_OP_LT_F64,.result_id=12,.result_type=YIR_TYPE_BOOL,
+         .lhs=11,.rhs=2},
+        {.opcode=YIR_OP_NE_F64,.result_id=13,.result_type=YIR_TYPE_BOOL,
+         .lhs=11,.rhs=1},
+        {.opcode=YIR_OP_LE_F64,.result_id=14,.result_type=YIR_TYPE_BOOL,
+         .lhs=11,.rhs=1},
+        {.opcode=YIR_OP_GT_F64,.result_id=15,.result_type=YIR_TYPE_BOOL,
+         .lhs=2,.rhs=1},
+        {.opcode=YIR_OP_GE_F64,.result_id=16,.result_type=YIR_TYPE_BOOL,
+         .lhs=1,.rhs=2},
         {.opcode=YIR_OP_RETURN,.lhs=10}
     };
     YIRBlock blocks[] = {
@@ -298,6 +310,18 @@ static void folds_safe_f64_arithmetic_and_comparisons(void)
     assert(instructions[7].floating_immediate==-2.5);
     assert(instructions[9].opcode==YIR_OP_CONST_BOOL);
     assert(instructions[9].immediate==0);
+    assert(instructions[10].opcode==YIR_OP_CONST_F64);
+    assert(instructions[10].floating_immediate==1.25);
+    assert(instructions[11].opcode==YIR_OP_CONST_BOOL);
+    assert(instructions[11].immediate==1);
+    assert(instructions[12].opcode==YIR_OP_CONST_BOOL);
+    assert(instructions[12].immediate==0);
+    assert(instructions[13].opcode==YIR_OP_CONST_BOOL);
+    assert(instructions[13].immediate==1);
+    assert(instructions[14].opcode==YIR_OP_CONST_BOOL);
+    assert(instructions[14].immediate==1);
+    assert(instructions[15].opcode==YIR_OP_CONST_BOOL);
+    assert(instructions[15].immediate==0);
     assert(yir_verify_function(&function,error,sizeof(error)));
 }
 

@@ -1,0 +1,4 @@
+fn main() -> int {
+    let float value = 1.0 / -0.0;
+    return 0;
+}

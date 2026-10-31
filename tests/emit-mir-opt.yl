@@ -9,3 +9,7 @@ fn preserve_trap() -> int {
 fn f64_safe() -> float {
     return (1.25 + 2.5) * 2.0;
 }
+
+fn preserve_f64_trap() -> float {
+    return 1.0 / -0.0;
+}

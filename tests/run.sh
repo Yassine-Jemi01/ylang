@@ -175,6 +175,7 @@ grep -Fq 'mul.f64' build/emit-mir-opt-before.out
 grep -Fq 'const.i64 84' build/emit-mir-opt-after.out
 grep -Fq 'div.i64' build/emit-mir-opt-after.out
 grep -Fq 'const.f64 0x1.ep+2' build/emit-mir-opt-after.out
+grep -Fq 'div.f64' build/emit-mir-opt-after.out
 if grep -Eq 'add[.]i64|mul[.]i64|add[.]f64|mul[.]f64' build/emit-mir-opt-after.out; then
     echo "FAIL: emit-mir-opt left foldable arithmetic in the MIR" >&2
     exit 1
@@ -263,6 +264,16 @@ ir_c_opt_div_zero_status=$?
 set -e
 [ "$ir_c_opt_div_zero_status" -eq 70 ]
 grep -Fq 'YLang runtime error: integer division by zero' build/emit-ir-c-opt-div-zero.stderr
+
+# Optimized IR-to-C must preserve division by negative floating-point zero.
+./build/ylang emit-ir-c-opt tests/emit-ir-c-opt-f64-div-zero.yl -o build/emit-ir-c-opt-f64-div-zero.c >/dev/null
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-opt-f64-div-zero.c -o build/test-emit-ir-c-opt-f64-div-zero
+set +e
+./build/test-emit-ir-c-opt-f64-div-zero > build/emit-ir-c-opt-f64-div-zero.stdout 2> build/emit-ir-c-opt-f64-div-zero.stderr
+ir_c_opt_f64_div_zero_status=$?
+set -e
+[ "$ir_c_opt_f64_div_zero_status" -eq 70 ]
+grep -Fq 'YLang runtime error: floating-point division by zero' build/emit-ir-c-opt-f64-div-zero.stderr
 
 # emit-ir-c-opt requires an explicit output path.
 if ./build/ylang emit-ir-c-opt tests/emit-mir-opt.yl > build/emit-ir-c-opt-no-output.out 2>&1; then
