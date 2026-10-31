@@ -1,9 +1,9 @@
-
+ 
 VERSION := $(shell cat VERSION)
 CC = gcc
 AR ?= ar
 PYTHON ?= python3
-CPPFLAGS += -Iinclude -Ibuild -DYLANG_VERSION=\"$(VERSION)\" -DYLANG_SHARE_DIR=\"$(PREFIX)/share/ylang\" -DYLANG_INCLUDE_DIR=\"$(PREFIX)/include\"
+CPPFLAGS += -Iinclude -Ibuild -DYLANG_VERSION=\\\"$(VERSION)\\\" -DYLANG_SHARE_DIR=\\\"$(PREFIX)/share/ylang\\\" -DYLANG_INCLUDE_DIR=\\\"$(PREFIX)/include\\\"
 CFLAGS ?= -std=c17 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes -g3 -O0
 LDFLAGS ?=
 PREFIX ?= /usr/local
@@ -19,7 +19,7 @@ else
 GAME2D_OUTPUT ?= build/dodge
 endif
 
-.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test ir-unit-test ir-lower-unit-test fuzz-frontend fuzz-smoke
+.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test ir-unit-test ir-lower-unit-test ir-print-unit-test fuzz-frontend fuzz-smoke
 
 all: $(BIN)
 
@@ -44,7 +44,7 @@ regen-runtime-template:
 	@$(PYTHON) tools/embed_text.py runtime/runtime_template.c build/runtime_template.h
 
 print-version:
-	@printf '%s\n' '$(VERSION)'
+	@printf '%s\\n' '$(VERSION)'
 
 build/frontend-unit: tests/frontend_unit.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c src/internal.h include/ylang/compiler.h include/ylang/lexer.h
 	@mkdir -p build
@@ -67,7 +67,14 @@ build/ir-lower-unit: tests/ir_lower_unit.c src/ir_lower.c src/ir.c src/internal.
 ir-lower-unit-test: build/ir-lower-unit
 	./build/ir-lower-unit
 
-test: $(BIN) frontend-unit-test ir-unit-test ir-lower-unit-test
+build/ir-print-unit: tests/ir_print_unit.c src/ir_print.c include/ylang/ir.h
+	@mkdir -p build
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ir_print_unit.c src/ir_print.c $(LDFLAGS) -o $@
+
+ir-print-unit-test: build/ir-print-unit
+	./build/ir-print-unit
+
+test: $(BIN) frontend-unit-test ir-unit-test ir-lower-unit-test ir-print-unit-test
 	sh tests/run.sh
 
 FUZZ_CC ?= clang
