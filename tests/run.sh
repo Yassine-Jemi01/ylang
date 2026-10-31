@@ -1827,6 +1827,13 @@ printf 'iteration\ninner\nouter\n' > build/owned-string-loop-cleanup.expected
 diff -u build/owned-string-loop-cleanup.expected build/owned-string-loop-cleanup.stdout
 grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-loop-cleanup.stderr
 
+# A move on a branch that always returns must not poison the fallthrough path.
+./build/ylang build tests/owned-string-if-return-branch.yl -o build/test-owned-string-if-return-branch >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string-if-return-branch > build/owned-string-if-return-branch.stdout 2> build/owned-string-if-return-branch.stderr
+printf 'value\\nvalue\\n' > build/owned-string-if-return-branch.expected
+diff -u build/owned-string-if-return-branch.expected build/owned-string-if-return-branch.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-if-return-branch.stderr
+
 # Opt-in runtime allocation diagnostics: the default program output must stay unchanged.
 ./build/ylang build tests/memory-stats.yl -o build/test-memory-stats >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-memory-stats > build/memory-stats.stdout 2> build/memory-stats.stderr
