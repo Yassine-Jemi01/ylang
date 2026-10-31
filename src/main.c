@@ -17,6 +17,7 @@ static void usage(FILE *stream)
         "  ylang debug <file.yl> [-o executable] [--cc gcc|clang]\n"
         "  ylang build-asm <file.yl> [-o executable]\n"
         "  ylang emit-c <file.yl> [-o generated.c]\n"
+        "  ylang emit-mir <file.yl>\n"
         "  ylang emit-asm <file.yl> [-o generated.asm]\n"
         "  ylang fix <file.yl> -o fixed.yl\n"
         "  ylang --version\n\n"
@@ -26,6 +27,7 @@ static void usage(FILE *stream)
         "  debug   Build with debug symbols and launch GDB (Linux) or LLDB (macOS).\n"
         "  build-asm Build the supported subset with NASM and ld (Linux x86-64).\n"
         "  emit-c  Write the generated C source for inspection.\n"
+        "  emit-mir Lower supported functions to verified YLang MIR and print it.\n"
         "  emit-asm Emit experimental Linux x86-64 NASM assembly for the supported subset.\n"
         "  fix     Apply high-confidence safe fixes to a new source file.\n",
         stream);
@@ -48,7 +50,7 @@ int main(int argc, char **argv)
     const char *command = argv[1];
     if (strcmp(command, "check") != 0 && strcmp(command, "build") != 0 &&
         strcmp(command, "debug") != 0 && strcmp(command, "emit-c") != 0 &&
-        strcmp(command, "emit-asm") != 0 && strcmp(command, "build-asm") != 0 &&
+        strcmp(command, "emit-mir") != 0 && strcmp(command, "emit-asm") != 0 && strcmp(command, "build-asm") != 0 &&
         strcmp(command, "fix") != 0) {
         fprintf(stderr, "ylang: unknown command '%s'\n\n", command);
         usage(stderr);
