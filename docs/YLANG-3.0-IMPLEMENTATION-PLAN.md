@@ -227,11 +227,11 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [ ] 4.1.6 Review and freeze the 3.0 ownership contract after parser/semantic feasibility review and owner approval.
 
 ### 4.2 Compiler implementation
-- [ ] 4.2.1 Add ownership state to semantic analysis.
-- [ ] 4.2.2 Reject use-after-move.
-- [ ] 4.2.3 Reject conflicting mutable/shared borrows.
-- [ ] 4.2.4 Add drop scopes and cleanup on return.
-- [ ] 4.2.5 Add cleanup on break, continue, and every conditional exit.
+- [~] 4.2.1 Add ownership state to semantic analysis; existing move-state tracking is extended with call-scoped shared-loan counts for named borrowed_string arguments.
+- [~] 4.2.2 Reject use-after-move; existing E2110 flow-sensitive checks remain in place and now reject moves that conflict with an active call-scoped loan (E2130).
+- [~] 4.2.3 Reject conflicting mutable/shared borrows; initial shared-loan checks reject same-call owner moves (E2130) and writes (E2131), while explicit mutable loans and general alias analysis remain open.
+- [~] 4.2.4 Add drop scopes and cleanup on return; existing owned_string cleanup covers lexical exits and function returns, with aggregate/drop-verifier work still open.
+- [~] 4.2.5 Add cleanup on break, continue, and every conditional exit; existing C-backend cleanup covers break/continue and branch scopes, with broader ownership/IR verification still open.
 - [ ] 4.2.6 Add explicit unsafe blocks and pointer-operation checks.
 - [ ] 4.2.7 Add ownership/drop verification in IR.
 
