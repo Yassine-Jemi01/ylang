@@ -64,6 +64,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 2.2.5.2 Reject branch-edge metadata on arithmetic and other non-branch instructions.
   - [~] 2.2.5.3 Reject call-only metadata attached to non-call instructions.
   - [~] 2.2.5.4 Reject missing true/false edge argument storage and malformed edge shapes.
+    - [x] Require edge argument pointers to be present exactly when their counts are non-zero.
   - [~] 2.2.5.5 Cover source spans, type mismatches, dominance, and module call signatures.
   - [~] 2.2.5.6 Reject misplaced callee symbols and mismatched instruction metadata before operand access.
 - [~] 2.2.6 Add verifier fuzzing and resource-limit tests.
