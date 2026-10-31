@@ -480,7 +480,7 @@ static void emit_runtime_helpers(FILE *stream, bool need_add,
     if (need_f64_to_i64) {
         (void)fputs(
             "static int64_t yir_f64_to_i64(double value) {\n"
-            "    if (!isfinite(value) || value < -9223372036854775808.0 || value >= 9223372036854775808.0)\n"
+            "    if (!isfinite(value) || value < -0x1p63 || value >= 0x1p63)\n"
             "        yir_runtime_error(\"to_int value is outside the signed 64-bit range\");\n"
             "    return (int64_t)value;\n"
             "}\n", stream);
