@@ -876,7 +876,8 @@ static void lowers_division_modulo_and_general_integer_negation(void)
     static const char source[] =
         "fn calculate(int value, int divisor) -> int {\n"
         "    return -(value / divisor) + (value % divisor);\n"
-        "}\n";
+        "}\n"
+        "fn main() -> int { return calculate(10, 3); }\n";
     Compiler compiler;
     YIRFunction lowered =
         lower_checked_source(&compiler, source, "calculate");
