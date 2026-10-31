@@ -2,7 +2,7 @@ name: YLang 3.0 IR verifier
 
 on:
   push:
-    branches: [ylang-3.0-dev]
+    branches: [main]
   pull_request:
     branches: [main]
     paths:
@@ -21,8 +21,8 @@ on:
       - ".github/workflows/ir-verifier.yml"
 
 concurrency:
-  group: ylang-3-ir-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
+  group: ylang-3-ir-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
