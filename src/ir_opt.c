@@ -408,7 +408,7 @@ static bool constant_fold_function(YIRFunction *function, char *error,
                                 "constant table exceeded the instruction count");
                         }
                         if (constant_count != previous_count)
-                            continue;
+                            changed = true;
                     }
                     continue;
                 }
