@@ -13,6 +13,7 @@ The `.github/workflows/freebsd.yml` workflow boots a real FreeBSD virtual
 machine and is intended to validate:
 
 - Building the C17 compiler with the system Clang toolchain, including explicit `libm` linkage for BSD math symbols.
+- Using the native `cc` driver by default for generated executables, so FreeBSD does not need a separate GCC installation.
 - Runtime-template generation and consistency checks.
 - The compiler regression suite.
 - The optional SDL2 GUI runtime and Game2D example build.
