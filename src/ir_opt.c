@@ -931,32 +931,186 @@ static void replace_value_uses(YIRFunction *function, uint32_t old_id,
     }
 }
 
+typedef struct {
+    uint32_t id;
+    uint32_t replacement;
+} ValueAlias;
+
+typedef struct {
+    ValueAlias *slots;
+    size_t capacity;
+} ValueAliasTable;
+
+typedef struct {
+    YIRInstruction instruction;
+} CSEEntry;
+
+static size_t value_id_hash(uint32_t id)
+{
+    return (size_t)(id * UINT32_C(2654435761));
+}
+
+static bool init_alias_table(ValueAliasTable *table, size_t instruction_count)
+{
+    memset(table, 0, sizeof(*table));
+    if (instruction_count > SIZE_MAX / 2) return false;
+    size_t capacity = 2;
+    const size_t required = instruction_count * 2;
+    while (capacity < required) {
+        if (capacity > SIZE_MAX / 2) return false;
+        capacity *= 2;
+    }
+    table->slots = calloc(capacity, sizeof(*table->slots));
+    if (!table->slots) return false;
+    table->capacity = capacity;
+    return true;
+}
+
+static void destroy_alias_table(ValueAliasTable *table)
+{
+    free(table->slots);
+    memset(table, 0, sizeof(*table));
+}
+
+static uint32_t resolve_alias(const ValueAliasTable *table, uint32_t id)
+{
+    if (!table || !table->slots || id == 0) return id;
+    for (;;) {
+        size_t slot = value_id_hash(id) & (table->capacity - 1);
+        while (table->slots[slot].id != 0) {
+            if (table->slots[slot].id == id) {
+                id = table->slots[slot].replacement;
+                break;
+            }
+            slot = (slot + 1) & (table->capacity - 1);
+        }
+        if (table->slots[slot].id == 0) return id;
+    }
+}
+
+static bool add_alias(ValueAliasTable *table, uint32_t id,
+                      uint32_t replacement)
+{
+    if (!table || !table->slots || id == 0 || replacement == 0 ||
+        id == replacement)
+        return false;
+    size_t slot = value_id_hash(id) & (table->capacity - 1);
+    while (table->slots[slot].id != 0) {
+        if (table->slots[slot].id == id) {
+            table->slots[slot].replacement = replacement;
+            return true;
+        }
+        slot = (slot + 1) & (table->capacity - 1);
+    }
+    table->slots[slot] = (ValueAlias){.id=id,.replacement=replacement};
+    return true;
+}
+
+static size_t cse_expression_hash(const YIRInstruction *instruction)
+{
+    uint64_t hash = (uint64_t)instruction->opcode;
+    hash = (hash ^ (uint64_t)instruction->result_type) *
+           UINT64_C(0x9e3779b185ebca87);
+    hash = (hash ^ instruction->lhs) * UINT64_C(0x9e3779b185ebca87);
+    hash = (hash ^ instruction->rhs) * UINT64_C(0x9e3779b185ebca87);
+    return (size_t)(hash ^ (hash >> 32));
+}
+
+static void apply_value_aliases(YIRFunction *function,
+                                const ValueAliasTable *aliases)
+{
+    for (size_t bi = 0; bi < function->block_count; ++bi) {
+        YIRBlock *block = (YIRBlock *)function->blocks + bi;
+        YIRInstruction *instructions = (YIRInstruction *)block->instructions;
+        for (size_t ii = 0; ii < block->instruction_count; ++ii) {
+            YIRInstruction *instruction = &instructions[ii];
+            instruction->lhs = resolve_alias(aliases, instruction->lhs);
+            instruction->rhs = resolve_alias(aliases, instruction->rhs);
+            for (size_t ai = 0; ai < instruction->argument_count; ++ai)
+                ((uint32_t *)instruction->arguments)[ai] =
+                    resolve_alias(aliases, instruction->arguments[ai]);
+            for (size_t ai = 0; ai < instruction->false_argument_count; ++ai)
+                ((uint32_t *)instruction->false_arguments)[ai] =
+                    resolve_alias(aliases, instruction->false_arguments[ai]);
+        }
+    }
+}
+
 static bool eliminate_common_subexpressions(YIRFunction *function,
                                             char *error,
                                             size_t error_capacity)
 {
     if (!yir_verify_function(function, error, error_capacity)) return false;
+    bool count_okay = false;
+    const size_t instruction_count = count_instructions(function, &count_okay);
+    if (!count_okay)
+        return optimize_fail(error, error_capacity,
+                             "function has too many instructions for common-subexpression elimination");
+
+    ValueAliasTable aliases;
+    if (!init_alias_table(&aliases, instruction_count))
+        return optimize_fail(error, error_capacity,
+                             "out of memory while preparing common-subexpression aliases");
 
     for (size_t bi = 0; bi < function->block_count; ++bi) {
         const YIRBlock *block = &function->blocks[bi];
-        YIRInstruction *instructions = (YIRInstruction *)block->instructions;
+        if (block->instruction_count > SIZE_MAX / 2) {
+            destroy_alias_table(&aliases);
+            return optimize_fail(error, error_capacity,
+                                 "block has too many instructions for common-subexpression elimination");
+        }
+        size_t capacity = 2;
+        const size_t required = block->instruction_count * 2;
+        while (capacity < required) {
+            if (capacity > SIZE_MAX / 2) {
+                destroy_alias_table(&aliases);
+                return optimize_fail(error, error_capacity,
+                                     "block is too large for common-subexpression elimination");
+            }
+            capacity *= 2;
+        }
+        CSEEntry *entries = calloc(capacity, sizeof(*entries));
+        if (!entries) {
+            destroy_alias_table(&aliases);
+            return optimize_fail(error, error_capacity,
+                                 "out of memory while preparing common-subexpression table");
+        }
+
+        const YIRInstruction *instructions = block->instructions;
         for (size_t ii = 0; ii < block->instruction_count; ++ii) {
-            YIRInstruction *candidate = &instructions[ii];
+            const YIRInstruction *candidate = &instructions[ii];
             if (!candidate->result_id ||
                 !is_cse_safe_opcode(candidate->opcode))
                 continue;
 
-            for (size_t prior = 0; prior < ii; ++prior) {
-                const YIRInstruction *available = &instructions[prior];
-                if (!available->result_id ||
-                    !same_pure_expression(available, candidate))
-                    continue;
-                replace_value_uses(function, candidate->result_id,
-                                   available->result_id);
-                break;
+            YIRInstruction expression = *candidate;
+            expression.lhs = resolve_alias(&aliases, expression.lhs);
+            expression.rhs = resolve_alias(&aliases, expression.rhs);
+            size_t slot = cse_expression_hash(&expression) & (capacity - 1);
+            while (entries[slot].instruction.result_id != 0) {
+                const YIRInstruction *available =
+                    &entries[slot].instruction;
+                if (same_pure_expression(available, &expression)) {
+                    const uint32_t canonical =
+                        resolve_alias(&aliases, available->result_id);
+                    if (!add_alias(&aliases, candidate->result_id, canonical)) {
+                        free(entries);
+                        destroy_alias_table(&aliases);
+                        return optimize_fail(error, error_capacity,
+                                             "common-subexpression alias table is full");
+                    }
+                    break;
+                }
+                slot = (slot + 1) & (capacity - 1);
             }
+            if (entries[slot].instruction.result_id == 0)
+                entries[slot].instruction = expression;
         }
+        free(entries);
     }
+
+    apply_value_aliases(function, &aliases);
+    destroy_alias_table(&aliases);
     return yir_verify_function(function, error, error_capacity);
 }
 
