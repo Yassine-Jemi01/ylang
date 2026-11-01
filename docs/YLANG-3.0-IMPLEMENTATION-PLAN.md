@@ -306,6 +306,15 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [~] 7.2.2 Verify macOS linker, runtime, GUI, and packaging behavior; macOS GCC-alias/Clang CI builds and tests the native and SDL2 paths, while packaging coverage remains open.
 - [ ] 7.2.3 Define ARM64 support only for targets with real CI coverage.
 
+### 7.3 BSD family
+- [~] 7.3.1 Add a real FreeBSD VM build-and-test job; the first CI workflow now targets FreeBSD 15.x, pending its first successful hosted run.
+- [ ] 7.3.2 Validate SDL2 GUI/Game2D dependencies and runtime behavior on FreeBSD.
+- [ ] 7.3.3 Audit filesystem, process, environment, networking, and linker behavior for BSD-specific differences.
+- [ ] 7.3.4 Add OpenBSD CI and resolve platform-specific build/runtime issues.
+- [ ] 7.3.5 Add NetBSD CI and resolve platform-specific build/runtime issues.
+- [ ] 7.3.6 Evaluate DragonFly BSD after FreeBSD/OpenBSD/NetBSD coverage is established.
+- [ ] 7.3.7 Publish a BSD capability matrix; do not claim a BSD target is supported until its native CI and documented acceptance tests pass.
+
 ## 8. Developer tools and ecosystem
 
 - [ ] 8.1.1 Stabilize formatter and linter contracts.
