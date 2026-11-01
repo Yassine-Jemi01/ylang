@@ -761,6 +761,38 @@ static void common_subexpression_pass_merges_integer_to_float_conversions(void)
 }
 
 
+
+static void common_subexpression_pass_keeps_checked_float_to_integer_conversions(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_F64}
+    };
+    YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_F64_TO_I64,.result_id=2,.result_type=YIR_TYPE_I64,
+         .lhs=1},
+        {.opcode=YIR_OP_F64_TO_I64,.result_id=3,.result_type=YIR_TYPE_I64,
+         .lhs=1},
+        {.opcode=YIR_OP_RETURN}
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,.instruction_count=3}
+    };
+    YIRFunction function = {
+        .name="cse_must_keep_checked_float_to_integer",
+        .return_type=YIR_TYPE_VOID,
+        .parameters=parameters,.parameter_count=1,
+        .blocks=blocks,.block_count=1
+    };
+    char error[256];
+
+    assert(yir_optimize_function(&function,error,sizeof(error)));
+    assert(blocks[0].instruction_count==3);
+    assert(blocks[0].instructions[0].opcode==YIR_OP_F64_TO_I64);
+    assert(blocks[0].instructions[1].opcode==YIR_OP_F64_TO_I64);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
+
 static void folds_safe_numeric_conversions_and_preserves_range_traps(void)
 {
     YIRInstruction instructions[] = {
@@ -1077,6 +1109,7 @@ int main(void)
     common_subexpressions_rewrite_block_edge_uses();
     common_subexpression_pass_does_not_merge_checked_divisions();
     common_subexpression_pass_merges_integer_to_float_conversions();
+    common_subexpression_pass_keeps_checked_float_to_integer_conversions();
     folds_safe_numeric_conversions_and_preserves_range_traps();
     copy_propagates_identical_values_from_all_predecessor_edges();
     copy_propagation_keeps_join_parameters_with_different_inputs();
