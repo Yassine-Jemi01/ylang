@@ -1701,30 +1701,6 @@ static void destroy_building_blocks(BuildingBlock *blocks, size_t block_count)
     free(blocks);
 }
 
-void yir_destroy_function(YIRFunction *function)
-{
-    if (!function) return;
-    if (function->blocks) {
-        YIRBlock *blocks = (YIRBlock *)function->blocks;
-        for (size_t bi = 0; bi < function->block_count; ++bi) {
-            YIRInstruction *instructions =
-                (YIRInstruction *)blocks[bi].instructions;
-            for (size_t ii = 0; ii < blocks[bi].instruction_count; ++ii) {
-                free((void *)instructions[ii].arguments);
-                free((void *)instructions[ii].false_arguments);
-                free((void *)instructions[ii].call_parameter_types);
-                free(instructions[ii].callee_symbol);
-            }
-            free(instructions);
-            free((void *)blocks[bi].parameters);
-        }
-        free(blocks);
-    }
-    free((void *)function->parameters);
-    free(function->symbol);
-    memset(function, 0, sizeof(*function));
-}
-
 bool yir_lower_function(const Function *function, YIRFunction *out,
                         char *error, size_t error_capacity)
 {
