@@ -335,11 +335,10 @@ bool yir_verify_function(const YIRFunction *function, char *error,
                        "only branch terminators may carry block arguments");
             goto cleanup;
         }
-        if ((term->argument_count == 0) != (term->arguments == NULL) ||
-            (term->false_argument_count == 0) !=
-                (term->false_arguments == NULL)) {
+        if ((term->argument_count && !term->arguments) ||
+            (term->false_argument_count && !term->false_arguments)) {
             (void)fail(error, error_capacity,
-                       "branch argument counts and arrays must agree");
+                       "non-empty branch argument lists require storage");
             goto cleanup;
         }
         if (term->opcode != YIR_OP_COND_BRANCH &&
