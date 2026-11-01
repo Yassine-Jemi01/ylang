@@ -120,7 +120,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 2.3.7.2 Specify and test the supported IEEE-754 binary64 runtime behavior across AST and scalar IR backends.
   - [~] 2.3.7.2.1 Preserve runtime overflow to positive/negative infinity; reject non-finite source literals.
   - [~] 2.3.7.2.2 Preserve NaN comparison rules, including NaN != NaN.
-  - [~] 2.3.7.2.3 Preserve subnormal values without unsafe constant folding.
+  - [~] 2.3.7.2.3 Preserve subnormal values without unsafe constant folding; the frontend now accepts representable non-zero subnormal literals, pending cross-backend CI.
   - [~] 2.3.7.2.4 Preserve underflow-to-zero operations and signed-zero behavior.
   - [~] 2.3.7.2.5 Keep division by positive and negative zero as a checked runtime error.
   - [~] 2.3.7.2.6 Add AST/IR/optimized-IR parity tests for overflow, NaN, subnormals, and underflow.
