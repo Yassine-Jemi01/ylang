@@ -272,11 +272,22 @@ jobs:
 
 
   zed-tree-sitter:
-    name: Zed Tree-sitter grammar
+    name: Zed extension and Tree-sitter checks
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+      - name: Set up Rust with the Zed WASI target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip2
+      - name: Check the Zed extension WebAssembly crate
+        run: cargo check --manifest-path editors/zed/Cargo.toml --target wasm32-wasip2
+      - name: Validate extension license and standalone LSP
+        run: |
+          test -f editors/zed/LICENSE
+          python3 -m py_compile tools/ylang-lsp.py
+          grep -Fq '$ROOT/tools/ylang-lsp.py' editors/zed/install-lsp.sh
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
