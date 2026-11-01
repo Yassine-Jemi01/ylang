@@ -5,6 +5,7 @@ PYTHON ?= python3
 CPPFLAGS += -Iinclude -Ibuild -DYLANG_VERSION=\"$(VERSION)\" -DYLANG_SHARE_DIR=\"$(PREFIX)/share/ylang\" -DYLANG_INCLUDE_DIR=\"$(PREFIX)/include\"
 CFLAGS ?= -std=c17 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototypes -g3 -O0
 LDFLAGS ?=
+LDLIBS ?= -lm
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
 
@@ -23,7 +24,7 @@ endif
 all: $(BIN)
 
 $(BIN): $(OBJ)
-	$(CC) $(CFLAGS) $(OBJ) $(LDFLAGS) -o $@
+	$(CC) $(CFLAGS) $(OBJ) $(LDFLAGS) $(LDLIBS) -o $@
 
 build/%.o: src/%.c
 	@mkdir -p build
@@ -47,56 +48,56 @@ print-version:
 
 build/frontend-unit: tests/frontend_unit.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c src/internal.h include/ylang/compiler.h include/ylang/lexer.h
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) -Isrc $(CFLAGS) tests/frontend_unit.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c $(LDFLAGS) -o $@
+	$(CC) $(CPPFLAGS) -Isrc $(CFLAGS) tests/frontend_unit.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c $(LDFLAGS) $(LDLIBS) -o $@
 
 frontend-unit-test: build/frontend-unit
 	./build/frontend-unit
 
 build/ir-unit: tests/ir_unit.c src/ir.c include/ylang/ir.h
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ir_unit.c src/ir.c $(LDFLAGS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ir_unit.c src/ir.c $(LDFLAGS) $(LDLIBS) -o $@
 
 ir-unit-test: build/ir-unit
 	./build/ir-unit
 
 build/ir-lower-unit: tests/ir_lower_unit.c src/ir_lower.c src/ir.c src/internal.h src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c src/sema.c include/ylang/ir.h include/ylang/compiler.h
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) -Isrc $(CFLAGS) tests/ir_lower_unit.c src/ir_lower.c src/ir.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c src/sema.c $(LDFLAGS) -o $@
+	$(CC) $(CPPFLAGS) -Isrc $(CFLAGS) tests/ir_lower_unit.c src/ir_lower.c src/ir.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c src/sema.c $(LDFLAGS) $(LDLIBS) -o $@
 
 ir-lower-unit-test: build/ir-lower-unit
 	./build/ir-lower-unit
 
 build/ir-print-unit: tests/ir_print_unit.c src/ir_print.c include/ylang/ir.h
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ir_print_unit.c src/ir_print.c $(LDFLAGS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ir_print_unit.c src/ir_print.c $(LDFLAGS) $(LDLIBS) -o $@
 
 ir-print-unit-test: build/ir-print-unit
 	./build/ir-print-unit
 
 build/ir-c-unit: tests/ir_c_unit.c src/ir_c.c src/ir.c include/ylang/ir.h
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ir_c_unit.c src/ir_c.c src/ir.c $(LDFLAGS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ir_c_unit.c src/ir_c.c src/ir.c $(LDFLAGS) $(LDLIBS) -o $@
 
 ir-c-unit-test: build/ir-c-unit
 	./build/ir-c-unit
 
 build/ir-opt-unit: tests/ir_opt_unit.c src/ir_opt.c src/ir.c include/ylang/ir.h
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ir_opt_unit.c src/ir_opt.c src/ir.c $(LDFLAGS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ir_opt_unit.c src/ir_opt.c src/ir.c $(LDFLAGS) $(LDLIBS) -o $@
 
 ir-opt-unit-test: build/ir-opt-unit
 	./build/ir-opt-unit
 
 build/ir-json-unit: tests/ir_json_unit.c src/ir_json.c src/ir.c include/ylang/ir.h
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ir_json_unit.c src/ir_json.c src/ir.c $(LDFLAGS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ir_json_unit.c src/ir_json.c src/ir.c $(LDFLAGS) $(LDLIBS) -o $@
 
 ir-json-unit-test: build/ir-json-unit
 	./build/ir-json-unit
 
 build/ir-fuzz-smoke: tests/ir_fuzz_smoke.c src/ir.c include/ylang/ir.h
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ir_fuzz_smoke.c src/ir.c $(LDFLAGS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ir_fuzz_smoke.c src/ir.c $(LDFLAGS) $(LDLIBS) -o $@
 
 ir-fuzz-smoke: build/ir-fuzz-smoke
 	./build/ir-fuzz-smoke
@@ -109,11 +110,11 @@ FUZZ_CFLAGS ?= -std=c17 -O1 -g -Wall -Wextra -Wpedantic -fsanitize=fuzzer,addres
 
 fuzz-frontend:
 	@mkdir -p build
-	$(FUZZ_CC) $(CPPFLAGS) -Isrc $(FUZZ_CFLAGS) tests/fuzz_frontend.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c src/sema.c -o build/fuzz-frontend
+	$(FUZZ_CC) $(CPPFLAGS) -Isrc $(FUZZ_CFLAGS) tests/fuzz_frontend.c src/parser.c src/lexer.c src/arena.c src/strbuf.c src/diagnostics.c src/string_utils.c src/sema.c $(LDLIBS) -o build/fuzz-frontend
 
 fuzz-ir:
 	@mkdir -p build
-	$(FUZZ_CC) $(CPPFLAGS) $(FUZZ_CFLAGS) -DYLANG_IR_FUZZ_LIBFUZZER tests/ir_fuzz_smoke.c src/ir.c -o build/fuzz-ir
+	$(FUZZ_CC) $(CPPFLAGS) $(FUZZ_CFLAGS) -DYLANG_IR_FUZZ_LIBFUZZER tests/ir_fuzz_smoke.c src/ir.c $(LDLIBS) -o build/fuzz-ir
 
 fuzz-smoke: fuzz-frontend fuzz-ir
 	@mkdir -p build/fuzz-corpus
@@ -147,7 +148,7 @@ build/libylang_gui.a: build/ylang_gui.o
 	$(AR) rcs $@ $<
 
 build/gui-example: examples/gui.c build/libylang_gui.a
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(GUI_CFLAGS) $< build/libylang_gui.a $(GUI_LIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(GUI_CFLAGS) $< build/libylang_gui.a $(GUI_LIBS) $(LDLIBS) -o $@
 
 install-gui: gui
 	install -d '$(DESTDIR)$(PREFIX)/include/ylang' '$(DESTDIR)$(PREFIX)/lib' '$(DESTDIR)$(PREFIX)/share/ylang/stdlib/gui' '$(DESTDIR)$(PREFIX)/share/ylang/stdlib'
