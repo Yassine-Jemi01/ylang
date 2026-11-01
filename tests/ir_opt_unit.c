@@ -562,6 +562,58 @@ static void eliminates_dead_pure_values_but_keeps_checked_arithmetic(void)
     assert(yir_verify_function(&function,error,sizeof(error)));
 }
 
+static void dead_code_live_value_lookup_scales_to_large_functions(void)
+{
+    enum { PAIRS = 4096 };
+    const size_t instruction_count = (size_t)PAIRS * 4 + 1;
+    YIRInstruction *instructions =
+        calloc(instruction_count, sizeof(*instructions));
+    assert(instructions != NULL);
+    size_t cursor = 0;
+    for (uint32_t i = 0; i < PAIRS * 2; ++i) {
+        instructions[cursor++] = (YIRInstruction){
+            .opcode=YIR_OP_CONST_I64,.result_id=i + 1,
+            .result_type=YIR_TYPE_I64,.immediate=(i & 1u) ? 1 : 42
+        };
+    }
+    for (uint32_t i = 0; i < PAIRS; ++i) {
+        instructions[cursor++] = (YIRInstruction){
+            .opcode=YIR_OP_DIV_I64,.result_id=PAIRS * 2 + i + 1,
+            .result_type=YIR_TYPE_I64,.lhs=i * 2 + 1,.rhs=i * 2 + 2
+        };
+    }
+    for (uint32_t i = 0; i < PAIRS; ++i) {
+        instructions[cursor++] = (YIRInstruction){
+            .opcode=YIR_OP_EQ_I64,.result_id=PAIRS * 3 + i + 1,
+            .result_type=YIR_TYPE_BOOL,.lhs=i * 2 + 1,.rhs=i * 2 + 2
+        };
+    }
+    instructions[cursor++] = (YIRInstruction){.opcode=YIR_OP_RETURN};
+    assert(cursor == instruction_count);
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,
+         .instruction_count=instruction_count}
+    };
+    YIRFunction function = {
+        .name="dce_live_value_hash_stress",
+        .return_type=YIR_TYPE_VOID,.blocks=blocks,.block_count=1
+    };
+    const YIROptPass pass[] = {YIR_OPT_DEAD_CODE_ELIMINATION};
+    char error[256];
+
+    assert(yir_run_opt_pipeline(&function,pass,1,error,sizeof(error)));
+    assert(blocks[0].instruction_count == (size_t)PAIRS * 3 + 1);
+    for (size_t i = 0; i < (size_t)PAIRS * 2; ++i)
+        assert(instructions[i].opcode == YIR_OP_CONST_I64);
+    for (size_t i = (size_t)PAIRS * 2;
+         i < (size_t)PAIRS * 3; ++i)
+        assert(instructions[i].opcode == YIR_OP_DIV_I64);
+    assert(instructions[blocks[0].instruction_count - 1].opcode ==
+           YIR_OP_RETURN);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+    free(instructions);
+}
+
 static void keeps_unused_floating_division_that_can_trap(void)
 {
     YIRInstruction instructions[] = {
@@ -1263,6 +1315,7 @@ int main(void)
     preserves_calls_and_module_symbols();
     simplifies_constant_branch_and_frees_unreachable_block();
     eliminates_dead_pure_values_but_keeps_checked_arithmetic();
+    dead_code_live_value_lookup_scales_to_large_functions();
     keeps_unused_floating_division_that_can_trap();
     keeps_void_calls_even_when_their_result_is_unused();
     exposes_ordered_and_validated_optimizer_pipelines();
