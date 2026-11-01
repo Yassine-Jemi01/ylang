@@ -39,7 +39,7 @@ Set `YLANG_COMPILER` to the compiler executable path if your compiler is install
 
 This is the initial LSP foundation. Completion, hover, and definition are currently based on lightweight source scanning and are limited to the current file; they are not yet backed by the compiler's semantic symbol table. Formatting, rename, references, cross-file navigation, code actions, and debugging are not implemented. Compiler diagnostics depend on the output format of `ylang check`; malformed or incomplete source may not always produce a diagnostic.
 
-The extension is installed as a development extension from this repository. Publishing it in Zed's extension gallery requires a dedicated extension repository and Zed's submission process.
+The extension can be developed from this repository. The Zed registry supports extensions stored in a subdirectory, so the official registry can reference `editors/zed` directly. Until the registry submission is accepted and merged, install it as a development extension.
 
 ## Grammar development
 
