@@ -325,6 +325,12 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [ ] 8.1.4 Complete project dependency resolution, lockfiles, and offline cache.
 - [ ] 8.1.5 Add reproducible builds and package integrity checks.
 - [ ] 8.1.6 Complete documentation, examples, migration guide, and release notes.
+- [x] 8.1.7 Add a VS Code workspace recommendation for the official YLang extension when a project containing `.yl` files is opened.
+- [x] 8.1.8 Add a Vim runtime integration for `.yl` filetype detection, syntax highlighting, indentation, and comments; cover it with a headless smoke test.
+- [x] 8.1.9 Keep Neovim filetype, syntax, and compiler-diagnostic integration covered by editor CI.
+- [x] 8.1.10 Document installation and discovery behavior for VS Code, Zed, Vim, and Neovim.
+- [~] 8.1.11 Publish the Zed extension in the official extension gallery and verify first-open extension suggestions. The project enables Zed's suggestion setting, but gallery publication is still required.
+- [~] 8.1.12 Provide a standard missing-plugin prompt for Vim/Neovim. These editors have no shared built-in marketplace or standard recommendation API; investigate editor-native alternatives without requiring a third-party plugin manager to already be installed.
 
 ## Definition of done for every leaf task
 
