@@ -1089,6 +1089,44 @@ static void copy_propagation_compacts_multiple_parameters_on_true_and_false_edge
     assert(yir_verify_function(&function,error,sizeof(error)));
 }
 
+static void common_subexpression_elimination_scales_with_repeated_expressions(void)
+{
+    enum { DUPLICATES = 4096 };
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_I64},
+        {.id=2,.type=YIR_TYPE_I64}
+    };
+    const size_t instruction_count = (size_t)DUPLICATES + 1;
+    YIRInstruction *instructions =
+        calloc(instruction_count, sizeof(*instructions));
+    assert(instructions != NULL);
+    for (uint32_t i = 0; i < DUPLICATES; ++i) {
+        instructions[i] = (YIRInstruction){
+            .opcode=YIR_OP_ADD_I64,.result_id=i + 3,
+            .result_type=YIR_TYPE_I64,.lhs=1,.rhs=2
+        };
+    }
+    instructions[instruction_count - 1] = (YIRInstruction){
+        .opcode=YIR_OP_RETURN,.lhs=(uint32_t)(DUPLICATES + 2)
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,
+         .instruction_count=instruction_count}
+    };
+    YIRFunction function = {
+        .name="large_repeated_cse",.return_type=YIR_TYPE_I64,
+        .parameters=parameters,.parameter_count=2,
+        .blocks=blocks,.block_count=1
+    };
+    const YIROptPass pass[] = {YIR_OPT_COMMON_SUBEXPRESSION};
+    char error[256];
+
+    assert(yir_run_opt_pipeline(&function,pass,1,error,sizeof(error)));
+    assert(instructions[instruction_count - 1].lhs==3);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+    free(instructions);
+}
+
 static void constant_folding_scales_to_large_instruction_streams(void)
 {
     enum { PAIRS = 4096 };
@@ -1166,6 +1204,7 @@ static void hash_table_handles_colliding_value_ids(void)
 
 int main(void)
 {
+    common_subexpression_elimination_scales_with_repeated_expressions();
     constant_folding_scales_to_large_instruction_streams();
     hash_table_handles_colliding_value_ids();
     folds_safe_integer_and_boolean_constants();
