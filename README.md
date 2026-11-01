@@ -1,6 +1,12 @@
-# YLang
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="website-app/public/ylang-logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="website-app/public/ylang-logo-light.svg">
+    <img src="website-app/public/ylang-logo-light.svg" alt="YLang" width="260">
+  </picture>
+</p>
 
-**A small compiled programming language with explicit types and actionable diagnostics.**
+<p align="center"><strong>A small compiled programming language with explicit types and actionable diagnostics.</strong></p>
 
 YLang is implemented in C17. Its compiler tokenizes and parses `.yl` files, checks names, initialization and types, generates C, and invokes GCC or Clang to produce a native executable. Linux and macOS are the primary tested targets; experimental native Windows support is available for 64-bit Windows with MinGW-w64. Windows support currently has a focused CI smoke suite and is not yet a claim of complete platform parity. It is a compiled language toolchain, not an interpreter.
 
@@ -411,8 +417,6 @@ Bug reports and focused improvements are welcome. Read [`CONTRIBUTING.md`](CONTR
 YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 
 ## Project resources
-
-![YLang logo](assets/branding/ylang-logo-full.svg)
 
 - [YLang Book (online HTML)](https://yassine-jemi01.github.io/ylang/learn/index.html)
 - [Language specification](docs/language-spec.md)
