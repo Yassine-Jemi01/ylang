@@ -8,7 +8,7 @@ The recursively decomposed, task-by-task implementation checklist is maintained 
 
 YLang 3.0 aims to become a fast, safe, production-oriented compiled language with first-class Linux, Windows, and macOS support; a shared compiler IR; mature LLVM and NASM backends; a comprehensive standard library; and dependable developer tooling.
 
-The release must preserve the documented 2.2.x behavior unless a deliberate, documented 3.0 language migration is approved. The 3.0 work happens on `ylang-3.0-dev`; do not publish a 3.0 tag, GitHub Release, package, or stable website claim until every release gate below passes and the project owner explicitly approves publication.
+The release must preserve the documented 2.2.x behavior unless a deliberate, documented 3.0 language migration is approved. The 3.0 work happens on `ylang-3.0-dev`; do not publish a 3.0 tag, GitHub Release, package, or stable website claim until every release gate below passes and the project owner explicitly approves publication. BSD support is also a 3.0 goal, beginning with FreeBSD and expanding to OpenBSD, NetBSD, and potentially DragonFly BSD only after native CI validation.
 
 ## Non-negotiable engineering rules
 
@@ -139,6 +139,9 @@ Modules may be implemented in YLang, C, or carefully selected dependencies. The 
 - Linux x86-64: primary reference target.
 - Windows x86-64: first-class target, not experimental; native compiler builds, executable generation, filesystem/process/network APIs, package installation, tests, and documented toolchain support.
 - macOS: first-class target with native toolchain, linker, filesystem, networking, GUI dependencies, and CI coverage.
+- FreeBSD x86-64: planned BSD target; begin with native VM CI for the C compiler, regression suite, and optional SDL2 runtime.
+- OpenBSD and NetBSD: planned follow-up targets after the FreeBSD compatibility baseline is established.
+- DragonFly BSD: evaluate after FreeBSD, OpenBSD, and NetBSD have repeatable CI coverage.
 - ARM64: support only when each backend and standard-library module has real CI and runtime coverage; do not imply NASM support.
 
 ## Milestone order
