@@ -1102,8 +1102,8 @@ static void common_subexpression_elimination_scales_with_repeated_expressions(vo
     assert(instructions != NULL);
     for (uint32_t i = 0; i < DUPLICATES; ++i) {
         instructions[i] = (YIRInstruction){
-            .opcode=YIR_OP_ADD_I64,.result_id=i + 3,
-            .result_type=YIR_TYPE_I64,.lhs=1,.rhs=2
+            .opcode=YIR_OP_EQ_I64,.result_id=i + 3,
+            .result_type=YIR_TYPE_BOOL,.lhs=1,.rhs=2
         };
     }
     instructions[instruction_count - 1] = (YIRInstruction){
@@ -1114,7 +1114,7 @@ static void common_subexpression_elimination_scales_with_repeated_expressions(vo
          .instruction_count=instruction_count}
     };
     YIRFunction function = {
-        .name="large_repeated_cse",.return_type=YIR_TYPE_I64,
+        .name="large_repeated_cse",.return_type=YIR_TYPE_BOOL,
         .parameters=parameters,.parameter_count=2,
         .blocks=blocks,.block_count=1
     };
