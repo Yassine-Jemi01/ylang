@@ -64,7 +64,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 2.2.5.2 Reject branch-edge metadata on arithmetic and other non-branch instructions.
   - [~] 2.2.5.3 Reject call-only metadata attached to non-call instructions.
   - [~] 2.2.5.4 Reject missing true/false edge argument storage and malformed edge shapes.
-    - [x] Require edge argument pointers to be present exactly when their counts are non-zero.
+    - [x] Require backing storage for non-empty edge argument lists; allow retained backing storage when optimizer compaction reduces a list to zero, and reject false-edge metadata on unconditional branches.
     - [x] Reject false-edge arguments on unconditional branches with a dedicated malformed-IR regression test; CI validation pending.
   - [~] 2.2.5.5 Cover source spans, type mismatches, dominance, and module call signatures.
   - [~] 2.2.5.6 Reject misplaced callee symbols and mismatched instruction metadata before operand access.
