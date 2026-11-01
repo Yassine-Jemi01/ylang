@@ -262,6 +262,9 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 5.2.4.3 Remove the matching edge argument and block parameter while preserving order.
   - [~] 5.2.4.4 Keep join parameters when incoming values differ or are loop-carried.
 - [~] 5.2.5 Safe local common-subexpression elimination with SSA-use rewriting and trapping-op exclusions.
+  - [x] 5.2.5.1 Replace quadratic prior-instruction scans with per-block open-addressed expression lookup.
+  - [x] 5.2.5.2 Defer SSA alias rewrites and apply them in one function-wide pass.
+  - [x] 5.2.5.3 Add a 4,096-duplicate-expression stress regression; IR verifier and backend-equivalence checks pass.
 - [ ] 5.2.6 Inlining and devirtualization.
 - [ ] 5.2.7 Loop-invariant code motion and induction-variable simplification.
 - [ ] 5.2.8 Vectorization with target-feature checks.
