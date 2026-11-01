@@ -15,7 +15,7 @@ machine and is intended to validate:
 - Building the C17 compiler with the system Clang toolchain, including explicit `libm` linkage for BSD math symbols.
 - Using the native `cc` driver by default for generated executables, so FreeBSD does not need a separate GCC installation.
 - Runtime-template generation and consistency checks.
-- The compiler regression suite.
+- The compiler regression suite (the interactive debugger launch smoke test is skipped until FreeBSD LLDB process-launch support is validated separately).
 - The optional SDL2 GUI runtime and Game2D example build.
 - Compiling and running a small native YLang executable.
 
