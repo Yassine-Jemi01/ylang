@@ -207,8 +207,8 @@ Imports can be nested, and repeated references to the same canonical file reuse 
 ylang --help
 ylang --version
 ylang check <file.yl>
-ylang build <file.yl> [-o executable] [--cc gcc|clang]
-ylang debug <file.yl> [-o executable] [--cc gcc|clang]
+ylang build <file.yl> [-o executable] [--cc cc|gcc|clang]
+ylang debug <file.yl> [-o executable] [--cc cc|gcc|clang]
 ylang emit-c <file.yl> [-o generated.c]
 ylang fix <file.yl> -o <fixed.yl>
 ```
