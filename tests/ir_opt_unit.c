@@ -1013,6 +1013,50 @@ static void algebraic_simplification_applies_safe_integer_identities(void)
     assert(yir_verify_function(&function,error,sizeof(error)));
 }
 
+static void algebraic_constant_lookup_scales_to_large_blocks(void)
+{
+    enum { OPERATIONS = 4096 };
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_I64}
+    };
+    const size_t instruction_count = (size_t)OPERATIONS + 2;
+    YIRInstruction *instructions =
+        calloc(instruction_count, sizeof(*instructions));
+    assert(instructions != NULL);
+    instructions[0] = (YIRInstruction){
+        .opcode=YIR_OP_CONST_I64,.result_id=2,
+        .result_type=YIR_TYPE_I64,.immediate=0
+    };
+    for (uint32_t i = 0; i < OPERATIONS; ++i) {
+        instructions[i + 1] = (YIRInstruction){
+            .opcode=YIR_OP_MUL_I64,.result_id=i + 3,
+            .result_type=YIR_TYPE_I64,.lhs=1,.rhs=2
+        };
+    }
+    instructions[instruction_count - 1] = (YIRInstruction){
+        .opcode=YIR_OP_RETURN,.lhs=OPERATIONS + 2
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,
+         .instruction_count=instruction_count}
+    };
+    YIRFunction function = {
+        .name="algebra_constant_lookup_stress",
+        .return_type=YIR_TYPE_I64,.parameters=parameters,
+        .parameter_count=1,.blocks=blocks,.block_count=1
+    };
+    const YIROptPass pass[] = {YIR_OPT_ALGEBRAIC_SIMPLIFY};
+    char error[256];
+
+    assert(yir_run_opt_pipeline(&function,pass,1,error,sizeof(error)));
+    for (size_t i = 1; i <= OPERATIONS; ++i) {
+        assert(instructions[i].opcode == YIR_OP_CONST_I64);
+        assert(instructions[i].immediate == 0);
+    }
+    assert(yir_verify_function(&function,error,sizeof(error)));
+    free(instructions);
+}
+
 static void algebraic_simplification_does_not_hide_divide_by_zero(void)
 {
     const YIRFunctionParameter parameters[] = {
@@ -1231,6 +1275,7 @@ int main(void)
     copy_propagation_keeps_join_parameters_with_different_inputs();
     copy_propagation_compacts_multiple_parameters_on_true_and_false_edges();
     algebraic_simplification_applies_safe_integer_identities();
+    algebraic_constant_lookup_scales_to_large_blocks();
     algebraic_simplification_does_not_hide_divide_by_zero();
     puts("YLang IR optimizer tests passed");
     return 0;
