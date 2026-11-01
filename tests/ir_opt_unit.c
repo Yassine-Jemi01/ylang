@@ -520,10 +520,13 @@ static void simplifies_constant_branch_and_frees_unreachable_block(void)
     assert(function.blocks[0].instructions[0].opcode==YIR_OP_CONST_I64);
     assert(function.blocks[0].instructions[1].opcode==YIR_OP_BRANCH);
     assert(function.blocks[0].instructions[1].target==1);
-    assert(function.blocks[0].instructions[1].argument_count==1);
-    assert(function.blocks[0].instructions[1].arguments[0]==1);
+    assert(function.blocks[0].instructions[1].argument_count==0);
+    assert(function.blocks[0].instructions[1].arguments!=NULL);
     assert(function.blocks[0].instructions[1].false_arguments==NULL);
     assert(function.blocks[1].id==1);
+    assert(function.blocks[1].parameter_count==0);
+    assert(function.blocks[1].instructions[0].opcode==YIR_OP_RETURN);
+    assert(function.blocks[1].instructions[0].lhs==1);
     assert(yir_verify_function(&function,error,sizeof(error)));
     yir_destroy_function(&function);
 }
