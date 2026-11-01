@@ -2,9 +2,10 @@ name: YLang 3.0 IR verifier
 
 on:
   push:
-    branches: [main]
+    branches: [main, ylang-3.0-dev]
   pull_request:
-    branches: [main]
+    branches: [main, ylang-3.0-dev]
+  workflow_dispatch:
     paths:
       - "src/ir.c"
       - "src/ir_opt.c"
@@ -46,5 +47,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Build the YLang compiler
+        run: make clean all
       - name: Compile verifier and lowering tests with strict warnings
         run: sh tests/run-ir-unit.sh
+      - name: Compare AST, IR, and optimized IR backends
+        run: python3 tests/ir_backend_parity.py
