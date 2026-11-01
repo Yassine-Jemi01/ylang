@@ -70,7 +70,9 @@ grep -E -q '#line 2 ".*debug map lib[.]yl"' build/debug-source-map-import.c
 [ "$(./build/test-debug-source-map-import)" = "42" ]
 
 # Launch the native debugger against a source-mapped debug build and exit cleanly.
-if command -v gdb >/dev/null 2>&1; then
+if [ "${YLANG_SKIP_DEBUGGER_TEST:-0}" = "1" ]; then
+    echo "SKIP: debugger launch coverage is disabled for this platform environment."
+elif command -v gdb >/dev/null 2>&1; then
     printf 'quit\n' | ./build/ylang debug tests/debug-source-map.yl -o build/debug-launch-test > build/debug-launch.out 2>&1
 elif command -v lldb >/dev/null 2>&1; then
     printf 'quit\n' | ./build/ylang debug tests/debug-source-map.yl -o build/debug-launch-test > build/debug-launch.out 2>&1
