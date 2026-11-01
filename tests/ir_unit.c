@@ -529,6 +529,28 @@ static void reject_false_target_on_unconditional_branch(void)
         "false branch targets are only valid on conditional branches") != NULL);
 }
 
+static void reject_false_edge_arguments_on_unconditional_branch(void)
+{
+    const uint32_t false_arguments[] = {1};
+    const YIRInstruction entry[] = {
+        {.opcode=YIR_OP_BRANCH,.target=1,
+         .false_arguments=false_arguments,.false_argument_count=1}
+    };
+    const YIRInstruction exit[] = {{.opcode=YIR_OP_RETURN}};
+    const YIRBlock blocks[] = {
+        {.id=0,.instructions=entry,.instruction_count=1},
+        {.id=1,.instructions=exit,.instruction_count=1}
+    };
+    const YIRFunction function = {
+        .name="bad_unconditional_false_edge_arguments",
+        .return_type=YIR_TYPE_VOID,.blocks=blocks,.block_count=2
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,
+        "unconditional branches cannot carry false-edge arguments") != NULL);
+}
+
 static void reject_branch_target_metadata_on_call(void)
 {
     const YIRInstruction instructions[] = {
@@ -1054,6 +1076,7 @@ int main(void)
     reject_non_void_terminator_result_type();
     reject_branch_target_metadata_on_arithmetic_instruction();
     reject_false_target_on_unconditional_branch();
+    reject_false_edge_arguments_on_unconditional_branch();
     reject_branch_target_metadata_on_call();
     reject_duplicate_qualified_function_symbols();
     puts("YLang IR verifier tests passed"); return 0;
