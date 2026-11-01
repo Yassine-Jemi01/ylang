@@ -283,6 +283,9 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 5.2.11.6 Add positive, negative, and verifier-regression tests.
 
 - [~] 5.2.12 Replace linear IR constant-table lookups with open-addressed hashing in constant folding and constant-branch simplification; correctness and sanitizer CI validation pending.
+- [~] 5.2.13 Replace repeated backward scans for local integer constants in algebraic simplification with a per-block open-addressed lookup table.
+  - [x] 5.2.13.1 Add collision-safe value-ID hashing and preserve instruction-order visibility.
+  - [x] 5.2.13.2 Add a 4,096-operation stress regression for constant lookup.
 
 ## 6. Standard library and desktop application development
 
