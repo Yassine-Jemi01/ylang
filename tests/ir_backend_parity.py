@@ -66,6 +66,7 @@ def main() -> int:
     compiler_name = " ".join(compiler_args).lower()
     ylang_cc = "clang" if "clang" in compiler_name else "gcc"
     executable_suffix = ".exe" if os.name == "nt" else ""
+    native_math_libs = [] if os.name == "nt" else ["-lm"]
 
     if not YLANG.is_file():
         fail("setup", f"compiler binary not found: {YLANG}")
@@ -97,7 +98,7 @@ def main() -> int:
             run_checked(
                 fixture_name,
                 [*compiler_args, "-std=c17", "-Wall", "-Wextra",
-                 "-Wpedantic", str(ir_source), "-o", str(ir_executable)],
+                 "-Wpedantic", str(ir_source), *native_math_libs, "-o", str(ir_executable)],
             )
             run_checked(
                 fixture_name,
@@ -107,7 +108,7 @@ def main() -> int:
             run_checked(
                 fixture_name,
                 [*compiler_args, "-std=c17", "-Wall", "-Wextra",
-                 "-Wpedantic", str(optimized_ir_source), "-o",
+                 "-Wpedantic", str(optimized_ir_source), *native_math_libs, "-o",
                  str(optimized_ir_executable)],
             )
 
