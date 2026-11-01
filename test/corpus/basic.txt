@@ -90,7 +90,6 @@ fn main() -> int {
       (expression_statement
         (assignment_expression
           left: (identifier)
-          operator: "+="
           right: (integer)))
       (variable_declaration
         type: (primitive_type)
