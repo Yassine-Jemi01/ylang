@@ -5,6 +5,7 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
 
 EXPECTED_VERSION=$(cat VERSION)
+NATIVE_LIBS=${NATIVE_LIBS:--lm}
 ./build/ylang --version | grep -Fq "$EXPECTED_VERSION"
 ./build/ylang --help > build/help.out
 grep -q 'ylang check' build/help.out
@@ -242,7 +243,7 @@ grep -Fq 'call @leaf(' build/emit-mir-module-calls.out
 
 # The IR-to-C emitter must link duplicate source names from separate modules correctly.
 ./build/ylang emit-ir-c tests/ir-module-calls/main.yl -o build/ir-module-calls.c >/dev/null
-cc -std=c17 -Wall -Wextra -Wpedantic build/ir-module-calls.c -o build/test-ir-module-calls
+cc -std=c17 -Wall -Wextra -Wpedantic build/ir-module-calls.c $NATIVE_LIBS -o build/test-ir-module-calls
 set +e
 ./build/test-ir-module-calls
 ir_module_calls_status=$?
@@ -254,7 +255,7 @@ set -e
 [ "$(grep -c 'cond_br' build/emit-ir-c-short-circuit.mir)" -ge 4 ]
 ./build/ylang emit-ir-c tests/emit-ir-c-short-circuit.yl -o build/emit-ir-c-short-circuit.c >/dev/null
 grep -Fq 'yir_div_i64' build/emit-ir-c-short-circuit.c
-cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-short-circuit.c -o build/test-emit-ir-c-short-circuit
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-short-circuit.c $NATIVE_LIBS -o build/test-emit-ir-c-short-circuit
 set +e
 ./build/test-emit-ir-c-short-circuit
 short_circuit_status=$?
@@ -263,7 +264,7 @@ set -e
 
 # The optimized IR-to-C path runs constant folding before C emission.
 ./build/ylang emit-ir-c-opt tests/emit-mir-opt.yl -o build/emit-ir-c-opt.c >/dev/null
-cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-opt.c -o build/test-emit-ir-c-opt
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-opt.c $NATIVE_LIBS -o build/test-emit-ir-c-opt
 set +e
 ./build/test-emit-ir-c-opt
 ir_c_opt_status=$?
@@ -272,7 +273,7 @@ set -e
 
 # Optimization must preserve a runtime division-by-zero failure.
 ./build/ylang emit-ir-c-opt tests/emit-ir-c-div-zero.yl -o build/emit-ir-c-opt-div-zero.c >/dev/null
-cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-opt-div-zero.c -o build/test-emit-ir-c-opt-div-zero
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-opt-div-zero.c $NATIVE_LIBS -o build/test-emit-ir-c-opt-div-zero
 set +e
 ./build/test-emit-ir-c-opt-div-zero > build/emit-ir-c-opt-div-zero.stdout 2> build/emit-ir-c-opt-div-zero.stderr
 ir_c_opt_div_zero_status=$?
@@ -282,7 +283,7 @@ grep -Fq 'YLang runtime error: integer division by zero' build/emit-ir-c-opt-div
 
 # Optimized IR-to-C must preserve division by negative floating-point zero.
 ./build/ylang emit-ir-c-opt tests/emit-ir-c-opt-f64-div-zero.yl -o build/emit-ir-c-opt-f64-div-zero.c >/dev/null
-cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-opt-f64-div-zero.c -o build/test-emit-ir-c-opt-f64-div-zero
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-opt-f64-div-zero.c $NATIVE_LIBS -o build/test-emit-ir-c-opt-f64-div-zero
 set +e
 ./build/test-emit-ir-c-opt-f64-div-zero > build/emit-ir-c-opt-f64-div-zero.stdout 2> build/emit-ir-c-opt-f64-div-zero.stderr
 ir_c_opt_f64_div_zero_status=$?
@@ -300,7 +301,7 @@ grep -q 'emit-ir-c-opt requires -o' build/emit-ir-c-opt-no-output.out
 # Emit standalone C from verified IR, compile it, and run the generated executable.
 ./build/ylang emit-ir-c tests/emit-ir-c.yl -o build/emit-ir-c.c > build/emit-ir-c.out
 grep -Fq 'yir_add_i64' build/emit-ir-c.c
-cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c.c -o build/test-emit-ir-c
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c.c $NATIVE_LIBS -o build/test-emit-ir-c
 set +e
 ./build/test-emit-ir-c
 emit_ir_c_status=$?
@@ -312,7 +313,7 @@ set -e
 grep -Fq 'yir_div_i64' build/emit-ir-c-arithmetic.c
 grep -Fq 'yir_mod_i64' build/emit-ir-c-arithmetic.c
 grep -Fq 'yir_neg_i64' build/emit-ir-c-arithmetic.c
-cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-arithmetic.c -o build/test-emit-ir-c-arithmetic
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-arithmetic.c $NATIVE_LIBS -o build/test-emit-ir-c-arithmetic
 set +e
 ./build/test-emit-ir-c-arithmetic
 emit_ir_c_arithmetic_status=$?
@@ -327,7 +328,7 @@ grep -Fq 'div.f64' build/emit-ir-c-f64.mir
 grep -Fq 'neg.f64' build/emit-ir-c-f64.mir
 grep -Fq 'lt.f64' build/emit-ir-c-f64.mir
 ./build/ylang emit-ir-c tests/emit-ir-c-f64.yl -o build/emit-ir-c-f64.c >/dev/null
-cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-f64.c -o build/test-emit-ir-c-f64
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-f64.c $NATIVE_LIBS -o build/test-emit-ir-c-f64
 set +e
 ./build/test-emit-ir-c-f64
 emit_ir_c_f64_status=$?
@@ -339,7 +340,7 @@ set -e
 grep -Fq 'mul.f64' build/emit-ir-c-f64-ieee.mir
 grep -Fq 'ne.f64' build/emit-ir-c-f64-ieee.mir
 ./build/ylang emit-ir-c-opt tests/emit-ir-c-f64-ieee.yl -o build/emit-ir-c-f64-ieee.c >/dev/null
-cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-f64-ieee.c -o build/test-emit-ir-c-f64-ieee
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-f64-ieee.c $NATIVE_LIBS -o build/test-emit-ir-c-f64-ieee
 set +e
 ./build/test-emit-ir-c-f64-ieee
 emit_ir_c_f64_ieee_status=$?
@@ -351,14 +352,14 @@ set -e
 grep -Fq 'i64.to_f64' build/emit-ir-c-conversions.mir
 grep -Fq 'f64.to_i64' build/emit-ir-c-conversions.mir
 ./build/ylang emit-ir-c tests/emit-ir-c-conversions.yl -o build/emit-ir-c-conversions.c >/dev/null
-cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-conversions.c -o build/test-emit-ir-c-conversions
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-conversions.c $NATIVE_LIBS -o build/test-emit-ir-c-conversions
 set +e
 ./build/test-emit-ir-c-conversions
 emit_ir_c_conversions_status=$?
 set -e
 [ "$emit_ir_c_conversions_status" -eq 42 ]
 ./build/ylang emit-ir-c-opt tests/emit-ir-c-conversions.yl -o build/emit-ir-c-conversions-opt.c >/dev/null
-cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-conversions-opt.c -o build/test-emit-ir-c-conversions-opt
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-conversions-opt.c $NATIVE_LIBS -o build/test-emit-ir-c-conversions-opt
 set +e
 ./build/test-emit-ir-c-conversions-opt
 emit_ir_c_conversions_opt_status=$?
@@ -367,7 +368,7 @@ set -e
 
 # Conversion overflow must fail identically in the normal and optimized IR backends.
 ./build/ylang emit-ir-c-opt tests/emit-ir-c-conversions-overflow.yl -o build/emit-ir-c-conversions-overflow.c >/dev/null
-cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-conversions-overflow.c -o build/test-emit-ir-c-conversions-overflow
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-conversions-overflow.c $NATIVE_LIBS -o build/test-emit-ir-c-conversions-overflow
 set +e
 ./build/test-emit-ir-c-conversions-overflow > build/emit-ir-c-conversions-overflow.stdout 2> build/emit-ir-c-conversions-overflow.stderr
 emit_ir_c_conversions_overflow_status=$?
@@ -377,7 +378,7 @@ grep -Fq 'YLang runtime error: to_int value is outside the signed 64-bit range' 
 
 # Float overflow to infinity must be rejected by the same checked conversion.
 ./build/ylang emit-ir-c-opt tests/emit-ir-c-conversions-nonfinite.yl -o build/emit-ir-c-conversions-nonfinite.c >/dev/null
-cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-conversions-nonfinite.c -o build/test-emit-ir-c-conversions-nonfinite
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-conversions-nonfinite.c $NATIVE_LIBS -o build/test-emit-ir-c-conversions-nonfinite
 set +e
 ./build/test-emit-ir-c-conversions-nonfinite > build/emit-ir-c-conversions-nonfinite.stdout 2> build/emit-ir-c-conversions-nonfinite.stderr
 emit_ir_c_conversions_nonfinite_status=$?
@@ -387,7 +388,7 @@ grep -Fq 'YLang runtime error: to_int value is outside the signed 64-bit range' 
 
 # Division by zero must retain YLang's checked runtime failure.
 ./build/ylang emit-ir-c tests/emit-ir-c-div-zero.yl -o build/emit-ir-c-div-zero.c >/dev/null
-cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-div-zero.c -o build/test-emit-ir-c-div-zero
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-div-zero.c $NATIVE_LIBS -o build/test-emit-ir-c-div-zero
 set +e
 ./build/test-emit-ir-c-div-zero > build/emit-ir-c-div-zero.stdout 2> build/emit-ir-c-div-zero.stderr
 emit_ir_c_div_zero_status=$?
@@ -397,7 +398,7 @@ grep -Fq 'YLang runtime error: integer division by zero' build/emit-ir-c-div-zer
 
 # INT64_MIN / -1 must fail rather than invoking C undefined behavior.
 ./build/ylang emit-ir-c tests/emit-ir-c-div-overflow.yl -o build/emit-ir-c-div-overflow.c >/dev/null
-cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-div-overflow.c -o build/test-emit-ir-c-div-overflow
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-div-overflow.c $NATIVE_LIBS -o build/test-emit-ir-c-div-overflow
 set +e
 ./build/test-emit-ir-c-div-overflow > build/emit-ir-c-div-overflow.stdout 2> build/emit-ir-c-div-overflow.stderr
 emit_ir_c_div_overflow_status=$?
@@ -407,7 +408,7 @@ grep -Fq 'YLang runtime error: integer overflow in division' build/emit-ir-c-div
 
 # Negating INT64_MIN must retain the checked overflow diagnostic.
 ./build/ylang emit-ir-c tests/emit-ir-c-neg-overflow.yl -o build/emit-ir-c-neg-overflow.c >/dev/null
-cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-neg-overflow.c -o build/test-emit-ir-c-neg-overflow
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-neg-overflow.c $NATIVE_LIBS -o build/test-emit-ir-c-neg-overflow
 set +e
 ./build/test-emit-ir-c-neg-overflow > build/emit-ir-c-neg-overflow.stdout 2> build/emit-ir-c-neg-overflow.stderr
 emit_ir_c_neg_overflow_status=$?
@@ -417,7 +418,7 @@ grep -Fq 'YLang runtime error: integer overflow in negation' build/emit-ir-c-neg
 
 # INT64_MIN % -1 is defined as zero by YLang's current runtime.
 ./build/ylang emit-ir-c tests/emit-ir-c-modulo-edge.yl -o build/emit-ir-c-modulo-edge.c >/dev/null
-cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-modulo-edge.c -o build/test-emit-ir-c-modulo-edge
+cc -std=c17 -Wall -Wextra -Wpedantic build/emit-ir-c-modulo-edge.c $NATIVE_LIBS -o build/test-emit-ir-c-modulo-edge
 ./build/test-emit-ir-c-modulo-edge
 [ "$?" -eq 0 ]
 
