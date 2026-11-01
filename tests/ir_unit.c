@@ -918,7 +918,7 @@ static void reject_missing_false_edge_argument_storage(void)
     };
     char error[192];
     assert(!yir_verify_function(&function,error,sizeof(error)));
-    assert(strstr(error,"branch argument counts and arrays must agree")!=NULL);
+    assert(strstr(error,"non-empty branch argument lists require storage")!=NULL);
 }
 
 
