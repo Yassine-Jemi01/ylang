@@ -549,6 +549,89 @@ static void reject_branch_target_metadata_on_call(void)
         "branch target metadata is only valid on branch instructions") != NULL);
 }
 
+static void reject_rhs_metadata_on_unary_instruction(void)
+{
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+         .immediate=9},
+        {.opcode=YIR_OP_NEG_I64,.result_id=2,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=1},
+        {.opcode=YIR_OP_RETURN,.lhs=2}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=3
+    };
+    const YIRFunction function = {
+        .name="bad_unary_rhs",.return_type=YIR_TYPE_I64,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,
+        "instruction contains operand fields not defined for its opcode") != NULL);
+}
+
+static void reject_integer_immediate_on_binary_instruction(void)
+{
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+         .immediate=4},
+        {.opcode=YIR_OP_CONST_I64,.result_id=2,.result_type=YIR_TYPE_I64,
+         .immediate=5},
+        {.opcode=YIR_OP_ADD_I64,.result_id=3,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=2,.immediate=1},
+        {.opcode=YIR_OP_RETURN,.lhs=3}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=4
+    };
+    const YIRFunction function = {
+        .name="bad_binary_immediate",.return_type=YIR_TYPE_I64,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,
+        "instruction contains operand fields not defined for its opcode") != NULL);
+}
+
+static void reject_float_immediate_on_integer_constant(void)
+{
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+         .immediate=4,.floating_immediate=1.5},
+        {.opcode=YIR_OP_RETURN,.lhs=1}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=2
+    };
+    const YIRFunction function = {
+        .name="bad_integer_float_immediate",.return_type=YIR_TYPE_I64,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,
+        "instruction contains operand fields not defined for its opcode") != NULL);
+}
+
+static void reject_non_void_terminator_result_type(void)
+{
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_RETURN,.result_type=YIR_TYPE_I64}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=1
+    };
+    const YIRFunction function = {
+        .name="bad_terminator_result_type",.return_type=YIR_TYPE_VOID,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,"terminators cannot define SSA values") != NULL);
+}
+
 static void reject_duplicate_qualified_function_symbols(void)
 {
     const YIRInstruction return_instructions[] = {
@@ -965,6 +1048,10 @@ int main(void)
     accept_explicit_numeric_conversion_ops();
     reject_numeric_conversion_operand_type_mismatch();
     reject_i64_to_f64_with_float_operand();
+    reject_rhs_metadata_on_unary_instruction();
+    reject_integer_immediate_on_binary_instruction();
+    reject_float_immediate_on_integer_constant();
+    reject_non_void_terminator_result_type();
     reject_branch_target_metadata_on_arithmetic_instruction();
     reject_false_target_on_unconditional_branch();
     reject_branch_target_metadata_on_call();
