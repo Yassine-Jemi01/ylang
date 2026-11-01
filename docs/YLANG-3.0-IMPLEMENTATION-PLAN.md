@@ -151,7 +151,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [~] 2.3.12.3 Add constant-branch simplification and unreachable-block cleanup; preserve selected edge arguments and verify the compacted CFG.
 - [~] 2.3.12.4 Add dead-code elimination after CFG cleanup; retain calls and potentially trapping operations.
 - [~] 2.3.12.5 Add a pass manager and ordered optimization pipelines with per-pass verification.
-- [x] 2.3.12.6 Include non-trapping integer-to-f64 conversions in common-subexpression elimination, with a regression test proving duplicate conversions are removed without merging trapping operations.
+- [x] 2.3.12.6 Include non-trapping integer-to-f64 conversions in common-subexpression elimination; regression tests verify duplicate conversions are removed while checked f64-to-integer conversions and other trapping operations remain distinct.
 
 ### 2.4 IR developer interface
 - [x] 2.4.1 Print typed IR in a stable readable format.
