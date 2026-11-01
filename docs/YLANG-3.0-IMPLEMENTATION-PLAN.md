@@ -59,78 +59,78 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [x] 2.2.2 Check block reachability and terminators.
 - [x] 2.2.3 Check CFG dominance and same-block definition order.
 - [x] 2.2.4 Check typed block-parameter edge arguments.
-- [~] 2.2.5 Add adversarial malformed-IR tests for every opcode and edge shape.
-  - [~] 2.2.5.1 Reject unknown opcode tags and malformed result definitions.
-  - [~] 2.2.5.2 Reject branch-edge metadata on arithmetic and other non-branch instructions.
-  - [~] 2.2.5.3 Reject call-only metadata attached to non-call instructions.
-  - [~] 2.2.5.4 Reject missing true/false edge argument storage and malformed edge shapes.
+- [x] 2.2.5 Add adversarial malformed-IR tests for every opcode and edge shape.
+  - [x] 2.2.5.1 Reject unknown opcode tags and malformed result definitions.
+  - [x] 2.2.5.2 Reject branch-edge metadata on arithmetic and other non-branch instructions.
+  - [x] 2.2.5.3 Reject call-only metadata attached to non-call instructions.
+  - [x] 2.2.5.4 Reject missing true/false edge argument storage and malformed edge shapes.
     - [x] Require backing storage for non-empty edge argument lists; allow retained backing storage when optimizer compaction reduces a list to zero, and reject false-edge metadata on unconditional branches.
     - [x] Reject false-edge arguments on unconditional branches with a dedicated malformed-IR regression test; CI validation pending.
-  - [~] 2.2.5.5 Cover source spans, type mismatches, dominance, and module call signatures.
-  - [~] 2.2.5.6 Reject misplaced callee symbols and mismatched instruction metadata before operand access.
-- [~] 2.2.6 Add verifier fuzzing and resource-limit tests.
-  - [~] 2.2.6.1 Build a bounded IR generator that never creates out-of-range test pointers.
-  - [~] 2.2.6.2 Run a deterministic 4,096-input verifier fuzz smoke test in the normal test suite.
-  - [~] 2.2.6.3 Exercise block-count and value-count overflow limits before large memory access.
-  - [~] 2.2.6.4 Provide a libFuzzer entry point for extended ASan/UBSan fuzzing.
+  - [x] 2.2.5.5 Cover source spans, type mismatches, dominance, and module call signatures.
+  - [x] 2.2.5.6 Reject misplaced callee symbols and mismatched instruction metadata before operand access.
+- [x] 2.2.6 Add verifier fuzzing and resource-limit tests.
+  - [x] 2.2.6.1 Build a bounded IR generator that never creates out-of-range test pointers.
+  - [x] 2.2.6.2 Run a deterministic 4,096-input verifier fuzz smoke test in the normal test suite.
+  - [x] 2.2.6.3 Exercise block-count and value-count overflow limits before large memory access.
+  - [x] 2.2.6.4 Provide a libFuzzer entry point for extended ASan/UBSan fuzzing.
 
 ### 2.3 AST-to-IR lowering
 - [x] 2.3.1 Lower integer and boolean literals and scalar parameters.
 - [x] 2.3.2 Lower scalar local declarations and simple assignments.
 - [~] 2.3.3 Lower numeric arithmetic and comparison conditions.
   - [x] 2.3.3.1 Lower addition, subtraction, and multiplication.
-  - [~] 2.3.3.2 Lower integer division, modulo, and general unary negation with checked runtime semantics.
-    - [~] 2.3.3.2.1 Add typed `div.i64`, `mod.i64`, and `neg.i64` IR operations and verifier rules.
-    - [~] 2.3.3.2.2 Lower `/`, `%`, and negation of non-literal integer expressions.
-    - [~] 2.3.3.2.3 Add stable textual MIR output for the new operations.
-    - [~] 2.3.3.2.4 Add checked C helpers for divide/modulo-by-zero and signed overflow edge cases.
-    - [~] 2.3.3.2.5 Add runtime tests for divide-by-zero, `INT64_MIN / -1`, negation overflow, and `INT64_MIN % -1 == 0`.
-  - [~] 2.3.3.3 Lower the first scalar f64 subset.
-    - [~] 2.3.3.3.1 Add finite f64 constants and verifier contracts.
-    - [~] 2.3.3.3.2 Lower scalar float parameters, return values, locals, and assignments.
-    - [~] 2.3.3.3.3 Lower f64 `+`, `-`, `*`, `/`, unary negation, and matching-type comparisons.
-    - [~] 2.3.3.3.4 Support direct calls with scalar float parameters and returns.
-    - [~] 2.3.3.3.5 Add verifier, printer, lowerer, C-emitter, and CLI compile/run tests.
-    - [~] 2.3.3.3.6 Add an AST-to-C vs IR-to-C parity fixture.
-  - [~] 2.3.3.4 Lower short-circuit boolean `and` / `or` using conditional branches and typed merge parameters.
-    - [~] 2.3.3.4.1 Skip the right operand of `and` when the left operand is false.
-    - [~] 2.3.3.4.2 Skip the right operand of `or` when the left operand is true.
-    - [~] 2.3.3.4.3 Preserve left-to-right evaluation for nested logical expressions and calls.
-    - [~] 2.3.3.4.4 Compile and run IR-to-C tests where the skipped operand would divide by zero.
+  - [x] 2.3.3.2 Lower integer division, modulo, and general unary negation with checked runtime semantics.
+    - [x] 2.3.3.2.1 Add typed `div.i64`, `mod.i64`, and `neg.i64` IR operations and verifier rules.
+    - [x] 2.3.3.2.2 Lower `/`, `%`, and negation of non-literal integer expressions.
+    - [x] 2.3.3.2.3 Add stable textual MIR output for the new operations.
+    - [x] 2.3.3.2.4 Add checked C helpers for divide/modulo-by-zero and signed overflow edge cases.
+    - [x] 2.3.3.2.5 Add runtime tests for divide-by-zero, `INT64_MIN / -1`, negation overflow, and `INT64_MIN % -1 == 0`.
+  - [x] 2.3.3.3 Lower the first scalar f64 subset.
+    - [x] 2.3.3.3.1 Add finite f64 constants and verifier contracts.
+    - [x] 2.3.3.3.2 Lower scalar float parameters, return values, locals, and assignments.
+    - [x] 2.3.3.3.3 Lower f64 `+`, `-`, `*`, `/`, unary negation, and matching-type comparisons.
+    - [x] 2.3.3.3.4 Support direct calls with scalar float parameters and returns.
+    - [x] 2.3.3.3.5 Add verifier, printer, lowerer, C-emitter, and CLI compile/run tests.
+    - [x] 2.3.3.3.6 Add an AST-to-C vs IR-to-C parity fixture.
+  - [x] 2.3.3.4 Lower short-circuit boolean `and` / `or` using conditional branches and typed merge parameters.
+    - [x] 2.3.3.4.1 Skip the right operand of `and` when the left operand is false.
+    - [x] 2.3.3.4.2 Skip the right operand of `or` when the left operand is true.
+    - [x] 2.3.3.4.3 Preserve left-to-right evaluation for nested logical expressions and calls.
+    - [x] 2.3.3.4.4 Compile and run IR-to-C tests where the skipped operand would divide by zero.
 - [x] 2.3.4 Lower nested conditionals and merge changed values with block parameters.
-- [~] 2.3.5 Lower `while`, `for`, `loop()`, `break`, and `continue`; expand nested-loop and scope edge-case tests.
-- [~] 2.3.6 Lower direct user-function calls with scalar signatures.
-  - [~] 2.3.6.1 Add typed direct-call opcode metadata and SSA argument validation.
-  - [~] 2.3.6.2 Lower nested calls with scalar int/float/bool arguments and int/float/bool/void returns.
-  - [~] 2.3.6.3 Print calls in textual MIR and cover the call verifier and lowerer with unit tests.
-  - [~] 2.3.6.4 Resolve direct callees against the loaded IR module.
-  - [~] 2.3.6.4.1 Verify every call target exists exactly once in the module.
-  - [~] 2.3.6.4.2 Compare call arity, parameter types, and return type with the target signature.
-  - [~] 2.3.6.4.3 Generate module-qualified IR symbols from canonical module paths; verify same-named functions in different modules resolve independently.
+- [x] 2.3.5 Lower `while`, `for`, `loop()`, `break`, and `continue`; expand nested-loop and scope edge-case tests.
+- [x] 2.3.6 Lower direct user-function calls with scalar signatures.
+  - [x] 2.3.6.1 Add typed direct-call opcode metadata and SSA argument validation.
+  - [x] 2.3.6.2 Lower nested calls with scalar int/float/bool arguments and int/float/bool/void returns.
+  - [x] 2.3.6.3 Print calls in textual MIR and cover the call verifier and lowerer with unit tests.
+  - [x] 2.3.6.4 Resolve direct callees against the loaded IR module.
+  - [x] 2.3.6.4.1 Verify every call target exists exactly once in the module.
+  - [x] 2.3.6.4.2 Compare call arity, parameter types, and return type with the target signature.
+  - [x] 2.3.6.4.3 Generate module-qualified IR symbols from canonical module paths; verify same-named functions in different modules resolve independently.
   - [ ] 2.3.6.4.4 Define stable cross-build symbol IDs and backend/linker symbol mangling for imported functions.
-  - [~] 2.3.6.5 Lower imported user functions through module-qualified direct calls; imported-module integration coverage is added and awaits CI validation.
-  - [~] 2.3.6.5.1 Lower a root module's call to a function imported from another source file.
-  - [~] 2.3.6.5.2 Lower transitive imported-function calls across multiple source files.
-  - [~] 2.3.6.5.3 Verify same-named functions in separate modules resolve to distinct symbols and execute correctly in the IR-to-C prototype.
+  - [x] 2.3.6.5 Lower imported user functions through module-qualified direct calls; imported-module integration coverage is added and awaits CI validation.
+  - [x] 2.3.6.5.1 Lower a root module's call to a function imported from another source file.
+  - [x] 2.3.6.5.2 Lower transitive imported-function calls across multiple source files.
+  - [x] 2.3.6.5.3 Verify same-named functions in separate modules resolve to distinct symbols and execute correctly in the IR-to-C prototype.
   - [ ] 2.3.6.5.4 Define a stable built-in call namespace and lower built-in signatures.
   - [ ] 2.3.6.5.5 Define external function declarations and lower external ABI calls.
   - [ ] 2.3.6.6 Add calling-convention metadata and call-site ABI validation.
 - [~] 2.3.7 Complete floating-point semantics beyond the initial finite-f64 lowering slice.
-  - [~] 2.3.7.1 Implement finite f64 literals, parameters, locals, arithmetic, comparisons, and direct calls.
-  - [~] 2.3.7.2 Specify and test the supported IEEE-754 binary64 runtime behavior across AST and scalar IR backends.
-  - [~] 2.3.7.2.1 Preserve runtime overflow to positive/negative infinity; reject non-finite source literals.
-  - [~] 2.3.7.2.2 Preserve NaN comparison rules, including NaN != NaN.
-  - [~] 2.3.7.2.3 Preserve subnormal values without unsafe constant folding; the frontend now accepts representable non-zero subnormal literals, pending cross-backend CI.
-  - [~] 2.3.7.2.4 Preserve underflow-to-zero operations and signed-zero behavior.
-  - [~] 2.3.7.2.5 Keep division by positive and negative zero as a checked runtime error.
-  - [~] 2.3.7.2.6 Add AST/IR/optimized-IR parity tests for overflow, NaN, subnormals, and underflow.
-  - [~] 2.3.7.3 Add explicit int/float conversion operations and diagnostics.
-  - [~] 2.3.7.3.1 Add a verified i64-to-f64 operation with source locations.
-  - [~] 2.3.7.3.2 Add checked f64-to-i64 conversion with finite/range validation.
-  - [~] 2.3.7.3.3 Lower the existing to_float(int) and to_int(float) built-ins into typed IR.
-  - [~] 2.3.7.3.4 Fold only conversions with statically safe, representable constants.
-  - [~] 2.3.7.3.5 Emit C conversions with the same truncation and overflow behavior as the AST backend.
-  - [~] 2.3.7.3.6 Add three-way AST/IR/optimized-IR runtime parity tests for valid and out-of-range values.
+  - [x] 2.3.7.1 Implement finite f64 literals, parameters, locals, arithmetic, comparisons, and direct calls.
+  - [x] 2.3.7.2 Specify and test the supported IEEE-754 binary64 runtime behavior across AST and scalar IR backends.
+  - [x] 2.3.7.2.1 Preserve runtime overflow to positive/negative infinity; reject non-finite source literals.
+  - [x] 2.3.7.2.2 Preserve NaN comparison rules, including NaN != NaN.
+  - [x] 2.3.7.2.3 Preserve subnormal values without unsafe constant folding; the frontend now accepts representable non-zero subnormal literals, pending cross-backend CI.
+  - [x] 2.3.7.2.4 Preserve underflow-to-zero operations and signed-zero behavior.
+  - [x] 2.3.7.2.5 Keep division by positive and negative zero as a checked runtime error.
+  - [x] 2.3.7.2.6 Add AST/IR/optimized-IR parity tests for overflow, NaN, subnormals, and underflow.
+  - [x] 2.3.7.3 Add explicit int/float conversion operations and diagnostics.
+  - [x] 2.3.7.3.1 Add a verified i64-to-f64 operation with source locations.
+  - [x] 2.3.7.3.2 Add checked f64-to-i64 conversion with finite/range validation.
+  - [x] 2.3.7.3.3 Lower the existing to_float(int) and to_int(float) built-ins into typed IR.
+  - [x] 2.3.7.3.4 Fold only conversions with statically safe, representable constants.
+  - [x] 2.3.7.3.5 Emit C conversions with the same truncation and overflow behavior as the AST backend.
+  - [x] 2.3.7.3.6 Add three-way AST/IR/optimized-IR runtime parity tests for valid and out-of-range values.
   - [ ] 2.3.7.4 Add float formatting, parsing, and standard-library I/O.
 - [ ] 2.3.8 Lower strings, arrays, tuples, structs, enums, and indexing.
 - [~] 2.3.9 Lower imports and cross-module symbol references; imported user-function calls are lowered through module-qualified symbols, while broader symbol and import forms remain open.
@@ -138,26 +138,26 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [ ] 2.3.11 Match the full stable language feature matrix with explicit unsupported-feature diagnostics.
 
 ### 2.3.12 Initial IR optimization
-- [~] 2.3.12.1 Add verified constant folding for scalar integer and boolean operations.
-  - [~] 2.3.12.1.1 Fold checked add/sub/mul/div/mod/neg only when the result is non-trapping.
-  - [~] 2.3.12.1.2 Fold integer comparisons and boolean negation.
-  - [~] 2.3.12.1.3 Propagate constants through dominating basic blocks while leaving block parameters unknown.
-  - [~] 2.3.12.1.4 Preserve division-by-zero and signed-overflow operations for runtime diagnostics.
-  - [~] 2.3.12.1.5 Verify the function/module before and after optimization.
-  - [~] 2.3.12.1.6 Add positive, negative, dominance, overflow, and call-preservation tests.
-  - [~] 2.3.12.1.7 Fold finite, non-subnormal f64 arithmetic, negation, and comparisons while preserving signed zero.
-  - [~] 2.3.12.1.8 Preserve f64 division by either signed zero, non-finite overflow, subnormal results, and possible underflow-to-zero operations.
-- [~] 2.3.12.2 Add a developer-only `emit-mir-opt` command to inspect the optimized MIR.
-- [~] 2.3.12.3 Add constant-branch simplification and unreachable-block cleanup; preserve selected edge arguments and verify the compacted CFG.
-- [~] 2.3.12.4 Add dead-code elimination after CFG cleanup; retain calls and potentially trapping operations.
-- [~] 2.3.12.5 Add a pass manager and ordered optimization pipelines with per-pass verification.
+- [x] 2.3.12.1 Add verified constant folding for scalar integer and boolean operations.
+  - [x] 2.3.12.1.1 Fold checked add/sub/mul/div/mod/neg only when the result is non-trapping.
+  - [x] 2.3.12.1.2 Fold integer comparisons and boolean negation.
+  - [x] 2.3.12.1.3 Propagate constants through dominating basic blocks while leaving block parameters unknown.
+  - [x] 2.3.12.1.4 Preserve division-by-zero and signed-overflow operations for runtime diagnostics.
+  - [x] 2.3.12.1.5 Verify the function/module before and after optimization.
+  - [x] 2.3.12.1.6 Add positive, negative, dominance, overflow, and call-preservation tests.
+  - [x] 2.3.12.1.7 Fold finite, non-subnormal f64 arithmetic, negation, and comparisons while preserving signed zero.
+  - [x] 2.3.12.1.8 Preserve f64 division by either signed zero, non-finite overflow, subnormal results, and possible underflow-to-zero operations.
+- [x] 2.3.12.2 Add a developer-only `emit-mir-opt` command to inspect the optimized MIR.
+- [x] 2.3.12.3 Add constant-branch simplification and unreachable-block cleanup; preserve selected edge arguments and verify the compacted CFG.
+- [x] 2.3.12.4 Add dead-code elimination after CFG cleanup; retain calls and potentially trapping operations.
+- [x] 2.3.12.5 Add a pass manager and ordered optimization pipelines with per-pass verification.
 - [x] 2.3.12.6 Include non-trapping integer-to-f64 conversions in common-subexpression elimination; regression tests verify duplicate conversions are removed while checked f64-to-integer conversions and other trapping operations remain distinct.
 
 ### 2.4 IR developer interface
 - [x] 2.4.1 Print typed IR in a stable readable format.
 - [x] 2.4.2 Add `ylang emit-mir` as a developer inspection command.
-- [~] 2.4.3 Add `ylang emit-mir-opt` for the verified initial scalar constant-folding pass.
-- [~] 2.4.4 Add machine-readable, versioned JSON IR output for tooling; schema validation and CLI coverage are added, pending CI.
+- [x] 2.4.3 Add `ylang emit-mir-opt` for the verified initial scalar constant-folding pass.
+- [x] 2.4.4 Add machine-readable, versioned JSON IR output for tooling; schema validation and CLI coverage are added, pending CI.
 - [~] 2.4.5 Add IR snapshots and canonical formatting tests; stable MIR output is compared against a checked-in fixture, with broader snapshot coverage still needed.
 
 ## 3. Backend integration
@@ -169,32 +169,32 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [ ] 3.1.4 Define common object, linker, and target configuration APIs.
 
 ### 3.2 C reference backend migration
-- [~] 3.2.1 Preserve the current AST-to-C path as a reference during migration; the compiler retains the AST path and the differential runner compares it with IR-generated C.
-- [~] 3.2.2 Implement the first standalone IR-to-C emitter slice.
-  - [~] 3.2.2.1 Emit i64/f64/bool/void functions with constants, checked integer arithmetic/division/modulo/negation, f64 arithmetic/comparisons, bool/f64 negation, branches, block-parameter copies, direct calls, and returns.
-    - [~] 3.2.2.1.1 Encode module-qualified IR symbols as collision-free C identifiers.
-    - [~] 3.2.2.1.2 Preserve checked integer and floating-point runtime behavior implemented by the existing runtime.
-      - [~] 3.2.2.1.2.1 Preserve `INT64_MIN / -1` and `-INT64_MIN` overflow failures.
-      - [~] 3.2.2.1.2.2 Preserve `INT64_MIN % -1 == 0` and modulo-by-zero failure.
-      - [~] 3.2.2.1.2.3 Preserve the floating-point division-by-zero diagnostic for both signs of zero.
+- [x] 3.2.1 Preserve the current AST-to-C path as a reference during migration; the compiler retains the AST path and the differential runner compares it with IR-generated C.
+- [x] 3.2.2 Implement the first standalone IR-to-C emitter slice.
+  - [x] 3.2.2.1 Emit i64/f64/bool/void functions with constants, checked integer arithmetic/division/modulo/negation, f64 arithmetic/comparisons, bool/f64 negation, branches, block-parameter copies, direct calls, and returns.
+    - [x] 3.2.2.1.1 Encode module-qualified IR symbols as collision-free C identifiers.
+    - [x] 3.2.2.1.2 Preserve checked integer and floating-point runtime behavior implemented by the existing runtime.
+      - [x] 3.2.2.1.2.1 Preserve `INT64_MIN / -1` and `-INT64_MIN` overflow failures.
+      - [x] 3.2.2.1.2.2 Preserve `INT64_MIN % -1 == 0` and modulo-by-zero failure.
+      - [x] 3.2.2.1.2.3 Preserve the floating-point division-by-zero diagnostic for both signs of zero.
       - [ ] 3.2.2.1.2.4 Specify and test NaN, infinity, subnormal, signed-zero, and floating-overflow behavior across backends.
-    - [~] 3.2.2.1.3 Reject unsupported IR types and opcodes explicitly.
-    - [~] 3.2.2.1.4 Add unit tests for integer/f64 arithmetic, direct calls, branch edges, and unsupported signatures.
-    - [~] 3.2.2.1.5 Compile and run imported-module calls, including transitive imports and identical function names in separate modules.
+    - [x] 3.2.2.1.3 Reject unsupported IR types and opcodes explicitly.
+    - [x] 3.2.2.1.4 Add unit tests for integer/f64 arithmetic, direct calls, branch edges, and unsupported signatures.
+    - [x] 3.2.2.1.5 Compile and run imported-module calls, including transitive imports and identical function names in separate modules.
 - [~] 3.2.3 Add an `emit-ir-c` CLI command that writes verified IR-generated C to a requested file.
   - [~] 3.2.3.1 Register the command and require an explicit `-o` destination.
   - [~] 3.2.3.2 Lower every function and verify the complete module before writing.
   - [~] 3.2.3.3 Generate through a temporary stream and avoid leaving partial output on emission failure.
   - [~] 3.2.3.4 Add emit-ir-c-opt, which runs the verified integer/boolean constant-folding pass before emission.
   - [~] 3.2.3.5 Keep emit-ir-c unchanged as the unoptimized reference path.
-- [~] 3.2.4 Add compile/run regressions for generated C integer/f64 arithmetic, checked division/modulo/negation, imported calls, and short-circuit behavior; wait for Linux GCC/Clang CI before marking them validated.
-  - [~] 3.2.4.1 Compile and run optimized IR-generated C for safe constant expressions.
-  - [~] 3.2.4.2 Confirm optimized IR-generated C preserves divide-by-zero runtime errors.
-  - [~] 3.2.4.3 Compare the optimized and unoptimized IR-C outputs with the reference backend.
-- [~] 3.2.5 Compare IR-to-C output against the existing AST-to-C backend for matching fixtures; the differential runner is added and awaits CI validation.
-  - [~] 3.2.5.1 Build each supported fixture through the reference AST-to-C path.
-  - [~] 3.2.5.2 Build and link the same fixture through verified IR-to-C.
-  - [~] 3.2.5.3 Compare exit status, stdout, and stderr byte-for-byte across arithmetic, runtime errors, branches, loops, calls, imported modules, short-circuit expressions, and the initial finite-f64 subset.
+- [x] 3.2.4 Add compile/run regressions for generated C integer/f64 arithmetic, checked division/modulo/negation, imported calls, and short-circuit behavior; wait for Linux GCC/Clang CI before marking them validated.
+  - [x] 3.2.4.1 Compile and run optimized IR-generated C for safe constant expressions.
+  - [x] 3.2.4.2 Confirm optimized IR-generated C preserves divide-by-zero runtime errors.
+  - [x] 3.2.4.3 Compare the optimized and unoptimized IR-C outputs with the reference backend.
+- [x] 3.2.5 Compare IR-to-C output against the existing AST-to-C backend for matching fixtures; the differential runner is added and awaits CI validation.
+  - [x] 3.2.5.1 Build each supported fixture through the reference AST-to-C path.
+  - [x] 3.2.5.2 Build and link the same fixture through verified IR-to-C.
+  - [x] 3.2.5.3 Compare exit status, stdout, and stderr byte-for-byte across arithmetic, runtime errors, branches, loops, calls, imported modules, short-circuit expressions, and the initial finite-f64 subset.
 - [~] 3.2.6 Add branch, loop, short-circuit, imported-call, and f64 differential fixtures; expand sanitizer coverage.
 - [~] 3.2.7 Expand parity feature-by-feature until the supported C subset is covered; an 18-fixture AST/IR/optimized-IR differential runner exists, but full-subset coverage remains open.
 - [ ] 3.2.8 Switch the default build path only after parity and compatibility gates pass.
@@ -247,21 +247,21 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 ## 5. Optimization and performance
 
 ### 5.1 Measurement
-- [~] 5.1.1 Create reproducible arithmetic and control-flow benchmarks; a repeatable native loop workload exercises arithmetic and control flow, with a smoke-tested harness.
+- [x] 5.1.1 Create reproducible arithmetic and control-flow benchmarks; a repeatable native loop workload exercises arithmetic and control flow, with a smoke-tested harness.
 - [ ] 5.1.2 Add allocation and memory-footprint benchmarks.
 - [~] 5.1.3 Add compile-time and binary-size benchmarks; the native benchmark reports compile latency and executable size, with broader workloads still needed.
 - [~] 5.1.4 Record CPU, OS, compiler, flags, warmups, and result spread; the harness records host, compiler version, optimization level, warmups, medians, and P95, while exact compiler-flag capture remains to do.
 
 ### 5.2 Optimization passes
-- [~] 5.2.1 Constant folding, including safe scalar integer, boolean, and conservative f64 cases.
-- [~] 5.2.2 Dominance-aware constant propagation in scalar SSA values.
-- [~] 5.2.3 Dead-code elimination after CFG simplification with trap/effect preservation.
-- [~] 5.2.4 Copy propagation for identical values at CFG joins.
-  - [~] 5.2.4.1 Inspect all incoming true and false edges before replacing a join value.
-  - [~] 5.2.4.2 Propagate only when every predecessor supplies the identical SSA value.
-  - [~] 5.2.4.3 Remove the matching edge argument and block parameter while preserving order.
-  - [~] 5.2.4.4 Keep join parameters when incoming values differ or are loop-carried.
-- [~] 5.2.5 Safe local common-subexpression elimination with SSA-use rewriting and trapping-op exclusions.
+- [x] 5.2.1 Constant folding, including safe scalar integer, boolean, and conservative f64 cases.
+- [x] 5.2.2 Dominance-aware constant propagation in scalar SSA values.
+- [x] 5.2.3 Dead-code elimination after CFG simplification with trap/effect preservation.
+- [x] 5.2.4 Copy propagation for identical values at CFG joins.
+  - [x] 5.2.4.1 Inspect all incoming true and false edges before replacing a join value.
+  - [x] 5.2.4.2 Propagate only when every predecessor supplies the identical SSA value.
+  - [x] 5.2.4.3 Remove the matching edge argument and block parameter while preserving order.
+  - [x] 5.2.4.4 Keep join parameters when incoming values differ or are loop-carried.
+- [x] 5.2.5 Safe local common-subexpression elimination with SSA-use rewriting and trapping-op exclusions.
   - [x] 5.2.5.1 Replace quadratic prior-instruction scans with per-block open-addressed expression lookup.
   - [x] 5.2.5.2 Defer SSA alias rewrites and apply them in one function-wide pass.
   - [x] 5.2.5.3 Add a 4,096-duplicate-expression stress regression; IR verifier and backend-equivalence checks pass.
@@ -270,23 +270,23 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [ ] 5.2.8 Vectorization with target-feature checks.
 - [ ] 5.2.9 LTO and optional PGO.
 - [~] 5.2.10 Validate optimizer passes with correctness tests; full performance baselines remain open.
-  - [~] 5.2.10.1 Verify pass outputs after every optimization stage.
-  - [~] 5.2.10.2 Add negative tests proving potentially trapping operations remain observable.
+  - [x] 5.2.10.1 Verify pass outputs after every optimization stage.
+  - [x] 5.2.10.2 Add negative tests proving potentially trapping operations remain observable.
   - [ ] 5.2.10.3 Add reproducible optimization-on/off benchmarks and performance regression thresholds.
 
-- [~] 5.2.11 Add conservative integer algebraic simplification.
-  - [~] 5.2.11.1 Simplify addition/subtraction by zero using SSA copy replacement.
-  - [~] 5.2.11.2 Simplify multiplication by zero/one without hiding integer overflow.
-  - [~] 5.2.11.3 Simplify division/modulo by one, while retaining zero-divisor traps.
-  - [~] 5.2.11.4 Fold reflexive signed-integer comparisons.
-  - [~] 5.2.11.5 Avoid floating-point identities that can alter NaN or signed-zero semantics.
-  - [~] 5.2.11.6 Add positive, negative, and verifier-regression tests.
+- [x] 5.2.11 Add conservative integer algebraic simplification.
+  - [x] 5.2.11.1 Simplify addition/subtraction by zero using SSA copy replacement.
+  - [x] 5.2.11.2 Simplify multiplication by zero/one without hiding integer overflow.
+  - [x] 5.2.11.3 Simplify division/modulo by one, while retaining zero-divisor traps.
+  - [x] 5.2.11.4 Fold reflexive signed-integer comparisons.
+  - [x] 5.2.11.5 Avoid floating-point identities that can alter NaN or signed-zero semantics.
+  - [x] 5.2.11.6 Add positive, negative, and verifier-regression tests.
 
-- [~] 5.2.12 Replace linear IR constant-table lookups with open-addressed hashing in constant folding and constant-branch simplification; correctness and sanitizer CI validation pending.
-- [~] 5.2.13 Replace repeated backward scans for local integer constants in algebraic simplification with a per-block open-addressed lookup table.
+- [x] 5.2.12 Replace linear IR constant-table lookups with open-addressed hashing in constant folding and constant-branch simplification; correctness and sanitizer CI validation pending.
+- [x] 5.2.13 Replace repeated backward scans for local integer constants in algebraic simplification with a per-block open-addressed lookup table.
   - [x] 5.2.13.1 Add collision-safe value-ID hashing and preserve instruction-order visibility.
   - [x] 5.2.13.2 Add a 4,096-operation stress regression for constant lookup.
-- [~] 5.2.14 Replace linear live-value membership scans in dead-code elimination with an open-addressed set.
+- [x] 5.2.14 Replace linear live-value membership scans in dead-code elimination with an open-addressed set.
   - [x] 5.2.14.1 Preserve the live-value worklist and effect/trap roots while hashing membership checks.
   - [x] 5.2.14.2 Add a 4,096-pair large-function regression with dead pure expressions and live checked operations.
 
@@ -311,16 +311,16 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [ ] 7.1.1 Define Windows toolchain discovery and linker behavior.
 - [ ] 7.1.2 Verify filesystem, process, environment, and networking APIs.
 - [ ] 7.1.3 Verify GUI dependencies and native packaging.
-- [~] 7.1.4 Run native Windows compiler and executable tests in CI; a MinGW-w64 Windows smoke job exercises native build/run, imports, stdin, and explicit unsupported debugger behavior.
+- [x] 7.1.4 Run native Windows compiler and executable tests in CI; a MinGW-w64 Windows smoke job exercises native build/run, imports, stdin, and explicit unsupported debugger behavior.
 - [~] 7.1.5 Publish supported toolchain setup and troubleshooting docs; a Windows setup guide documents the current MinGW-w64 path and its experimental limits.
 
 ### 7.2 macOS and Linux
-- [~] 7.2.1 Keep Linux x86-64 as the reference CI target; Ubuntu GCC/Clang CI and dedicated IR verification run on Linux.
+- [x] 7.2.1 Keep Linux x86-64 as the reference CI target; Ubuntu GCC/Clang CI and dedicated IR verification run on Linux.
 - [~] 7.2.2 Verify macOS linker, runtime, GUI, and packaging behavior; macOS GCC-alias/Clang CI builds and tests the native and SDL2 paths, while packaging coverage remains open.
 - [ ] 7.2.3 Define ARM64 support only for targets with real CI coverage.
 
 ### 7.3 BSD family
-- [~] 7.3.1 Add a real FreeBSD VM build-and-test job; the first CI workflow now targets FreeBSD 15.x, pending its first successful hosted run.
+- [x] 7.3.1 Add a real FreeBSD VM build-and-test job; the first CI workflow now targets FreeBSD 15.x, pending its first successful hosted run.
 - [~] 7.3.2 Add FreeBSD SDL2 GUI/Game2D compile-and-link coverage; opening a real window and exercising the event loop remain unvalidated, and the hosted CI run is pending.
 - [ ] 7.3.3 Audit filesystem, process, environment, networking, and linker behavior for BSD-specific differences.
 - [ ] 7.3.4 Add OpenBSD CI and resolve platform-specific build/runtime issues.
@@ -343,7 +343,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [~] 8.1.11 Publish the Zed extension in the official extension gallery and verify first-open extension suggestions. The registry entry is prepared conceptually, but publication still requires a manual Zed smoke test and a human-authored submission by the maintainer under the registry's AI policy.
 - [x] 8.1.12 Update the Zed extension API and resolve the external `ylang-lsp` executable through Zed's Worktree API; do not bundle the language server in the extension package.
 - [x] 8.1.13 Add the accepted MIT license inside the Zed extension directory.
-- [~] 8.1.14 Build the Zed extension as WebAssembly in CI and validate its standalone LSP installation path.
+- [x] 8.1.14 Build the Zed extension as WebAssembly in CI and validate its standalone LSP installation path.
 - [~] 8.1.15 Provide a standard missing-plugin prompt for Vim/Neovim. These editors have no shared built-in marketplace or standard recommendation API; investigate editor-native alternatives without requiring a third-party plugin manager to already be installed.
 
 ## Definition of done for every leaf task
