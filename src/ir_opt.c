@@ -830,6 +830,7 @@ static bool is_cse_safe_opcode(YIROpcode opcode)
         case YIR_OP_LE_I64:
         case YIR_OP_GT_I64:
         case YIR_OP_GE_I64:
+        case YIR_OP_I64_TO_F64:
         case YIR_OP_NOT_BOOL:
             return true;
         default:
