@@ -719,6 +719,44 @@ static void common_subexpression_pass_does_not_merge_checked_divisions(void)
 }
 
 
+
+static void common_subexpression_pass_merges_integer_to_float_conversions(void)
+{
+    const YIRFunctionParameter parameters[] = {
+        {.id=1,.type=YIR_TYPE_I64}
+    };
+    YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_I64_TO_F64,.result_id=2,.result_type=YIR_TYPE_F64,
+         .lhs=1},
+        {.opcode=YIR_OP_I64_TO_F64,.result_id=3,.result_type=YIR_TYPE_F64,
+         .lhs=1},
+        {.opcode=YIR_OP_RETURN,.lhs=3}
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,.instruction_count=3}
+    };
+    YIRFunction function = {
+        .name="cse_integer_to_float",.return_type=YIR_TYPE_F64,
+        .parameters=parameters,.parameter_count=1,
+        .blocks=blocks,.block_count=1
+    };
+    const YIROptPass passes[] = {
+        YIR_OPT_COMMON_SUBEXPRESSION,
+        YIR_OPT_DEAD_CODE
+    };
+    char error[256];
+
+    assert(yir_run_opt_pipeline(&function,passes,
+        sizeof(passes)/sizeof(passes[0]),error,sizeof(error)));
+    assert(blocks[0].instruction_count==2);
+    assert(blocks[0].instructions[0].opcode==YIR_OP_I64_TO_F64);
+    assert(blocks[0].instructions[0].result_id==2);
+    assert(blocks[0].instructions[1].opcode==YIR_OP_RETURN);
+    assert(blocks[0].instructions[1].lhs==2);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
+
 static void folds_safe_numeric_conversions_and_preserves_range_traps(void)
 {
     YIRInstruction instructions[] = {
@@ -1034,6 +1072,7 @@ int main(void)
     exposes_ordered_and_validated_optimizer_pipelines();
     common_subexpressions_rewrite_block_edge_uses();
     common_subexpression_pass_does_not_merge_checked_divisions();
+    common_subexpression_pass_merges_integer_to_float_conversions();
     folds_safe_numeric_conversions_and_preserves_range_traps();
     copy_propagates_identical_values_from_all_predecessor_edges();
     copy_propagation_keeps_join_parameters_with_different_inputs();
