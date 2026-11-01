@@ -510,7 +510,10 @@ static void simplifies_constant_branch_and_frees_unreachable_block(void)
     };
     char error[256];
 
-    assert(yir_optimize_function(&function,error,sizeof(error)));
+    bool optimized = yir_optimize_function(&function,error,sizeof(error));
+    if (!optimized)
+        fprintf(stderr, "constant-branch optimizer failure: %s\\n", error);
+    assert(optimized);
     assert(function.block_count==2);
     assert(function.blocks[0].id==0);
     assert(function.blocks[0].instruction_count==2);
