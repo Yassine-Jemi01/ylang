@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="website-app/public/ylang-logo-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="website-app/public/ylang-logo-light.svg">
-    <img src="website-app/public/ylang-logo-light.svg" alt="YLang" width="260">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Yassine-Jemi01/ylang/main/website-app/public/ylang-logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Yassine-Jemi01/ylang/main/website-app/public/ylang-logo-light.svg">
+    <img src="https://raw.githubusercontent.com/Yassine-Jemi01/ylang/main/website-app/public/ylang-logo-light.svg" alt="YLang" width="260">
   </picture>
 </p>
 
