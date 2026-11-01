@@ -142,6 +142,7 @@ Modules may be implemented in YLang, C, or carefully selected dependencies. The 
 - FreeBSD x86-64: planned BSD target; begin with native VM CI for the C compiler, regression suite, and optional SDL2 runtime.
 - OpenBSD and NetBSD: planned follow-up targets after the FreeBSD compatibility baseline is established.
 - DragonFly BSD: evaluate after FreeBSD, OpenBSD, and NetBSD have repeatable CI coverage.
+- See [BSD support status and acceptance policy](BSD-SUPPORT.md) for the staged rollout and current validation limits.
 - ARM64: support only when each backend and standard-library module has real CI and runtime coverage; do not imply NASM support.
 
 ## Milestone order
