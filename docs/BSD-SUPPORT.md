@@ -12,7 +12,7 @@ The first target is FreeBSD 15.x on x86-64.
 The `.github/workflows/freebsd.yml` workflow boots a real FreeBSD virtual
 machine and is intended to validate:
 
-- Building the C17 compiler with the system Clang toolchain.
+- Building the C17 compiler with the system Clang toolchain, including explicit `libm` linkage for BSD math symbols.
 - Runtime-template generation and consistency checks.
 - The compiler regression suite.
 - The optional SDL2 GUI runtime and Game2D example build.
