@@ -5,12 +5,6 @@ module.exports = grammar({
 
   word: $ => $.identifier,
 
-  conflicts: $ => [
-    [$._type, $.identifier],
-    [$.call_expression, $.struct_initializer],
-    [$.array_type, $.array_expression],
-  ],
-
   rules: {
     source_file: $ => repeat($._statement),
 
