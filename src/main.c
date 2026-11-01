@@ -13,8 +13,8 @@ static void usage(FILE *stream)
         "YLang v" YLANG_VERSION " — compiled language toolchain\n\n"
         "Usage:\n"
         "  ylang check <file.yl>\n"
-        "  ylang build <file.yl> [-o executable] [--cc gcc|clang]\n"
-        "  ylang debug <file.yl> [-o executable] [--cc gcc|clang]\n"
+        "  ylang build <file.yl> [-o executable] [--cc gcc|clang] (default: system cc)\n"
+        "  ylang debug <file.yl> [-o executable] [--cc gcc|clang] (default: system cc)\n"
         "  ylang build-asm <file.yl> [-o executable]\n"
         "  ylang emit-c <file.yl> [-o generated.c]\n"
         "  ylang emit-mir <file.yl>\n"
@@ -72,7 +72,7 @@ int main(int argc, char **argv)
     }
     const char *input = argv[2];
     const char *output = NULL;
-    const char *cc = "gcc";
+    const char *cc = NULL;
     for (int i = 3; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0) {
             if (i + 1 >= argc) {
