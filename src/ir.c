@@ -189,6 +189,19 @@ bool yir_verify_function(const YIRFunction *function, char *error,
                            "edge argument metadata is only valid on branches");
                 goto cleanup;
             }
+            if (ins->opcode != YIR_OP_BRANCH &&
+                ins->opcode != YIR_OP_COND_BRANCH &&
+                (ins->target != 0 || ins->false_target != 0)) {
+                (void)fail(error, error_capacity,
+                           "branch target metadata is only valid on branch instructions");
+                goto cleanup;
+            }
+            if (ins->opcode != YIR_OP_COND_BRANCH &&
+                ins->false_target != 0) {
+                (void)fail(error, error_capacity,
+                           "false branch targets are only valid on conditional branches");
+                goto cleanup;
+            }
             if (is_terminator(ins->opcode) != last) {
                 (void)fail(error, error_capacity,
                            "each block must end with exactly one terminator");
