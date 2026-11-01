@@ -119,13 +119,16 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         }
     }
 
+    YIRType function_return_type = (YIRType)(
+        byte_at(data, size, cursor++) % (YIR_TYPE_PTR + 2));
+    int include_function_parameters =
+        byte_at(data, size, cursor++) % 5 != 0;
     YIRFunction function = {
         .name = "fuzz",
         .symbol = (char *)"fuzz",
-        .return_type = (YIRType)(
-            byte_at(data, size, cursor++) % (YIR_TYPE_PTR + 2)),
-        .parameters = byte_at(data, size, cursor++) % 5 == 0 ?
-            NULL : function_parameters,
+        .return_type = function_return_type,
+        .parameters = include_function_parameters ?
+            function_parameters : NULL,
         .parameter_count = parameter_count,
         .blocks = blocks,
         .block_count = block_count
