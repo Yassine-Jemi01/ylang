@@ -1089,8 +1089,37 @@ static void copy_propagation_compacts_multiple_parameters_on_true_and_false_edge
     assert(yir_verify_function(&function,error,sizeof(error)));
 }
 
+static void hash_table_handles_colliding_value_ids(void)
+{
+    YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+         .immediate=20},
+        {.opcode=YIR_OP_CONST_I64,.result_id=17,.result_type=YIR_TYPE_I64,
+         .immediate=22},
+        {.opcode=YIR_OP_CONST_I64,.result_id=33,.result_type=YIR_TYPE_I64,
+         .immediate=99},
+        {.opcode=YIR_OP_ADD_I64,.result_id=49,.result_type=YIR_TYPE_I64,
+         .lhs=1,.rhs=17},
+        {.opcode=YIR_OP_RETURN,.lhs=49}
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,.instruction_count=5}
+    };
+    YIRFunction function = {
+        .name="constant_hash_collisions",.return_type=YIR_TYPE_I64,
+        .blocks=blocks,.block_count=1
+    };
+    char error[256];
+
+    assert(run_constant_fold_only(&function,error,sizeof(error)));
+    assert(instructions[3].opcode==YIR_OP_CONST_I64);
+    assert(instructions[3].immediate==42);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+}
+
 int main(void)
 {
+    hash_table_handles_colliding_value_ids();
     folds_safe_integer_and_boolean_constants();
     preserves_operations_that_may_trap();
     folds_negative_multiplication_without_signed_overflow();
