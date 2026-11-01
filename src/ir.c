@@ -43,6 +43,71 @@ static bool valid_type(YIRType type)
            (int)type <= (int)YIR_TYPE_PTR;
 }
 
+/* Reject stale or forged operand fields instead of silently ignoring them. */
+static bool valid_instruction_operand_fields(const YIRInstruction *ins)
+{
+    bool uses_lhs = false;
+    bool uses_rhs = false;
+    bool uses_integer_immediate = false;
+    bool uses_float_immediate = false;
+
+    switch (ins->opcode) {
+        case YIR_OP_CONST_I64:
+            uses_integer_immediate = true;
+            break;
+        case YIR_OP_CONST_F64:
+            uses_float_immediate = true;
+            break;
+        case YIR_OP_ADD_I64:
+        case YIR_OP_SUB_I64:
+        case YIR_OP_MUL_I64:
+        case YIR_OP_DIV_I64:
+        case YIR_OP_MOD_I64:
+        case YIR_OP_ADD_F64:
+        case YIR_OP_SUB_F64:
+        case YIR_OP_MUL_F64:
+        case YIR_OP_DIV_F64:
+        case YIR_OP_EQ_F64:
+        case YIR_OP_NE_F64:
+        case YIR_OP_LT_F64:
+        case YIR_OP_LE_F64:
+        case YIR_OP_GT_F64:
+        case YIR_OP_GE_F64:
+        case YIR_OP_EQ_I64:
+        case YIR_OP_NE_I64:
+        case YIR_OP_LT_I64:
+        case YIR_OP_LE_I64:
+        case YIR_OP_GT_I64:
+        case YIR_OP_GE_I64:
+            uses_lhs = true;
+            uses_rhs = true;
+            break;
+        case YIR_OP_NEG_I64:
+        case YIR_OP_I64_TO_F64:
+        case YIR_OP_F64_TO_I64:
+        case YIR_OP_NEG_F64:
+        case YIR_OP_NOT_BOOL:
+        case YIR_OP_COND_BRANCH:
+        case YIR_OP_RETURN:
+            uses_lhs = true;
+            break;
+        case YIR_OP_CONST_BOOL:
+            uses_integer_immediate = true;
+            break;
+        case YIR_OP_BRANCH:
+        case YIR_OP_CALL:
+            break;
+        default:
+            /* Let the main verifier report unknown opcode values. */
+            return true;
+    }
+
+    return (uses_lhs || ins->lhs == 0) &&
+           (uses_rhs || ins->rhs == 0) &&
+           (uses_integer_immediate || ins->immediate == 0) &&
+           (uses_float_immediate || ins->floating_immediate == 0.0);
+}
+
 static const ValueDef *find_value(const ValueDef *values, size_t count,
                                   uint32_t id)
 {
@@ -161,6 +226,12 @@ bool yir_verify_function(const YIRFunction *function, char *error,
                 goto cleanup;
             }
 
+            if (!valid_instruction_operand_fields(ins)) {
+                (void)fail(error, error_capacity,
+                           "instruction contains operand fields not defined for its opcode");
+                goto cleanup;
+            }
+
             if (ins->opcode == YIR_OP_CALL) {
                 if (!ins->callee || ins->callee[0] == '\0' ||
                     (ins->callee_symbol && ins->callee_symbol[0] == '\0') ||
@@ -207,7 +278,8 @@ bool yir_verify_function(const YIRFunction *function, char *error,
                            "each block must end with exactly one terminator");
                 goto cleanup;
             }
-            if (is_terminator(ins->opcode) && ins->result_id != 0) {
+            if (is_terminator(ins->opcode) &&
+                (ins->result_id != 0 || ins->result_type != YIR_TYPE_VOID)) {
                 (void)fail(error, error_capacity,
                            "terminators cannot define SSA values");
                 goto cleanup;
