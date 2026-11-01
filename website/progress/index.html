@@ -3,183 +3,223 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b1114">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0d1718">
   <meta name="description" content="Follow YLang 3.0 development: implementation progress, compiler architecture, current work, and planned release features.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="YLang 3.0 — Development Progress">
+  <meta property="og:description" content="Follow the work behind YLang 3.0: a new compiler foundation, safer memory model, native backends, and desktop development.">
   <title>YLang 3.0 — Development Progress</title>
+  <link rel="icon" href="../ylang-icon.svg" type="image/svg+xml">
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0b1114;
-      --surface: #111b1f;
-      --surface-2: #172328;
-      --line: #29393e;
-      --text: #edf3f1;
-      --muted: #9aadaa;
-      --teal: #54c7b2;
-      --teal-dim: #1c5c55;
-      --orange: #d99562;
-      --yellow: #e1bd72;
-      --blue: #84b6d3;
-      --radius: 16px;
-      --max: 1080px;
+      --bg: #0d1718;
+      --bg-2: #101d1e;
+      --surface: #142223;
+      --surface-raised: #182b2c;
+      --surface-soft: #1b3031;
+      --text: #e8f1ee;
+      --muted: #9db1ad;
+      --muted-2: #748d87;
+      --line: #29413f;
+      --line-strong: #3a5b57;
+      --teal: #167d8d;
+      --teal-soft: #93d4c8;
+      --teal-light: #c4e8df;
+      --rust: #8d3816;
+      --rust-soft: #d79a73;
+      --container: 1160px;
+      --mono: 'DM Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+      --sans: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      background:
-        radial-gradient(ellipse at 85% 0%, rgba(46, 111, 101, .13), transparent 34rem),
-        var(--bg);
-      color: var(--text);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.7;
-    }
-    a { color: inherit; text-decoration-color: rgba(84,199,178,.55); text-underline-offset: 4px; }
-    a:hover { color: var(--teal); }
-    .wrap { width: min(var(--max), calc(100% - 40px)); margin-inline: auto; }
-    .topbar { border-bottom: 1px solid rgba(137,164,160,.15); }
-    .topbar-inner { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-    .brand { display: flex; align-items: center; gap: 12px; font-weight: 750; letter-spacing: -.04em; font-size: 20px; direction: ltr; }
-    .brand-mark { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid #3c8278; border-radius: 9px; color: var(--teal); font-size: 17px; font-weight: 800; }
-    .brand small { color: var(--muted); font-weight: 500; font-size: 12px; letter-spacing: 0; }
-    nav { display: flex; gap: 25px; color: var(--muted); font-size: 13px; }
-    nav a { text-decoration: none; }
-    .hero { padding: 76px 0 54px; }
-    .eyebrow { display: inline-flex; align-items: center; gap: 9px; color: var(--teal); border: 1px solid rgba(84,199,178,.3); background: rgba(84,199,178,.07); border-radius: 999px; padding: 5px 11px; font-size: 12px; font-weight: 650; }
-    .dot { width: 7px; height: 7px; background: var(--teal); border-radius: 50%; box-shadow: 0 0 0 4px rgba(84,199,178,.12); }
-    h1 { font-size: clamp(38px, 6vw, 66px); line-height: 1.12; letter-spacing: -.055em; margin: 22px 0 16px; max-width: 800px; }
-    h1 span { color: var(--teal); }
-    .lead { max-width: 700px; color: #b6c4c1; font-size: 17px; margin: 0; }
-    .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin-top: 27px; font-size: 13px; }
-    .button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid #3a8278; background: #153d39; color: #e9fffa; border-radius: 9px; padding: 10px 15px; font-weight: 650; text-decoration: none; }
-    .button:hover { color: white; background: #1b514a; text-decoration: none; }
-    .subtle-link { color: var(--muted); }
-    .overview { display: grid; grid-template-columns: 1.15fr .85fr; gap: 16px; align-items: stretch; }
-    .panel { background: linear-gradient(145deg, rgba(23,35,40,.96), rgba(16,26,30,.96)); border: 1px solid var(--line); border-radius: var(--radius); }
-    .progress-panel { padding: 27px; }
-    .panel-kicker { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
-    .progress-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; }
-    .progress-number { font-size: clamp(48px, 7vw, 72px); font-weight: 780; letter-spacing: -.07em; line-height: 1; direction: ltr; }
-    .progress-number small { font-size: 25px; color: var(--teal); letter-spacing: -.03em; }
-    .progress-note { max-width: 190px; color: var(--muted); font-size: 12px; }
-    .track { height: 10px; background: #26363a; border-radius: 99px; overflow: hidden; margin: 25px 0 13px; direction: ltr; }
-    .track > span { display: block; height: 100%; width: 60.1%; border-radius: inherit; background: linear-gradient(90deg, #328b7e, #65d2b9); }
-    .progress-caption { color: var(--muted); font-size: 12px; margin: 0; }
-    .stats { padding: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .stat { border: 1px solid rgba(137,164,160,.15); background: rgba(8,15,18,.28); padding: 17px; border-radius: 12px; }
-    .stat strong { display: block; font-size: 30px; line-height: 1.25; letter-spacing: -.04em; direction: ltr; text-align: left; }
-    .stat span { display: block; color: var(--muted); font-size: 12px; margin-top: 5px; }
-    .stat.done strong { color: var(--teal); }
-    .stat.pending strong { color: var(--yellow); }
-    .stat.todo strong { color: #b9c4c2; }
-    section { padding: 58px 0 0; }
-    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
-    .section-head h2 { margin: 0; font-size: clamp(24px, 3vw, 32px); letter-spacing: -.04em; }
-    .section-head p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
-    .legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 11px; }
-    .legend span { display: inline-flex; align-items: center; gap: 6px; }
-    .legend i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    .feature { padding: 21px; min-height: 208px; }
-    .feature-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
-    .feature-icon { width: 35px; height: 35px; display: grid; place-items: center; color: var(--teal); border: 1px solid rgba(84,199,178,.25); border-radius: 10px; background: rgba(84,199,178,.07); font-size: 15px; font-weight: 700; direction: ltr; }
-    .tag { white-space: nowrap; font-size: 10px; padding: 3px 8px; border: 1px solid var(--line); color: var(--muted); border-radius: 999px; }
-    .tag.active { color: var(--teal); border-color: rgba(84,199,178,.32); background: rgba(84,199,178,.07); }
-    .tag.planned { color: var(--orange); border-color: rgba(217,149,98,.32); background: rgba(217,149,98,.07); }
-    .feature h3 { margin: 0 0 8px; font-size: 17px; letter-spacing: -.02em; }
-    .feature p { color: var(--muted); font-size: 13px; margin: 0; }
-    code { direction: ltr; unicode-bidi: embed; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; color: #b9e8dc; background: rgba(84,199,178,.08); border: 1px solid rgba(84,199,178,.15); border-radius: 5px; padding: 1px 5px; }
-    .roadmap { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .roadmap-item { display: flex; gap: 15px; padding: 19px; }
-    .roadmap-index { flex: 0 0 30px; width: 30px; height: 30px; border: 1px solid #3c8278; color: var(--teal); border-radius: 8px; display: grid; place-items: center; font-size: 12px; font-weight: 700; direction: ltr; }
-    .roadmap-item h3 { font-size: 15px; margin: 0 0 4px; }
-    .roadmap-item p { color: var(--muted); font-size: 12px; margin: 0; }
-    .notice { margin-top: 18px; border: 1px solid rgba(225,189,114,.25); background: rgba(225,189,114,.06); color: #d5c49d; border-radius: 12px; padding: 15px 17px; font-size: 12px; }
-    .method { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .method-card { padding: 22px; }
-    .method-card h3 { margin: 0 0 8px; font-size: 15px; }
-    .method-card p { color: var(--muted); margin: 0; font-size: 13px; }
-    .source-links { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-top: 15px; font-size: 12px; }
-    footer { margin-top: 68px; border-top: 1px solid rgba(137,164,160,.15); padding: 25px 0 36px; color: var(--muted); font-size: 11px; }
-    .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+    html { scroll-behavior: smooth; scroll-padding-top: 90px; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.7 var(--sans); -webkit-font-smoothing: antialiased; }
+    a { color: inherit; text-decoration: none; }
+    a:hover { color: var(--teal-soft); }
+    img { display: block; max-width: 100%; }
+    .container { width: min(var(--container), calc(100% - 48px)); margin-inline: auto; }
+    :focus-visible { outline: 2px solid var(--teal-soft); outline-offset: 4px; }
+    ::selection { color: #081312; background: var(--teal-soft); }
+
+    .site-header { position: sticky; z-index: 80; top: 0; background: rgb(13 23 24 / 90%); border-bottom: 1px solid rgb(147 212 200 / 10%); backdrop-filter: blur(16px); }
+    .nav-wrap { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 26px; }
+    .brand { display: inline-flex; align-items: center; gap: 13px; flex: 0 0 auto; }
+    .brand img { width: 116px; height: 38px; object-fit: contain; object-position: left center; }
+    .brand-version { padding: 3px 7px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted-2); font: 500 11px/1.5 var(--mono); }
+    .site-nav { display: flex; align-items: center; gap: clamp(18px, 3vw, 34px); }
+    .site-nav a { color: var(--muted); font-size: 13px; font-weight: 650; transition: color .2s ease; }
+    .site-nav a:hover { color: var(--text); }
+    .nav-github { display: inline-flex; align-items: center; gap: 8px; padding: 9px 13px; border: 1px solid var(--line-strong); border-radius: 7px; color: var(--text); background: rgb(20 34 35 / 70%); font-size: 12px; font-weight: 750; }
+    .nav-github:hover { border-color: var(--teal-soft); background: var(--surface); color: var(--text); }
+    .nav-github span { color: var(--teal-soft); }
+
+    .hero { position: relative; isolation: isolate; overflow: hidden; padding: clamp(66px, 9vw, 108px) 0 58px; border-bottom: 1px solid var(--line); background: radial-gradient(ellipse at 68% 12%, rgb(22 125 141 / 13%), transparent 43%), var(--bg); }
+    .hero::after { position: absolute; z-index: -1; right: -100px; top: -180px; width: 500px; height: 500px; border: 1px solid rgb(147 212 200 / 7%); border-radius: 50%; box-shadow: 0 0 0 55px rgb(147 212 200 / 2%), 0 0 0 110px rgb(147 212 200 / 1%); content: ''; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 10px; color: var(--teal-soft); font: 800 11px/1.5 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .eyebrow-mark { width: 7px; height: 7px; border-radius: 2px; background: var(--rust-soft); box-shadow: 0 0 0 4px rgb(141 56 22 / 15%); }
+    .status-pill { display: inline-flex; align-items: center; gap: 8px; margin-top: 25px; padding: 6px 10px; border: 1px solid rgb(147 212 200 / 20%); border-radius: 6px; color: var(--muted); background: rgb(20 34 35 / 64%); font-size: 12px; font-weight: 650; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #83cbb4; box-shadow: 0 0 0 3px rgb(131 203 180 / 12%); }
+    h1 { max-width: 790px; margin: 22px 0 19px; color: var(--text); font-size: clamp(42px, 6.1vw, 72px); font-weight: 760; letter-spacing: -.075em; line-height: 1.04; }
+    h1 span { color: var(--teal-soft); }
+    .hero-lede { max-width: 720px; color: #b2c3bf; font-size: clamp(15px, 1.5vw, 18px); line-height: 1.85; }
+    .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 13px; margin-top: 29px; }
+    .button { display: inline-flex; min-height: 47px; align-items: center; justify-content: center; gap: 9px; padding: 0 16px; border: 1px solid transparent; border-radius: 7px; font-size: 13px; font-weight: 800; transition: transform .2s ease, background .2s ease, border-color .2s ease; }
+    .button:hover { transform: translateY(-2px); color: white; }
+    .button-primary { border-color: var(--teal); background: var(--teal); box-shadow: 0 8px 24px rgb(22 125 141 / 18%); }
+    .button-primary:hover { border-color: #2197a5; background: #1b8b9b; }
+    .button-secondary { border-color: var(--line-strong); color: var(--text); background: rgb(20 34 35 / 80%); }
+    .button-secondary:hover { border-color: var(--teal-soft); background: var(--surface-raised); }
+    .hero-note { margin-top: 22px; color: var(--muted-2); font: 400 11px/1.6 var(--mono); }
+
+    .container-block { padding-top: 48px; }
+    .overview { display: grid; grid-template-columns: 1.1fr .9fr; gap: 15px; align-items: stretch; }
+    .panel { border: 1px solid var(--line); border-radius: 10px; background: linear-gradient(145deg, rgb(24 43 44 / 96%), rgb(20 34 35 / 96%)); }
+    .progress-panel { padding: clamp(22px, 3vw, 30px); }
+    .panel-kicker { margin: 0 0 13px; color: var(--teal-soft); font: 750 10px/1.5 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .progress-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; }
+    .progress-number { color: var(--text); font-size: clamp(54px, 7vw, 78px); font-weight: 780; letter-spacing: -.08em; line-height: 1; direction: ltr; }
+    .progress-number small { color: var(--teal-soft); font-size: 26px; letter-spacing: -.03em; }
+    .progress-note { max-width: 220px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .track { height: 8px; margin: 27px 0 13px; overflow: hidden; border-radius: 99px; background: #263c3a; direction: ltr; }
+    .track > span { display: block; width: 60.1%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--teal), var(--teal-soft)); }
+    .progress-caption { margin: 0; color: var(--muted-2); font-size: 11px; line-height: 1.65; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 17px; }
+    .stat { min-height: 95px; padding: 15px; border: 1px solid rgb(147 212 200 / 9%); border-radius: 7px; background: rgb(8 18 18 / 28%); }
+    .stat strong { display: block; color: var(--text); font: 750 29px/1.2 var(--mono); letter-spacing: -.06em; }
+    .stat span { display: block; margin-top: 7px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .stat.done strong { color: var(--teal-soft); }
+    .stat.pending strong { color: var(--rust-soft); }
+    .stat.todo strong { color: #bdcbc7; }
+
+    section.content-section { padding-top: 76px; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
+    .section-label { margin: 0 0 8px; color: var(--rust-soft); font: 800 10px/1.5 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .section-head h2 { margin: 0; color: var(--text); font-size: clamp(25px, 3.2vw, 35px); font-weight: 740; letter-spacing: -.055em; line-height: 1.2; }
+    .section-head p { max-width: 700px; margin: 7px 0 0; color: var(--muted); font-size: 13px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted-2); font: 500 10px/1.5 var(--mono); }
+    .legend span { display: inline-flex; align-items: center; gap: 7px; }
+    .legend i { width: 7px; height: 7px; border-radius: 2px; display: inline-block; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; }
+    .feature { min-height: 205px; padding: 21px; transition: border-color .2s ease, transform .2s ease; }
+    .feature:hover, .roadmap-item:hover { border-color: var(--line-strong); transform: translateY(-2px); }
+    .feature-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 18px; }
+    .feature-icon { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid rgb(147 212 200 / 18%); border-radius: 7px; color: var(--teal-soft); background: rgb(22 125 141 / 12%); font: 750 12px/1 var(--mono); }
+    .tag { padding: 3px 8px; border: 1px solid var(--line); border-radius: 4px; color: var(--muted-2); font: 600 9px/1.5 var(--mono); white-space: nowrap; }
+    .tag.active { border-color: rgb(147 212 200 / 28%); color: var(--teal-soft); background: rgb(22 125 141 / 9%); }
+    .tag.planned { border-color: rgb(215 154 115 / 28%); color: var(--rust-soft); background: rgb(141 56 22 / 10%); }
+    .feature h3 { margin: 0 0 8px; color: var(--text); font-size: 16px; font-weight: 720; letter-spacing: -.025em; }
+    .feature p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.75; }
+    code { padding: 1px 5px; border: 1px solid rgb(147 212 200 / 14%); border-radius: 4px; color: var(--teal-light); background: rgb(22 125 141 / 9%); font: 500 .9em/1.4 var(--mono); direction: ltr; unicode-bidi: embed; }
+    .roadmap { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+    .roadmap-item { display: flex; gap: 14px; padding: 19px; transition: border-color .2s ease, transform .2s ease; }
+    .roadmap-index { display: grid; flex: 0 0 31px; width: 31px; height: 31px; place-items: center; border: 1px solid rgb(215 154 115 / 32%); border-radius: 6px; color: var(--rust-soft); background: rgb(141 56 22 / 10%); font: 700 11px/1 var(--mono); }
+    .roadmap-item h3 { margin: 1px 0 5px; color: var(--text); font-size: 14px; font-weight: 720; }
+    .roadmap-item p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
+    .notice { margin-top: 17px; padding: 15px 17px; border: 1px solid rgb(215 154 115 / 24%); border-left: 3px solid var(--rust-soft); border-radius: 6px; color: #c6b2a4; background: rgb(141 56 22 / 8%); font-size: 12px; line-height: 1.7; }
+    .method { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+    .method-card { padding: 21px; }
+    .method-card h3 { margin: 0 0 8px; color: var(--text); font-size: 14px; }
+    .method-card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.75; }
+    .source-links { display: flex; flex-wrap: wrap; gap: 11px 18px; margin-top: 15px; font: 600 11px/1.5 var(--mono); }
+    .source-links a { color: var(--teal-soft); }
+    .source-links a:hover { color: var(--rust-soft); }
+    .site-footer { margin-top: 76px; border-top: 1px solid var(--line); background: #101d1e; }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding-block: 23px 29px; color: var(--muted-2); font-size: 11px; }
+    .footer-brand { display: inline-flex; align-items: center; gap: 9px; color: var(--muted); font-weight: 700; }
+    .footer-brand img { width: 20px; height: 20px; }
     .ltr { direction: ltr; unicode-bidi: embed; display: inline-block; }
-    @media (max-width: 760px) {
+
+    @media (max-width: 850px) {
       .overview { grid-template-columns: 1fr; }
       .grid { grid-template-columns: 1fr 1fr; }
-      .section-head { align-items: start; flex-direction: column; }
-      nav { gap: 13px; font-size: 11px; }
-      .hero { padding-top: 54px; }
+      .section-head { align-items: flex-start; flex-direction: column; }
+      .site-nav { gap: 15px; }
     }
-    @media (max-width: 520px) {
-      .wrap { width: min(100% - 28px, var(--max)); }
-      nav { display: none; }
+    @media (max-width: 600px) {
+      .container { width: min(100% - 30px, var(--container)); }
+      .nav-wrap { min-height: 68px; }
+      .brand img { width: 102px; height: 34px; }
+      .site-nav { display: none; }
+      .nav-github { padding: 8px 10px; }
+      .hero { padding-top: 62px; }
+      .hero::after { right: -300px; }
+      .hero-actions { align-items: stretch; flex-direction: column; }
+      .button { width: 100%; }
       .grid, .roadmap, .method { grid-template-columns: 1fr; }
       .feature { min-height: 0; }
-      .progress-panel { padding: 22px; }
-      .progress-top { align-items: start; flex-direction: column; }
-      .progress-note { max-width: none; }
-      .footer-inner { align-items: start; flex-direction: column; }
+      .progress-top { align-items: flex-start; flex-direction: column; }
+      .progress-note { max-width: 100%; }
+      .footer-inner { align-items: flex-start; flex-direction: column; }
     }
-    @media (prefers-reduced-motion: no-preference) {
-      .track > span { animation: grow 900ms ease-out both; }
-      @keyframes grow { from { width: 0; } to { width: 60.1%; } }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
     }
   </style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="wrap topbar-inner">
-      <a class="brand" href="#top" aria-label="YLang 3.0 home">
-        <span class="brand-mark">Y</span>
-        <span>YLang <small>3.0 / DEVELOPMENT</small></span>
+  <header class="site-header">
+    <div class="container nav-wrap">
+      <a class="brand" href="../index.html" aria-label="YLang home">
+        <img src="../ylang-logo-dark.svg" alt="YLang" width="116" height="38">
+        <span class="brand-version">3.0 / DEV</span>
       </a>
-      <nav aria-label="Main navigation">
+      <nav class="site-nav" aria-label="Main navigation">
         <a href="#progress">Progress</a>
-        <a href="#features">Features</a>
+        <a href="#features">What's implemented</a>
         <a href="#roadmap">Roadmap</a>
-        <a href="#sources">Project links</a>
+        <a href="#sources">Sources</a>
       </nav>
+      <a class="nav-github" href="https://github.com/Yassine-Jemi01/ylang" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
     </div>
   </header>
 
-  <main id="top" class="wrap">
-    <div class="hero">
-      <span class="eyebrow"><i class="dot"></i> Active development · Not a stable release</span>
-      <h1>A new foundation for <span>YLang 3.0</span></h1>
-      <p class="lead">This release is about more than new syntax. We are building a stronger compiler architecture, a backend-neutral intermediate representation, safer memory management, and a path toward native desktop applications on Linux, Windows, and macOS.</p>
-      <div class="hero-actions">
-        <a class="button" href="https://github.com/Yassine-Jemi01/ylang/tree/ylang-3.0-dev" target="_blank" rel="noreferrer">Explore the development branch <span aria-hidden="true">↗</span></a>
-        <a class="subtle-link" href="#features">Explore what is being built ↓</a>
+  <main>
+    <section class="hero">
+      <div class="container">
+        <p class="eyebrow"><span class="eyebrow-mark"></span> YLANG 3.0 · DEVELOPMENT STATUS</p>
+        <div class="status-pill"><span class="status-dot"></span> Active development <span aria-hidden="true">·</span> Not a stable release</div>
+        <h1>A stronger foundation.<br><span>Native programs.</span></h1>
+        <p class="hero-lede">YLang 3.0 is focused on a new compiler architecture, a backend-neutral intermediate representation, safer memory management, and a path toward native desktop applications across Linux, Windows, and macOS.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="https://github.com/Yassine-Jemi01/ylang/tree/ylang-3.0-dev" target="_blank" rel="noreferrer">Explore the 3.0 branch <span aria-hidden="true">↗</span></a>
+          <a class="button button-secondary" href="#features">Explore current work <span aria-hidden="true">↓</span></a>
+        </div>
+        <p class="hero-note">OPEN SOURCE · COMPILER ENGINEERING · BUILT IN THE OPEN</p>
+      </div>
+    </section>
+
+    <div class="container container-block" id="progress">
+      <div class="overview">
+        <article class="panel progress-panel">
+          <p class="panel-kicker">Implementation checklist / development branch</p>
+          <div class="progress-top">
+            <div class="progress-number">60.1<small>%</small></div>
+            <div class="progress-note">149 of 248 checklist items have implementation present on the branch, either completed or awaiting full validation.</div>
+          </div>
+          <div class="track" role="img" aria-label="60.1 percent of checklist items have implementation present"><span></span></div>
+          <p class="progress-caption">This measures implementation presence in the checklist — not release readiness, feature completeness, or test coverage.</p>
+        </article>
+        <aside class="panel stats" aria-label="Implementation checklist breakdown">
+          <div class="stat done"><strong>19</strong><span>Implemented and marked complete <bdi>[x]</bdi></span></div>
+          <div class="stat pending"><strong>130</strong><span>Implementation exists; full validation pending <bdi>[~]</bdi></span></div>
+          <div class="stat todo"><strong>99</strong><span>Not started <bdi>[ ]</bdi></span></div>
+          <div class="stat"><strong>248</strong><span>Total checklist items</span></div>
+        </aside>
       </div>
     </div>
 
-    <div class="overview" id="progress">
-      <article class="panel progress-panel">
-        <p class="panel-kicker">Implementation checklist · Development branch</p>
-        <div class="progress-top">
-          <div class="progress-number">60.1<small>%</small></div>
-          <div class="progress-note">149 of 248 checklist items have implementation present on the branch, either completed or awaiting full validation.</div>
-        </div>
-        <div class="track" role="img" aria-label="60.1 percent of checklist items have implementation present"><span></span></div>
-        <p class="progress-caption">This measures implementation presence in the checklist — not release readiness, feature completeness, or test coverage.</p>
-      </article>
-      <aside class="panel stats" aria-label="Implementation checklist breakdown">
-        <div class="stat done"><strong>19</strong><span>Implemented and marked complete <bdi>[x]</bdi></span></div>
-        <div class="stat pending"><strong>130</strong><span>Implementation exists; full validation pending <bdi>[~]</bdi></span></div>
-        <div class="stat todo"><strong>99</strong><span>Not started <bdi>[ ]</bdi></span></div>
-        <div class="stat"><strong>248</strong><span>Total checklist items</span></div>
-      </aside>
-    </div>
-
-    <section id="features">
+    <section class="container content-section" id="features">
       <div class="section-head">
         <div>
-          <h2>What is already on the 3.0 branch?</h2>
+          <p class="section-label">01 / Current implementation</p>
+          <h2>What's already on the 3.0 branch?</h2>
           <p>These components have implementation on the development branch. Their scope and validation status are shown honestly.</p>
         </div>
         <div class="legend" aria-label="Status legend">
-          <span><i style="background:var(--teal)"></i> On the branch</span>
-          <span><i style="background:var(--orange)"></i> Planned work</span>
+          <span><i style="background:var(--teal-soft)"></i> On the branch</span>
+          <span><i style="background:var(--rust-soft)"></i> Planned work</span>
         </div>
       </div>
       <div class="grid">
@@ -189,24 +229,24 @@
           <p>A typed, C-independent IR with values, types, basic blocks, and explicit control-flow terminators, backed by an IR verifier that checks structural invariants.</p>
         </article>
         <article class="panel feature">
-          <div class="feature-top"><span class="feature-icon">01</span><span class="tag active">Implemented · Partial</span></div>
+          <div class="feature-top"><span class="feature-icon">CFG</span><span class="tag active">Implemented · Partial</span></div>
+          <h3>IR Verifier</h3>
+          <p>Checks value IDs, operand and result types, terminators, block reachability, dominance, and typed control-flow edge arguments. Adversarial coverage is still expanding.</p>
+        </article>
+        <article class="panel feature">
+          <div class="feature-top"><span class="feature-icon">AST</span><span class="tag active">Implemented · Partial</span></div>
           <h3>AST-to-IR Lowering</h3>
           <p>A growing scalar-language subset can be lowered, including conditionals, loops, value merges, direct calls, and some imported-module calls.</p>
         </article>
         <article class="panel feature">
           <div class="feature-top"><span class="feature-icon">C</span><span class="tag active">Prototype</span></div>
           <h3>IR-to-C Emitter</h3>
-          <p>An early C code generator consumes verified IR. Developer commands such as <code>emit-ir-c</code> and differential test fixtures are in place; full backend parity is still pending.</p>
+          <p>An early C code generator consumes verified IR. Developer commands and differential fixtures exist; full backend parity and default-path migration are still pending.</p>
         </article>
         <article class="panel feature">
-          <div class="feature-top"><span class="feature-icon">O2</span><span class="tag active">Validation pending</span></div>
-          <h3>IR Optimizations</h3>
-          <p>Initial constant folding, constant propagation, CFG cleanup, dead-code elimination, and conservative simplifications are implemented in a developing pipeline that preserves potentially trapping operations.</p>
-        </article>
-        <article class="panel feature">
-          <div class="feature-top"><span class="feature-icon">{ }</span><span class="tag active">Implemented</span></div>
-          <h3>IR Inspection & Testing Tools</h3>
-          <p>Readable textual MIR, machine-readable JSON output, dedicated unit tests, and IR fuzz-smoke testing help validate the new compiler layer.</p>
+          <div class="feature-top"><span class="feature-icon">OPT</span><span class="tag active">Validation pending</span></div>
+          <h3>Initial IR Optimizations</h3>
+          <p>Constant folding, propagation, CFG cleanup, dead-code elimination, and conservative simplifications are in development, with checks to preserve potentially trapping operations.</p>
         </article>
         <article class="panel feature">
           <div class="feature-top"><span class="feature-icon">OWN</span><span class="tag active">Early implementation</span></div>
@@ -216,10 +256,11 @@
       </div>
     </section>
 
-    <section id="roadmap">
+    <section class="container content-section" id="roadmap">
       <div class="section-head">
         <div>
-          <h2>What is planned for YLang 3.0?</h2>
+          <p class="section-label">02 / Release direction</p>
+          <h2>What's planned for YLang 3.0?</h2>
           <p>These are roadmap goals, not claims that the features are available today.</p>
         </div>
       </div>
@@ -230,7 +271,7 @@
         </article>
         <article class="panel roadmap-item">
           <span class="roadmap-index">02</span>
-          <div><h3>NASM x86-64 Backend</h3><p>Generate real assembly from the shared IR, including register allocation, stack frames, object generation, and System V / Windows x64 ABI support.</p></div>
+          <div><h3>NASM x86-64 Backend</h3><p>Generate assembly from the shared IR, including register allocation, stack frames, object generation, and System V / Windows x64 ABI support.</p></div>
         </article>
         <article class="panel roadmap-item">
           <span class="roadmap-index">03</span>
@@ -252,9 +293,10 @@
       <div class="notice"><strong>Release status:</strong> LLVM, NASM, advanced language features, first-class Windows support, and a complete desktop application workflow are still roadmap work. YLang 3.0 will not be considered stable until compatibility, platform, security, and performance gates pass and the project owner approves the release.</div>
     </section>
 
-    <section id="sources">
+    <section class="container content-section" id="sources">
       <div class="section-head">
         <div>
+          <p class="section-label">03 / Transparency</p>
           <h2>How is progress calculated?</h2>
           <p>The figures come from the development branch implementation checklist, not a visual estimate.</p>
         </div>
@@ -278,9 +320,9 @@
     </section>
   </main>
 
-  <footer>
-    <div class="wrap footer-inner">
-      <span><bdi>YLang 3.0</bdi> · Unofficial development progress page</span>
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <span class="footer-brand"><img src="../ylang-icon.svg" alt="" width="20" height="20"> YLang 3.0 · Development progress</span>
       <span>Last reviewed: November 1, 2026</span>
     </div>
   </footer>
