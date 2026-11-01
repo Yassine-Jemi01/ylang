@@ -8,7 +8,7 @@ Build YLang first, then run the same workload on the same host and toolchain bef
 
 ```sh
 python3 benchmarks/bench-native.py benchmarks/native-loop.yl \
-  --cc gcc --runs 30 --warmup 3 \
+  --cc cc --runs 30 --warmup 3 \
   --expected-file benchmarks/expected-native-loop.txt
 ```
 
