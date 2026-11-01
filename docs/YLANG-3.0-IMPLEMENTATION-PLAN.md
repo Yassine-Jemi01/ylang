@@ -329,8 +329,11 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [x] 8.1.8 Add a Vim runtime integration for `.yl` filetype detection, syntax highlighting, indentation, and comments; cover it with a headless smoke test.
 - [x] 8.1.9 Keep Neovim filetype, syntax, and compiler-diagnostic integration covered by editor CI.
 - [x] 8.1.10 Document installation and discovery behavior for VS Code, Zed, Vim, and Neovim.
-- [~] 8.1.11 Publish the Zed extension in the official extension gallery and verify first-open extension suggestions. The project enables Zed's suggestion setting, but gallery publication is still required.
-- [~] 8.1.12 Provide a standard missing-plugin prompt for Vim/Neovim. These editors have no shared built-in marketplace or standard recommendation API; investigate editor-native alternatives without requiring a third-party plugin manager to already be installed.
+- [~] 8.1.11 Publish the Zed extension in the official extension gallery and verify first-open extension suggestions. The registry entry is prepared conceptually, but publication still requires a manual Zed smoke test and a human-authored submission by the maintainer under the registry's AI policy.
+- [x] 8.1.12 Update the Zed extension API and resolve the external `ylang-lsp` executable through Zed's Worktree API; do not bundle the language server in the extension package.
+- [x] 8.1.13 Add the accepted MIT license inside the Zed extension directory.
+- [~] 8.1.14 Build the Zed extension as WebAssembly in CI and validate its standalone LSP installation path.
+- [~] 8.1.15 Provide a standard missing-plugin prompt for Vim/Neovim. These editors have no shared built-in marketplace or standard recommendation API; investigate editor-native alternatives without requiring a third-party plugin manager to already be installed.
 
 ## Definition of done for every leaf task
 
