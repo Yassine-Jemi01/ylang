@@ -132,7 +132,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 2.3.7.3.6 Add three-way AST/IR/optimized-IR runtime parity tests for valid and out-of-range values.
   - [ ] 2.3.7.4 Add float formatting, parsing, and standard-library I/O.
 - [ ] 2.3.8 Lower strings, arrays, tuples, structs, enums, and indexing.
-- [ ] 2.3.9 Lower imports and cross-module symbol references.
+- [~] 2.3.9 Lower imports and cross-module symbol references; imported user-function calls are lowered through module-qualified symbols, while broader symbol and import forms remain open.
 - [ ] 2.3.10 Lower ownership moves, borrows, and deterministic drops.
 - [ ] 2.3.11 Match the full stable language feature matrix with explicit unsupported-feature diagnostics.
 
@@ -156,7 +156,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [x] 2.4.2 Add `ylang emit-mir` as a developer inspection command.
 - [~] 2.4.3 Add `ylang emit-mir-opt` for the verified initial scalar constant-folding pass.
 - [~] 2.4.4 Add machine-readable, versioned JSON IR output for tooling; schema validation and CLI coverage are added, pending CI.
-- [ ] 2.4.5 Add IR snapshots and canonical formatting tests.
+- [~] 2.4.5 Add IR snapshots and canonical formatting tests; stable MIR output is compared against a checked-in fixture, with broader snapshot coverage still needed.
 
 ## 3. Backend integration
 
@@ -167,7 +167,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [ ] 3.1.4 Define common object, linker, and target configuration APIs.
 
 ### 3.2 C reference backend migration
-- [ ] 3.2.1 Preserve the current AST-to-C path as a reference during migration.
+- [~] 3.2.1 Preserve the current AST-to-C path as a reference during migration; the compiler retains the AST path and the differential runner compares it with IR-generated C.
 - [~] 3.2.2 Implement the first standalone IR-to-C emitter slice.
   - [~] 3.2.2.1 Emit i64/f64/bool/void functions with constants, checked integer arithmetic/division/modulo/negation, f64 arithmetic/comparisons, bool/f64 negation, branches, block-parameter copies, direct calls, and returns.
     - [~] 3.2.2.1.1 Encode module-qualified IR symbols as collision-free C identifiers.
@@ -194,7 +194,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 3.2.5.2 Build and link the same fixture through verified IR-to-C.
   - [~] 3.2.5.3 Compare exit status, stdout, and stderr byte-for-byte across arithmetic, runtime errors, branches, loops, calls, imported modules, short-circuit expressions, and the initial finite-f64 subset.
 - [~] 3.2.6 Add branch, loop, short-circuit, imported-call, and f64 differential fixtures; expand sanitizer coverage.
-- [ ] 3.2.7 Expand parity feature-by-feature until the supported C subset is covered.
+- [~] 3.2.7 Expand parity feature-by-feature until the supported C subset is covered; an 18-fixture AST/IR/optimized-IR differential runner exists, but full-subset coverage remains open.
 - [ ] 3.2.8 Switch the default build path only after parity and compatibility gates pass.
 
 ### 3.3 LLVM backend
@@ -245,10 +245,10 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 ## 5. Optimization and performance
 
 ### 5.1 Measurement
-- [ ] 5.1.1 Create reproducible arithmetic and control-flow benchmarks.
+- [~] 5.1.1 Create reproducible arithmetic and control-flow benchmarks; a repeatable native loop workload exercises arithmetic and control flow, with a smoke-tested harness.
 - [ ] 5.1.2 Add allocation and memory-footprint benchmarks.
-- [ ] 5.1.3 Add compile-time and binary-size benchmarks.
-- [ ] 5.1.4 Record CPU, OS, compiler, flags, warmups, and result spread.
+- [~] 5.1.3 Add compile-time and binary-size benchmarks; the native benchmark reports compile latency and executable size, with broader workloads still needed.
+- [~] 5.1.4 Record CPU, OS, compiler, flags, warmups, and result spread; the harness records host, compiler version, optimization level, warmups, medians, and P95, while exact compiler-flag capture remains to do.
 
 ### 5.2 Optimization passes
 - [~] 5.2.1 Constant folding, including safe scalar integer, boolean, and conservative f64 cases.
@@ -298,12 +298,12 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [ ] 7.1.1 Define Windows toolchain discovery and linker behavior.
 - [ ] 7.1.2 Verify filesystem, process, environment, and networking APIs.
 - [ ] 7.1.3 Verify GUI dependencies and native packaging.
-- [ ] 7.1.4 Run native Windows compiler and executable tests in CI.
-- [ ] 7.1.5 Publish supported toolchain setup and troubleshooting docs.
+- [~] 7.1.4 Run native Windows compiler and executable tests in CI; a MinGW-w64 Windows smoke job exercises native build/run, imports, stdin, and explicit unsupported debugger behavior.
+- [~] 7.1.5 Publish supported toolchain setup and troubleshooting docs; a Windows setup guide documents the current MinGW-w64 path and its experimental limits.
 
 ### 7.2 macOS and Linux
-- [ ] 7.2.1 Keep Linux x86-64 as the reference CI target.
-- [ ] 7.2.2 Verify macOS linker, runtime, GUI, and packaging behavior.
+- [~] 7.2.1 Keep Linux x86-64 as the reference CI target; Ubuntu GCC/Clang CI and dedicated IR verification run on Linux.
+- [~] 7.2.2 Verify macOS linker, runtime, GUI, and packaging behavior; macOS GCC-alias/Clang CI builds and tests the native and SDL2 paths, while packaging coverage remains open.
 - [ ] 7.2.3 Define ARM64 support only for targets with real CI coverage.
 
 ## 8. Developer tools and ecosystem
