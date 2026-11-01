@@ -1,0 +1,59 @@
+name: FreeBSD
+
+on:
+  push:
+    branches: [ylang-3.0-dev]
+  pull_request:
+    branches: [ylang-3.0-dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ylang-freebsd-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  freebsd:
+    name: FreeBSD 15 compiler and regression tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build and test in a native FreeBSD VM
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "15"
+          prepare: |
+            pkg install -y gmake python3 pkgconf sdl2 curl nasm
+          run: |
+            set -eu
+            freebsd-version
+            clang --version
+            gmake --version
+            pkg-config --modversion sdl2
+
+            gmake check-runtime-template PYTHON=python3
+            gmake clean all CC=clang PYTHON=python3
+            gmake test CC=clang PYTHON=python3
+
+            # Exercise the optional SDL2 runtime and Game2D example too.
+            gmake gui gui-example game2d-example CC=clang PYTHON=python3
+
+            # Prove that the compiler can build and run a native FreeBSD program.
+            mkdir -p build/freebsd-smoke
+            cat > build/freebsd-smoke/hello.yl <<'EOF'
+            fn main() -> int {
+                let mut int answer = 40;
+                answer += 2;
+                print("FreeBSD smoke:", answer);
+                return 0;
+            }
+            EOF
+            ./build/ylang check build/freebsd-smoke/hello.yl
+            ./build/ylang build build/freebsd-smoke/hello.yl -o build/freebsd-smoke/hello
+            output="$(./build/freebsd-smoke/hello)"
+            test "$output" = "FreeBSD smoke: 42"
