@@ -231,8 +231,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install Neovim
-        run: sudo apt-get update && sudo apt-get install -y neovim
+      - name: Install Vim and Neovim
+        run: sudo apt-get update && sudo apt-get install -y neovim vim-nox
+      - name: Test Vim filetype, syntax, and indentation
+        run: vim -Nu NONE -n -es -S editors/vim/tests/smoke.vim
       - name: Test VS Code diagnostic parser
         run: npm test --prefix editors/vscode
       - name: Package the installable VS Code extension
