@@ -29,7 +29,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path, help="YLang source file to compile and run")
     parser.add_argument("--compiler", type=Path, default=ROOT / "build" / "ylang", help="YLang compiler executable")
-    parser.add_argument("--cc", choices=("gcc", "clang"), default="gcc", help="native C compiler")
+    parser.add_argument("--cc", choices=("cc", "gcc", "clang"), default="gcc" if os.name == "nt" else "cc", help="native C compiler (default: system cc, or gcc on Windows)")
     parser.add_argument("--runs", type=int, default=10, help="measured repetitions (default: 10)")
     parser.add_argument("--warmup", type=int, default=2, help="warm-up repetitions (default: 2)")
     parser.add_argument("--expected-output", help="exact stdout expected from the program, including newlines")
