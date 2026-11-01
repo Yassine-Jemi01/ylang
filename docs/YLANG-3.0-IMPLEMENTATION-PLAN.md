@@ -279,6 +279,8 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [~] 5.2.11.5 Avoid floating-point identities that can alter NaN or signed-zero semantics.
   - [~] 5.2.11.6 Add positive, negative, and verifier-regression tests.
 
+- [~] 5.2.12 Replace linear IR constant-table lookups with open-addressed hashing in constant folding and constant-branch simplification; correctness and sanitizer CI validation pending.
+
 ## 6. Standard library and desktop application development
 
 ### 6.1 Core library
