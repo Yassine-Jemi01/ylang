@@ -393,8 +393,10 @@ static bool constant_fold_function(YIRFunction *function, char *error,
                         return optimize_fail(error, error_capacity,
                             "constant table exceeded the instruction count");
                     }
-                    if (constant_count != previous_count)
-                                continue;
+                    if (constant_count != previous_count) {
+                        changed = true;
+                        continue;
+                    }
                 }
                 if (instruction->opcode == YIR_OP_CONST_F64) {
                     if (safe_f64_constant(instruction->floating_immediate)) {
