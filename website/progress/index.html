@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1114">
+  <meta name="description" content="Follow YLang 3.0 development: implementation progress, compiler architecture, current work, and planned release features.">
+  <title>YLang 3.0 — Development Progress</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1114;
+      --surface: #111b1f;
+      --surface-2: #172328;
+      --line: #29393e;
+      --text: #edf3f1;
+      --muted: #9aadaa;
+      --teal: #54c7b2;
+      --teal-dim: #1c5c55;
+      --orange: #d99562;
+      --yellow: #e1bd72;
+      --blue: #84b6d3;
+      --radius: 16px;
+      --max: 1080px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 85% 0%, rgba(46, 111, 101, .13), transparent 34rem),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.7;
+    }
+    a { color: inherit; text-decoration-color: rgba(84,199,178,.55); text-underline-offset: 4px; }
+    a:hover { color: var(--teal); }
+    .wrap { width: min(var(--max), calc(100% - 40px)); margin-inline: auto; }
+    .topbar { border-bottom: 1px solid rgba(137,164,160,.15); }
+    .topbar-inner { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 750; letter-spacing: -.04em; font-size: 20px; direction: ltr; }
+    .brand-mark { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid #3c8278; border-radius: 9px; color: var(--teal); font-size: 17px; font-weight: 800; }
+    .brand small { color: var(--muted); font-weight: 500; font-size: 12px; letter-spacing: 0; }
+    nav { display: flex; gap: 25px; color: var(--muted); font-size: 13px; }
+    nav a { text-decoration: none; }
+    .hero { padding: 76px 0 54px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 9px; color: var(--teal); border: 1px solid rgba(84,199,178,.3); background: rgba(84,199,178,.07); border-radius: 999px; padding: 5px 11px; font-size: 12px; font-weight: 650; }
+    .dot { width: 7px; height: 7px; background: var(--teal); border-radius: 50%; box-shadow: 0 0 0 4px rgba(84,199,178,.12); }
+    h1 { font-size: clamp(38px, 6vw, 66px); line-height: 1.12; letter-spacing: -.055em; margin: 22px 0 16px; max-width: 800px; }
+    h1 span { color: var(--teal); }
+    .lead { max-width: 700px; color: #b6c4c1; font-size: 17px; margin: 0; }
+    .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin-top: 27px; font-size: 13px; }
+    .button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid #3a8278; background: #153d39; color: #e9fffa; border-radius: 9px; padding: 10px 15px; font-weight: 650; text-decoration: none; }
+    .button:hover { color: white; background: #1b514a; text-decoration: none; }
+    .subtle-link { color: var(--muted); }
+    .overview { display: grid; grid-template-columns: 1.15fr .85fr; gap: 16px; align-items: stretch; }
+    .panel { background: linear-gradient(145deg, rgba(23,35,40,.96), rgba(16,26,30,.96)); border: 1px solid var(--line); border-radius: var(--radius); }
+    .progress-panel { padding: 27px; }
+    .panel-kicker { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+    .progress-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; }
+    .progress-number { font-size: clamp(48px, 7vw, 72px); font-weight: 780; letter-spacing: -.07em; line-height: 1; direction: ltr; }
+    .progress-number small { font-size: 25px; color: var(--teal); letter-spacing: -.03em; }
+    .progress-note { max-width: 190px; color: var(--muted); font-size: 12px; }
+    .track { height: 10px; background: #26363a; border-radius: 99px; overflow: hidden; margin: 25px 0 13px; direction: ltr; }
+    .track > span { display: block; height: 100%; width: 60.1%; border-radius: inherit; background: linear-gradient(90deg, #328b7e, #65d2b9); }
+    .progress-caption { color: var(--muted); font-size: 12px; margin: 0; }
+    .stats { padding: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat { border: 1px solid rgba(137,164,160,.15); background: rgba(8,15,18,.28); padding: 17px; border-radius: 12px; }
+    .stat strong { display: block; font-size: 30px; line-height: 1.25; letter-spacing: -.04em; direction: ltr; text-align: left; }
+    .stat span { display: block; color: var(--muted); font-size: 12px; margin-top: 5px; }
+    .stat.done strong { color: var(--teal); }
+    .stat.pending strong { color: var(--yellow); }
+    .stat.todo strong { color: #b9c4c2; }
+    section { padding: 58px 0 0; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
+    .section-head h2 { margin: 0; font-size: clamp(24px, 3vw, 32px); letter-spacing: -.04em; }
+    .section-head p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 11px; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .feature { padding: 21px; min-height: 208px; }
+    .feature-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+    .feature-icon { width: 35px; height: 35px; display: grid; place-items: center; color: var(--teal); border: 1px solid rgba(84,199,178,.25); border-radius: 10px; background: rgba(84,199,178,.07); font-size: 15px; font-weight: 700; direction: ltr; }
+    .tag { white-space: nowrap; font-size: 10px; padding: 3px 8px; border: 1px solid var(--line); color: var(--muted); border-radius: 999px; }
+    .tag.active { color: var(--teal); border-color: rgba(84,199,178,.32); background: rgba(84,199,178,.07); }
+    .tag.planned { color: var(--orange); border-color: rgba(217,149,98,.32); background: rgba(217,149,98,.07); }
+    .feature h3 { margin: 0 0 8px; font-size: 17px; letter-spacing: -.02em; }
+    .feature p { color: var(--muted); font-size: 13px; margin: 0; }
+    code { direction: ltr; unicode-bidi: embed; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; color: #b9e8dc; background: rgba(84,199,178,.08); border: 1px solid rgba(84,199,178,.15); border-radius: 5px; padding: 1px 5px; }
+    .roadmap { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .roadmap-item { display: flex; gap: 15px; padding: 19px; }
+    .roadmap-index { flex: 0 0 30px; width: 30px; height: 30px; border: 1px solid #3c8278; color: var(--teal); border-radius: 8px; display: grid; place-items: center; font-size: 12px; font-weight: 700; direction: ltr; }
+    .roadmap-item h3 { font-size: 15px; margin: 0 0 4px; }
+    .roadmap-item p { color: var(--muted); font-size: 12px; margin: 0; }
+    .notice { margin-top: 18px; border: 1px solid rgba(225,189,114,.25); background: rgba(225,189,114,.06); color: #d5c49d; border-radius: 12px; padding: 15px 17px; font-size: 12px; }
+    .method { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .method-card { padding: 22px; }
+    .method-card h3 { margin: 0 0 8px; font-size: 15px; }
+    .method-card p { color: var(--muted); margin: 0; font-size: 13px; }
+    .source-links { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-top: 15px; font-size: 12px; }
+    footer { margin-top: 68px; border-top: 1px solid rgba(137,164,160,.15); padding: 25px 0 36px; color: var(--muted); font-size: 11px; }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+    .ltr { direction: ltr; unicode-bidi: embed; display: inline-block; }
+    @media (max-width: 760px) {
+      .overview { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr 1fr; }
+      .section-head { align-items: start; flex-direction: column; }
+      nav { gap: 13px; font-size: 11px; }
+      .hero { padding-top: 54px; }
+    }
+    @media (max-width: 520px) {
+      .wrap { width: min(100% - 28px, var(--max)); }
+      nav { display: none; }
+      .grid, .roadmap, .method { grid-template-columns: 1fr; }
+      .feature { min-height: 0; }
+      .progress-panel { padding: 22px; }
+      .progress-top { align-items: start; flex-direction: column; }
+      .progress-note { max-width: none; }
+      .footer-inner { align-items: start; flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .track > span { animation: grow 900ms ease-out both; }
+      @keyframes grow { from { width: 0; } to { width: 60.1%; } }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="#top" aria-label="YLang 3.0 home">
+        <span class="brand-mark">Y</span>
+        <span>YLang <small>3.0 / DEVELOPMENT</small></span>
+      </a>
+      <nav aria-label="Main navigation">
+        <a href="#progress">Progress</a>
+        <a href="#features">Features</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="#sources">Project links</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top" class="wrap">
+    <div class="hero">
+      <span class="eyebrow"><i class="dot"></i> Active development · Not a stable release</span>
+      <h1>A new foundation for <span>YLang 3.0</span></h1>
+      <p class="lead">This release is about more than new syntax. We are building a stronger compiler architecture, a backend-neutral intermediate representation, safer memory management, and a path toward native desktop applications on Linux, Windows, and macOS.</p>
+      <div class="hero-actions">
+        <a class="button" href="https://github.com/Yassine-Jemi01/ylang/tree/ylang-3.0-dev" target="_blank" rel="noreferrer">Explore the development branch <span aria-hidden="true">↗</span></a>
+        <a class="subtle-link" href="#features">Explore what is being built ↓</a>
+      </div>
+    </div>
+
+    <div class="overview" id="progress">
+      <article class="panel progress-panel">
+        <p class="panel-kicker">Implementation checklist · Development branch</p>
+        <div class="progress-top">
+          <div class="progress-number">60.1<small>%</small></div>
+          <div class="progress-note">149 of 248 checklist items have implementation present on the branch, either completed or awaiting full validation.</div>
+        </div>
+        <div class="track" role="img" aria-label="60.1 percent of checklist items have implementation present"><span></span></div>
+        <p class="progress-caption">This measures implementation presence in the checklist — not release readiness, feature completeness, or test coverage.</p>
+      </article>
+      <aside class="panel stats" aria-label="Implementation checklist breakdown">
+        <div class="stat done"><strong>19</strong><span>Implemented and marked complete <bdi>[x]</bdi></span></div>
+        <div class="stat pending"><strong>130</strong><span>Implementation exists; full validation pending <bdi>[~]</bdi></span></div>
+        <div class="stat todo"><strong>99</strong><span>Not started <bdi>[ ]</bdi></span></div>
+        <div class="stat"><strong>248</strong><span>Total checklist items</span></div>
+      </aside>
+    </div>
+
+    <section id="features">
+      <div class="section-head">
+        <div>
+          <h2>What is already on the 3.0 branch?</h2>
+          <p>These components have implementation on the development branch. Their scope and validation status are shown honestly.</p>
+        </div>
+        <div class="legend" aria-label="Status legend">
+          <span><i style="background:var(--teal)"></i> On the branch</span>
+          <span><i style="background:var(--orange)"></i> Planned work</span>
+        </div>
+      </div>
+      <div class="grid">
+        <article class="panel feature">
+          <div class="feature-top"><span class="feature-icon">IR</span><span class="tag active">Implemented · Partial</span></div>
+          <h3>Typed SSA Intermediate Representation</h3>
+          <p>A typed, C-independent IR with values, types, basic blocks, and explicit control-flow terminators, backed by an IR verifier that checks structural invariants.</p>
+        </article>
+        <article class="panel feature">
+          <div class="feature-top"><span class="feature-icon">01</span><span class="tag active">Implemented · Partial</span></div>
+          <h3>AST-to-IR Lowering</h3>
+          <p>A growing scalar-language subset can be lowered, including conditionals, loops, value merges, direct calls, and some imported-module calls.</p>
+        </article>
+        <article class="panel feature">
+          <div class="feature-top"><span class="feature-icon">C</span><span class="tag active">Prototype</span></div>
+          <h3>IR-to-C Emitter</h3>
+          <p>An early C code generator consumes verified IR. Developer commands such as <code>emit-ir-c</code> and differential test fixtures are in place; full backend parity is still pending.</p>
+        </article>
+        <article class="panel feature">
+          <div class="feature-top"><span class="feature-icon">O2</span><span class="tag active">Validation pending</span></div>
+          <h3>IR Optimizations</h3>
+          <p>Initial constant folding, constant propagation, CFG cleanup, dead-code elimination, and conservative simplifications are implemented in a developing pipeline that preserves potentially trapping operations.</p>
+        </article>
+        <article class="panel feature">
+          <div class="feature-top"><span class="feature-icon">{ }</span><span class="tag active">Implemented</span></div>
+          <h3>IR Inspection & Testing Tools</h3>
+          <p>Readable textual MIR, machine-readable JSON output, dedicated unit tests, and IR fuzz-smoke testing help validate the new compiler layer.</p>
+        </article>
+        <article class="panel feature">
+          <div class="feature-top"><span class="feature-icon">OWN</span><span class="tag active">Early implementation</span></div>
+          <h3>Initial Ownership Checks</h3>
+          <p>Move-state checks and limited call-scoped borrow-conflict checks exist. This is not yet a complete borrow checker or a comprehensive memory-safety guarantee.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <div class="section-head">
+        <div>
+          <h2>What is planned for YLang 3.0?</h2>
+          <p>These are roadmap goals, not claims that the features are available today.</p>
+        </div>
+      </div>
+      <div class="roadmap">
+        <article class="panel roadmap-item">
+          <span class="roadmap-index">01</span>
+          <div><h3>LLVM Backend</h3><p>Generate LLVM IR and native executables, with optimization profiles, debug information, target configuration, and platform support.</p></div>
+        </article>
+        <article class="panel roadmap-item">
+          <span class="roadmap-index">02</span>
+          <div><h3>NASM x86-64 Backend</h3><p>Generate real assembly from the shared IR, including register allocation, stack frames, object generation, and System V / Windows x64 ABI support.</p></div>
+        </article>
+        <article class="panel roadmap-item">
+          <span class="roadmap-index">03</span>
+          <div><h3>A Richer Type System</h3><p>Generics, traits, enums, exhaustive pattern matching, tuples, slices, iterators, closures, and <code>Option</code> / <code>Result</code>.</p></div>
+        </article>
+        <article class="panel roadmap-item">
+          <span class="roadmap-index">04</span>
+          <div><h3>Ownership & Borrowing</h3><p>Explicit moves, shared and exclusive borrows, lifetime and alias checks, and deterministic destruction across control-flow exits.</p></div>
+        </article>
+        <article class="panel roadmap-item">
+          <span class="roadmap-index">05</span>
+          <div><h3>Desktop Application Development</h3><p>Stabilize GUI and Game2D APIs, define a dependable event loop, and make window, image, audio, and graphics resource ownership safer.</p></div>
+        </article>
+        <article class="panel roadmap-item">
+          <span class="roadmap-index">06</span>
+          <div><h3>Platforms, Libraries & Tooling</h3><p>First-class Linux, Windows, and macOS support, a broader standard library, and better LSP, debugging, and project dependency tooling.</p></div>
+        </article>
+      </div>
+      <div class="notice"><strong>Release status:</strong> LLVM, NASM, advanced language features, first-class Windows support, and a complete desktop application workflow are still roadmap work. YLang 3.0 will not be considered stable until compatibility, platform, security, and performance gates pass and the project owner approves the release.</div>
+    </section>
+
+    <section id="sources">
+      <div class="section-head">
+        <div>
+          <h2>How is progress calculated?</h2>
+          <p>The figures come from the development branch implementation checklist, not a visual estimate.</p>
+        </div>
+      </div>
+      <div class="method">
+        <article class="panel method-card">
+          <h3>Checklist status</h3>
+          <p><bdi>[x]</bdi> means implementation is present and marked complete. <bdi>[~]</bdi> means implementation exists but full CI validation is still pending. <bdi>[ ]</bdi> means work has not started. The 60.1% figure combines <bdi>[x]</bdi> and <bdi>[~]</bdi>.</p>
+        </article>
+        <article class="panel method-card">
+          <h3>Project sources</h3>
+          <p>Review the source code and plans directly. The 3.0 branch is separate from the stable release line, and implementation progress does not mean production readiness.</p>
+          <div class="source-links">
+            <a href="https://github.com/Yassine-Jemi01/ylang/tree/ylang-3.0-dev" target="_blank" rel="noreferrer">3.0 development branch ↗</a>
+            <a href="https://github.com/Yassine-Jemi01/ylang/blob/ylang-3.0-dev/docs/YLANG-3.0-IMPLEMENTATION-PLAN.md" target="_blank" rel="noreferrer">Implementation plan ↗</a>
+            <a href="https://github.com/Yassine-Jemi01/ylang/blob/ylang-3.0-dev/docs/YLANG-3.0-ROADMAP.md" target="_blank" rel="noreferrer">Development roadmap ↗</a>
+            <a href="https://github.com/Yassine-Jemi01/ylang/blob/ylang-3.0-dev/docs/YLANG-3.0-OWNERSHIP.md" target="_blank" rel="noreferrer">Ownership design ↗</a>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-inner">
+      <span><bdi>YLang 3.0</bdi> · Unofficial development progress page</span>
+      <span>Last reviewed: November 1, 2026</span>
+    </div>
+  </footer>
+</body>
+</html>
