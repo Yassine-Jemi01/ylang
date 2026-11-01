@@ -309,7 +309,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 
 ### 7.3 BSD family
 - [~] 7.3.1 Add a real FreeBSD VM build-and-test job; the first CI workflow now targets FreeBSD 15.x, pending its first successful hosted run.
-- [ ] 7.3.2 Validate SDL2 GUI/Game2D dependencies and runtime behavior on FreeBSD.
+- [~] 7.3.2 Add FreeBSD SDL2 GUI/Game2D compile-and-link coverage; opening a real window and exercising the event loop remain unvalidated, and the hosted CI run is pending.
 - [ ] 7.3.3 Audit filesystem, process, environment, networking, and linker behavior for BSD-specific differences.
 - [ ] 7.3.4 Add OpenBSD CI and resolve platform-specific build/runtime issues.
 - [ ] 7.3.5 Add NetBSD CI and resolve platform-specific build/runtime issues.
