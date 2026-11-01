@@ -64,7 +64,12 @@ def main() -> int:
     if not compiler_args:
         compiler_args = ["cc"]
     compiler_name = " ".join(compiler_args).lower()
-    ylang_cc = "clang" if "clang" in compiler_name else "gcc"
+    if "clang" in compiler_name:
+        ylang_cc = "clang"
+    elif "gcc" in compiler_name:
+        ylang_cc = "gcc"
+    else:
+        ylang_cc = "cc"
     executable_suffix = ".exe" if os.name == "nt" else ""
     native_math_libs = [] if os.name == "nt" else ["-lm"]
 
