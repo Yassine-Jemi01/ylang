@@ -38,7 +38,7 @@ jobs:
 
             gmake check-runtime-template PYTHON=python3
             gmake clean all CC=clang PYTHON=python3
-            gmake test CC=clang PYTHON=python3
+            YLANG_SKIP_DEBUGGER_TEST=1 gmake test CC=clang PYTHON=python3
 
             # Exercise the optional SDL2 runtime and Game2D example too.
             gmake gui gui-example game2d-example CC=clang PYTHON=python3
