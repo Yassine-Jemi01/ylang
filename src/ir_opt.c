@@ -1217,17 +1217,69 @@ static bool propagate_identical_block_arguments(YIRFunction *function,
     return true;
 }
 
-static bool find_local_i64_constant(const YIRBlock *block,
-                                    size_t before_instruction,
+typedef struct {
+    uint32_t *ids;
+    int64_t *values;
+    size_t capacity;
+} LocalConstantTable;
+
+static size_t local_constant_hash(uint32_t id)
+{
+    return (size_t)(id * UINT32_C(2654435761));
+}
+
+static bool init_local_constant_table(LocalConstantTable *table,
+                                      size_t instruction_count)
+{
+    memset(table, 0, sizeof(*table));
+    size_t capacity = 2;
+    if (instruction_count > SIZE_MAX / 2) return false;
+    size_t required = instruction_count * 2;
+    while (capacity < required) {
+        if (capacity > SIZE_MAX / 2) return false;
+        capacity *= 2;
+    }
+    table->ids = calloc(capacity, sizeof(*table->ids));
+    table->values = calloc(capacity, sizeof(*table->values));
+    if (!table->ids || !table->values) {
+        free(table->ids);
+        free(table->values);
+        memset(table, 0, sizeof(*table));
+        return false;
+    }
+    table->capacity = capacity;
+    return true;
+}
+
+static void destroy_local_constant_table(LocalConstantTable *table)
+{
+    free(table->ids);
+    free(table->values);
+    memset(table, 0, sizeof(*table));
+}
+
+static void remember_local_i64_constant(LocalConstantTable *table,
+                                         uint32_t id, int64_t value)
+{
+    if (!id || !table->capacity) return;
+    size_t slot = local_constant_hash(id) & (table->capacity - 1);
+    while (table->ids[slot] && table->ids[slot] != id)
+        slot = (slot + 1) & (table->capacity - 1);
+    table->ids[slot] = id;
+    table->values[slot] = value;
+}
+
+static bool find_local_i64_constant(const LocalConstantTable *table,
                                     uint32_t value_id, int64_t *value)
 {
-    for (size_t i = before_instruction; i > 0; --i) {
-        const YIRInstruction *candidate = &block->instructions[i - 1];
-        if (candidate->result_id == value_id &&
-            candidate->opcode == YIR_OP_CONST_I64) {
-            *value = candidate->immediate;
+    if (!table || !table->capacity || !value_id) return false;
+    size_t slot = local_constant_hash(value_id) & (table->capacity - 1);
+    while (table->ids[slot]) {
+        if (table->ids[slot] == value_id) {
+            *value = table->values[slot];
             return true;
         }
+        slot = (slot + 1) & (table->capacity - 1);
     }
     return false;
 }
@@ -1268,6 +1320,10 @@ static bool simplify_integer_algebra(YIRFunction *function, char *error,
 {
     for (size_t bi = 0; bi < function->block_count; ++bi) {
         YIRBlock *block = (YIRBlock *)function->blocks + bi;
+        LocalConstantTable constants;
+        if (!init_local_constant_table(&constants, block->instruction_count))
+            return optimize_fail(error, error_capacity,
+                "out of memory while preparing algebraic simplification");
         size_t ii = 0;
         while (ii + 1 < block->instruction_count) {
             YIRInstruction *instruction =
@@ -1277,12 +1333,19 @@ static bool simplify_integer_algebra(YIRFunction *function, char *error,
                 continue;
             }
 
+            if (instruction->opcode == YIR_OP_CONST_I64) {
+                remember_local_i64_constant(&constants,
+                    instruction->result_id, instruction->immediate);
+                ++ii;
+                continue;
+            }
+
             int64_t lhs_constant = 0;
             int64_t rhs_constant = 0;
             bool lhs_is_constant = find_local_i64_constant(
-                block, ii, instruction->lhs, &lhs_constant);
+                &constants, instruction->lhs, &lhs_constant);
             bool rhs_is_constant = find_local_i64_constant(
-                block, ii, instruction->rhs, &rhs_constant);
+                &constants, instruction->rhs, &rhs_constant);
             bool removed = false;
 
             switch (instruction->opcode) {
@@ -1355,8 +1418,14 @@ static bool simplify_integer_algebra(YIRFunction *function, char *error,
                     break;
             }
 
-            if (!removed) ++ii;
+            if (!removed) {
+                if (instruction->opcode == YIR_OP_CONST_I64)
+                    remember_local_i64_constant(&constants,
+                        instruction->result_id, instruction->immediate);
+                ++ii;
+            }
         }
+        destroy_local_constant_table(&constants);
     }
     return yir_verify_function(function, error, error_capacity);
 }
