@@ -1089,6 +1089,53 @@ static void copy_propagation_compacts_multiple_parameters_on_true_and_false_edge
     assert(yir_verify_function(&function,error,sizeof(error)));
 }
 
+static void constant_folding_scales_to_large_instruction_streams(void)
+{
+    enum { PAIRS = 4096 };
+    const size_t instruction_count = (size_t)PAIRS * 3 + 1;
+    YIRInstruction *instructions =
+        calloc(instruction_count, sizeof(*instructions));
+    assert(instructions != NULL);
+
+    for (uint32_t i = 0; i < PAIRS; ++i) {
+        const uint32_t base = i * 3 + 1;
+        const size_t offset = (size_t)i * 3;
+        instructions[offset] = (YIRInstruction){
+            .opcode=YIR_OP_CONST_I64,.result_id=base,
+            .result_type=YIR_TYPE_I64,.immediate=(int64_t)i
+        };
+        instructions[offset + 1] = (YIRInstruction){
+            .opcode=YIR_OP_CONST_I64,.result_id=base + 1,
+            .result_type=YIR_TYPE_I64,.immediate=(int64_t)i + 1
+        };
+        instructions[offset + 2] = (YIRInstruction){
+            .opcode=YIR_OP_ADD_I64,.result_id=base + 2,
+            .result_type=YIR_TYPE_I64,.lhs=base,.rhs=base + 1
+        };
+    }
+    instructions[instruction_count - 1] = (YIRInstruction){
+        .opcode=YIR_OP_RETURN,.lhs=(uint32_t)(PAIRS * 3)
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,
+         .instruction_count=instruction_count}
+    };
+    YIRFunction function = {
+        .name="large_constant_stream",.return_type=YIR_TYPE_I64,
+        .blocks=blocks,.block_count=1
+    };
+    char error[256];
+
+    assert(run_constant_fold_only(&function,error,sizeof(error)));
+    for (uint32_t i = 0; i < PAIRS; ++i) {
+        const YIRInstruction *folded = &instructions[(size_t)i * 3 + 2];
+        assert(folded->opcode==YIR_OP_CONST_I64);
+        assert(folded->immediate==(int64_t)(i * 2 + 1));
+    }
+    assert(yir_verify_function(&function,error,sizeof(error)));
+    free(instructions);
+}
+
 static void hash_table_handles_colliding_value_ids(void)
 {
     YIRInstruction instructions[] = {
@@ -1119,6 +1166,7 @@ static void hash_table_handles_colliding_value_ids(void)
 
 int main(void)
 {
+    constant_folding_scales_to_large_instruction_streams();
     hash_table_handles_colliding_value_ids();
     folds_safe_integer_and_boolean_constants();
     preserves_operations_that_may_trap();
