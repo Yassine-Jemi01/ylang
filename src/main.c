@@ -13,8 +13,8 @@ static void usage(FILE *stream)
         "YLang v" YLANG_VERSION " — compiled language toolchain\n\n"
         "Usage:\n"
         "  ylang check <file.yl>\n"
-        "  ylang build <file.yl> [-o executable] [--cc gcc|clang] (default: system cc)\n"
-        "  ylang debug <file.yl> [-o executable] [--cc gcc|clang] (default: system cc)\n"
+        "  ylang build <file.yl> [-o executable] [--cc cc|gcc|clang] (default: system cc)\n"
+        "  ylang debug <file.yl> [-o executable] [--cc cc|gcc|clang] (default: system cc)\n"
         "  ylang build-asm <file.yl> [-o executable]\n"
         "  ylang emit-c <file.yl> [-o generated.c]\n"
         "  ylang emit-mir <file.yl>\n"
@@ -82,12 +82,13 @@ int main(int argc, char **argv)
             output = argv[++i];
         } else if (strcmp(argv[i], "--cc") == 0) {
             if (i + 1 >= argc) {
-                fputs("ylang: --cc needs gcc or clang\n", stderr);
+                fputs("ylang: --cc needs cc, gcc, or clang\n", stderr);
                 return 64;
             }
             cc = argv[++i];
-            if (strcmp(cc, "gcc") != 0 && strcmp(cc, "clang") != 0) {
-                fputs("ylang: supported native compilers are gcc and clang\n", stderr);
+            if (strcmp(cc, "cc") != 0 && strcmp(cc, "gcc") != 0 &&
+                strcmp(cc, "clang") != 0) {
+                fputs("ylang: supported native compilers are cc, gcc, and clang\n", stderr);
                 return 64;
             }
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
