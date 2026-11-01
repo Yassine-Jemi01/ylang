@@ -686,8 +686,8 @@ static void common_subexpressions_rewrite_block_edge_uses(void)
     assert(blocks[0].instruction_count==3);
     assert(entry_instructions[0].opcode==YIR_OP_NOT_BOOL);
     assert(entry_instructions[0].result_id==2);
-    assert(entry_instructions[1].opcode==YIR_OP_BRANCH);
-    assert(entry_instructions[1].argument_count==1);
+    assert(entry_instructions[2].opcode==YIR_OP_BRANCH);
+    assert(entry_instructions[2].argument_count==1);
     assert(edge_arguments[0]==2);
     assert(yir_verify_function(&function,error,sizeof(error)));
 }
