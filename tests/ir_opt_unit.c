@@ -679,10 +679,11 @@ static void common_subexpressions_rewrite_block_edge_uses(void)
         .parameters=parameters,.parameter_count=1,
         .blocks=blocks,.block_count=2
     };
+    const YIROptPass pass[] = {YIR_OPT_COMMON_SUBEXPRESSION};
     char error[256];
 
-    assert(yir_optimize_function(&function,error,sizeof(error)));
-    assert(blocks[0].instruction_count==2);
+    assert(yir_run_opt_pipeline(&function,pass,1,error,sizeof(error)));
+    assert(blocks[0].instruction_count==3);
     assert(entry_instructions[0].opcode==YIR_OP_NOT_BOOL);
     assert(entry_instructions[0].result_id==2);
     assert(entry_instructions[1].opcode==YIR_OP_BRANCH);
