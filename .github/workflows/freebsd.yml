@@ -28,7 +28,7 @@ jobs:
         with:
           release: "15"
           prepare: |
-            pkg install -y gmake python3 pkgconf sdl2 curl nasm
+            pkg install -y bash gmake python3 pkgconf sdl2 curl nasm
           run: |
             set -eu
             freebsd-version
