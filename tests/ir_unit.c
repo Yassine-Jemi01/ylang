@@ -489,6 +489,66 @@ static void accept_module_qualified_same_name_call_targets(void)
 
 
 
+static void reject_branch_target_metadata_on_arithmetic_instruction(void)
+{
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CONST_I64,.result_id=1,.result_type=YIR_TYPE_I64,
+         .immediate=7,.target=1},
+        {.opcode=YIR_OP_RETURN,.lhs=1}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=2
+    };
+    const YIRFunction function = {
+        .name="bad_arithmetic_branch_target",.return_type=YIR_TYPE_I64,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,
+        "branch target metadata is only valid on branch instructions") != NULL);
+}
+
+static void reject_false_target_on_unconditional_branch(void)
+{
+    const YIRInstruction entry[] = {
+        {.opcode=YIR_OP_BRANCH,.target=1,.false_target=1}
+    };
+    const YIRInstruction exit[] = {{.opcode=YIR_OP_RETURN}};
+    const YIRBlock blocks[] = {
+        {.id=0,.instructions=entry,.instruction_count=1},
+        {.id=1,.instructions=exit,.instruction_count=1}
+    };
+    const YIRFunction function = {
+        .name="bad_unconditional_false_target",.return_type=YIR_TYPE_VOID,
+        .blocks=blocks,.block_count=2
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,
+        "false branch targets are only valid on conditional branches") != NULL);
+}
+
+static void reject_branch_target_metadata_on_call(void)
+{
+    const YIRInstruction instructions[] = {
+        {.opcode=YIR_OP_CALL,.result_type=YIR_TYPE_VOID,
+         .callee="callee",.target=9},
+        {.opcode=YIR_OP_RETURN}
+    };
+    const YIRBlock block = {
+        .id=0,.instructions=instructions,.instruction_count=2
+    };
+    const YIRFunction function = {
+        .name="bad_call_branch_target",.return_type=YIR_TYPE_VOID,
+        .blocks=&block,.block_count=1
+    };
+    char error[192];
+    assert(!yir_verify_function(&function,error,sizeof(error)));
+    assert(strstr(error,
+        "branch target metadata is only valid on branch instructions") != NULL);
+}
+
 static void reject_duplicate_qualified_function_symbols(void)
 {
     const YIRInstruction return_instructions[] = {
@@ -905,6 +965,9 @@ int main(void)
     accept_explicit_numeric_conversion_ops();
     reject_numeric_conversion_operand_type_mismatch();
     reject_i64_to_f64_with_float_operand();
+    reject_branch_target_metadata_on_arithmetic_instruction();
+    reject_false_target_on_unconditional_branch();
+    reject_branch_target_metadata_on_call();
     reject_duplicate_qualified_function_symbols();
     puts("YLang IR verifier tests passed"); return 0;
 }
