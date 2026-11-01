@@ -658,27 +658,68 @@ static bool simplify_constant_branches(YIRFunction *function, char *error,
     return yir_verify_function(function, error, error_capacity);
 }
 
-static bool mark_live_value(uint32_t *live_values, size_t capacity,
-                            size_t *live_count, uint32_t id)
+typedef struct {
+    uint32_t *slots;
+    size_t capacity;
+} LiveValueSet;
+
+static size_t live_value_hash(uint32_t id)
 {
-    if (id == 0) return true;
-    for (size_t i = 0; i < *live_count; ++i)
-        if (live_values[i] == id) return true;
+    return (size_t)(id * UINT32_C(2654435761));
+}
+
+static bool init_live_value_set(LiveValueSet *set, size_t value_capacity)
+{
+    memset(set, 0, sizeof(*set));
+    if (value_capacity > SIZE_MAX / 2) return false;
+    size_t required = value_capacity * 2;
+    size_t capacity = 2;
+    while (capacity < required) {
+        if (capacity > SIZE_MAX / 2) return false;
+        capacity *= 2;
+    }
+    set->slots = calloc(capacity, sizeof(*set->slots));
+    if (!set->slots) return false;
+    set->capacity = capacity;
+    return true;
+}
+
+static void destroy_live_value_set(LiveValueSet *set)
+{
+    free(set->slots);
+    memset(set, 0, sizeof(*set));
+}
+
+static bool live_value_set_contains(const LiveValueSet *set, uint32_t id)
+{
+    if (!set || !set->capacity || !id) return false;
+    size_t slot = live_value_hash(id) & (set->capacity - 1);
+    while (set->slots[slot]) {
+        if (set->slots[slot] == id) return true;
+        slot = (slot + 1) & (set->capacity - 1);
+    }
+    return false;
+}
+
+static bool mark_live_value(LiveValueSet *set, uint32_t *live_values,
+                            size_t capacity, size_t *live_count, uint32_t id)
+{
+    if (id == 0 || live_value_set_contains(set, id)) return true;
     if (*live_count >= capacity) return false;
+    size_t slot = live_value_hash(id) & (set->capacity - 1);
+    while (set->slots[slot]) slot = (slot + 1) & (set->capacity - 1);
+    set->slots[slot] = id;
     live_values[(*live_count)++] = id;
     return true;
 }
 
-static bool value_is_live(const uint32_t *live_values, size_t live_count,
-                          uint32_t id)
+static bool value_is_live(const LiveValueSet *set, uint32_t id)
 {
-    if (id == 0) return false;
-    for (size_t i = 0; i < live_count; ++i)
-        if (live_values[i] == id) return true;
-    return false;
+    return live_value_set_contains(set, id);
 }
 
 static bool mark_instruction_inputs(const YIRInstruction *ins,
+                                    LiveValueSet *live_set,
                                     uint32_t *live_values, size_t capacity,
                                     size_t *live_count)
 {
@@ -704,34 +745,34 @@ static bool mark_instruction_inputs(const YIRInstruction *ins,
         case YIR_OP_LE_F64:
         case YIR_OP_GT_F64:
         case YIR_OP_GE_F64:
-            return mark_live_value(live_values, capacity, live_count, ins->lhs) &&
-                   mark_live_value(live_values, capacity, live_count, ins->rhs);
+            return mark_live_value(live_set, live_values, capacity, live_count, ins->lhs) &&
+                   mark_live_value(live_set, live_values, capacity, live_count, ins->rhs);
         case YIR_OP_NEG_I64:
         case YIR_OP_NEG_F64:
         case YIR_OP_I64_TO_F64:
         case YIR_OP_F64_TO_I64:
         case YIR_OP_NOT_BOOL:
-            return mark_live_value(live_values, capacity, live_count, ins->lhs);
+            return mark_live_value(live_set, live_values, capacity, live_count, ins->lhs);
         case YIR_OP_COND_BRANCH:
-            if (!mark_live_value(live_values, capacity, live_count, ins->lhs))
+            if (!mark_live_value(live_set, live_values, capacity, live_count, ins->lhs))
                 return false;
             for (size_t i = 0; i < ins->argument_count; ++i)
-                if (!mark_live_value(live_values, capacity, live_count,
+                if (!mark_live_value(live_set, live_values, capacity, live_count,
                                      ins->arguments[i])) return false;
             for (size_t i = 0; i < ins->false_argument_count; ++i)
-                if (!mark_live_value(live_values, capacity, live_count,
+                if (!mark_live_value(live_set, live_values, capacity, live_count,
                                      ins->false_arguments[i])) return false;
             return true;
         case YIR_OP_BRANCH:
             for (size_t i = 0; i < ins->argument_count; ++i)
-                if (!mark_live_value(live_values, capacity, live_count,
+                if (!mark_live_value(live_set, live_values, capacity, live_count,
                                      ins->arguments[i])) return false;
             return true;
         case YIR_OP_RETURN:
-            return mark_live_value(live_values, capacity, live_count, ins->lhs);
+            return mark_live_value(live_set, live_values, capacity, live_count, ins->lhs);
         case YIR_OP_CALL:
             for (size_t i = 0; i < ins->argument_count; ++i)
-                if (!mark_live_value(live_values, capacity, live_count,
+                if (!mark_live_value(live_set, live_values, capacity, live_count,
                                      ins->arguments[i])) return false;
             return true;
         case YIR_OP_CONST_I64:
@@ -782,9 +823,12 @@ static bool eliminate_dead_code(YIRFunction *function, char *error,
     }
     uint32_t *live_values = calloc(value_capacity ? value_capacity : 1,
                                    sizeof(*live_values));
-    if (!live_values)
+    LiveValueSet live_set;
+    if (!live_values || !init_live_value_set(&live_set, value_capacity)) {
+        free(live_values);
         return optimize_fail(error, error_capacity,
                              "out of memory while preparing dead-code elimination");
+    }
     size_t live_count = 0;
 
     for (size_t bi = 0; bi < function->block_count; ++bi) {
@@ -793,8 +837,9 @@ static bool eliminate_dead_code(YIRFunction *function, char *error,
             const YIRInstruction *ins = &block->instructions[ii];
             bool root = ii + 1 == block->instruction_count ||
                         instruction_may_have_effects_or_trap(ins->opcode);
-            if (root && !mark_instruction_inputs(ins, live_values,
+            if (root && !mark_instruction_inputs(ins, &live_set, live_values,
                                                   value_capacity, &live_count)) {
+                destroy_live_value_set(&live_set);
                 free(live_values);
                 return optimize_fail(error, error_capacity,
                                      "live-value table exceeded the function value count");
@@ -810,7 +855,7 @@ static bool eliminate_dead_code(YIRFunction *function, char *error,
             for (size_t ii = 0; ii < block->instruction_count; ++ii) {
                 const YIRInstruction *ins = &block->instructions[ii];
                 if (!ins->result_id ||
-                    !value_is_live(live_values, live_count, ins->result_id))
+                    !value_is_live(&live_set, ins->result_id))
                     continue;
                 size_t previous_count = live_count;
                 if (!mark_instruction_inputs(ins, live_values,
@@ -832,8 +877,7 @@ static bool eliminate_dead_code(YIRFunction *function, char *error,
             YIRInstruction instruction = instructions[ii];
             bool keep = ii + 1 == block->instruction_count ||
                         instruction_may_have_effects_or_trap(instruction.opcode) ||
-                        value_is_live(live_values, live_count,
-                                      instruction.result_id);
+                        value_is_live(&live_set, instruction.result_id);
             if (keep) {
                 if (write_index != ii) instructions[write_index] = instruction;
                 write_index++;
@@ -843,6 +887,7 @@ static bool eliminate_dead_code(YIRFunction *function, char *error,
         }
         block->instruction_count = write_index;
     }
+    destroy_live_value_set(&live_set);
     free(live_values);
     return yir_verify_function(function, error, error_capacity);
 }
