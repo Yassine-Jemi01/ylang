@@ -13,6 +13,14 @@ typedef struct {
     double floating_value;
 } KnownConstant;
 
+typedef struct {
+    KnownConstant *items;
+    size_t count;
+    size_t capacity;
+    size_t *slots;
+    size_t slot_capacity;
+} KnownConstantTable;
+
 static bool optimize_fail(char *error, size_t capacity, const char *message)
 {
     if (error && capacity)
@@ -20,11 +28,51 @@ static bool optimize_fail(char *error, size_t capacity, const char *message)
     return false;
 }
 
-static const KnownConstant *find_constant(const KnownConstant *constants,
-                                          size_t count, uint32_t id)
+static size_t constant_hash(uint32_t id)
 {
-    for (size_t i = 0; i < count; ++i)
-        if (constants[i].id == id) return &constants[i];
+    return (size_t)(id * UINT32_C(2654435761));
+}
+
+static bool init_constant_table(KnownConstantTable *table, size_t capacity)
+{
+    memset(table, 0, sizeof(*table));
+    table->capacity = capacity;
+    size_t slot_capacity = 2;
+    if (capacity > SIZE_MAX / 2) return false;
+    const size_t required = capacity * 2;
+    while (slot_capacity < required) {
+        if (slot_capacity > SIZE_MAX / 2) return false;
+        slot_capacity *= 2;
+    }
+    table->items = calloc(capacity ? capacity : 1, sizeof(*table->items));
+    table->slots = calloc(slot_capacity, sizeof(*table->slots));
+    if (!table->items || !table->slots) {
+        free(table->items);
+        free(table->slots);
+        memset(table, 0, sizeof(*table));
+        return false;
+    }
+    table->slot_capacity = slot_capacity;
+    return true;
+}
+
+static void destroy_constant_table(KnownConstantTable *table)
+{
+    free(table->items);
+    free(table->slots);
+    memset(table, 0, sizeof(*table));
+}
+
+static const KnownConstant *find_constant(const KnownConstantTable *table,
+                                          uint32_t id)
+{
+    if (!table || !table->slots || id == 0) return NULL;
+    size_t slot = constant_hash(id) & (table->slot_capacity - 1);
+    while (table->slots[slot] != 0) {
+        const KnownConstant *entry = &table->items[table->slots[slot] - 1];
+        if (entry->id == id) return entry;
+        slot = (slot + 1) & (table->slot_capacity - 1);
+    }
     return NULL;
 }
 
@@ -33,29 +81,36 @@ static bool safe_f64_constant(double value)
     return isfinite(value) && fpclassify(value) != FP_SUBNORMAL;
 }
 
-static bool remember_constant(KnownConstant *constants, size_t capacity,
-                              size_t *count, uint32_t id, YIRType type,
-                              int64_t value)
+static bool remember_constant(KnownConstantTable *table, uint32_t id,
+                              YIRType type, int64_t value)
 {
-    if (find_constant(constants, *count, id)) return true;
-    if (*count >= capacity) return false;
-    constants[*count] = (KnownConstant){
+    if (find_constant(table, id)) return true;
+    if (!table || table->count >= table->capacity || id == 0) return false;
+    size_t slot = constant_hash(id) & (table->slot_capacity - 1);
+    while (table->slots[slot] != 0)
+        slot = (slot + 1) & (table->slot_capacity - 1);
+    table->items[table->count] = (KnownConstant){
         .id=id, .type=type, .value=value
     };
-    (*count)++;
+    table->slots[slot] = table->count + 1;
+    table->count++;
     return true;
 }
 
-static bool remember_f64_constant(KnownConstant *constants, size_t capacity,
-                                  size_t *count, uint32_t id, double value)
+static bool remember_f64_constant(KnownConstantTable *table, uint32_t id,
+                                  double value)
 {
     if (!safe_f64_constant(value)) return true;
-    if (find_constant(constants, *count, id)) return true;
-    if (*count >= capacity) return false;
-    constants[*count] = (KnownConstant){
+    if (find_constant(table, id)) return true;
+    if (!table || table->count >= table->capacity || id == 0) return false;
+    size_t slot = constant_hash(id) & (table->slot_capacity - 1);
+    while (table->slots[slot] != 0)
+        slot = (slot + 1) & (table->slot_capacity - 1);
+    table->items[table->count] = (KnownConstant){
         .id=id, .type=YIR_TYPE_F64, .floating_value=value
     };
-    (*count)++;
+    table->slots[slot] = table->count + 1;
+    table->count++;
     return true;
 }
 
@@ -97,8 +152,7 @@ static bool checked_mul_i64(int64_t left, int64_t right, int64_t *result)
 }
 
 static bool fold_instruction(const YIRInstruction *instruction,
-                             const KnownConstant *constants,
-                             size_t constant_count,
+                             const KnownConstantTable *constants,
                              YIROpcode *opcode, YIRType *type,
                              int64_t *immediate,
                              double *floating_immediate)
@@ -108,7 +162,7 @@ static bool fold_instruction(const YIRInstruction *instruction,
 
     switch (instruction->opcode) {
         case YIR_OP_NOT_BOOL:
-            left = find_constant(constants, constant_count,
+            left = find_constant(constants,
                                  instruction->lhs);
             if (!left || left->type != YIR_TYPE_BOOL) return false;
             *opcode = YIR_OP_CONST_BOOL;
@@ -363,13 +417,10 @@ static bool constant_fold_function(YIRFunction *function, char *error,
         return optimize_fail(error, error_capacity,
                              "function has too many instructions to optimize");
 
-    KnownConstant *constants = calloc(instruction_count,
-                                      sizeof(*constants));
-    if (!constants)
+    KnownConstantTable constants;
+    if (!init_constant_table(&constants, instruction_count))
         return optimize_fail(error, error_capacity,
                              "out of memory while preparing constant folding");
-
-    size_t constant_count = 0;
     size_t pass_limit = instruction_count == SIZE_MAX ?
                         SIZE_MAX : instruction_count + 1;
     for (size_t pass = 0; pass < pass_limit; ++pass) {
@@ -384,32 +435,29 @@ static bool constant_fold_function(YIRFunction *function, char *error,
 
                 if (instruction->opcode == YIR_OP_CONST_I64 ||
                     instruction->opcode == YIR_OP_CONST_BOOL) {
-                    size_t previous_count = constant_count;
-                    if (!remember_constant(constants, instruction_count,
-                            &constant_count, instruction->result_id,
-                            instruction->result_type,
-                            instruction->immediate)) {
-                        free(constants);
+                    size_t previous_count = constants.count;
+                    if (!remember_constant(&constants, instruction->result_id,
+                            instruction->result_type, instruction->immediate)) {
+                        destroy_constant_table(&constants);
                         return optimize_fail(error, error_capacity,
                             "constant table exceeded the instruction count");
                     }
-                    if (constant_count != previous_count) {
+                    if (constants.count != previous_count) {
                         changed = true;
                         continue;
                     }
                 }
                 if (instruction->opcode == YIR_OP_CONST_F64) {
                     if (safe_f64_constant(instruction->floating_immediate)) {
-                        size_t previous_count = constant_count;
-                        if (!remember_f64_constant(constants,
-                                instruction_count, &constant_count,
+                        size_t previous_count = constants.count;
+                        if (!remember_f64_constant(&constants,
                                 instruction->result_id,
                                 instruction->floating_immediate)) {
-                            free(constants);
+                            destroy_constant_table(&constants);
                             return optimize_fail(error, error_capacity,
                                 "constant table exceeded the instruction count");
                         }
-                        if (constant_count != previous_count)
+                        if (constants.count != previous_count)
                             changed = true;
                     }
                     continue;
@@ -419,8 +467,8 @@ static bool constant_fold_function(YIRFunction *function, char *error,
                 YIRType folded_type = instruction->result_type;
                 int64_t folded_value = 0;
                 double folded_float = 0.0;
-                if (!fold_instruction(instruction, constants,
-                        constant_count, &folded_opcode, &folded_type,
+                if (!fold_instruction(instruction, &constants,
+                        &folded_opcode, &folded_type,
                         &folded_value, &folded_float))
                     continue;
 
@@ -437,12 +485,11 @@ static bool constant_fold_function(YIRFunction *function, char *error,
                     .source_column=source_column
                 };
                 bool remembered = folded_opcode == YIR_OP_CONST_F64 ?
-                    remember_f64_constant(constants, instruction_count,
-                        &constant_count, result_id, folded_float) :
-                    remember_constant(constants, instruction_count,
-                        &constant_count, result_id, folded_type, folded_value);
+                    remember_f64_constant(&constants, result_id, folded_float) :
+                    remember_constant(&constants, result_id, folded_type,
+                                      folded_value);
                 if (!remembered) {
-                    free(constants);
+                    destroy_constant_table(&constants);
                     return optimize_fail(error, error_capacity,
                         "constant table exceeded the instruction count");
                 }
@@ -451,7 +498,7 @@ static bool constant_fold_function(YIRFunction *function, char *error,
         }
         if (!changed) break;
     }
-    free(constants);
+    destroy_constant_table(&constants);
 
     return yir_verify_function(function, error, error_capacity);
 }
@@ -568,21 +615,18 @@ static bool simplify_constant_branches(YIRFunction *function, char *error,
     if (!count_okay)
         return optimize_fail(error, error_capacity,
                              "function has too many instructions for CFG simplification");
-    KnownConstant *constants = calloc(instruction_count, sizeof(*constants));
-    if (!constants)
+    KnownConstantTable constants;
+    if (!init_constant_table(&constants, instruction_count))
         return optimize_fail(error, error_capacity,
                              "out of memory while preparing CFG simplification");
-
-    size_t constant_count = 0;
     for (size_t bi = 0; bi < function->block_count; ++bi) {
         const YIRBlock *block = &function->blocks[bi];
         for (size_t ii = 0; ii < block->instruction_count; ++ii) {
             const YIRInstruction *ins = &block->instructions[ii];
             if (ins->opcode != YIR_OP_CONST_BOOL) continue;
-            if (!remember_constant(constants, instruction_count,
-                    &constant_count, ins->result_id, YIR_TYPE_BOOL,
+            if (!remember_constant(&constants, ins->result_id, YIR_TYPE_BOOL,
                     ins->immediate)) {
-                free(constants);
+                destroy_constant_table(&constants);
                 return optimize_fail(error, error_capacity,
                                      "CFG constant table exceeded the instruction count");
             }
@@ -595,7 +639,7 @@ static bool simplify_constant_branches(YIRFunction *function, char *error,
         YIRInstruction *term = &instructions[block->instruction_count - 1];
         if (term->opcode != YIR_OP_COND_BRANCH) continue;
         const KnownConstant *condition =
-            find_constant(constants, constant_count, term->lhs);
+            find_constant(&constants, term->lhs);
         if (!condition || condition->type != YIR_TYPE_BOOL) continue;
 
         if (condition->value == 0) {
@@ -615,7 +659,7 @@ static bool simplify_constant_branches(YIRFunction *function, char *error,
         term->lhs = 0;
         term->rhs = 0;
     }
-    free(constants);
+    destroy_constant_table(&constants);
 
     if (!remove_unreachable_blocks(function, error, error_capacity))
         return false;
