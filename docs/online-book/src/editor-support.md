@@ -1,35 +1,48 @@
 # Editor Support
 
-YLang source files use the `.yl` extension. Editor integrations are maintained
+YLang source files use the `.yl` extension. Official editor integrations are maintained
 in the project repository under `editors/`.
 
 ## Visual Studio Code
 
-The VS Code extension provides syntax highlighting and language configuration,
-and it can run the real `ylang check` command to report compiler diagnostics.
-It also includes a terminal-based debugging command where the platform and
-debugger support it. See the [VS Code extension guide](https://github.com/Yassine-Jemi01/ylang/tree/main/editors/vscode).
+The VS Code extension provides syntax highlighting, language configuration,
+compiler diagnostics, and editor commands. When the YLang repository is opened
+as a workspace, VS Code reads `.vscode/extensions.json` and recommends the
+official YLang extension if it is not installed.
+
+See the [VS Code extension guide](https://github.com/Yassine-Jemi01/ylang/tree/main/editors/vscode).
 
 ## Neovim
 
-The repository includes syntax highlighting and diagnostic-parser support for
-Neovim. The diagnostic integration depends on the installed YLang compiler.
+The repository includes native filetype detection, syntax highlighting, and
+compiler-backed diagnostics for Neovim. Install the integration through your
+plugin manager or add `editors/nvim` to your runtime path. Once installed,
+opening a `.yl` file activates YLang support automatically.
+
 See the [Neovim guide](https://github.com/Yassine-Jemi01/ylang/tree/main/editors/nvim).
+
+## Vim
+
+A lightweight Vim runtime package provides `.yl` filetype detection, syntax
+highlighting, indentation defaults, and comment handling. Install it through a
+Vim plugin manager; Vim does not provide a built-in marketplace or a standard
+API for recommending a missing language plugin.
+
+See the [Vim guide](https://github.com/Yassine-Jemi01/ylang/tree/main/editors/vim).
 
 ## Zed
 
-Initial Zed support is available as a development extension in
-`editors/zed`. It uses Tree-sitter for syntax highlighting and configures
-`.yl` files, line comments, bracket matching, and indentation.
+The Zed extension provides Tree-sitter syntax highlighting and an initial
+language-server integration for diagnostics, completion, hover, go-to-definition,
+and document symbols. Some language-server features are still based on
+lightweight source scanning and are limited to the current file.
 
-To try it, open Zed's Extensions view, choose **Install Dev Extension**, and
-select the `editors/zed` directory from a local clone of the YLang repository.
-The extension may need Rust and the WASI SDK to build its grammar.
+The project enables Zed's extension suggestions in `.zed/settings.json`.
+First-time discovery through Zed's extension gallery requires the YLang
+extension to be published there; until then, install it as a development
+extension from `editors/zed`.
 
-This first version does **not** include compiler diagnostics, autocomplete,
-formatting, go-to-definition, or debugging in Zed. Those capabilities should
-not be assumed until a YLang language server or matching integration is
-implemented and tested.
+See the [Zed guide](https://github.com/Yassine-Jemi01/ylang/tree/main/editors/zed).
 
 ## Verify the language
 
