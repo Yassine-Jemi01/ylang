@@ -286,6 +286,9 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [~] 5.2.13 Replace repeated backward scans for local integer constants in algebraic simplification with a per-block open-addressed lookup table.
   - [x] 5.2.13.1 Add collision-safe value-ID hashing and preserve instruction-order visibility.
   - [x] 5.2.13.2 Add a 4,096-operation stress regression for constant lookup.
+- [~] 5.2.14 Replace linear live-value membership scans in dead-code elimination with an open-addressed set.
+  - [x] 5.2.14.1 Preserve the live-value worklist and effect/trap roots while hashing membership checks.
+  - [x] 5.2.14.2 Add a 4,096-pair large-function regression with dead pure expressions and live checked operations.
 
 ## 6. Standard library and desktop application development
 
