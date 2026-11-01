@@ -1,5 +1,9 @@
 VERSION := $(shell cat VERSION)
+ifeq ($(OS),Windows_NT)
 CC = gcc
+else
+CC = cc
+endif
 AR ?= ar
 PYTHON ?= python3
 CPPFLAGS += -Iinclude -Ibuild -DYLANG_VERSION=\"$(VERSION)\" -DYLANG_SHARE_DIR=\"$(PREFIX)/share/ylang\" -DYLANG_INCLUDE_DIR=\"$(PREFIX)/include\"
