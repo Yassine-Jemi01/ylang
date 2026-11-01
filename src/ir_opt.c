@@ -171,8 +171,7 @@ static bool fold_instruction(const YIRInstruction *instruction,
             return true;
 
         case YIR_OP_NEG_I64:
-            left = find_constant(constants, constant_count,
-                                 instruction->lhs);
+            left = find_constant(constants, instruction->lhs);
             if (!left || left->type != YIR_TYPE_I64 ||
                 left->value == INT64_MIN)
                 return false;
@@ -182,8 +181,7 @@ static bool fold_instruction(const YIRInstruction *instruction,
             return true;
 
         case YIR_OP_I64_TO_F64:
-            left = find_constant(constants, constant_count,
-                                 instruction->lhs);
+            left = find_constant(constants, instruction->lhs);
             if (!left || left->type != YIR_TYPE_I64) return false;
             *floating_immediate = (double)left->value;
             if (!safe_f64_constant(*floating_immediate)) return false;
@@ -192,8 +190,7 @@ static bool fold_instruction(const YIRInstruction *instruction,
             return true;
 
         case YIR_OP_F64_TO_I64:
-            left = find_constant(constants, constant_count,
-                                 instruction->lhs);
+            left = find_constant(constants, instruction->lhs);
             if (!left || left->type != YIR_TYPE_F64 ||
                 !isfinite(left->floating_value) ||
                 left->floating_value < -9223372036854775808.0 ||
@@ -205,8 +202,7 @@ static bool fold_instruction(const YIRInstruction *instruction,
             return true;
 
         case YIR_OP_NEG_F64:
-            left = find_constant(constants, constant_count,
-                                 instruction->lhs);
+            left = find_constant(constants, instruction->lhs);
             if (!left || left->type != YIR_TYPE_F64 ||
                 !safe_f64_constant(left->floating_value))
                 return false;
@@ -227,10 +223,8 @@ static bool fold_instruction(const YIRInstruction *instruction,
         case YIR_OP_LE_I64:
         case YIR_OP_GT_I64:
         case YIR_OP_GE_I64:
-            left = find_constant(constants, constant_count,
-                                 instruction->lhs);
-            right = find_constant(constants, constant_count,
-                                  instruction->rhs);
+            left = find_constant(constants, instruction->lhs);
+            right = find_constant(constants, instruction->rhs);
             if (!left || !right || left->type != YIR_TYPE_I64 ||
                 right->type != YIR_TYPE_I64)
                 return false;
@@ -246,10 +240,8 @@ static bool fold_instruction(const YIRInstruction *instruction,
         case YIR_OP_LE_F64:
         case YIR_OP_GT_F64:
         case YIR_OP_GE_F64:
-            left = find_constant(constants, constant_count,
-                                 instruction->lhs);
-            right = find_constant(constants, constant_count,
-                                  instruction->rhs);
+            left = find_constant(constants, instruction->lhs);
+            right = find_constant(constants, instruction->rhs);
             if (!left || !right || left->type != YIR_TYPE_F64 ||
                 right->type != YIR_TYPE_F64 ||
                 !safe_f64_constant(left->floating_value) ||
