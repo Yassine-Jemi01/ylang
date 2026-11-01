@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, ylang-3.0-dev]
   pull_request:
-    branches: [main]
+    branches: [main, ylang-3.0-dev]
   workflow_dispatch:
 
 # Keep only the newest CI run for a pull request. Rapid commits should not
