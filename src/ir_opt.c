@@ -858,8 +858,9 @@ static bool eliminate_dead_code(YIRFunction *function, char *error,
                     !value_is_live(&live_set, ins->result_id))
                     continue;
                 size_t previous_count = live_count;
-                if (!mark_instruction_inputs(ins, live_values,
+                if (!mark_instruction_inputs(ins, &live_set, live_values,
                                               value_capacity, &live_count)) {
+                    destroy_live_value_set(&live_set);
                     free(live_values);
                     return optimize_fail(error, error_capacity,
                                          "live-value table exceeded the function value count");
