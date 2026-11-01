@@ -598,7 +598,7 @@ static void dead_code_live_value_lookup_scales_to_large_functions(void)
         .name="dce_live_value_hash_stress",
         .return_type=YIR_TYPE_VOID,.blocks=blocks,.block_count=1
     };
-    const YIROptPass pass[] = {YIR_OPT_DEAD_CODE_ELIMINATION};
+    const YIROptPass pass[] = {YIR_OPT_DEAD_CODE};
     char error[256];
 
     assert(yir_run_opt_pipeline(&function,pass,1,error,sizeof(error)));
