@@ -13,7 +13,7 @@ if [ ! -x "$ROOT/build/ylang" ]; then
 fi
 
 install -m 755 "$ROOT/build/ylang" "$BIN_DIR/ylang"
-install -m 644 "$ROOT/editors/zed/ylang-lsp.py" "$SHARE_DIR/editors/zed/ylang-lsp.py"
+install -m 644 "$ROOT/tools/ylang-lsp.py" "$SHARE_DIR/editors/zed/ylang-lsp.py"
 cat > "$BIN_DIR/ylang-lsp" <<EOF
 #!/usr/bin/env sh
 export YLANG_COMPILER="$BIN_DIR/ylang"
