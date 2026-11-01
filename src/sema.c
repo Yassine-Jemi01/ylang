@@ -443,7 +443,14 @@ static YType check_expr(Checker *checker, Expr *expr)
             errno = 0;
             char *end = NULL;
             double value = strtod(text, &end);
-            if (errno == ERANGE || !end || *end != '\0' || !isfinite(value)) {
+            bool valid = end && *end == '\0' && isfinite(value);
+            /* strtod may report ERANGE for a representable subnormal value.
+               Accept those values, but still reject underflow to zero and
+               overflow to infinity. */
+            if (valid && errno == ERANGE &&
+                fpclassify(value) != FP_SUBNORMAL)
+                valid = false;
+            if (!valid) {
                 diagnostic(c, expr->token, "error", "E2011",
                            "Floating-point literal is invalid or out of range.",
                            "Use a finite numeric literal such as 3.14.");
