@@ -44,6 +44,12 @@ extension from `editors/zed`.
 
 See the [Zed guide](https://github.com/Yassine-Jemi01/ylang/tree/main/editors/zed).
 
+## Install Vim and Neovim integrations without a plugin manager
+
+Both editors include native package-directory support. Copy `editors/vim` into `~/.vim/pack/ylang/start/ylang` for Vim, or `editors/nvim` into `~/.local/share/nvim/site/pack/ylang/start/ylang` for Neovim. The editor loads the integration automatically on startup; see each repository guide for exact clone and copy commands.
+
+Vim and Neovim do not expose a common built-in marketplace or missing-plugin recommendation API. YLang therefore documents their native package mechanism instead of promising an automatic popup that the editors cannot provide.
+
 ## Verify the language
 
 Editor coloring is not a compiler check. Use the compiler itself to verify a
