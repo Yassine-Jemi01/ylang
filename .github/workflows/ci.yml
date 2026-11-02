@@ -384,14 +384,18 @@ jobs:
 
   dev-beta-artifact:
     name: Package tested YLang 3.0 Linux developer beta
-    if: github.event_name == 'push' && github.ref == 'refs/heads/ylang-3.0-dev'
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/ylang-3.0-dev') ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.ref == 'ylang-3.0-dev' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
     needs: [build-and-test, windows-native-smoke, yspm-package-smoke, editor-diagnostics, zed-tree-sitter, website-app-build, website-integrity]
     runs-on: ubuntu-latest
     steps:
       - name: Check out the exact commit validated by this workflow
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - name: Install compiler build dependencies
         run: |
           sudo apt-get update
@@ -406,13 +410,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SHORT_SHA="${GITHUB_SHA:0:8}"
+          SOURCE_SHA="${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+          SHORT_SHA="${SOURCE_SHA:0:8}"
           VERSION="$(tr -d '\r\n' < VERSION)"
           STAGING="build/ylang-beta"
           ARCHIVE="ylang-${VERSION}-dev.${SHORT_SHA}-linux-x86_64.tar.gz"
           mkdir -p "$STAGING/source"
           install -m 755 build/ylang "$STAGING/ylang"
-          git archive "$GITHUB_SHA" | tar -x -C "$STAGING/source"
+          git archive "$SOURCE_SHA" | tar -x -C "$STAGING/source"
           cat > "$STAGING/TESTING.md" <<'EOF'
           YLang 3.0 developer beta (experimental; not a stable release)
 
@@ -442,7 +447,7 @@ jobs:
           References are call-scoped, C-backend-only, and do not provide general
           lifetime analysis or a Rust-equivalent memory-safety guarantee.
           EOF
-          printf '%s\n' "$GITHUB_SHA" > "$STAGING/COMMIT"
+          printf '%s\n' "$SOURCE_SHA" > "$STAGING/COMMIT"
           tar -czf "$ARCHIVE" -C "$STAGING" .
           sha256sum "$ARCHIVE" | tee "${ARCHIVE}.sha256"
           echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
