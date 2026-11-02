@@ -1,0 +1,13 @@
+function inspect(borrowed_string value) -> int {
+    return string.length(value);
+}
+
+function forward(&mut owned_string value) -> int {
+    return inspect(value);
+}
+
+function main() -> int {
+    let owned_string text = string.own("YLang");
+    forward(&mut text);
+    return 0;
+}
