@@ -530,12 +530,20 @@ static Expr *parse_precedence(Parser *p, int min_precedence)
 
     Expr *left;
     Token op = p->current;
-    if (match(p, TOKEN_MINUS) || match(p, TOKEN_NOT) || match(p, TOKEN_BANG) || match(p, TOKEN_AWAIT)) {
+    if (match(p, TOKEN_MINUS) || match(p, TOKEN_NOT) || match(p, TOKEN_BANG) ||
+        match(p, TOKEN_AWAIT) || match(p, TOKEN_AMPERSAND)) {
         op = p->previous;
+        bool is_mutable_borrow = false;
+        if (op.type == TOKEN_AMPERSAND && p->current.type == TOKEN_IDENTIFIER &&
+            token_is(&p->current, "mut")) {
+            advance_parser(p);
+            is_mutable_borrow = true;
+        }
         Expr *right = parse_precedence(p, 8);
         left = new_expr(p->compiler, EXPR_UNARY, op);
         left->as.unary.op = op;
         left->as.unary.right = right;
+        left->as.unary.is_mutable_borrow = is_mutable_borrow;
     } else {
         left = parse_primary(p);
     }
@@ -899,6 +907,13 @@ static Function *parse_function(Parser *p)
     if (p->current.type != TOKEN_RIGHT_PAREN) {
         do {
             Token param_type_token = p->current;
+            bool is_reference_parameter = match(p, TOKEN_AMPERSAND);
+            bool is_mutable_reference = false;
+            if (is_reference_parameter && p->current.type == TOKEN_IDENTIFIER &&
+                token_is(&p->current, "mut")) {
+                advance_parser(p);
+                is_mutable_reference = true;
+            }
             YType type = parse_type(p);
             Token param_name = consume(p, TOKEN_IDENTIFIER,
                 "Expected a parameter name after its type.",
@@ -912,7 +927,10 @@ static Function *parse_function(Parser *p)
                         "Use syntax such as fn sum(int values[]) -> int.");
             }
             param->initialized = true;
-            if (type == TYPE_BORROWED_STRING) param->is_const = true;
+            param->is_reference_parameter = is_reference_parameter;
+            param->is_mutable_reference = is_mutable_reference;
+            if (type == TYPE_BORROWED_STRING ||
+                (is_reference_parameter && !is_mutable_reference)) param->is_const = true;
             (void)param_type_token;
             append_ptr(p->compiler, (void ***)&function->params,
                        &function->param_count, param);
