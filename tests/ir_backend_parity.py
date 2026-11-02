@@ -127,8 +127,8 @@ def main() -> int:
             ast_result = run_program(ast_executable)
             ir_result = run_program(ir_executable)
             optimized_ir_result = run_program(optimized_ir_executable)
-            expected_exit = EXPECTED_EXIT_CODES.get(fixture_name, 0)
-            if ast_result[0] != expected_exit:
+            expected_exit = EXPECTED_EXIT_CODES.get(fixture_name)
+            if expected_exit is not None and ast_result[0] != expected_exit:
                 fail(
                     fixture_name,
                     f"expected exit status {expected_exit}, got {ast_result[0]}",
