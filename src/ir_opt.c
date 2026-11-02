@@ -801,6 +801,67 @@ static bool instruction_may_have_effects_or_trap(YIROpcode opcode)
     }
 }
 
+typedef struct {
+    uint32_t id;
+    const YIRInstruction *instruction;
+} LiveDefinition;
+
+typedef struct {
+    LiveDefinition *slots;
+    size_t capacity;
+} LiveDefinitionTable;
+
+static bool init_live_definition_table(LiveDefinitionTable *table,
+                                       size_t value_capacity)
+{
+    memset(table, 0, sizeof(*table));
+    if (value_capacity > SIZE_MAX / 2) return false;
+    size_t required = value_capacity * 2;
+    size_t capacity = 2;
+    while (capacity < required) {
+        if (capacity > SIZE_MAX / 2) return false;
+        capacity *= 2;
+    }
+    table->slots = calloc(capacity, sizeof(*table->slots));
+    if (!table->slots) return false;
+    table->capacity = capacity;
+    return true;
+}
+
+static void destroy_live_definition_table(LiveDefinitionTable *table)
+{
+    free(table->slots);
+    memset(table, 0, sizeof(*table));
+}
+
+static bool add_live_definition(LiveDefinitionTable *table, uint32_t id,
+                                const YIRInstruction *instruction)
+{
+    if (!id) return true;
+    size_t slot = live_value_hash(id) & (table->capacity - 1);
+    while (table->slots[slot].id) {
+        if (table->slots[slot].id == id) return false;
+        slot = (slot + 1) & (table->capacity - 1);
+    }
+    table->slots[slot] = (LiveDefinition){
+        .id=id, .instruction=instruction
+    };
+    return true;
+}
+
+static const YIRInstruction *find_live_definition(
+    const LiveDefinitionTable *table, uint32_t id)
+{
+    if (!table || !table->slots || !id) return NULL;
+    size_t slot = live_value_hash(id) & (table->capacity - 1);
+    while (table->slots[slot].id) {
+        if (table->slots[slot].id == id)
+            return table->slots[slot].instruction;
+        slot = (slot + 1) & (table->capacity - 1);
+    }
+    return NULL;
+}
+
 static bool eliminate_dead_code(YIRFunction *function, char *error,
                                 size_t error_capacity)
 {
@@ -824,13 +885,32 @@ static bool eliminate_dead_code(YIRFunction *function, char *error,
     uint32_t *live_values = calloc(value_capacity ? value_capacity : 1,
                                    sizeof(*live_values));
     LiveValueSet live_set;
-    if (!live_values || !init_live_value_set(&live_set, value_capacity)) {
+    LiveDefinitionTable definitions;
+    if (!live_values || !init_live_value_set(&live_set, value_capacity) ||
+        !init_live_definition_table(&definitions, value_capacity)) {
         free(live_values);
+        destroy_live_value_set(&live_set);
+        destroy_live_definition_table(&definitions);
         return optimize_fail(error, error_capacity,
                              "out of memory while preparing dead-code elimination");
     }
-    size_t live_count = 0;
 
+    for (size_t bi = 0; bi < function->block_count; ++bi) {
+        const YIRBlock *block = &function->blocks[bi];
+        for (size_t ii = 0; ii < block->instruction_count; ++ii) {
+            const YIRInstruction *ins = &block->instructions[ii];
+            if (ins->result_id &&
+                !add_live_definition(&definitions, ins->result_id, ins)) {
+                destroy_live_value_set(&live_set);
+                destroy_live_definition_table(&definitions);
+                free(live_values);
+                return optimize_fail(error, error_capacity,
+                                     "duplicate value definition in dead-code analysis");
+            }
+        }
+    }
+
+    size_t live_count = 0;
     for (size_t bi = 0; bi < function->block_count; ++bi) {
         const YIRBlock *block = &function->blocks[bi];
         for (size_t ii = 0; ii < block->instruction_count; ++ii) {
@@ -840,6 +920,7 @@ static bool eliminate_dead_code(YIRFunction *function, char *error,
             if (root && !mark_instruction_inputs(ins, &live_set, live_values,
                                                   value_capacity, &live_count)) {
                 destroy_live_value_set(&live_set);
+                destroy_live_definition_table(&definitions);
                 free(live_values);
                 return optimize_fail(error, error_capacity,
                                      "live-value table exceeded the function value count");
@@ -847,26 +928,19 @@ static bool eliminate_dead_code(YIRFunction *function, char *error,
         }
     }
 
-    bool changed = true;
-    while (changed) {
-        changed = false;
-        for (size_t bi = 0; bi < function->block_count; ++bi) {
-            const YIRBlock *block = &function->blocks[bi];
-            for (size_t ii = 0; ii < block->instruction_count; ++ii) {
-                const YIRInstruction *ins = &block->instructions[ii];
-                if (!ins->result_id ||
-                    !value_is_live(&live_set, ins->result_id))
-                    continue;
-                size_t previous_count = live_count;
-                if (!mark_instruction_inputs(ins, &live_set, live_values,
-                                              value_capacity, &live_count)) {
-                    destroy_live_value_set(&live_set);
-                    free(live_values);
-                    return optimize_fail(error, error_capacity,
-                                         "live-value table exceeded the function value count");
-                }
-                if (live_count != previous_count) changed = true;
-            }
+    /* Each value enters the queue once; only its defining instruction is
+       visited, so dependency depth no longer causes whole-function rescans. */
+    for (size_t queue_read = 0; queue_read < live_count; ++queue_read) {
+        const YIRInstruction *definition =
+            find_live_definition(&definitions, live_values[queue_read]);
+        if (definition &&
+            !mark_instruction_inputs(definition, &live_set, live_values,
+                                     value_capacity, &live_count)) {
+            destroy_live_value_set(&live_set);
+            destroy_live_definition_table(&definitions);
+            free(live_values);
+            return optimize_fail(error, error_capacity,
+                                 "live-value table exceeded the function value count");
         }
     }
 
