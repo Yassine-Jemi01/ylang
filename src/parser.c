@@ -1209,7 +1209,8 @@ static ImportDecl *parse_import(Parser *p, Token from_token)
         if (name_token.length == 0) break;
         ImportName *name = arena_alloc(&p->compiler->arena, sizeof(*name));
         name->token = name_token;
-        name->name = token_copy(p->compiler, name_token);
+        name->source_name = token_copy(p->compiler, name_token);
+        name->name = name->source_name;
         append_ptr(p->compiler, (void ***)&import->names,
                    &import->name_count, name);
         /* Accept the function-like spelling for compatibility: import helper()
@@ -1218,6 +1219,16 @@ static ImportDecl *parse_import(Parser *p, Token from_token)
             (void)consume(p, TOKEN_RIGHT_PAREN,
                           "Imported names cannot have arguments.",
                           "Use empty parentheses only, for example import system_data().");
+        }
+        /* The "as" clause changes only the local binding. */
+        if (p->current.type == TOKEN_IDENTIFIER &&
+            token_is(&p->current, "as")) {
+            advance_parser(p);
+            Token alias_token = consume(p, TOKEN_IDENTIFIER,
+                "Expected a local name after 'as'.",
+                "Use an alias such as 'import trim as trim_text'.");
+            if (alias_token.length > 0)
+                name->name = token_copy(p->compiler, alias_token);
         }
         if (p->current.type != TOKEN_COMMA) break;
         advance_parser(p);
