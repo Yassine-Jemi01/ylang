@@ -1894,6 +1894,14 @@ if ./build/ylang check tests/borrow-mut-const-owner.yl > build/borrow-mut-const-
 fi
 grep -q 'E2137' build/borrow-mut-const-owner.out
 
+# Global names are visible inside callees, so they cannot be borrowed until
+# cross-function global alias tracking is implemented.
+if ./build/ylang check tests/borrow-mut-global-owner.yl > build/borrow-mut-global-owner.out 2>&1; then
+    echo "FAIL: YLang allowed a mutable borrow of a global owner" >&2
+    exit 1
+fi
+grep -q 'E2138' build/borrow-mut-global-owner.out
+
 # A local borrow expression cannot be stored or passed without a ref parameter.
 cat > build/borrow-reference-storage.yl <<'EOF'
 function main() -> int {
