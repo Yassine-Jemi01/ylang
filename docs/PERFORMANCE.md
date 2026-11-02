@@ -16,6 +16,17 @@ Use `--cc clang` for the Clang path. The optional `--compiler /path/to/ylang` ch
 
 The report shows the YLang version, host platform, selected native C compiler, compile-time median and P95, execution-time median and P95, and executable byte size. The expected-output check ensures that the benchmark is still measuring a program with known behavior rather than a broken output path.
 
+## Workload coverage
+
+The benchmark suite includes:
+
+- `native-loop.yl`: integer accumulation and loop control flow.
+- `native-branches.yl`: conditional branches, modulo, and loop-carried updates.
+- `native-calls.yl`: direct calls and integer arithmetic.
+- `native-f64.yl`: f64 conversion, arithmetic, comparisons, and calls.
+
+Run `python3 tests/benchmark-smoke.py` to execute all four workloads with exact-output checks. Run `python3 tests/benchmark-opt-levels.py` to compare the same integer-loop workload with `YLANG_OPT_LEVEL=0` and `YLANG_OPT_LEVEL=2`. Both checks verify correctness and report completeness, not a universal speed threshold.
+
 ## What is measured
 
 - **Compile time** includes the YLang invocation, semantic checking, C generation, and native compiler/linker run.
