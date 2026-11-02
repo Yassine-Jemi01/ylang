@@ -42,6 +42,7 @@ jobs:
 
             # Exercise the optional SDL2 runtime and Game2D example too.
             gmake gui gui-example game2d-example CC=clang PYTHON=python3
+            gmake gui-runtime-smoke CC=clang PYTHON=python3
 
             # Prove that the compiler can build and run a native FreeBSD program.
             mkdir -p build/freebsd-smoke
