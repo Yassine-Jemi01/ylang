@@ -1,0 +1,11 @@
+let mut int shared_count = 0;
+
+function increment(&mut int value) -> int {
+    value += 1;
+    return value;
+}
+
+function main() -> int {
+    increment(&mut shared_count);
+    return 0;
+}
