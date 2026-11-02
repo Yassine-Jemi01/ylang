@@ -1,0 +1,13 @@
+function measure(string value) -> int {
+    return string.length(value);
+}
+
+function inspect(borrowed_string view, int nested_result) -> int {
+    return string.length(view) + nested_result;
+}
+
+function main() -> int {
+    let string owner = "safe";
+    print(inspect(owner, measure(owner)));
+    return 0;
+}
