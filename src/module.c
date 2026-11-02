@@ -273,8 +273,10 @@ static bool bind_imports(Compiler *compiler, Module *module)
                 continue;
             }
 
-            Function *function = module_find_function(target, name->name);
-            VarDecl *variable = module_find_global(target, name->name);
+            const char *source_name = name->source_name ?
+                name->source_name : name->name;
+            Function *function = module_find_function(target, source_name);
+            VarDecl *variable = module_find_global(target, source_name);
             if (function && variable) {
                 diagnostic(compiler, name->token, "error", "E1025",
                            "The imported name is ambiguous because the target module defines both a function and a global with that name.",
@@ -290,7 +292,16 @@ static bool bind_imports(Compiler *compiler, Module *module)
                     name->function = function;
                 }
             } else if (variable) {
-                name->variable = variable;
+                if (strcmp(name->name, variable->name) == 0) {
+                    name->variable = variable;
+                } else {
+                    /* Preserve the defining C symbol with a local semantic alias. */
+                    VarDecl *alias = arena_alloc(&compiler->arena, sizeof(*alias));
+                    *alias = *variable;
+                    alias->name = name->name;
+                    alias->token = name->token;
+                    name->variable = alias;
+                }
             } else {
                 diagnostic(compiler, name->token, "error", "E1024",
                            "The imported name was not found in the target module.",
