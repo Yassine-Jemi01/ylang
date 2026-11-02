@@ -428,6 +428,14 @@ static int run_native_compiler(const char *cc, const char *c_path,
     args[n++] = (char *)output_path;
     args[n] = NULL;
 
+    const char *trace_cc_command = getenv("YLANG_PRINT_CC_COMMAND");
+    if (trace_cc_command && strcmp(trace_cc_command, "1") == 0) {
+        fputs("YLANG_CC_COMMAND", stderr);
+        for (size_t i = 0; i < n; ++i)
+            fprintf(stderr, "\\t%s", args[i]);
+        fputc('\\n', stderr);
+    }
+
 #ifdef _WIN32
     intptr_t status = _spawnvp(_P_WAIT, cc, (const char * const *)args);
     if (status == -1) {
