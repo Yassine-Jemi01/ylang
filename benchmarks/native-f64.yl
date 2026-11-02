@@ -1,0 +1,16 @@
+function scale(float value) -> float {
+    return (value * 1.25 + 0.5) / 2.0;
+}
+
+function main() -> int {
+    let int index = 0;
+    let float total = 0.0;
+    while (index < 1000) {
+        total = total + scale(to_float(index));
+        index++;
+    }
+    if (total > 0.0) {
+        print("f64 workload passed");
+    }
+    return 0;
+}
