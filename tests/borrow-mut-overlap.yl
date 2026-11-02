@@ -1,0 +1,11 @@
+function update(&mut int left, &mut int right) -> int {
+    left = 1;
+    right = 2;
+    return 0;
+}
+
+function main() -> int {
+    let mut int value = 0;
+    update(&mut value, &mut value);
+    return 0;
+}
