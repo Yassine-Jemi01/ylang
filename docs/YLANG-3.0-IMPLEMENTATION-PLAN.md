@@ -196,7 +196,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [x] 3.2.5.2 Build and link the same fixture through verified IR-to-C.
   - [x] 3.2.5.3 Compare exit status, stdout, and stderr byte-for-byte across arithmetic, runtime errors, branches, loops, calls, imported modules, short-circuit expressions, and the initial finite-f64 subset.
 - [~] 3.2.6 Add branch, loop, short-circuit, imported-call, and f64 differential fixtures; expand sanitizer coverage.
-- [~] 3.2.7 Expand parity feature-by-feature until the supported C subset is covered; a 20-fixture AST/IR/optimized-IR differential runner covers all six integer comparisons, IEEE-754 f64 comparisons (including NaN and signed zero), arithmetic, control flow, calls, imports, short-circuiting, and f64 cases; broader full-subset coverage remains open.
+- [~] 3.2.7 Expand parity feature-by-feature until the supported C subset is covered; a 21-fixture AST/IR/optimized-IR differential runner covers all six integer comparisons, IEEE-754 f64 comparisons (including NaN and signed zero), rounding behavior, subnormal underflow, arithmetic, control flow, calls, imports, short-circuiting, and f64 cases; broader full-subset coverage remains open.
 - [ ] 3.2.8 Switch the default build path only after parity and compatibility gates pass.
 
 ### 3.3 LLVM backend
