@@ -1764,6 +1764,10 @@ grep -q 'E2131' build/borrowed-string-nested-write-conflict.out
 ./build/ylang build tests/borrowed-string-nested-read.yl -o build/test-borrowed-string-nested-read >/dev/null
 [ "$(./build/test-borrowed-string-nested-read)" = "8" ]
 
+# Nested read-only calls may share an owner already borrowed by the outer call.
+./build/ylang build tests/borrowed-string-nested-read.yl -o build/test-borrowed-string-nested-read >/dev/null
+[ "$(./build/test-borrowed-string-nested-read)" = "8" ]
+
 if ./build/ylang check tests/borrowed-string-array.yl > build/borrowed-string-array.out 2>&1; then
     echo "FAIL: YLang accepted an array of borrowed_string parameters" >&2
     exit 1
