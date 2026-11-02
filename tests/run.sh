@@ -1449,6 +1449,95 @@ YLANG_PATH=build/imports/library ./build/ylang build build/imports/library-main.
 printf '314\n' > build/library-import.expected
 diff -u build/library-import.expected build/library-import.out
 
+# Selective imports may rename functions and globals without changing their
+# defining names or generated C symbols.
+cat > build/imports/alias-source.yl <<'EOF'
+let int exported_count = 40;
+function exported_increment(int value) -> int {
+    return value + 1;
+}
+EOF
+cat > build/imports/alias-main.yl <<'EOF'
+from "./alias-source.yl" import exported_increment as inc, exported_count as initial;
+function main() -> int {
+    print(inc(initial));
+    return 0;
+}
+EOF
+./build/ylang build build/imports/alias-main.yl -o build/test-import-alias >/dev/null
+[ "$(./build/test-import-alias)" = "41" ]
+
+# The original exported spelling is not implicitly added to the importing scope.
+cat > build/imports/alias-original-hidden.yl <<'EOF'
+from "./alias-source.yl" import exported_increment as inc;
+function main() -> int {
+    return exported_increment(0);
+}
+EOF
+if ./build/ylang check build/imports/alias-original-hidden.yl > build/imports/alias-original-hidden.out 2>&1; then
+    echo "FAIL: an aliased import also exposed its original name" >&2
+    exit 1
+fi
+grep -q 'Call to an unknown function' build/imports/alias-original-hidden.out
+
+# Two imports cannot bind to the same local alias.
+cat > build/imports/duplicate-alias.yl <<'EOF'
+from "./alias-source.yl" import exported_increment as chosen;
+from "./alias-source.yl" import exported_count as chosen;
+function main() -> int { return 0; }
+EOF
+if ./build/ylang check build/imports/duplicate-alias.yl > build/imports/duplicate-alias.out 2>&1; then
+    echo "FAIL: duplicate import aliases were accepted" >&2
+    exit 1
+fi
+grep -q 'E1025' build/imports/duplicate-alias.out
+
+# An import alias cannot shadow a declaration in the importing module.
+cat > build/imports/alias-local-conflict.yl <<'EOF'
+from "./alias-source.yl" import exported_increment as chosen;
+function chosen() -> int { return 9; }
+function main() -> int { return chosen(); }
+EOF
+if ./build/ylang check build/imports/alias-local-conflict.yl > build/imports/alias-local-conflict.out 2>&1; then
+    echo "FAIL: an import alias shadowed a local declaration" >&2
+    exit 1
+fi
+grep -q 'E1025' build/imports/alias-local-conflict.out
+
+# Imported names are not implicitly re-exported by an intermediate module.
+cat > build/imports/reexport-source.yl <<'EOF'
+function original_value() -> int { return 42; }
+EOF
+cat > build/imports/reexport-bridge.yl <<'EOF'
+from "./reexport-source.yl" import original_value;
+function bridge_value() -> int { return original_value(); }
+EOF
+cat > build/imports/reexport-root.yl <<'EOF'
+from "./reexport-bridge.yl" import original_value;
+function main() -> int { return original_value(); }
+EOF
+if ./build/ylang check build/imports/reexport-root.yl > build/imports/reexport-root.out 2>&1; then
+    echo "FAIL: an imported name was implicitly re-exported" >&2
+    exit 1
+fi
+grep -q 'E1024' build/imports/reexport-root.out
+
+# A second move from the same owner must fail before code generation.
+cat > build/owned-string-double-move.yl <<'EOF'
+function main() -> int {
+    let owned_string source = string.own("one owner");
+    let owned_string first = move(source);
+    let owned_string second = move(source);
+    print(first, second);
+    return 0;
+}
+EOF
+if ./build/ylang check build/owned-string-double-move.yl > build/owned-string-double-move.out 2>&1; then
+    echo "FAIL: YLang accepted a second move from the same owner" >&2
+    exit 1
+fi
+grep -q 'E2110' build/owned-string-double-move.out
+
 # The NASM backend supports imported functions when their modules use its subset.
 cat > build/imports/reusable-functions.yl <<'EOF'
 function reusable_one() -> int { return 11; }
