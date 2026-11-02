@@ -1,0 +1,10 @@
+function update(&int read_only, &mut int writable) -> int {
+    writable = 1;
+    return read_only;
+}
+
+function main() -> int {
+    let mut int value = 0;
+    update(&value, &mut value);
+    return 0;
+}
