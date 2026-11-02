@@ -23,7 +23,7 @@ else
 GAME2D_OUTPUT ?= build/dodge
 endif
 
-.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test ir-unit-test ir-lower-unit-test ir-print-unit-test ir-c-unit-test ir-opt-unit-test ir-json-unit-test ir-fuzz-smoke fuzz-frontend fuzz-ir fuzz-smoke
+.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui gui-runtime-smoke check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test ir-unit-test ir-lower-unit-test ir-print-unit-test ir-c-unit-test ir-opt-unit-test ir-json-unit-test ir-fuzz-smoke fuzz-frontend fuzz-ir fuzz-smoke
 
 all: $(BIN)
 
@@ -153,6 +153,12 @@ build/libylang_gui.a: build/ylang_gui.o
 
 build/gui-example: examples/gui.c build/libylang_gui.a
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(GUI_CFLAGS) $< build/libylang_gui.a $(GUI_LIBS) $(LDLIBS) -o $@
+
+build/gui-runtime-smoke: tests/gui-runtime-smoke.c build/libylang_gui.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(GUI_CFLAGS) $< build/libylang_gui.a $(GUI_LIBS) $(LDLIBS) -o $@
+
+gui-runtime-smoke: check-sdl2 build/gui-runtime-smoke
+	SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software ./build/gui-runtime-smoke
 
 install-gui: gui
 	install -d '$(DESTDIR)$(PREFIX)/include/ylang' '$(DESTDIR)$(PREFIX)/lib' '$(DESTDIR)$(PREFIX)/share/ylang/stdlib/gui' '$(DESTDIR)$(PREFIX)/share/ylang/stdlib'
