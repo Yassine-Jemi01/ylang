@@ -1,0 +1,14 @@
+fn main() -> int {
+    let float rounded_sum = 0.1 + 0.2;
+    let float positive_infinity = 1e308 * 1e308;
+    let float negative_infinity = -1e308 * 1e308;
+    let float minimum_subnormal = 5e-324;
+    if (rounded_sum != 0.3 and
+        positive_infinity > 1e308 and
+        negative_infinity < -1e308 and
+        minimum_subnormal > 0.0 and
+        minimum_subnormal / 2.0 == 0.0) {
+        return 74;
+    }
+    return 0;
+}
