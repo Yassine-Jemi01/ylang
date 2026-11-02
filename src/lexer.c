@@ -277,6 +277,7 @@ Token lexer_next(Lexer *lexer)
         case '%' : return make_token(lexer, TOKEN_PERCENT);
         case ';' : return make_token(lexer, TOKEN_SEMICOLON);
         case ',' : return make_token(lexer, TOKEN_COMMA);
+        case '&' : return make_token(lexer, TOKEN_AMPERSAND);
 
         case '-':
             return make_token(lexer, match_char(lexer, '>') ? TOKEN_ARROW : TOKEN_MINUS);
@@ -384,6 +385,7 @@ const char *token_type_name(TokenType type)
         case TOKEN_GREATER_EQUAL: return "GREATER_EQUAL";
         case TOKEN_SEMICOLON: return "SEMICOLON";
         case TOKEN_COMMA: return "COMMA";
+        case TOKEN_AMPERSAND: return "AMPERSAND";
     }
 
     return "UNKNOWN_TOKEN";
