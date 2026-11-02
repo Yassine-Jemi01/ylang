@@ -595,8 +595,8 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             if (var->shared_borrow_count != 0U || var->mutable_borrow_count != 0U) {
                 diagnostic(c, expr->token, "error", "E2131",
-                           "Cannot mutate a value while it is immutably borrowed.",
-                           "Wait until every borrowed_string call using this value has completed.");
+                           "Cannot mutate a value while a borrow of it is active.",
+                           "Wait until every shared or mutable reference to this value has left the call.");
                 (void)check_expr(checker, expr->as.assign.right);
                 expr->type = TYPE_ERROR;
                 return expr->type;
@@ -914,8 +914,8 @@ static YType check_expr(Checker *checker, Expr *expr)
                 }
                 if (source->shared_borrow_count != 0U || source->mutable_borrow_count != 0U) {
                     diagnostic(c, argument->token, "error", "E2130",
-                               "Cannot move a value while it is immutably borrowed.",
-                               "Finish the borrowed function call before transferring ownership with move().");
+                               "Cannot move a value while it is borrowed.",
+                               "Finish every shared or mutable borrow before transferring ownership with move().");
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
@@ -1159,8 +1159,25 @@ static YType check_expr(Checker *checker, Expr *expr)
                     arg->as.unary.borrow_reserved = true;
                     arg->as.unary.borrow_variable = owner;
                     if (owner->is_reference_parameter || owner->is_array ||
-                        owner->type == TYPE_BORROWED_STRING ||
-                        owner->type != param->type) continue;
+                        owner->type == TYPE_BORROWED_STRING) {
+                        diagnostic(c, arg->token, "error", "E2138",
+                                   "This reference form cannot be reborrowed or target an array in this release.",
+                                   "Borrow a named non-reference scalar or string owner directly; local and nested reborrows are not enabled yet.");
+                        continue;
+                    }
+                    if (owner->type != param->type) continue;
+                    if (owner->moved) {
+                        diagnostic(c, arg->token, "error", "E2110",
+                                   "This value was already moved and cannot be borrowed.",
+                                   "Use the new owner, or reinitialize this binding before borrowing it.");
+                        continue;
+                    }
+                    if (!owner->initialized) {
+                        diagnostic(c, arg->token, "error", "E2021",
+                                   "This value must be initialized before it can be borrowed.",
+                                   "Assign a value to the owner before passing a reference to it.");
+                        continue;
+                    }
                     bool wants_mutable = arg->as.unary.is_mutable_borrow;
                     if (wants_mutable != param->is_mutable_reference) {
                         diagnostic(c, arg->token, "error", "E2138",
@@ -1208,6 +1225,12 @@ static YType check_expr(Checker *checker, Expr *expr)
                 VarDecl *owner = scope_lookup(checker->scope,
                     arg->as.name.name);
                 if (!owner || owner->is_array || !is_string_type(owner->type)) continue;
+                if (owner->mutable_borrow_count != 0U) {
+                    diagnostic(c, arg->token, "error", "E2132",
+                               "Cannot create a shared borrow while a mutable borrow is active.",
+                               "End the mutable borrow before passing this value to a borrowed_string parameter.");
+                    continue;
+                }
                 if (owner->shared_borrow_count == 0U)
                     owner->shared_borrow_token = arg->token;
                 owner->shared_borrow_count++;
