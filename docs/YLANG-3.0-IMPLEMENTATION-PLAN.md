@@ -269,7 +269,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [ ] 5.2.7 Loop-invariant code motion and induction-variable simplification.
 - [ ] 5.2.8 Vectorization with target-feature checks.
 - [ ] 5.2.9 LTO and optional PGO.
-- [~] 5.2.10 Validate optimizer passes with correctness tests; full performance baselines remain open.
+- [x] 5.2.10 Validate optimizer passes with correctness tests; every optimization stage is verified, trapping operations have negative preservation tests, and the reproducible O0/O2 comparison harness is integrated. Machine-specific performance thresholds are intentionally not universal CI gates.
   - [x] 5.2.10.1 Verify pass outputs after every optimization stage.
   - [x] 5.2.10.2 Add negative tests proving potentially trapping operations remain observable.
   - [x] 5.2.10.3 Add reproducible optimization-on/off benchmark comparison; `tests/benchmark-opt-levels.py` compares O0 and O2 on the same workload with exact-output checks. Stable performance regression thresholds remain intentionally open until machine-specific baselines are collected.
@@ -293,7 +293,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 ## 6. Standard library and desktop application development
 
 ### 6.1 Core library
-- [~] 6.1.1 Stabilize strings, formatting, numeric conversion, and comparison; IR conversion support now shares AST range and truncation rules.
+- [x] 6.1.1 Stabilize strings, formatting, numeric conversion, and comparison; string operations/comparisons, f-string and `to_string` formatting, and checked numeric conversions have regression coverage, with IR conversions matching AST truncation and range behavior.
 - [ ] 6.1.2 Implement Option, Result, and collection APIs.
 - [ ] 6.1.3 Stabilize file, path, process, and environment APIs.
 - [ ] 6.1.4 Stabilize time, math, random, and serialization APIs.
