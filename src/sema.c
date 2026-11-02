@@ -522,6 +522,13 @@ static YType check_expr(Checker *checker, Expr *expr)
                 expr->type = TYPE_ERROR;
                 return expr->type;
             }
+            if (var->mutable_borrow_count != 0U && !var->is_reference_parameter) {
+                diagnostic(c, expr->token, "error", "E2136",
+                           "Cannot read an owner while it is mutably borrowed.",
+                           "Use the mutable reference inside the callee, or wait until the borrow ends.");
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
             if (var->is_array && !checker->allow_array_name) {
                 diagnostic(c, expr->token, "error", "E2029",
                            "An array must be indexed before it can be used as a value.",
@@ -578,7 +585,15 @@ static YType check_expr(Checker *checker, Expr *expr)
                 return expr->type;
             }
             expr->as.assign.variable = var;
-            if (var->shared_borrow_count != 0U) {
+            if (var->is_reference_parameter && !var->is_mutable_reference) {
+                diagnostic(c, expr->token, "error", "E2131",
+                           "Cannot mutate through a shared reference.",
+                           "Declare the parameter as '&mut T' when the function must modify the value.");
+                (void)check_expr(checker, expr->as.assign.right);
+                expr->type = TYPE_ERROR;
+                return expr->type;
+            }
+            if (var->shared_borrow_count != 0U || var->mutable_borrow_count != 0U) {
                 diagnostic(c, expr->token, "error", "E2131",
                            "Cannot mutate a value while it is immutably borrowed.",
                            "Wait until every borrowed_string call using this value has completed.");
@@ -644,6 +659,31 @@ static YType check_expr(Checker *checker, Expr *expr)
         case EXPR_UNARY: {
             TokenType op = expr->as.unary.op.type;
             Expr *operand = expr->as.unary.right;
+            if (op == TOKEN_AMPERSAND) {
+                VarDecl *owner = expr->as.unary.borrow_variable;
+                if (!expr->as.unary.borrow_reserved || !owner) {
+                    diagnostic(c, expr->token, "error", "E2135",
+                               "A borrow expression is only valid as a direct argument to a reference parameter.",
+                               "Pass '&name' or '&mut name' directly to a function parameter declared with the matching reference type.");
+                    if (operand && operand->kind == EXPR_NAME) {
+                        VarDecl *found = scope_lookup(checker->scope, operand->as.name.name);
+                        if (found) {
+                            operand->as.name.variable = found;
+                            operand->as.name.name = found->name;
+                            operand->type = found->type;
+                        }
+                    } else if (operand) {
+                        (void)check_expr(checker, operand);
+                    }
+                    expr->type = TYPE_ERROR;
+                } else {
+                    operand->as.name.variable = owner;
+                    operand->as.name.name = owner->name;
+                    operand->type = owner->type;
+                    expr->type = owner->type;
+                }
+                return expr->type;
+            }
             if (op == TOKEN_MINUS && operand && operand->kind == EXPR_INT) {
                 char *literal = token_copy(c, operand->token);
                 errno = 0;
@@ -865,7 +905,14 @@ static YType check_expr(Checker *checker, Expr *expr)
                     expr->type = TYPE_ERROR;
                     return expr->type;
                 }
-                if (source->shared_borrow_count != 0U) {
+                if (source->is_reference_parameter) {
+                    diagnostic(c, argument->token, "error", "E2113",
+                               "move() cannot transfer a borrowed reference parameter.",
+                               "A reference never owns its referent; move the original owner outside the borrowed call instead.");
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (source->shared_borrow_count != 0U || source->mutable_borrow_count != 0U) {
                     diagnostic(c, argument->token, "error", "E2130",
                                "Cannot move a value while it is immutably borrowed.",
                                "Finish the borrowed function call before transferring ownership with move().");
@@ -1093,15 +1140,76 @@ static YType check_expr(Checker *checker, Expr *expr)
              */
             VarDecl **call_borrows = shared != 0U ?
                 arena_alloc(&c->arena, shared * sizeof(*call_borrows)) : NULL;
+            bool *call_borrow_mutable = shared != 0U ?
+                arena_alloc(&c->arena, shared * sizeof(*call_borrow_mutable)) : NULL;
             if (call_borrows) memset(call_borrows, 0, shared * sizeof(*call_borrows));
+            if (call_borrow_mutable)
+                memset(call_borrow_mutable, 0, shared * sizeof(*call_borrow_mutable));
             for (size_t i = 0; i < shared; i++) {
-                if (function->params[i]->type != TYPE_BORROWED_STRING ||
-                    expr->as.call.args[i]->kind != EXPR_NAME) continue;
+                VarDecl *param = function->params[i];
+                Expr *arg = expr->as.call.args[i];
+                if (param->is_reference_parameter) {
+                    if (!arg || arg->kind != EXPR_UNARY ||
+                        arg->as.unary.op.type != TOKEN_AMPERSAND ||
+                        !arg->as.unary.right ||
+                        arg->as.unary.right->kind != EXPR_NAME) continue;
+                    VarDecl *owner = scope_lookup(checker->scope,
+                        arg->as.unary.right->as.name.name);
+                    if (!owner) continue;
+                    arg->as.unary.borrow_reserved = true;
+                    arg->as.unary.borrow_variable = owner;
+                    if (owner->is_reference_parameter || owner->is_array ||
+                        owner->type == TYPE_BORROWED_STRING ||
+                        owner->type != param->type) continue;
+                    bool wants_mutable = arg->as.unary.is_mutable_borrow;
+                    if (wants_mutable != param->is_mutable_reference) {
+                        diagnostic(c, arg->token, "error", "E2138",
+                                   "The borrow mutability does not match the parameter type.",
+                                   param->is_mutable_reference ?
+                                     "Use '&mut name' for a '&mut T' parameter." :
+                                     "Pass an immutable '&name' to a shared '&T' parameter in this release.");
+                        continue;
+                    }
+                    if (!owner->initialized || owner->moved) continue;
+                    if (wants_mutable) {
+                        if (owner->is_const) {
+                            diagnostic(c, arg->token, "error", "E2137",
+                                       "A mutable borrow requires a mutable owner.",
+                                       "Remove 'const' from the owner or pass a different mutable variable.");
+                            continue;
+                        }
+                        if (owner->shared_borrow_count != 0U ||
+                            owner->mutable_borrow_count != 0U) {
+                            diagnostic(c, arg->token, "error", "E2133",
+                                       "Cannot create a mutable borrow while another borrow is active.",
+                                       "End the existing borrow before requesting exclusive mutable access.");
+                            continue;
+                        }
+                        if (owner->mutable_borrow_count == 0U)
+                            owner->mutable_borrow_token = arg->token;
+                        owner->mutable_borrow_count++;
+                    } else {
+                        if (owner->mutable_borrow_count != 0U) {
+                            diagnostic(c, arg->token, "error", "E2132",
+                                       "Cannot create a shared borrow while a mutable borrow is active.",
+                                       "End the mutable borrow before requesting shared access.");
+                            continue;
+                        }
+                        if (owner->shared_borrow_count == 0U)
+                            owner->shared_borrow_token = arg->token;
+                        owner->shared_borrow_count++;
+                    }
+                    call_borrows[i] = owner;
+                    call_borrow_mutable[i] = wants_mutable;
+                    continue;
+                }
+                if (param->type != TYPE_BORROWED_STRING ||
+                    arg->kind != EXPR_NAME) continue;
                 VarDecl *owner = scope_lookup(checker->scope,
-                    expr->as.call.args[i]->as.name.name);
+                    arg->as.name.name);
                 if (!owner || owner->is_array || !is_string_type(owner->type)) continue;
                 if (owner->shared_borrow_count == 0U)
-                    owner->shared_borrow_token = expr->as.call.args[i]->token;
+                    owner->shared_borrow_token = arg->token;
                 owner->shared_borrow_count++;
                 call_borrows[i] = owner;
             }
@@ -1114,7 +1222,31 @@ static YType check_expr(Checker *checker, Expr *expr)
                 checker->allow_array_name = previous_allow_array;
                 if (i >= shared || arg_type == TYPE_ERROR) continue;
                 VarDecl *param = function->params[i];
-                if (param->is_array) {
+                if (param->is_reference_parameter) {
+                    if (arg->kind != EXPR_UNARY ||
+                        arg->as.unary.op.type != TOKEN_AMPERSAND ||
+                        !arg->as.unary.borrow_reserved ||
+                        arg->as.unary.is_mutable_borrow != param->is_mutable_reference) {
+                        diagnostic(c, arg->token, "error", "E2138",
+                                   "This argument does not provide the reference required by the parameter.",
+                                   param->is_mutable_reference ?
+                                     "Pass '&mut name' to a '&mut T' parameter." :
+                                     "Pass '&name' to a shared '&T' parameter.");
+                    } else if (arg_type != param->type) {
+                        char suggestion[256];
+                        (void)snprintf(suggestion, sizeof(suggestion),
+                            "Argument %zu of '%s' expects a reference to %s, but received %s.",
+                            i + 1, function->name, semantic_type_name(c, param->type),
+                            semantic_type_name(c, arg_type));
+                        diagnostic(c, arg->token, "error", "E2042",
+                                   "Function argument type mismatch.", suggestion);
+                    }
+                } else if (arg->kind == EXPR_UNARY &&
+                           arg->as.unary.op.type == TOKEN_AMPERSAND) {
+                    diagnostic(c, arg->token, "error", "E2138",
+                               "A borrow expression requires a reference parameter.",
+                               "Declare the matching parameter as '&T' or '&mut T'.");
+                } else if (param->is_array) {
                     if (arg->kind != EXPR_NAME || !arg->as.name.variable ||
                         !arg->as.name.variable->is_array) {
                         diagnostic(c, arg->token, "error", "E2094",
@@ -1162,8 +1294,11 @@ static YType check_expr(Checker *checker, Expr *expr)
                 }
             }
             for (size_t i = 0; i < shared; i++) {
-                if (call_borrows && call_borrows[i] &&
-                    call_borrows[i]->shared_borrow_count != 0U) {
+                if (!call_borrows || !call_borrows[i]) continue;
+                if (call_borrow_mutable && call_borrow_mutable[i]) {
+                    if (call_borrows[i]->mutable_borrow_count != 0U)
+                        call_borrows[i]->mutable_borrow_count--;
+                } else if (call_borrows[i]->shared_borrow_count != 0U) {
                     call_borrows[i]->shared_borrow_count--;
                 }
             }
@@ -1694,6 +1829,15 @@ bool check_program(Compiler *c)
                 diagnostic(c, function->params[j]->token, "error", "E2118",
                            "Arrays of owned_string parameters are not supported yet.",
                            "Use one owned_string parameter per owned value until array cleanup is implemented.");
+            }
+            if (function->params[j]->is_reference_parameter &&
+                (function->params[j]->is_array ||
+                 function->params[j]->type == TYPE_VOID ||
+                 function->params[j]->type == TYPE_BORROWED_STRING ||
+                 function->params[j]->type == TYPE_HTTP_TASK)) {
+                diagnostic(c, function->params[j]->token, "error", "E2138",
+                           "This reference parameter type is not supported yet.",
+                           "Use '&T' or '&mut T' for a scalar, string, or owned_string parameter.");
             }
             if (function->params[j]->type == TYPE_BORROWED_STRING &&
                 function->params[j]->is_array) {
