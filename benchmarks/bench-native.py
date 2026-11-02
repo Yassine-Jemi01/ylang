@@ -13,6 +13,7 @@ import os
 import platform
 import statistics
 import subprocess
+import shlex
 import sys
 import tempfile
 import time
@@ -45,9 +46,10 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def run(command: list[str], *, cwd: Path, timeout: float = 30.0) -> subprocess.CompletedProcess[str]:
+def run(command: list[str], *, cwd: Path, timeout: float = 30.0,
+        env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     try:
-        result = subprocess.run(command, cwd=cwd, text=True, capture_output=True, timeout=timeout, check=False)
+        result = subprocess.run(command, cwd=cwd, env=env, text=True, capture_output=True, timeout=timeout, check=False)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise RuntimeError(f"command failed: {' '.join(command)}: {exc}") from exc
     if result.returncode != 0:
@@ -94,9 +96,18 @@ def main() -> int:
         executable = work / ("bench.exe" if os.name == "nt" else "bench")
         compile_samples: list[int] = []
         run_samples: list[int] = []
+        compiler_command: list[str] | None = None
+        compile_env = os.environ.copy()
+        compile_env["YLANG_PRINT_CC_COMMAND"] = "1"
         for iteration in range(args.warmup + args.runs):
             start = time.perf_counter_ns()
-            run([str(compiler), "build", str(source), "-o", str(executable), "--cc", args.cc], cwd=ROOT)
+            compile_result = run(
+                [str(compiler), "build", str(source), "-o", str(executable), "--cc", args.cc],
+                cwd=ROOT, env=compile_env,
+            )
+            for line in compile_result.stderr.splitlines():
+                if line.startswith("YLANG_CC_COMMAND\\t"):
+                    compiler_command = line.split("\\t")[1:]
             compile_elapsed = time.perf_counter_ns() - start
             check_start = time.perf_counter_ns()
             result = run([str(executable)], cwd=source.parent)
@@ -116,6 +127,9 @@ def main() -> int:
         print(f"YLang version: {version_output}")
         print(f"Host: {platform.platform()}")
         print(f"Native C compiler: {native_cc_version}")
+        if compiler_command is None:
+            raise RuntimeError("compiler did not report its exact native command")
+        print(f"Native compiler command: {shlex.join(compiler_command)}")
         print(f"YLANG_OPT_LEVEL: {os.environ.get('YLANG_OPT_LEVEL', 'default')}")
         print(f"Source: {source}")
         print(f"Measured runs: {args.runs}; warm-ups: {args.warmup}")
