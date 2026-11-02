@@ -1898,7 +1898,7 @@ grep -q 'E2137' build/borrow-mut-const-owner.out
 cat > build/borrow-reference-storage.yl <<'EOF'
 function main() -> int {
     let mut int value = 1;
-    let int *view = &value;
+    let int view = &value;
     return 0;
 }
 EOF
