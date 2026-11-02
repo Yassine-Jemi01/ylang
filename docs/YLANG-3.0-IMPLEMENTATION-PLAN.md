@@ -196,7 +196,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [x] 3.2.5.2 Build and link the same fixture through verified IR-to-C.
   - [x] 3.2.5.3 Compare exit status, stdout, and stderr byte-for-byte across arithmetic, runtime errors, branches, loops, calls, imported modules, short-circuit expressions, and the initial finite-f64 subset.
 - [~] 3.2.6 Add branch, loop, short-circuit, imported-call, and f64 differential fixtures; expand sanitizer coverage.
-- [~] 3.2.7 Expand parity feature-by-feature until the supported C subset is covered; a 19-fixture AST/IR/optimized-IR differential runner now covers all six integer comparison operators in addition to arithmetic, control flow, calls, imports, short-circuiting, and f64 cases; full-subset coverage remains open.
+- [~] 3.2.7 Expand parity feature-by-feature until the supported C subset is covered; a 20-fixture AST/IR/optimized-IR differential runner covers all six integer comparisons, IEEE-754 f64 comparisons (including NaN and signed zero), arithmetic, control flow, calls, imports, short-circuiting, and f64 cases; broader full-subset coverage remains open.
 - [ ] 3.2.8 Switch the default build path only after parity and compatibility gates pass.
 
 ### 3.3 LLVM backend
@@ -232,7 +232,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 ### 4.2 Compiler implementation
 - [~] 4.2.1 Add ownership state to semantic analysis; existing move-state tracking is extended with call-scoped shared-loan counts for named borrowed_string arguments.
 - [~] 4.2.2 Reject use-after-move; existing E2110 flow-sensitive checks remain in place and now reject moves that conflict with an active call-scoped loan (E2130).
-- [~] 4.2.3 Reject conflicting mutable/shared borrows; initial shared-loan checks reject same-call owner moves (E2130) and writes (E2131), while explicit mutable loans and general alias analysis remain open.
+- [~] 4.2.3 Reject conflicting mutable/shared borrows; initial shared-loan checks reject same-call and nested-call owner moves (E2130) and writes (E2131), with tests for nested shared reads that remain valid; explicit mutable loans and general alias analysis remain open.
 - [~] 4.2.4 Add drop scopes and cleanup on return; existing owned_string cleanup covers lexical exits and function returns, with aggregate/drop-verifier work still open.
 - [~] 4.2.5 Add cleanup on break, continue, and every conditional exit; existing C-backend cleanup covers break/continue and branch scopes, with broader ownership/IR verification still open.
 - [ ] 4.2.6 Add explicit unsafe blocks and pointer-operation checks.
