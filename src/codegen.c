@@ -316,7 +316,8 @@ static void emit_temp_declarations_expr(Compiler *compiler, FILE *out,
     }
     if (call_needs_sequence(expr)) {
         for (size_t i = 0; i < expr->as.call.count; i++) {
-            if (call_argument_is_array(expr, i)) continue;
+            if (call_argument_is_array(expr, i) ||
+                call_argument_is_reference(expr, i)) continue;
             char suffix[32];
             (void)snprintf(suffix, sizeof(suffix), "arg%zu", i);
             emit_temp_declaration(out, compiler, expr, suffix,
