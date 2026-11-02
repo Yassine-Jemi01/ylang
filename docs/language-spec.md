@@ -217,7 +217,32 @@ function main() -> int {
 
 A `borrowed_string` parameter is read-only. The type is rejected for local/global variables, struct fields, array parameters, and function return values. It does not free the passed value; the caller must keep the owner alive for the duration of the call. Passing an unbound `owned_string` temporary to a borrowed parameter is rejected. This is a limited immutable call-parameter view, not full lifetime inference or a general borrow checker.
 
-Current limits: owned strings require the C backend. Global owned strings, arrays of owned strings, and owned-string struct fields are rejected until cleanup for those storage forms exists. Mutable borrows (`&mut T`), lifetime annotations, escaping borrows, and general alias checking are not implemented. Legacy `string` remains a borrowed C-string representation, and allocations produced by legacy string helpers may live until process exit. Do not treat this experimental feature as a security boundary or a claim of complete Rust-level memory safety.
+### Experimental call-scoped references (3.0 development)
+
+The experimental C backend also accepts shared and exclusive reference parameters. A reference is passed directly at the call site; the caller's named binding remains the owner:
+
+```yl
+function read_value(&int value) -> int {
+    return value;
+}
+
+function increment(&mut int value) -> int {
+    value += 1;
+    return value;
+}
+
+function main() -> int {
+    let mut int count = 41;
+    print(read_value(&count));
+    increment(&mut count);
+    print(count);
+    return 0;
+}
+```
+
+Multiple `&T` parameters may share the same whole-variable owner. `&mut T` is exclusive and allows mutation through that parameter only; overlapping shared/mutable or mutable/mutable borrows are rejected. Move, direct owner mutation, and direct owner reads during an exclusive borrow are rejected. This first slice is call-scoped and limited to named whole-variable arguments. References cannot be stored in locals, returned, or reborrowed; arrays, field/index projections, branch/loop loan joins, and general lifetime analysis are not supported. It is not a security boundary or a claim of complete Rust-level memory safety.
+
+Current limits: `owned_string` and reference parameters require the experimental C backend. Global owned strings, arrays of owned strings, and owned-string struct fields are rejected until cleanup for those storage forms exists. Legacy `string` remains a borrowed C-string representation, and allocations produced by legacy string helpers may live until process exit. Do not treat these experimental features as a security boundary or a claim of complete Rust-level memory safety.
 
 ## Path and desktop integration
 
@@ -322,6 +347,6 @@ lowering is implemented.
 
 ## 12. Unsupported features and implementation limits
 
-The following are not supported by the current language subset: classes, methods on structs, inheritance, payload enums, generic `Option<T>`/`Result<T, E>`, exception syntax (`try`/`catch`), generics, raw pointers/references, returning arrays, nested/const arrays, and a dedicated LLVM/native backend. Typed structs and enums are implemented as experimental extensions described in [the struct reference](STRUCTS.md) and [the enum reference](ENUMS.md); they are not part of the stable-core compatibility guarantee. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
+The following are not supported by the current language subset: classes, methods on structs, inheritance, payload enums, generic `Option<T>`/`Result<T, E>`, exception syntax (`try`/`catch`), generics, raw pointers, local/stored/returned references, reborrows, general lifetime analysis, returning arrays, nested/const arrays, and a dedicated LLVM/native backend. Typed structs and enums are implemented as experimental extensions described in [the struct reference](STRUCTS.md) and [the enum reference](ENUMS.md); they are not part of the stable-core compatibility guarantee. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
 
-The compiler generates C, so native code inherits ordinary process privileges and is not sandboxed. Some formatted string values are stored until process exit; creating many such values in a long-running loop can increase memory consumption. The language does not define ownership/borrowing or a garbage collector in this release. Do not assume Rust-like memory-safety guarantees.
+The compiler generates C, so native code inherits ordinary process privileges and is not sandboxed. Some formatted string values are stored until process exit; creating many such values in a long-running loop can increase memory consumption. YLang has experimental move/borrow checks in the C backend, but no complete lifetime system or garbage collector. Do not assume Rust-like memory-safety guarantees.
