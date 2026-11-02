@@ -251,12 +251,22 @@ if ./build/ylang emit-ir-c tests/emit-ir-c.yl > build/emit-ir-c-missing-output.o
 fi
 grep -Fq 'emit-ir-c requires -o <generated.c>' build/emit-ir-c-missing-output.out
 rm -f build/emit-ir-c-unsupported.c
+printf 'preserve-existing-output\\n' > build/emit-ir-c-unsupported.c
 if ./build/ylang emit-ir-c tests/fn-keyword.yl -o build/emit-ir-c-unsupported.c > build/emit-ir-c-unsupported.out 2> build/emit-ir-c-unsupported.err; then
-    echo "FAIL: emit-ir-c accepted strings outside the initial IR lowering subset" >&2
+    echo "FAIL: emit-ir-c accepted a program outside the initial IR lowering subset" >&2
     exit 1
 fi
-test ! -e build/emit-ir-c-unsupported.c
+printf 'preserve-existing-output\\n' > build/emit-ir-c-expected.txt
+cmp -s build/emit-ir-c-expected.txt build/emit-ir-c-unsupported.c
 grep -Fq "cannot lower function 'main'" build/emit-ir-c-unsupported.err
+
+rm -rf build/emit-ir-c-missing-directory
+if ./build/ylang emit-ir-c tests/emit-ir-c.yl -o build/emit-ir-c-missing-directory/output.c > build/emit-ir-c-open-failure.out 2> build/emit-ir-c-open-failure.err; then
+    echo "FAIL: emit-ir-c wrote into a missing output directory" >&2
+    exit 1
+fi
+test ! -e build/emit-ir-c-missing-directory/output.c
+grep -Fq "cannot open" build/emit-ir-c-open-failure.err
 
 # The IR-to-C emitter must link duplicate source names from separate modules correctly.
 ./build/ylang emit-ir-c tests/ir-module-calls/main.yl -o build/ir-module-calls.c >/dev/null
