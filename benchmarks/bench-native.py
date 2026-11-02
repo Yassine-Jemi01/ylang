@@ -106,8 +106,8 @@ def main() -> int:
                 cwd=ROOT, env=compile_env,
             )
             for line in compile_result.stderr.splitlines():
-                if line.startswith("YLANG_CC_COMMAND\\t"):
-                    compiler_command = line.split("\\t")[1:]
+                if line.startswith("YLANG_CC_COMMAND\t"):
+                    compiler_command = line.split("\t")[1:]
             compile_elapsed = time.perf_counter_ns() - start
             check_start = time.perf_counter_ns()
             result = run([str(executable)], cwd=source.parent)
