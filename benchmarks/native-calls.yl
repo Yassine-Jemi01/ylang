@@ -1,0 +1,14 @@
+function transform(int value) -> int {
+    return value * 3 - value / 2;
+}
+
+function main() -> int {
+    let int index = 1;
+    let int total = 0;
+    while (index <= 1000) {
+        total = total + transform(index);
+        index++;
+    }
+    print(total);
+    return 0;
+}
