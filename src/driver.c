@@ -432,8 +432,8 @@ static int run_native_compiler(const char *cc, const char *c_path,
     if (trace_cc_command && strcmp(trace_cc_command, "1") == 0) {
         fputs("YLANG_CC_COMMAND", stderr);
         for (size_t i = 0; i < n; ++i)
-            fprintf(stderr, "\\t%s", args[i]);
-        fputc('\\n', stderr);
+            fprintf(stderr, "\t%s", args[i]);
+        fputc('\n', stderr);
     }
 
 #ifdef _WIN32
