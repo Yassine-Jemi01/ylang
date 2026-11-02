@@ -77,7 +77,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 ### 2.3 AST-to-IR lowering
 - [x] 2.3.1 Lower integer and boolean literals and scalar parameters.
 - [x] 2.3.2 Lower scalar local declarations and simple assignments.
-- [~] 2.3.3 Lower numeric arithmetic and comparison conditions.
+- [x] 2.3.3 Lower numeric arithmetic and comparison conditions; integer and f64 arithmetic/comparison lowering, checked division/modulo/negation, and short-circuit control flow are covered by the regression and parity suites.
   - [x] 2.3.3.1 Lower addition, subtraction, and multiplication.
   - [x] 2.3.3.2 Lower integer division, modulo, and general unary negation with checked runtime semantics.
     - [x] 2.3.3.2.1 Add typed `div.i64`, `mod.i64`, and `neg.i64` IR operations and verifier rules.
@@ -181,10 +181,10 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
     - [x] 3.2.2.1.3 Reject unsupported IR types and opcodes explicitly.
     - [x] 3.2.2.1.4 Add unit tests for integer/f64 arithmetic, direct calls, branch edges, and unsupported signatures.
     - [x] 3.2.2.1.5 Compile and run imported-module calls, including transitive imports and identical function names in separate modules.
-- [~] 3.2.3 Add an `emit-ir-c` CLI command that writes verified IR-generated C to a requested file.
+- [x] 3.2.3 Add an `emit-ir-c` CLI command that writes verified IR-generated C to a requested file; generation completes in a temporary stream before the destination is opened, with failure-path preservation tests.
   - [x] 3.2.3.1 Register the command and require an explicit `-o` destination.
   - [x] 3.2.3.2 Lower every function and verify the complete module before writing.
-  - [~] 3.2.3.3 Generate through a temporary stream and avoid leaving partial output on emission failure.
+  - [x] 3.2.3.3 Generate through a temporary stream and avoid leaving partial output on emission failure; unsupported IR and destination-open failures are tested without creating or truncating an output file.
   - [x] 3.2.3.4 Add emit-ir-c-opt, which runs the verified integer/boolean constant-folding pass before emission.
   - [x] 3.2.3.5 Keep emit-ir-c unchanged as the unoptimized reference path.
 - [x] 3.2.4 Add compile/run regressions for generated C integer/f64 arithmetic, checked division/modulo/negation, imported calls, and short-circuit behavior; wait for Linux GCC/Clang CI before marking them validated.
