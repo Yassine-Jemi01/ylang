@@ -1717,10 +1717,11 @@ bool yir_lower_function(const Function *function, YIRFunction *out,
                           "function has too many parameters for the IR lowerer");
     for (size_t i = 0; i < function->param_count; ++i) {
         YIRType ignored_type;
-        if (!function->params[i] || function->params[i]->is_array ||
+        if (!function->params[i] || function->params[i]->is_reference_parameter ||
+            function->params[i]->is_array ||
             !map_scalar_type(function->params[i]->type, &ignored_type))
             return lower_fail(&(Lowerer){.error=error,.error_capacity=error_capacity},
-                              "only scalar int, float, and bool function parameters are supported by the IR lowerer");
+                              "the IR lowerer supports only by-value scalar int, float, and bool parameters; references require the C backend");
     }
     YIRType function_return_type = YIR_TYPE_VOID;
     if (function->return_type != TYPE_VOID &&
