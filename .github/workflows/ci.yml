@@ -122,6 +122,24 @@ jobs:
           ./build/ylang.exe build build/windows-smoke/hello.yl -o build/windows-smoke/hello.exe
           output="$(./build/windows-smoke/hello.exe)"
           test "$output" = "Windows smoke: 42"
+      - name: Test shared and exclusive reference parameters on Windows
+        run: |
+          ./build/ylang.exe build tests/borrow-mut-basic.yl -o build/windows-smoke/borrow-mut.exe
+          output="$(./build/windows-smoke/borrow-mut.exe)"
+          test "$output" = "41"
+          ./build/ylang.exe build tests/borrow-shared-aliasing.yl -o build/windows-smoke/borrow-shared.exe
+          output="$(./build/windows-smoke/borrow-shared.exe)"
+          test "$output" = "42"
+          if ./build/ylang.exe check tests/borrow-mut-overlap.yl > build/windows-smoke/borrow-mut-overlap.out 2>&1; then
+            echo "FAIL: Windows compiler accepted overlapping mutable borrows" >&2
+            exit 1
+          fi
+          grep -q "E2133" build/windows-smoke/borrow-mut-overlap.out
+          if ./build/ylang.exe check tests/borrow-shared-mut-conflict.yl > build/windows-smoke/borrow-shared-mut-conflict.out 2>&1; then
+            echo "FAIL: Windows compiler accepted shared/mutable overlap" >&2
+            exit 1
+          fi
+          grep -Eq "E2132|E2133" build/windows-smoke/borrow-shared-mut-conflict.out
       - name: Check multi-file imports with Windows paths
         run: |
           mkdir -p build/windows-imports
