@@ -1,0 +1,11 @@
+fn main() -> int {
+    let int left = 7;
+    let int right = 3;
+
+    if (left > right and left >= 7 and right < left and
+        right <= 3 and left != right and left == 7) {
+        return 84;
+    }
+
+    return 1;
+}
