@@ -153,6 +153,13 @@ static bool call_argument_is_array(const Expr *call, size_t index)
            call->as.call.function->params[index]->is_array;
 }
 
+static bool call_argument_is_reference(const Expr *call, size_t index)
+{
+    return call && call->kind == EXPR_CALL && call->as.call.function &&
+           index < call->as.call.function->param_count &&
+           call->as.call.function->params[index]->is_reference_parameter;
+}
+
 static bool call_needs_sequence(Expr *expr)
 {
     if (!expr || expr->kind != EXPR_CALL || expr->as.call.count < 2U) return false;
@@ -773,7 +780,15 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
             }
             break;
         case EXPR_NAME:
-            sb_append(sb, expr->as.name.variable ? expr->as.name.variable->c_name : "yl_missing_variable");
+            if (expr->as.name.variable &&
+                expr->as.name.variable->is_reference_parameter) {
+                sb_append(sb, "(*");
+                sb_append(sb, expr->as.name.variable->c_name);
+                sb_append(sb, ")");
+            } else {
+                sb_append(sb, expr->as.name.variable ?
+                          expr->as.name.variable->c_name : "yl_missing_variable");
+            }
             break;
         case EXPR_ASSIGN: {
             if (assignment_needs_sequence(expr)) {
@@ -889,7 +904,8 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 sb_append(sb, "(");
                 bool wrote_assignment = false;
                 for (size_t i = 0; i < expr->as.call.count; i++) {
-                    if (call_argument_is_array(expr, i)) continue;
+                    if (call_argument_is_array(expr, i) ||
+                        call_argument_is_reference(expr, i)) continue;
                     if (wrote_assignment) sb_append(sb, ", ");
                     char suffix[32];
                     (void)snprintf(suffix, sizeof(suffix), "arg%zu", i);
@@ -907,7 +923,8 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 if (i) sb_append(sb, ", ");
                 Expr *arg = expr->as.call.args[i];
                 bool array_param = call_argument_is_array(expr, i);
-                if (sequence && !array_param) {
+                if (sequence && !array_param &&
+                    !call_argument_is_reference(expr, i)) {
                     char suffix[32];
                     (void)snprintf(suffix, sizeof(suffix), "arg%zu", i);
                     emit_temp_name(sb, expr, suffix);
@@ -937,6 +954,10 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 sb_append(sb, "))");
             } else if (expr->is_min_int) {
                 sb_append(sb, "INT64_MIN");
+            } else if (op == TOKEN_AMPERSAND) {
+                sb_append(sb, "&(");
+                emit_expr(sb, expr->as.unary.right);
+                sb_append(sb, ")");
             } else if (op == TOKEN_MINUS && expr->type == TYPE_INT) {
                 sb_append(sb, "yl_neg_i64("); emit_expr(sb, expr->as.unary.right); sb_append(sb, ")");
             } else {
@@ -1017,6 +1038,19 @@ static void emit_var_type(Compiler *compiler, FILE *out, VarDecl *var, bool glob
     if (var->is_const && !is_c_string_type(var->type)) fputs("const ", out);
     fputs(c_base_type(compiler, var->type), out);
     if (var->is_const && is_c_string_type(var->type)) fputs(" const", out);
+}
+
+static void emit_function_parameter(Compiler *compiler, FILE *out, VarDecl *param)
+{
+    if (param->is_array) {
+        fprintf(out, "%s *%s, size_t %s_len",
+                c_base_type(compiler, param->type), param->c_name, param->c_name);
+    } else if (param->is_reference_parameter) {
+        fprintf(out, "%s%s *%s", c_base_type(compiler, param->type),
+                param->is_mutable_reference ? "" : " const", param->c_name);
+    } else {
+        fprintf(out, "%s %s", c_base_type(compiler, param->type), param->c_name);
+    }
 }
 
 static void emit_expr_to_file(FILE *out, Expr *expr)
@@ -1248,7 +1282,8 @@ static void emit_cleanup_function_owned(CodegenContext *ctx, unsigned indent)
     /* Owned parameters belong to the callee and are released after locals. */
     for (size_t i = ctx->function->param_count; i > 0U; i--) {
         VarDecl *param = ctx->function->params[i - 1U];
-        if (param->type != TYPE_OWNED_STRING) continue;
+        if (param->type != TYPE_OWNED_STRING ||
+            param->is_reference_parameter) continue;
         emit_indent(ctx->out, indent);
         fprintf(ctx->out, "yl_release(%s);\n", param->c_name);
         emit_indent(ctx->out, indent);
@@ -1573,12 +1608,7 @@ bool generate_c(Compiler *c, const char *path)
         for (size_t j = 0; j < fn->param_count; j++) {
             VarDecl *param = fn->params[j];
             if (!first_param) fputs(", ", out);
-            if (param->is_array) {
-                fprintf(out, "%s *%s, size_t %s_len",
-                        c_base_type(c, param->type), param->c_name, param->c_name);
-            } else {
-                fprintf(out, "%s %s", c_base_type(c, param->type), param->c_name);
-            }
+            emit_function_parameter(c, out, param);
             first_param = false;
         }
         fputs(");\n", out);
@@ -1593,12 +1623,7 @@ bool generate_c(Compiler *c, const char *path)
         for (size_t j = 0; j < fn->param_count; j++) {
             VarDecl *param = fn->params[j];
             if (!first_param) fputs(", ", out);
-            if (param->is_array) {
-                fprintf(out, "%s *%s, size_t %s_len",
-                        c_base_type(c, param->type), param->c_name, param->c_name);
-            } else {
-                fprintf(out, "%s %s", c_base_type(c, param->type), param->c_name);
-            }
+            emit_function_parameter(c, out, param);
             first_param = false;
         }
         fputs(") {\n", out);
