@@ -1,0 +1,13 @@
+function measure(borrowed_string value) -> int {
+    return string.length(value);
+}
+
+function forward_view(borrowed_string view) -> int {
+    return measure(view);
+}
+
+function main() -> int {
+    let string owner = "reborrow";
+    print(forward_view(owner));
+    return 0;
+}
