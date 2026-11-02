@@ -1,0 +1,39 @@
+fn exercise_opcodes(int left, int right) -> int {
+    let int sum = left + right;
+    let int difference = left - right;
+    let int product = left * right;
+    let int quotient = left / right;
+    let int remainder = left % right;
+    let int negative = -left;
+
+    let float left_float = to_float(left);
+    let float right_float = to_float(right);
+    let float float_sum = left_float + right_float;
+    let float float_difference = left_float - right_float;
+    let float float_product = left_float * right_float;
+    let float float_quotient = left_float / right_float;
+    let float float_negative = -left_float;
+
+    let bool integer_checks =
+        sum > difference and sum >= 12 and
+        difference < sum and difference <= 6 and
+        left != right and left == 9 and
+        product == 27 and quotient == 3 and
+        remainder == 0 and negative == -9;
+    let bool float_checks =
+        float_sum == 12.0 and float_difference == 6.0 and
+        float_product == 27.0 and float_quotient == 3.0 and
+        float_negative == -9.0 and
+        left_float == 9.0 and left_float != right_float and
+        right_float < left_float and right_float <= 3.0 and
+        left_float > right_float and left_float >= 9.0;
+
+    if (not false and integer_checks and float_checks) {
+        return 75;
+    }
+    return 0;
+}
+
+fn main() -> int {
+    return exercise_opcodes(9, 3);
+}
