@@ -1850,6 +1850,64 @@ if ./build/ylang check tests/borrowed-string-nested-write-conflict.yl > build/bo
 fi
 grep -q 'E2131' build/borrowed-string-nested-write-conflict.out
 
+# Explicit references are call-scoped: shared aliases may coexist, while one
+# exclusive mutable reference permits writes through the reference itself.
+./build/ylang build tests/borrow-mut-basic.yl -o build/test-borrow-mut-basic >/dev/null
+[ "$(./build/test-borrow-mut-basic)" = "41" ]
+
+./build/ylang build tests/borrow-mut-owned-string.yl -o build/test-borrow-mut-owned-string >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-borrow-mut-owned-string > build/borrow-mut-owned-string.stdout 2> build/borrow-mut-owned-string.stderr
+printf 'YLANG\n' > build/borrow-mut-owned-string.expected
+diff -u build/borrow-mut-owned-string.expected build/borrow-mut-owned-string.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/borrow-mut-owned-string.stderr
+
+./build/ylang build tests/borrow-shared-aliasing.yl -o build/test-borrow-shared-aliasing >/dev/null
+[ "$(./build/test-borrow-shared-aliasing)" = "42" ]
+
+# Two overlapping exclusive borrows are rejected.
+if ./build/ylang check tests/borrow-mut-overlap.yl > build/borrow-mut-overlap.out 2>&1; then
+    echo "FAIL: YLang accepted two mutable borrows of the same owner" >&2
+    exit 1
+fi
+grep -q 'E2133' build/borrow-mut-overlap.out
+
+# Shared + mutable loans conflict in both parameter orders.
+for fixture in borrow-shared-mut-conflict borrow-mut-shared-conflict; do
+    if ./build/ylang check "tests/$fixture.yl" > "build/$fixture.out" 2>&1; then
+        echo "FAIL: YLang accepted overlapping shared and mutable borrows in $fixture" >&2
+        exit 1
+    fi
+    grep -Eq 'E2132|E2133' "build/$fixture.out"
+done
+
+# An owner cannot be read through another path while exclusively borrowed.
+if ./build/ylang check tests/borrow-mut-owner-read-conflict.yl > build/borrow-mut-owner-read-conflict.out 2>&1; then
+    echo "FAIL: YLang allowed a direct owner read during a mutable borrow" >&2
+    exit 1
+fi
+grep -q 'E2136' build/borrow-mut-owner-read-conflict.out
+
+# An immutable binding cannot be mutably borrowed.
+if ./build/ylang check tests/borrow-mut-const-owner.yl > build/borrow-mut-const-owner.out 2>&1; then
+    echo "FAIL: YLang allowed a mutable borrow of a const owner" >&2
+    exit 1
+fi
+grep -q 'E2137' build/borrow-mut-const-owner.out
+
+# A local borrow expression cannot be stored or passed without a ref parameter.
+cat > build/borrow-reference-storage.yl <<'EOF'
+function main() -> int {
+    let mut int value = 1;
+    let int *view = &value;
+    return 0;
+}
+EOF
+if ./build/ylang check build/borrow-reference-storage.yl > build/borrow-reference-storage.out 2>&1; then
+    echo "FAIL: YLang accepted an unsupported stored reference" >&2
+    exit 1
+fi
+grep -q 'E1002\|E2135' build/borrow-reference-storage.out
+
 # Nested read-only calls may share an owner already borrowed by the outer call.
 ./build/ylang build tests/borrowed-string-nested-read.yl -o build/test-borrowed-string-nested-read >/dev/null
 [ "$(./build/test-borrowed-string-nested-read)" = "8" ]
