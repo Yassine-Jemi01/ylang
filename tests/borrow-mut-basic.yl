@@ -1,0 +1,11 @@
+function increment(&mut int value) -> int {
+    value += 1;
+    return value;
+}
+
+function main() -> int {
+    let mut int count = 40;
+    increment(&mut count);
+    print(count);
+    return 0;
+}
