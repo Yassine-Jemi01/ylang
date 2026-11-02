@@ -1753,6 +1753,13 @@ if ./build/ylang check tests/borrowed-string-write-conflict.yl > build/borrowed-
 fi
 grep -q 'E2131' build/borrowed-string-write-conflict.out
 
+# A nested call argument must not mutate an owner already borrowed by its parent call.
+if ./build/ylang check tests/borrowed-string-nested-write-conflict.yl > build/borrowed-string-nested-write-conflict.out 2>&1; then
+    echo "FAIL: nested argument mutated an owner borrowed by the enclosing call" >&2
+    exit 1
+fi
+grep -q 'E2131' build/borrowed-string-nested-write-conflict.out
+
 if ./build/ylang check tests/borrowed-string-array.yl > build/borrowed-string-array.out 2>&1; then
     echo "FAIL: YLang accepted an array of borrowed_string parameters" >&2
     exit 1
