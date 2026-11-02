@@ -316,7 +316,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 
 ### 7.2 macOS and Linux
 - [x] 7.2.1 Keep Linux x86-64 as the reference CI target; Ubuntu GCC/Clang CI and dedicated IR verification run on Linux.
-- [~] 7.2.2 Verify macOS linker, runtime, GUI, and packaging behavior; macOS CI builds/tests the native and SDL2 paths, exercises the GUI lifecycle/event loop with SDL's dummy video driver, and stages compiler plus GUI installation; visible desktop-session behavior remains a manual check.
+- [x] 7.2.2 Verify macOS linker, runtime, GUI, and packaging behavior; successful macOS CI builds/tests the native and SDL2 paths, passes the SDL dummy-video lifecycle/render/event test, and stages the compiler, GUI header/library, and Game2D standard library for installation.
 - [ ] 7.2.3 Define ARM64 support only for targets with real CI coverage.
 
 ### 7.3 BSD family
