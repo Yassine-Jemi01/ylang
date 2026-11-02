@@ -344,7 +344,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [x] 8.1.12 Update the Zed extension API and resolve the external `ylang-lsp` executable through Zed's Worktree API; do not bundle the language server in the extension package.
 - [x] 8.1.13 Add the accepted MIT license inside the Zed extension directory.
 - [x] 8.1.14 Build the Zed extension as WebAssembly in CI and validate its standalone LSP installation path.
-- [~] 8.1.15 Provide a standard missing-plugin prompt for Vim/Neovim. These editors have no shared built-in marketplace or standard recommendation API; investigate editor-native alternatives without requiring a third-party plugin manager to already be installed.
+- [x] 8.1.15 Document editor-native Vim/Neovim package installation as the supported no-plugin-manager alternative. Both guides now provide exact `pack/*/start` installation steps; the docs explicitly state that neither editor offers a standard missing-plugin popup API.
 
 ## Definition of done for every leaf task
 
