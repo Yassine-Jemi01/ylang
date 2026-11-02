@@ -182,11 +182,11 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
     - [x] 3.2.2.1.4 Add unit tests for integer/f64 arithmetic, direct calls, branch edges, and unsupported signatures.
     - [x] 3.2.2.1.5 Compile and run imported-module calls, including transitive imports and identical function names in separate modules.
 - [~] 3.2.3 Add an `emit-ir-c` CLI command that writes verified IR-generated C to a requested file.
-  - [~] 3.2.3.1 Register the command and require an explicit `-o` destination.
-  - [~] 3.2.3.2 Lower every function and verify the complete module before writing.
+  - [x] 3.2.3.1 Register the command and require an explicit `-o` destination.
+  - [x] 3.2.3.2 Lower every function and verify the complete module before writing.
   - [~] 3.2.3.3 Generate through a temporary stream and avoid leaving partial output on emission failure.
-  - [~] 3.2.3.4 Add emit-ir-c-opt, which runs the verified integer/boolean constant-folding pass before emission.
-  - [~] 3.2.3.5 Keep emit-ir-c unchanged as the unoptimized reference path.
+  - [x] 3.2.3.4 Add emit-ir-c-opt, which runs the verified integer/boolean constant-folding pass before emission.
+  - [x] 3.2.3.5 Keep emit-ir-c unchanged as the unoptimized reference path.
 - [x] 3.2.4 Add compile/run regressions for generated C integer/f64 arithmetic, checked division/modulo/negation, imported calls, and short-circuit behavior; wait for Linux GCC/Clang CI before marking them validated.
   - [x] 3.2.4.1 Compile and run optimized IR-generated C for safe constant expressions.
   - [x] 3.2.4.2 Confirm optimized IR-generated C preserves divide-by-zero runtime errors.
@@ -321,7 +321,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 
 ### 7.3 BSD family
 - [x] 7.3.1 Add a real FreeBSD VM build-and-test job; the first CI workflow now targets FreeBSD 15.x, pending its first successful hosted run.
-- [~] 7.3.2 Add FreeBSD SDL2 GUI/Game2D compile-and-link coverage; opening a real window and exercising the event loop remain unvalidated, and the hosted CI run is pending.
+- [~] 7.3.2 Add FreeBSD SDL2 GUI/Game2D compile-and-link coverage; FreeBSD 15 CI now builds and links the GUI and Game2D targets, while opening a real window and exercising the event loop remain unvalidated.
 - [ ] 7.3.3 Audit filesystem, process, environment, networking, and linker behavior for BSD-specific differences.
 - [ ] 7.3.4 Add OpenBSD CI and resolve platform-specific build/runtime issues.
 - [ ] 7.3.5 Add NetBSD CI and resolve platform-specific build/runtime issues.
