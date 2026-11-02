@@ -168,7 +168,7 @@ fn main() -> int {
                 (unary_expression
                   (identifier))
                 (unary_expression
-                  (identifier))))))
+                  (identifier)))))))
       (expression_statement
         (call_expression
           function: (identifier)
