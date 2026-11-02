@@ -158,7 +158,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [x] 2.4.2 Add `ylang emit-mir` as a developer inspection command.
 - [x] 2.4.3 Add `ylang emit-mir-opt` for the verified initial scalar constant-folding pass.
 - [x] 2.4.4 Add machine-readable, versioned JSON IR output for tooling; schema validation and CLI coverage are added, pending CI.
-- [~] 2.4.5 Add IR snapshots and canonical formatting tests; stable MIR output is compared against a checked-in fixture, with broader snapshot coverage still needed.
+- [x] 2.4.5 Add IR snapshots and canonical formatting tests; the checked-in MIR fixture is complemented by exact printer-unit snapshots for scalar functions, typed CFG edges, direct calls, integer division/modulo/negation, f64 arithmetic/comparisons, and numeric conversions.
 
 ## 3. Backend integration
 
