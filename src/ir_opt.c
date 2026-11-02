@@ -963,6 +963,7 @@ static bool eliminate_dead_code(YIRFunction *function, char *error,
         block->instruction_count = write_index;
     }
     destroy_live_value_set(&live_set);
+    destroy_live_definition_table(&definitions);
     free(live_values);
     return yir_verify_function(function, error, error_capacity);
 }
