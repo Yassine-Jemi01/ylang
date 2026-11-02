@@ -10,6 +10,12 @@ in this directory.
 | Neovim | `editors/nvim` | Install with a plugin manager; native filetype detection, syntax, and compiler diagnostics |
 | Vim | `editors/vim` | Install with a Vim plugin manager; native filetype detection, syntax, and indentation |
 
+## Install without a plugin manager
+
+Vim and Neovim both support native package directories. The official integrations can be copied into their respective `pack/*/start` directories and loaded automatically, without installing vim-plug, lazy.nvim, or another third-party plugin manager. See the Vim and Neovim guides for exact commands.
+
+Neither editor exposes a shared marketplace or a standard prompt API that can recommend an integration before it is installed. Native packages are therefore the supported editor-owned discovery alternative; they do not create an automatic missing-plugin popup.
+
 ## What happens when you open a `.yl` file?
 
 - **VS Code:** when you open the repository as a workspace, VS Code reads
