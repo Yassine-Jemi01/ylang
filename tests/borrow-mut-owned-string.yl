@@ -1,0 +1,11 @@
+function uppercase(&mut owned_string value) -> int {
+    value = owned_string.upper(value);
+    return 0;
+}
+
+function main() -> int {
+    let owned_string name = string.own("yLang");
+    uppercase(&mut name);
+    print(name);
+    return 0;
+}
