@@ -1,0 +1,15 @@
+fn main() -> int {
+    let float huge = 1e308 * 1e308;
+    let float nan = huge - huge;
+    let float positive_zero = 0.0;
+    let float negative_zero = -0.0;
+    if (nan != nan and not (nan == nan) and
+        not (nan < 1.0) and not (nan <= 1.0) and
+        not (nan > 1.0) and not (nan >= 1.0) and
+        positive_zero == negative_zero and
+        not (positive_zero != negative_zero) and
+        huge > 1e308 and huge >= 1e308) {
+        return 73;
+    }
+    return 0;
+}
