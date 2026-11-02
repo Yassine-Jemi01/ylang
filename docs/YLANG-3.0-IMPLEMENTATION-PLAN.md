@@ -250,7 +250,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [x] 5.1.1 Create reproducible arithmetic and control-flow benchmarks; a repeatable native loop workload exercises arithmetic and control flow, with a smoke-tested harness.
 - [ ] 5.1.2 Add allocation and memory-footprint benchmarks.
 - [~] 5.1.3 Add compile-time and binary-size benchmarks; the native benchmark reports compile latency and executable size, with broader workloads still needed.
-- [~] 5.1.4 Record CPU, OS, compiler, flags, warmups, and result spread; the harness records host, compiler version, optimization level, warmups, medians, and P95, while exact compiler-flag capture remains to do.
+- [x] 5.1.4 Record CPU, OS, compiler, flags, warmups, and result spread; the harness now captures the exact native compiler argv (including optimization, hardening, linker, and platform flags) alongside host, compiler version, warmups, medians, and P95.
 
 ### 5.2 Optimization passes
 - [x] 5.2.1 Constant folding, including safe scalar integer, boolean, and conservative f64 cases.
