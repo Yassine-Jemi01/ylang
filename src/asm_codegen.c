@@ -1098,6 +1098,11 @@ bool generate_asm(Compiler *compiler, const char *path)
         if (!asm_type_supported(&ctx, function->return_type,
                                 function->token, true)) break;
         for (size_t j = 0; j < function->param_count; j++) {
+            if (function->params[j]->is_reference_parameter) {
+                (void)asm_reject(&ctx, function->params[j]->token,
+                                 "reference parameters (use the C backend)");
+                break;
+            }
             if (function->params[j]->is_array) {
                 (void)asm_reject(&ctx, function->params[j]->token,
                                  "array parameters");
