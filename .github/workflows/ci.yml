@@ -67,7 +67,7 @@ jobs:
           gmake install DESTDIR="$stage" PREFIX=/usr/local CC="${{ steps.compiler.outputs.cc }}"
           gmake install-gui DESTDIR="$stage" PREFIX=/usr/local CC="${{ steps.compiler.outputs.cc }}"
           test -x "$stage/usr/local/bin/ylang"
-          "$stage/usr/local/bin/ylang" --version | grep -Fq "$(tr -d '\\r\\n' < VERSION)"
+          "$stage/usr/local/bin/ylang" --version | grep -Fq "$(head -n 1 VERSION)"
           test -f "$stage/usr/local/include/ylang/gui.h"
           test -f "$stage/usr/local/lib/libylang_gui.a"
           test -f "$stage/usr/local/share/ylang/stdlib/game2d.yl"
