@@ -34,7 +34,31 @@ Run the regression suite where the command dependencies are available:
 
 Windows CI currently runs a focused native smoke suite rather than claiming that every POSIX-only shell integration test has been ported.
 
-## 3. Compile a native Windows program
+## 3. Verify the toolchain and diagnose setup problems
+
+Before building, verify that the active terminal is the MSYS2 MINGW64 environment and that the expected tools resolve from its PATH:
+
+    echo $MSYSTEM
+    which gcc
+    gcc --version
+    make --version
+    python --version
+    pkg-config --modversion sdl2
+    pkg-config --modversion libcurl
+
+`MSYSTEM` should report `MINGW64`; `which gcc` should resolve below the MSYS2 `mingw64` prefix. If it reports `MSYS` or resolves to another compiler installation, close the terminal and reopen **MSYS2 MINGW64** before retrying. Do not mix MSYS, MINGW64, and UCRT64 package prefixes in one build.
+
+Common failures:
+
+- **`gcc: command not found`:** install `mingw-w64-x86_64-gcc` in the MINGW64 shell and confirm `C:\\msys64\\mingw64\\bin` is on the Windows PATH for external terminals.
+- **SDL2 or libcurl is not found:** install the matching `mingw-w64-x86_64-SDL2` or `mingw-w64-x86_64-curl` package, then verify it with `pkg-config` in the same shell used for the build.
+- **`make` is not found:** install the MINGW64 make package (`mingw-w64-x86_64-make`) and use the `mingw32-make` command if the package does not provide `make`.
+- **The compiler builds but a generated executable does not start:** verify that the MINGW64 runtime DLL directory is on PATH, then run the executable from the MINGW64 shell to distinguish a missing runtime DLL from a YLang compile failure.
+- **A POSIX-only regression script fails:** use the focused Windows CI smoke coverage as the current supported baseline; do not interpret a shell-environment failure as proof that the generated Windows executable is broken.
+
+For reproducible bug reports, include the output of the verification commands, `gcc --version`, `pkg-config --list-all`, and the exact YLang command.
+
+## 4. Compile a native Windows program
 
 Create hello.yl:
 
@@ -52,7 +76,7 @@ Then:
 
 The default C backend generates C and invokes GCC or Clang. Use a compiler executable that is available in the environment's PATH.
 
-## 4. Multi-file imports
+## 5. Multi-file imports
 
 Relative imports work from the importing source file:
 
@@ -68,13 +92,13 @@ In PowerShell, use:
 
     $env:YLANG_PATH = "C:/dev/ylang-libs;D:/shared/ylang"
 
-## 5. Optional GUI and Game2D
+## 6. Optional GUI and Game2D
 
 The compiler can validate GUI calls without SDL2 or libcurl, but GUI builds require SDL2 development files and pkg-config. Programs using the experimental HTTP namespace additionally require the MinGW-w64 libcurl package and pkg-config; see [HTTP and API Requests](HTTP.md). The MINGW64 package command above installs both.
 
 The initial GUI runtime supports one active window, event polling, keyboard/mouse state, timing, background clearing, and filled rectangles. Game2D is intended for simple 2D prototypes and examples. Sprites, audio, in-window text rendering, scene management, and a full physics engine are not part of this milestone.
 
-## Current limitations
+## 7. Current limitations
 
 - Windows support is experimental and the CI smoke tests cover only a focused path through the compiler/runtime.
 - MSVC is not supported by this build recipe; use MinGW-w64 GCC.
