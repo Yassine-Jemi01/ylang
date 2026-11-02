@@ -1,6 +1,6 @@
 # YLang 3.0 Ownership and Borrowing Design
 
-Status: normative design specification for the first 3.0 ownership/borrowing milestone. The compiler now implements a deliberately smaller call-scoped subset of `&T` / `&mut T` in the experimental C backend: direct borrows of named whole-variable owners passed to reference parameters, shared/exclusive conflict checks, and mutation through `&mut`. Local reference bindings, reborrows, projections, flow-sensitive lifetime joins, and general lifetime analysis are not implemented. Sections 4–9 continue to specify the broader target; do not read every listed rule as already implemented.
+Status: normative design specification for the first 3.0 ownership/borrowing milestone. The compiler now implements a deliberately smaller call-scoped subset of `&T` / `&mut T` in the experimental C backend: direct borrows of named non-global whole-variable owners passed to reference parameters, shared/exclusive conflict checks, and mutation through `&mut`. Local reference bindings, reborrows, projections, flow-sensitive lifetime joins, and general lifetime analysis are not implemented. Sections 4–9 continue to specify the broader target; do not read every listed rule as already implemented.
 
 ## 1. Goals
 
@@ -154,11 +154,11 @@ Implement borrowing as a semantic place analysis, not as C pointer tricks:
 - Fixtures cover parsing, successful mutable use, and invalid use.
 
 ### M2 — call-scoped loan state (partial implementation)
-- Track shared and exclusive loans for named whole-variable arguments during a call.
+- Track shared and exclusive loans for named non-global whole-variable arguments during a call.
 - Reject move/write conflicts, direct owner reads during an exclusive borrow, and mutable borrows of const owners.
 - Reject overlapping mutable borrows and shared/mutable overlap in either argument order.
 - Mutation through an exclusive reference parameter is supported.
-- Local references, branch/loop loan-state joins, reborrows, field/index projections, and general alias analysis remain unimplemented.
+- Global owners are rejected because callees can still access them by name. Local references, branch/loop loan-state joins, reborrows, field/index projections, and general alias analysis remain unimplemented.
 
 ### M3 — reborrows and control-flow hardening
 - Add shared and mutable reborrows with parent-loan suspension.
