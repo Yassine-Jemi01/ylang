@@ -1,4 +1,4 @@
-fn exercise_opcodes(int left, int right) -> int {
+fn exercise_opcodes(int left, int right, bool disabled) -> int {
     let int sum = left + right;
     let int difference = left - right;
     let int product = left * right;
@@ -28,12 +28,12 @@ fn exercise_opcodes(int left, int right) -> int {
         right_float < left_float and right_float <= 3.0 and
         left_float > right_float and left_float >= 9.0;
 
-    if (not false and integer_checks and float_checks) {
+    if (not disabled and integer_checks and float_checks) {
         return 75;
     }
     return 0;
 }
 
 fn main() -> int {
-    return exercise_opcodes(9, 3);
+    return exercise_opcodes(9, 3, false);
 }
