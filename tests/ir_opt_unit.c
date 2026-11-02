@@ -614,6 +614,48 @@ static void dead_code_live_value_lookup_scales_to_large_functions(void)
     free(instructions);
 }
 
+
+static void dead_code_worklist_handles_deep_dependency_chains(void)
+{
+    enum { DEPTH = 4096 };
+    const size_t instruction_count = (size_t)DEPTH + 2;
+    YIRInstruction *instructions =
+        calloc(instruction_count, sizeof(*instructions));
+    assert(instructions != NULL);
+    instructions[0] = (YIRInstruction){
+        .opcode=YIR_OP_CONST_BOOL,.result_id=1,
+        .result_type=YIR_TYPE_BOOL,.immediate=0
+    };
+    for (uint32_t i = 0; i < DEPTH; ++i) {
+        instructions[i + 1] = (YIRInstruction){
+            .opcode=YIR_OP_NOT_BOOL,.result_id=i + 2,
+            .result_type=YIR_TYPE_BOOL,.lhs=i + 1
+        };
+    }
+    instructions[instruction_count - 1] = (YIRInstruction){
+        .opcode=YIR_OP_RETURN,.lhs=DEPTH + 1
+    };
+    YIRBlock blocks[] = {
+        {.id=0,.instructions=instructions,
+         .instruction_count=instruction_count}
+    };
+    YIRFunction function = {
+        .name="dce_deep_worklist_chain",.return_type=YIR_TYPE_BOOL,
+        .blocks=blocks,.block_count=1
+    };
+    const YIROptPass pass[] = {YIR_OPT_DEAD_CODE};
+    char error[256];
+
+    assert(yir_run_opt_pipeline(&function,pass,1,error,sizeof(error)));
+    assert(blocks[0].instruction_count == instruction_count);
+    for (size_t i = 1; i <= DEPTH; ++i)
+        assert(instructions[i].opcode == YIR_OP_NOT_BOOL);
+    assert(instructions[instruction_count - 1].opcode == YIR_OP_RETURN);
+    assert(yir_verify_function(&function,error,sizeof(error)));
+    free(instructions);
+}
+
+
 static void keeps_unused_floating_division_that_can_trap(void)
 {
     YIRInstruction instructions[] = {
@@ -1316,6 +1358,7 @@ int main(void)
     simplifies_constant_branch_and_frees_unreachable_block();
     eliminates_dead_pure_values_but_keeps_checked_arithmetic();
     dead_code_live_value_lookup_scales_to_large_functions();
+    dead_code_worklist_handles_deep_dependency_chains();
     keeps_unused_floating_division_that_can_trap();
     keeps_void_calls_even_when_their_result_is_unused();
     exposes_ordered_and_validated_optimizer_pipelines();
