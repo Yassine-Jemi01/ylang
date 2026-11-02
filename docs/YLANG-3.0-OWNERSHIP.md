@@ -1,6 +1,6 @@
 # YLang 3.0 Ownership and Borrowing Design
 
-Status: normative design specification for the first 3.0 ownership/borrowing milestone. The language-rule tasks in sections 4.1.1–4.1.5 are specified here; compiler implementation remains tracked separately in section 4.2. This document does not claim that the compiler already accepts the proposed `&T` / `&mut T` syntax.
+Status: normative design specification for the first 3.0 ownership/borrowing milestone. The compiler now implements a deliberately smaller call-scoped subset of `&T` / `&mut T` in the experimental C backend: direct borrows of named whole-variable owners passed to reference parameters, shared/exclusive conflict checks, and mutation through `&mut`. Local reference bindings, reborrows, projections, flow-sensitive lifetime joins, and general lifetime analysis are not implemented. Sections 4–9 continue to specify the broader target; do not read every listed rule as already implemented.
 
 ## 1. Goals
 
@@ -49,7 +49,7 @@ function main() -> int {
 
 The parser must distinguish a reference type in a parameter/declaration from the unary borrow expression in an initializer. `&mut` is a single mutability-qualified borrow form; `&mut mut T` is invalid. A mutable borrow requires a mutable owner binding.
 
-This syntax is the specified target for the first implementation; it is not accepted source syntax until parser, semantic, and end-to-end tests pass.
+This syntax is accepted for function parameters and direct call arguments in the current limited implementation. Reference declarations, stored/returned borrows, local reference variables, and reborrows remain unsupported. Only named whole-variable owners are accepted; arrays and borrowed_string parameters are not valid reference targets in this slice.
 
 ## 4. Borrowing rules — first safe subset
 
@@ -147,17 +147,18 @@ Implement borrowing as a semantic place analysis, not as C pointer tricks:
 
 ## 8. Implementation milestones
 
-### M1 — reference syntax and type checking
+### M1 — reference syntax and type checking (limited subset implemented)
 - Parse `&T` and `&mut T` in function parameter types.
-- Parse `&name` and `&mut name` expressions.
-- Permit borrowed parameters only; reject returns, storage, and temporaries.
-- Add parser and compile-pass/fail fixtures.
+- Parse `&name` and `&mut name` as direct call arguments.
+- Keep references call-scoped; stored and returned references remain unsupported.
+- Fixtures cover parsing, successful mutable use, and invalid use.
 
-### M2 — local borrow state
-- Track shared and exclusive loans by root variable.
-- Reject move/write/read conflicts.
-- Reject a second mutable borrow and shared/mutable overlap.
-- Merge loan state conservatively across branches and loops.
+### M2 — call-scoped loan state (partial implementation)
+- Track shared and exclusive loans for named whole-variable arguments during a call.
+- Reject move/write conflicts, direct owner reads during an exclusive borrow, and mutable borrows of const owners.
+- Reject overlapping mutable borrows and shared/mutable overlap in either argument order.
+- Mutation through an exclusive reference parameter is supported.
+- Local references, branch/loop loan-state joins, reborrows, field/index projections, and general alias analysis remain unimplemented.
 
 ### M3 — reborrows and control-flow hardening
 - Add shared and mutable reborrows with parent-loan suspension.
