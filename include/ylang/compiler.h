@@ -72,7 +72,7 @@ struct Expr {
     bool is_min_int;
     size_t codegen_id;
     union {
-        struct { Expr *right; Token op; } unary;
+        struct { Expr *right; Token op; bool is_mutable_borrow; VarDecl *borrow_variable; bool borrow_reserved; } unary;
         struct { Expr *left; Expr *right; Token op; } binary;
         struct { Expr *target; Expr *right; VarDecl *variable; bool is_compound; } assign;
         struct { char *name; VarDecl *variable; } name;
@@ -111,6 +111,10 @@ struct VarDecl {
     bool moved; /* True after ownership is explicitly transferred with move(name). */
     size_t shared_borrow_count; /* Temporary call-scoped immutable loans. */
     Token shared_borrow_token; /* First active loan, for conflict diagnostics. */
+    size_t mutable_borrow_count; /* Temporary call-scoped exclusive loans. */
+    Token mutable_borrow_token; /* First active exclusive loan. */
+    bool is_reference_parameter; /* Parameter is a non-owning reference. */
+    bool is_mutable_reference; /* The reference grants exclusive mutable access. */
     bool is_global;
     bool is_array;
     size_t array_length;
