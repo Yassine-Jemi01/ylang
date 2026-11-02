@@ -60,6 +60,17 @@ jobs:
         run: ${{ steps.compiler.outputs.make }} gui gui-example game2d-example CC="${{ steps.compiler.outputs.cc }}"
       - name: Run regression tests
         run: ${{ steps.compiler.outputs.make }} test CC="${{ steps.compiler.outputs.cc }}"
+      - name: Stage and inspect macOS compiler and GUI installation
+        if: runner.os == 'macOS'
+        run: |
+          stage="$RUNNER_TEMP/ylang-stage"
+          gmake install DESTDIR="$stage" PREFIX=/usr/local CC="${{ steps.compiler.outputs.cc }}"
+          gmake install-gui DESTDIR="$stage" PREFIX=/usr/local CC="${{ steps.compiler.outputs.cc }}"
+          test -x "$stage/usr/local/bin/ylang"
+          "$stage/usr/local/bin/ylang" --version | grep -Fq "$(tr -d '\\r\\n' < VERSION)"
+          test -f "$stage/usr/local/include/ylang/gui.h"
+          test -f "$stage/usr/local/lib/libylang_gui.a"
+          test -f "$stage/usr/local/share/ylang/stdlib/game2d.yl"
       - name: Fuzz lexer/parser smoke test
         if: runner.os == 'Linux' && matrix.compiler == 'clang'
         run: make fuzz-smoke FUZZ_CC=clang
