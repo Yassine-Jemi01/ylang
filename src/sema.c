@@ -1226,6 +1226,12 @@ static YType check_expr(Checker *checker, Expr *expr)
                 VarDecl *owner = scope_lookup(checker->scope,
                     arg->as.name.name);
                 if (!owner || owner->is_array || !is_string_type(owner->type)) continue;
+                if (owner->is_reference_parameter) {
+                    diagnostic(c, arg->token, "error", "E2138",
+                               "A reference parameter cannot be forwarded through borrowed_string.",
+                               "Reborrowing reference parameters is not supported yet; use the reference directly in this function.");
+                    continue;
+                }
                 if (owner->mutable_borrow_count != 0U) {
                     diagnostic(c, arg->token, "error", "E2132",
                                "Cannot create a shared borrow while a mutable borrow is active.",
