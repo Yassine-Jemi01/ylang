@@ -1,0 +1,10 @@
+function inspect(&mut int writable, int observed) -> int {
+    writable = 1;
+    return observed;
+}
+
+function main() -> int {
+    let mut int value = 0;
+    inspect(&mut value, value);
+    return 0;
+}
