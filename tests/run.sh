@@ -92,6 +92,7 @@ grep -q 'E2123' build/await-type-error.out
 # HTTP integration runs its loopback server in-process to avoid background process leakage.
 python3 tests/run_http_integration.py
 python3 tests/benchmark-smoke.py
+python3 tests/benchmark-opt-levels.py
 python3 tests/ir_backend_parity.py
 # Machine-readable MIR is versioned JSON and carries module-qualified call metadata.
 ./build/ylang emit-mir-json tests/ir-module-calls/main.yl > build/ir-module-calls.json
