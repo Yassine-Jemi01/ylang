@@ -312,7 +312,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [ ] 7.1.2 Verify filesystem, process, environment, and networking APIs.
 - [ ] 7.1.3 Verify GUI dependencies and native packaging.
 - [x] 7.1.4 Run native Windows compiler and executable tests in CI; a MinGW-w64 Windows smoke job exercises native build/run, imports, stdin, and explicit unsupported debugger behavior.
-- [~] 7.1.5 Publish supported toolchain setup and troubleshooting docs; a Windows setup guide documents the current MinGW-w64 path and its experimental limits.
+- [x] 7.1.5 Publish supported toolchain setup and troubleshooting docs; `docs/WINDOWS.md` now covers MSYS2 MINGW64 setup, toolchain verification, PATH/prefix mistakes, SDL2/libcurl discovery, runtime DLL troubleshooting, and current support limits.
 
 ### 7.2 macOS and Linux
 - [x] 7.2.1 Keep Linux x86-64 as the reference CI target; Ubuntu GCC/Clang CI and dedicated IR verification run on Linux.
