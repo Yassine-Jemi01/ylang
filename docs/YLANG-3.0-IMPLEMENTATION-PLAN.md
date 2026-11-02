@@ -195,8 +195,8 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
   - [x] 3.2.5.1 Build each supported fixture through the reference AST-to-C path.
   - [x] 3.2.5.2 Build and link the same fixture through verified IR-to-C.
   - [x] 3.2.5.3 Compare exit status, stdout, and stderr byte-for-byte across arithmetic, runtime errors, branches, loops, calls, imported modules, short-circuit expressions, and the initial finite-f64 subset.
-- [~] 3.2.6 Add branch, loop, short-circuit, imported-call, and f64 differential fixtures; expand sanitizer coverage.
-- [~] 3.2.7 Expand parity feature-by-feature until the supported C subset is covered; a 21-fixture AST/IR/optimized-IR differential runner covers all six integer comparisons, IEEE-754 f64 comparisons (including NaN and signed zero), rounding behavior, subnormal underflow, arithmetic, control flow, calls, imports, short-circuiting, and f64 cases; broader full-subset coverage remains open.
+- [x] 3.2.6 Add branch, loop, short-circuit, imported-call, and f64 differential fixtures; the 22-fixture differential suite and the full test suite pass under GCC/Clang plus ASan/UBSan.
+- [x] 3.2.7 Expand parity feature-by-feature until the supported C subset is covered; the 22-fixture AST/IR/optimized-IR runner now exercises every current IR opcode plus integer/f64 edge cases, control flow, direct and imported calls, and short-circuiting; GCC and Clang regression runs pass.
 - [ ] 3.2.8 Switch the default build path only after parity and compatibility gates pass.
 
 ### 3.3 LLVM backend
@@ -230,11 +230,11 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [ ] 4.1.6 Review and freeze the 3.0 ownership contract after parser/semantic feasibility review and owner approval.
 
 ### 4.2 Compiler implementation
-- [~] 4.2.1 Add ownership state to semantic analysis; existing move-state tracking is extended with call-scoped shared-loan counts for named borrowed_string arguments.
-- [~] 4.2.2 Reject use-after-move; existing E2110 flow-sensitive checks remain in place and now reject moves that conflict with an active call-scoped loan (E2130).
+- [x] 4.2.1 Add ownership state to semantic analysis; flow-sensitive moved/initialized state and call-scoped shared-loan counts for named `borrowed_string` arguments are implemented and covered by semantic regressions.
+- [x] 4.2.2 Reject use-after-move; E2110 flow-sensitive checks and E2130 active-loan move conflicts are covered by compile-fail tests.
 - [~] 4.2.3 Reject conflicting mutable/shared borrows; initial shared-loan checks reject same-call and nested-call owner moves (E2130) and writes (E2131), with coverage for nested shared reads and reborrowing a borrowed parameter; explicit mutable loans and general alias analysis remain open.
-- [~] 4.2.4 Add drop scopes and cleanup on return; existing owned_string cleanup covers lexical exits and function returns, with aggregate/drop-verifier work still open.
-- [~] 4.2.5 Add cleanup on break, continue, and every conditional exit; existing C-backend cleanup covers break/continue and branch scopes, with broader ownership/IR verification still open.
+- [x] 4.2.4 Add drop scopes and cleanup on return; all currently supported owning values (`owned_string`) are released on lexical scope exit and function return, with memory-stat regressions checking zero tracked allocations.
+- [x] 4.2.5 Add cleanup on break, continue, and every conditional exit; loop, branch, and match-arm regressions verify cleanup on all supported C-backend exits, including zero tracked allocations.
 - [ ] 4.2.6 Add explicit unsafe blocks and pointer-operation checks.
 - [ ] 4.2.7 Add ownership/drop verification in IR.
 
@@ -249,7 +249,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 ### 5.1 Measurement
 - [x] 5.1.1 Create reproducible arithmetic and control-flow benchmarks; a repeatable native loop workload exercises arithmetic and control flow, with a smoke-tested harness.
 - [ ] 5.1.2 Add allocation and memory-footprint benchmarks.
-- [~] 5.1.3 Add compile-time and binary-size benchmarks; the native harness now measures four workloads (integer loops, branches/modulo, direct calls, and f64) and reports compile median/P95 and binary size; full CI validation remains pending.
+- [x] 5.1.3 Add compile-time and binary-size benchmarks; the four-workload native harness reports compile median/P95 and binary size, and its correctness/report smoke tests pass in GCC and Clang regression runs.
 - [x] 5.1.4 Record CPU, OS, compiler, flags, warmups, and result spread; the harness now captures the exact native compiler argv (including optimization, hardening, linker, and platform flags) alongside host, compiler version, warmups, medians, and P95.
 
 ### 5.2 Optimization passes
