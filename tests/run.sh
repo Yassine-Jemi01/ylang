@@ -1915,6 +1915,14 @@ if ./build/ylang check tests/borrow-mut-const-owner.yl > build/borrow-mut-const-
 fi
 grep -q 'E2137' build/borrow-mut-const-owner.out
 
+# A mutable reference parameter cannot escape its restricted call-scoped
+# model by being forwarded as a legacy borrowed_string reborrow.
+if ./build/ylang check tests/borrow-mut-borrowed-string-reborrow.yl > build/borrow-mut-borrowed-string-reborrow.out 2>&1; then
+    echo "FAIL: YLang accepted borrowed_string reborrow from a mutable reference" >&2
+    exit 1
+fi
+grep -q 'E2138' build/borrow-mut-borrowed-string-reborrow.out
+
 # Global names are visible inside callees, so they cannot be borrowed until
 # cross-function global alias tracking is implemented.
 if ./build/ylang check tests/borrow-mut-global-owner.yl > build/borrow-mut-global-owner.out 2>&1; then
