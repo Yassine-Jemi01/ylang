@@ -1,0 +1,9 @@
+function sum(&int left, &int right) -> int {
+    return left + right;
+}
+
+function main() -> int {
+    let int value = 21;
+    print(sum(&value, &value));
+    return 0;
+}
