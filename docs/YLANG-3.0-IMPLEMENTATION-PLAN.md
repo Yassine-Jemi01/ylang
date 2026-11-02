@@ -222,11 +222,11 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 ## 4. Memory safety and ownership
 
 ### 4.1 Language rules
-- [~] 4.1.1 Specify owned values, moves, and moved-from diagnostics; existing owned_string behavior is documented, and the 3.0 contract is proposed in [YLang 3.0 Ownership and Borrowing](YLANG-3.0-OWNERSHIP.md).
-- [~] 4.1.2 Specify shared immutable borrows; conservative first-milestone rules are proposed in the ownership design.
-- [~] 4.1.3 Specify exclusive mutable borrows; exclusive-loan rules and conflict diagnostics are proposed in the ownership design.
-- [~] 4.1.4 Specify lifetime inference and scope boundaries; the first implementation deliberately uses conservative lexical scopes.
-- [~] 4.1.5 Specify aliasing and reborrow rules; whole-variable places and explicit reborrow restrictions are proposed.
+- [x] 4.1.1 Specify owned values, moves, and moved-from diagnostics; transfer, reinitialization, drop-obligation, return, and E2110 rules are normative in [YLang 3.0 Ownership and Borrowing](YLANG-3.0-OWNERSHIP.md).
+- [x] 4.1.2 Specify shared immutable borrows; coexistence, mutation/move restrictions, and E2131/E2130 conflicts are specified in the ownership contract.
+- [x] 4.1.3 Specify exclusive mutable borrows; exclusivity, owner-access restrictions, reborrow suspension, and E2132/E2133/E2136/E2137 diagnostics are specified.
+- [x] 4.1.4 Specify lifetime inference and scope boundaries; parameter-call lifetimes, lexical local scopes, conservative CFG joins, and rejected escape cases are specified.
+- [x] 4.1.5 Specify aliasing and reborrow rules; root-place overlap, fail-closed aliasing, parent-loan suspension, and unsupported projections are specified.
 - [ ] 4.1.6 Review and freeze the 3.0 ownership contract after parser/semantic feasibility review and owner approval.
 
 ### 4.2 Compiler implementation
