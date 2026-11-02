@@ -97,3 +97,83 @@ fn main() -> int {
         (integer))
       (return_statement
         (identifier)))))
+
+==================
+Call-scoped references
+==================
+
+fn sum(&int left, &int right) -> int {
+    return left + right;
+}
+
+fn increment(&mut int value) -> int {
+    value += 1;
+    return value;
+}
+
+fn main() -> int {
+    let mut int count = 40;
+    print(sum(&count, &count));
+    increment(&mut count);
+    return count;
+}
+
+---
+
+(source_file
+  (function_declaration
+    name: (identifier)
+    (parameter_list
+      (parameter
+        type: (primitive_type)
+        name: (identifier))
+      (parameter
+        type: (primitive_type)
+        name: (identifier)))
+    return_type: (primitive_type)
+    (block
+      (return_statement
+        (binary_expression
+          left: (identifier)
+          right: (identifier)))))
+  (function_declaration
+    name: (identifier)
+    (parameter_list
+      (parameter
+        type: (primitive_type)
+        name: (identifier)))
+    return_type: (primitive_type)
+    (block
+      (expression_statement
+        (assignment_expression
+          left: (identifier)
+          right: (integer)))
+      (return_statement
+        (identifier))))
+  (function_declaration
+    name: (identifier)
+    return_type: (primitive_type)
+    (block
+      (variable_declaration
+        type: (primitive_type)
+        name: (identifier)
+        (integer))
+      (expression_statement
+        (call_expression
+          function: (identifier)
+          (argument_list
+            (call_expression
+              function: (identifier)
+              (argument_list
+                (unary_expression
+                  (identifier))
+                (unary_expression
+                  (identifier))))))
+      (expression_statement
+        (call_expression
+          function: (identifier)
+          (argument_list
+            (unary_expression
+              (identifier)))))
+      (return_statement
+        (identifier)))))
