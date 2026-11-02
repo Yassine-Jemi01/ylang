@@ -1708,6 +1708,12 @@ grep -q 'E2090' build/gui-type-error.out
 
 # The experimental NASM backend must reject GUI calls explicitly on its supported target.
 if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
+    if ./build/ylang emit-asm tests/borrow-mut-basic.yl -o build/borrow-mut-unsupported.asm > build/borrow-mut-unsupported.out 2>&1; then
+        echo "FAIL: NASM backend accepted C-only reference parameters" >&2
+        exit 1
+    fi
+    grep -Fq 'reference parameters' build/borrow-mut-unsupported.out
+    test ! -e build/borrow-mut-unsupported.asm
     if ./build/ylang build-asm tests/gui-nasm-reject.yl -o build/gui-nasm > build/gui-nasm.out 2>&1; then
         echo "FAIL: NASM backend accepted unsupported GUI calls" >&2
         exit 1
