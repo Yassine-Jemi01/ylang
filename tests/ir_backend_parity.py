@@ -17,6 +17,7 @@ YLANG = ROOT / "build" / ("ylang.exe" if os.name == "nt" else "ylang")
 EXPECTED_EXIT_CODES = {
     "tests/emit-ir-c-f64-comparisons.yl": 73,
     "tests/emit-ir-c-f64-rounding-subnormal.yl": 74,
+    "tests/emit-ir-c-opcode-coverage.yl": 75,
 }
 
 
@@ -34,6 +35,7 @@ FIXTURES = (
     "tests/emit-ir-c-f64-ieee.yl",
     "tests/emit-ir-c-f64-comparisons.yl",
     "tests/emit-ir-c-f64-rounding-subnormal.yl",
+    "tests/emit-ir-c-opcode-coverage.yl",
     "tests/emit-ir-c-conversions.yl",
     "tests/emit-ir-c-conversions-overflow.yl",
     "tests/emit-ir-c-conversions-nonfinite.yl",
