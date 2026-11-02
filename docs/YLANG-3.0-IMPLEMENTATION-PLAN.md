@@ -249,7 +249,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 ### 5.1 Measurement
 - [x] 5.1.1 Create reproducible arithmetic and control-flow benchmarks; a repeatable native loop workload exercises arithmetic and control flow, with a smoke-tested harness.
 - [ ] 5.1.2 Add allocation and memory-footprint benchmarks.
-- [~] 5.1.3 Add compile-time and binary-size benchmarks; the native benchmark reports compile latency and executable size, with broader workloads still needed.
+- [~] 5.1.3 Add compile-time and binary-size benchmarks; the native harness now measures four workloads (integer loops, branches/modulo, direct calls, and f64) and reports compile median/P95 and binary size; full CI validation remains pending.
 - [x] 5.1.4 Record CPU, OS, compiler, flags, warmups, and result spread; the harness now captures the exact native compiler argv (including optimization, hardening, linker, and platform flags) alongside host, compiler version, warmups, medians, and P95.
 
 ### 5.2 Optimization passes
@@ -272,7 +272,7 @@ Status key: [x] implemented on the branch; [~] implementation exists but its ful
 - [~] 5.2.10 Validate optimizer passes with correctness tests; full performance baselines remain open.
   - [x] 5.2.10.1 Verify pass outputs after every optimization stage.
   - [x] 5.2.10.2 Add negative tests proving potentially trapping operations remain observable.
-  - [ ] 5.2.10.3 Add reproducible optimization-on/off benchmarks and performance regression thresholds.
+  - [x] 5.2.10.3 Add reproducible optimization-on/off benchmark comparison; `tests/benchmark-opt-levels.py` compares O0 and O2 on the same workload with exact-output checks. Stable performance regression thresholds remain intentionally open until machine-specific baselines are collected.
 
 - [x] 5.2.11 Add conservative integer algebraic simplification.
   - [x] 5.2.11.1 Simplify addition/subtraction by zero using SSA copy replacement.
