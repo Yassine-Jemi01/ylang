@@ -243,6 +243,21 @@ grep -Fq 'call @forward(' build/emit-mir-module-calls.out
 grep -Fq 'call @answer(' build/emit-mir-module-calls.out
 grep -Fq 'call @leaf(' build/emit-mir-module-calls.out
 
+# emit-ir-c requires an explicit destination and never leaves a partial file
+# when a valid program uses a construct outside the initial IR lowering subset.
+if ./build/ylang emit-ir-c tests/emit-ir-c.yl > build/emit-ir-c-missing-output.out 2>&1; then
+    echo "FAIL: emit-ir-c accepted a missing output path" >&2
+    exit 1
+fi
+grep -Fq 'emit-ir-c requires an output path with -o' build/emit-ir-c-missing-output.out
+rm -f build/emit-ir-c-unsupported.c
+if ./build/ylang emit-ir-c examples/strings.yl -o build/emit-ir-c-unsupported.c > build/emit-ir-c-unsupported.out 2> build/emit-ir-c-unsupported.err; then
+    echo "FAIL: emit-ir-c accepted strings outside the initial IR lowering subset" >&2
+    exit 1
+fi
+test ! -e build/emit-ir-c-unsupported.c
+grep -Fq "cannot lower function" build/emit-ir-c-unsupported.err
+
 # The IR-to-C emitter must link duplicate source names from separate modules correctly.
 ./build/ylang emit-ir-c tests/ir-module-calls/main.yl -o build/ir-module-calls.c >/dev/null
 cc -std=c17 -Wall -Wextra -Wpedantic build/ir-module-calls.c $NATIVE_LIBS -o build/test-ir-module-calls
