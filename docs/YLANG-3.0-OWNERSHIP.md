@@ -1,6 +1,6 @@
 # YLang 3.0 Ownership and Borrowing Design
 
-Status: implementation contract proposal for the 3.0 development branch. This document narrows the existing memory-model RFC into an implementable first borrowing milestone. It does not claim that the compiler implements these rules yet.
+Status: normative design specification for the first 3.0 ownership/borrowing milestone. The language-rule tasks in sections 4.1.1–4.1.5 are specified here; compiler implementation remains tracked separately in section 4.2. This document does not claim that the compiler already accepts the proposed `&T` / `&mut T` syntax.
 
 ## 1. Goals
 
@@ -49,7 +49,7 @@ function main() -> int {
 
 The parser must distinguish a reference type in a parameter/declaration from the unary borrow expression in an initializer. `&mut` is a single mutability-qualified borrow form; `&mut mut T` is invalid. A mutable borrow requires a mutable owner binding.
 
-This syntax is proposed for the first implementation. It is not yet accepted source syntax until parser, semantic, and end-to-end tests pass.
+This syntax is the specified target for the first implementation; it is not accepted source syntax until parser, semantic, and end-to-end tests pass.
 
 ## 4. Borrowing rules — first safe subset
 
@@ -64,6 +64,44 @@ This syntax is proposed for the first implementation. It is not yet accepted sou
 9. Reborrowing `&mut T` as `&T` temporarily suspends mutable access for the reborrow's duration. Reborrowing `&mut T` as `&mut T` is allowed only when the parent mutable reference is not used during the child reborrow.
 10. Borrowing a field is supported only after place/projection tracking exists. Until then, borrow the whole struct; overlapping-field disjointness must never be guessed.
 11. Raw pointers and unsafe operations are outside this milestone. No pointer operation may bypass the borrow checker.
+
+## 4A. Ownership and move contract
+
+The following rules define the first milestone independently of backend representation:
+
+- An owned binding is initialized exactly once before it is read. A successful move transfers the value and marks the source binding moved; it does not clone the allocation.
+- A read, write, second move, or borrow of a moved binding is rejected until a supported reinitialization restores the binding to the initialized state. A failed assignment does not restore it.
+- Copy types are copied at assignment and call boundaries. Owned values are transferred at those boundaries. Borrowed references are non-owning and never trigger destruction of their referent.
+- Assignment to an initialized owned binding must first run its old value's drop exactly once, unless the assignment is a supported in-place mutation. The replacement becomes the sole owner only after its value has been successfully produced.
+- Returning an owned value transfers it to the caller. Returning a borrowed value is rejected in the first milestone; no implicit lifetime extension is permitted.
+- Every owning value has one cleanup obligation. Moving transfers that obligation; dropping consumes it. Cleanup paths must not drop moved values or drop one value twice.
+- The compiler must diagnose a use-after-move at the use site and identify the earlier move when source information is available. The diagnostic code remains E2110 for existing owned-string behavior.
+
+## 4B. Shared and exclusive loan contract
+
+A place is initially a whole local binding or parameter. Until projection tracking exists, fields and indices are treated as overlapping with their containing root; the compiler must not infer disjointness.
+
+| Active loan | Shared borrow request | Mutable borrow request | Direct read | Direct write or move |
+|---|---|---|---|---|
+| None | Allow | Allow only for a mutable owner | Allow | Allow if initialized and mutable as required |
+| One or more shared | Allow | Reject (E2133) | Allow | Reject (E2131 for write, E2130 for move) |
+| One exclusive | Reject (E2132) | Reject (E2133) | Reject through the owner (E2136) | Reject (E2131/E2130) |
+
+Shared loans may coexist. An exclusive loan excludes every other access path to the same place. Mutation through the exclusive reference itself is allowed; mutation through the owner or another alias is not. A mutable borrow of an immutable binding is rejected with E2137.
+
+## 4C. Lifetime, scope, and alias contract
+
+- A parameter loan begins at function entry and ends when that invocation returns. The callee may use it only during that invocation.
+- A local loan begins at its declaration and ends at the end of its lexical block in the first implementation. The owner must outlive the entire block containing the loan.
+- A branch or loop merge uses the union of potentially active loans. If any incoming path carries a conflicting loan, the merged place remains restricted until the lexical scope ends.
+- Borrowing a temporary, returning a reference, storing a reference in a global/aggregate, capturing it in a closure, or carrying it across an async suspension is rejected in the first milestone.
+- Aliases are identified by their root place. Two names that refer to the same root conflict even if the source expressions differ. Unknown alias relationships fail closed.
+- A shared reborrow of a shared reference is allowed. A shared reborrow of an exclusive reference suspends exclusive access for the child loan. An exclusive reborrow of an exclusive reference suspends parent access until the child ends. The parent cannot be used while suspended.
+- Reborrowing a shared reference as mutable is forbidden. A child loan cannot outlive its parent loan or the owner.
+
+## 4D. Required diagnostic behavior
+
+Diagnostics E2130–E2139 are reserved for the conflicts listed in section 6. Each diagnostic should point at the rejected operation, include the conflicting loan's source span when known, and provide a short repair hint. The compiler should avoid cascaded errors from a single invalid loan transition. Error recovery must restore the semantic loan stack before checking the next independent statement.
 
 ## 5. Initial lifetime model
 
