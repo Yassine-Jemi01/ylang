@@ -34,7 +34,7 @@ module.exports = grammar({
       $.block
     ),
     parameter_list: $ => commaSep1($.parameter),
-    parameter: $ => seq(field("type", $._type), field("name", $.identifier)),
+    parameter: $ => seq(optional(seq("&", optional("mut"))), field("type", $._type), field("name", $.identifier)),
     struct_declaration: $ => seq(
       "struct", field("name", $.type_identifier), "{",
       repeat($.field_declaration), "}"
@@ -77,7 +77,7 @@ module.exports = grammar({
       $.primitive_type, $.type_identifier,
       $.array_type, $.qualified_type
     ),
-    primitive_type: $ => choice("int", "float", "bool", "char", "string", "void", "http_task"),
+    primitive_type: $ => choice("int", "float", "bool", "char", "string", "borrowed_string", "owned_string", "void", "http_task"),
     type_identifier: $ => /[A-Z][A-Za-z0-9_]*/,
     qualified_type: $ => seq($.type_identifier, ".", $.type_identifier),
     array_type: $ => seq(choice($.primitive_type, $.type_identifier), "[]"),
@@ -124,7 +124,7 @@ module.exports = grammar({
         ))
       ));
     },
-    unary_expression: $ => prec(8, seq(choice("!", "-", "not"), $._expression)),
+    unary_expression: $ => prec(8, seq(choice("!", "-", "not", seq("&", optional("mut"))), $._expression)),
     await_expression: $ => prec(8, seq("await", $._expression)),
     call_expression: $ => prec(9, seq(
       field("function", choice($.identifier, $.member_expression, $.qualified_identifier)),
