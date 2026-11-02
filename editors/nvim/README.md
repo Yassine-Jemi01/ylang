@@ -44,6 +44,18 @@ If you use lazy.nvim, the plugin directory can also be loaded directly:
 }
 ~~~
 
+## Install without a plugin manager
+
+Neovim supports native packages in its standard data directory. Clone YLang and copy the integration into the built-in `pack/*/start` location:
+
+```sh
+git clone --depth 1 https://github.com/Yassine-Jemi01/ylang.git /tmp/ylang
+mkdir -p ~/.local/share/nvim/site/pack/ylang/start/ylang
+cp -R /tmp/ylang/editors/nvim/. ~/.local/share/nvim/site/pack/ylang/start/ylang/
+```
+
+Restart Neovim; the integration loads automatically. No plugin manager is required.
+
 ## Use it
 
 - :YLangCheck — run the compiler on the current buffer now.
