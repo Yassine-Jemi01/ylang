@@ -169,6 +169,21 @@ fi
 ./build/test-fn-keyword > build/fn-keyword.out
 diff -u tests/expected-fn-keyword.txt build/fn-keyword.out
 
+# Reference parameters are a C-backend-only feature; other code generators
+# must reject them instead of silently lowering pointers as by-value scalars.
+if ./build/ylang emit-mir tests/borrow-mut-basic.yl > build/borrow-reference-mir.out 2>&1; then
+    echo "FAIL: IR lowering accepted C-only reference parameters" >&2
+    exit 1
+fi
+grep -q 'reference.*require the C backend' build/borrow-reference-mir.out
+
+if ./build/ylang emit-ir-c tests/borrow-mut-basic.yl -o build/borrow-reference-ir.c > build/borrow-reference-ir.out 2>&1; then
+    echo "FAIL: IR-to-C accepted C-only reference parameters" >&2
+    exit 1
+fi
+test ! -e build/borrow-reference-ir.c
+grep -q 'reference.*require the C backend' build/borrow-reference-ir.out
+
 # The emit-mir CLI lowers, verifies, and prints the currently supported subset.
 ./build/ylang emit-mir tests/emit-mir.yl > build/emit-mir.out
 diff -u tests/expected-emit-mir.txt build/emit-mir.out
