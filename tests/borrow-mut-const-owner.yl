@@ -1,0 +1,10 @@
+function update(&mut int value) -> int {
+    value = 1;
+    return value;
+}
+
+function main() -> int {
+    let const int value = 0;
+    update(&mut value);
+    return 0;
+}
