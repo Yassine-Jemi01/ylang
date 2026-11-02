@@ -188,7 +188,8 @@ struct StructDecl {
 
 struct ImportName {
     Token token;
-    char *name;
+    char *name;        /* Name visible in the importing module. */
+    char *source_name; /* Name declared by the target module. */
     Function *function;
     VarDecl *variable;
 };
