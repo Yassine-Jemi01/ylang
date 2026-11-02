@@ -1159,10 +1159,11 @@ static YType check_expr(Checker *checker, Expr *expr)
                     arg->as.unary.borrow_reserved = true;
                     arg->as.unary.borrow_variable = owner;
                     if (owner->is_reference_parameter || owner->is_array ||
+                        owner->is_global ||
                         owner->type == TYPE_BORROWED_STRING) {
                         diagnostic(c, arg->token, "error", "E2138",
-                                   "This reference form cannot be reborrowed or target an array in this release.",
-                                   "Borrow a named non-reference scalar or string owner directly; local and nested reborrows are not enabled yet.");
+                                   "This reference form cannot target a global, array, borrowed reference, or another reference parameter.",
+                                   "Borrow a named non-global local owner directly; global aliases, arrays, and reborrows are not enabled yet.");
                         continue;
                     }
                     if (owner->type != param->type) continue;
