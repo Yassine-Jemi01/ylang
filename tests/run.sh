@@ -1906,7 +1906,7 @@ if ./build/ylang check build/borrow-reference-storage.yl > build/borrow-referenc
     echo "FAIL: YLang accepted an unsupported stored reference" >&2
     exit 1
 fi
-grep -q 'E1002\|E2135' build/borrow-reference-storage.out
+grep -Eq 'E1002|E2135' build/borrow-reference-storage.out
 
 # Nested read-only calls may share an owner already borrowed by the outer call.
 ./build/ylang build tests/borrowed-string-nested-read.yl -o build/test-borrowed-string-nested-read >/dev/null
