@@ -1,0 +1,84 @@
+name: Build YLang 3.0 developer beta artifact
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [ylang-3.0-dev]
+
+permissions:
+  contents: read
+
+jobs:
+  linux-x86_64-beta:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'ylang-3.0-dev' }}
+    name: Package tested Linux x86-64 developer beta
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the exact commit tested by CI
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Install compiler build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libsdl2-dev libcurl4-openssl-dev nasm
+      - name: Verify runtime template and build compiler
+        run: |
+          make check-runtime-template
+          make clean all CC=gcc
+          ./build/ylang --version
+      - name: Assemble binary and complete source snapshot
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${GITHUB_SHA:0:8}"
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          STAGING="build/ylang-beta"
+          ARCHIVE="ylang-${VERSION}-dev.${SHORT_SHA}-linux-x86_64.tar.gz"
+          mkdir -p "$STAGING/source"
+          install -m 755 build/ylang "$STAGING/ylang"
+          git archive "$GITHUB_SHA" | tar -x -C "$STAGING/source"
+          cat > "$STAGING/TESTING.md" <<'EOF'
+          YLang 3.0 developer beta (experimental; not a stable release)
+
+          Run the compiler:
+            ./ylang --version
+            ./ylang build source/tests/borrow-mut-basic.yl -o /tmp/ylang-borrow-mut
+            /tmp/ylang-borrow-mut
+
+          Expected output:
+            41
+
+          Run the shared-reference aliasing example:
+            ./ylang build source/tests/borrow-shared-aliasing.yl -o /tmp/ylang-borrow-shared
+            /tmp/ylang-borrow-shared
+
+          Expected output:
+            42
+
+          Negative checks should fail with the indicated diagnostics:
+            ./ylang check source/tests/borrow-mut-overlap.yl                 # E2133
+            ./ylang check source/tests/borrow-shared-mut-conflict.yl         # E2132/E2133
+            ./ylang check source/tests/borrow-mut-owner-read-conflict.yl     # E2136
+            ./ylang check source/tests/borrow-mut-const-owner.yl             # E2137
+            ./ylang check source/tests/borrow-mut-global-owner.yl            # E2138
+
+          This beta is experimental and intended for testing, not production use.
+          The reference subset is call-scoped, C-backend-only, and does not provide
+          general lifetime analysis or a Rust-equivalent memory-safety guarantee.
+          EOF
+          printf '%s\n' "$GITHUB_SHA" > "$STAGING/COMMIT"
+          tar -czf "$ARCHIVE" -C "$STAGING" .
+          sha256sum "$ARCHIVE" | tee "${ARCHIVE}.sha256"
+          echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
+      - name: Upload developer beta artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ylang-3.0-developer-beta-linux-x86_64
+          path: |
+            ${{ steps.package.outputs.archive }}
+            ${{ steps.package.outputs.archive }}.sha256
+          if-no-files-found: error
+          retention-days: 30
