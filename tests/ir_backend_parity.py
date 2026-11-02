@@ -19,6 +19,7 @@ FIXTURES = (
     "tests/emit-mir-opt.yl",
     "tests/emit-mir-opt-cfg.yl",
     "tests/emit-ir-c-arithmetic.yl",
+    "tests/emit-ir-c-comparisons.yl",
     "tests/emit-ir-c-div-zero.yl",
     "tests/emit-ir-c-div-overflow.yl",
     "tests/emit-ir-c-neg-overflow.yl",
