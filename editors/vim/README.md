@@ -27,6 +27,18 @@ set runtimepath^=~/src/ylang/editors/vim
 
 Replace the path with the location of your YLang checkout.
 
+## Install without a plugin manager
+
+Vim also supports native packages. Clone YLang and copy the runtime files into Vim's built-in `pack/*/start` directory:
+
+```sh
+git clone --depth 1 https://github.com/Yassine-Jemi01/ylang.git /tmp/ylang
+mkdir -p ~/.vim/pack/ylang/start/ylang
+cp -R /tmp/ylang/editors/vim/. ~/.vim/pack/ylang/start/ylang/
+```
+
+Restart Vim; the package is loaded automatically. To update it, repeat the clone into a temporary directory and replace the contents of `~/.vim/pack/ylang/start/ylang`.
+
 ## Features
 
 - Detects `.yl` files as the `ylang` filetype.
