@@ -884,8 +884,8 @@ static bool eliminate_dead_code(YIRFunction *function, char *error,
     }
     uint32_t *live_values = calloc(value_capacity ? value_capacity : 1,
                                    sizeof(*live_values));
-    LiveValueSet live_set;
-    LiveDefinitionTable definitions;
+    LiveValueSet live_set = {0};
+    LiveDefinitionTable definitions = {0};
     if (!live_values || !init_live_value_set(&live_set, value_capacity) ||
         !init_live_definition_table(&definitions, value_capacity)) {
         free(live_values);
