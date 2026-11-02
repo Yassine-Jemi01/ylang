@@ -407,7 +407,7 @@ jobs:
         run: |
           set -euo pipefail
           SHORT_SHA="${GITHUB_SHA:0:8}"
-          VERSION="$(tr -d '\\r\\n' < VERSION)"
+          VERSION="$(tr -d '\r\n' < VERSION)"
           STAGING="build/ylang-beta"
           ARCHIVE="ylang-${VERSION}-dev.${SHORT_SHA}-linux-x86_64.tar.gz"
           mkdir -p "$STAGING/source"
@@ -442,7 +442,7 @@ jobs:
           References are call-scoped, C-backend-only, and do not provide general
           lifetime analysis or a Rust-equivalent memory-safety guarantee.
           EOF
-          printf '%s\\n' "$GITHUB_SHA" > "$STAGING/COMMIT"
+          printf '%s\n' "$GITHUB_SHA" > "$STAGING/COMMIT"
           tar -czf "$ARCHIVE" -C "$STAGING" .
           sha256sum "$ARCHIVE" | tee "${ARCHIVE}.sha256"
           echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
