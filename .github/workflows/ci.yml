@@ -58,6 +58,9 @@ jobs:
         run: ${{ steps.compiler.outputs.make }} clean all CC="${{ steps.compiler.outputs.cc }}"
       - name: Build optional GUI runtime
         run: ${{ steps.compiler.outputs.make }} gui gui-example game2d-example CC="${{ steps.compiler.outputs.cc }}"
+      - name: Exercise SDL GUI lifecycle and event loop without a display
+        if: runner.os == 'macOS'
+        run: gmake gui-runtime-smoke CC="${{ steps.compiler.outputs.cc }}"
       - name: Run regression tests
         run: ${{ steps.compiler.outputs.make }} test CC="${{ steps.compiler.outputs.cc }}"
       - name: Stage and inspect macOS compiler and GUI installation
