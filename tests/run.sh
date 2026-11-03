@@ -1418,7 +1418,7 @@ grep -q 'E1022' build/imports/missing-file.out
 
 
 # Imported source with an embedded NUL must be rejected instead of truncated.
-python3 - <<'PY'
+"$PYTHON" - <<'PY'
 from pathlib import Path
 Path('build/imports/embedded-nul-module.yl').write_bytes(
     b'fn imported_value() -> int { return 7; }\0fn hidden() -> int { return 9; }\n'
