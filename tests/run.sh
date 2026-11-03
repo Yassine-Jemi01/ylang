@@ -1897,6 +1897,13 @@ if ./build/ylang check tests/owned-string-branch-join.yl > build/owned-string-br
 fi
 grep -q 'E2110' build/owned-string-branch-join.out
 
+# A moved mutable binding may be initialized again without releasing the transferred owner.
+./build/ylang build tests/owned-string-reinitialize.yl -o build/test-owned-string-reinitialize >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string-reinitialize > build/owned-string-reinitialize.stdout 2> build/owned-string-reinitialize.stderr
+printf 'old-owner new-owner\n' > build/owned-string-reinitialize.expected
+diff -u build/owned-string-reinitialize.expected build/owned-string-reinitialize.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-reinitialize.stderr
+
 # Early returns clean only active lexical scopes, and transfer the return owner.
 ./build/ylang build tests/owned-string-early-return.yl -o build/test-owned-string-early-return >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-owned-string-early-return > build/owned-string-early-return.stdout 2> build/owned-string-early-return.stderr
