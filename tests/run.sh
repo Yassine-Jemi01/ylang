@@ -1561,6 +1561,26 @@ if ./build/ylang check tests/binary-io-type-error.yl > build/binary-io-type-erro
     exit 1
 fi
 grep -q 'E2133' build/binary-io-type-error.out
+# Byte arrays, endian-aware scalars, and streaming file handles.
+./build/ylang check tests/binary-io-extended.yl >/dev/null
+./build/ylang build tests/binary-io-extended.yl -o build/test-binary-io-extended >/dev/null
+./build/test-binary-io-extended > build/binary-io-extended.stdout
+cat > build/binary-io-extended.expected <<'EOF'
+1498434375
+1312903764
+594c414e3412
+4
+89
+76
+4
+EOF
+diff -u build/binary-io-extended.expected build/binary-io-extended.stdout
+if ./build/ylang check tests/binary-io-buffer-type-error.yl > build/binary-io-buffer-type-error.out 2>&1; then
+    echo "FAIL: Binary I/O accepted an int array as a byte buffer" >&2
+    exit 1
+fi
+grep -q 'E2135' build/binary-io-buffer-type-error.out
+
 
 # Byte arrays, direct buffer transfers, explicit endian helpers, and stream lifecycle.
 ./build/ylang check tests/binary-io-advanced.yl >/dev/null
