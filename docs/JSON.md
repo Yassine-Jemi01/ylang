@@ -44,4 +44,6 @@ json.stringify currently validates and copies an already-serialized JSON value. 
 - Maximum nesting depth: 128.
 - Invalid JSON is rejected, including malformed numbers, escapes, control characters, trailing data, and unpaired UTF-16 surrogate escapes.
 - Unicode \\uXXXX escapes are decoded by json.get_string; surrogate pairs are combined into UTF-8.
+- Literal UTF-8 in JSON strings is validated; malformed, overlong, and surrogate UTF-8 sequences are rejected.
+- `json.get_string` reports U+0000 as unsupported because YLang's current string representation is NUL-terminated.
 - The API is synchronous. It does not perform file or network I/O itself; combine it with io.read_file and http.*.
