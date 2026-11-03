@@ -92,5 +92,8 @@ YLang diagnostics include stable codes to help users search documentation and re
 | E2097 | Wrong number of math function arguments. | Match the math function's documented arity. |
 | E2098 | Math function argument is not a `float`. | Use a float literal or explicitly convert an integer with `to_float`. |
 | E2099 | Function array argument has the wrong element type. | Pass an array whose element type matches the parameter. |
+| E2130 | Unknown Voice function. | Check the `voice.*` API documentation. |
+| E2131 | Wrong number of Voice function arguments. | Follow the Voice function's documented signature. |
+| E2132 | Voice function argument type mismatch. | Pass values of the types required by the Voice API. |
 
 Runtime arithmetic and bounds failures currently use descriptive text rather than compiler error codes. Runtime source line and function attribution are not yet implemented.
