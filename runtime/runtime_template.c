@@ -55,6 +55,7 @@ void yltui_api_move_to(int64_t, int64_t);
 void yltui_api_write(const char *);
 void yltui_api_println(const char *);
 int64_t yltui_api_read_key(void);
+const char *yltui_api_read_line(const char *, int64_t);
 bool yltui_api_key_available(void);
 void yltui_api_sleep_ms(int64_t);
 bool yltui_api_set_color(int64_t, int64_t);
@@ -281,6 +282,50 @@ int64_t yltui_api_read_key(void) {
     if (key == 27) return yltui_decode_escape();
     return (int64_t)key;
 #endif
+}
+
+const char *yltui_api_read_line(const char *prompt, int64_t maximum) {
+    static char buffer[4096];
+    size_t length = 0;
+    if (maximum < 1 || maximum > 4095) maximum = 4095;
+    buffer[0] = '\\0';
+    if (prompt) yltui_api_write(prompt);
+    yltui_api_show_cursor();
+    while (yltui_initialized) {
+        if (!yltui_api_key_available()) {
+            yltui_api_sleep_ms(8);
+            continue;
+        }
+        int64_t key = yltui_api_read_key();
+        if (key == 13 || key == 10) {
+            (void)fputs("\\r\\n", stdout);
+            (void)fflush(stdout);
+            break;
+        }
+        if (key == 27) {
+            length = 0;
+            buffer[0] = '\\0';
+            (void)fputs("\\r\\033[2K", stdout);
+            (void)fflush(stdout);
+            break;
+        }
+        if (key == 8 || key == 127) {
+            if (length > 0) {
+                length--;
+                buffer[length] = '\\0';
+                (void)fputs("\\b \\b", stdout);
+                (void)fflush(stdout);
+            }
+            continue;
+        }
+        if (key >= 32 && key <= 126 && length < (size_t)maximum) {
+            buffer[length++] = (char)key;
+            buffer[length] = '\\0';
+            (void)fputc((int)key, stdout);
+            (void)fflush(stdout);
+        }
+    }
+    return buffer;
 }
 
 void yltui_api_sleep_ms(int64_t milliseconds) {
