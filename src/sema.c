@@ -427,6 +427,8 @@ static const VoiceBuiltin voice_builtins[] = {
     {"voice.resume", 0, TYPE_VOID, {TYPE_VOID}},
     {"voice.stop", 0, TYPE_VOID, {TYPE_VOID}},
     {"voice.is_playing", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"voice.is_paused", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"voice.is_finished", 0, TYPE_BOOL, {TYPE_VOID}},
     {"voice.set_volume", 1, TYPE_BOOL, {TYPE_INT}},
     {"voice.last_error", 0, TYPE_STRING, {TYPE_VOID}},
     {"voice.shutdown", 0, TYPE_VOID, {TYPE_VOID}}
@@ -966,7 +968,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 if (!builtin) {
                     diagnostic(c, expr->token, "error", "E2130",
                                "Unknown Voice function.",
-                               "Use voice.init(), voice.play(...), voice.pause(), voice.resume(), voice.stop(), voice.is_playing(), voice.set_volume(...), voice.last_error(), or voice.shutdown().");
+                               "Use voice.init(), voice.play(...), voice.pause(), voice.resume(), voice.stop(), voice.is_playing(), voice.is_paused(), voice.is_finished(), voice.set_volume(...), voice.last_error(), or voice.shutdown().");
                     for (size_t i = 0; i < expr->as.call.count; i++)
                         (void)check_expr(checker, expr->as.call.args[i]);
                     expr->type = TYPE_ERROR;
