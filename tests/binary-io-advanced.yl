@@ -16,6 +16,9 @@ function main() -> int {
     print(io.write_u16_le(path, 4, 4660));
     print(io.read_u16_le(path, 4));
     print(io.read_u16_be(path, 4));
+    print(io.write_u64_le(path, 0, 72623859790382856));
+    print(io.read_u64_le(path, 0));
+    print(io.read_u64_be(path, 0));
 
     let int writer = io.stream_open_write("build/binary-stream-test.bin");
     print(writer > 0);
