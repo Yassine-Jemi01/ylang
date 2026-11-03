@@ -1715,6 +1715,9 @@ if ./build/ylang check tests/tui-arity-error.yl > build/tui-arity-error.out 2>&1
     exit 1
 fi
 grep -q 'E2135' build/tui-arity-error.out
+./build/ylang check tests/tui-read-line.yl >/dev/null
+./build/ylang emit-c tests/tui-read-line.yl -o build/tui-read-line.c >/dev/null
+grep -q 'yltui_api_read_line' build/tui-read-line.c
 
 # The YTilawa terminal player shell must type-check and generate C.
 ./build/ylang check examples/tilawa-player-tui.yl >/dev/null
