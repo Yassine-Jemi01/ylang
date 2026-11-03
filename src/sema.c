@@ -966,9 +966,6 @@ static YType check_expr(Checker *checker, Expr *expr)
                 }
                 for (size_t i=0;i<expr->as.call.count;i++) {
                     YType actual=check_expr(checker,expr->as.call.args[i]);
-                    if (actual==TYPE_OWNED_STRING && is_owned_temporary_expression(expr->as.call.args[i]) &&
-                        i<builtin->arity && builtin->args[i]==TYPE_STRING)
-                        diagnose_lost_owned_temporary(c,expr->as.call.args[i]);
                     if (i<builtin->arity && actual!=TYPE_ERROR && actual!=builtin->args[i] &&
                         !(builtin->args[i]==TYPE_STRING && is_string_type(actual))) {
                         char suggestion[256];
