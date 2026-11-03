@@ -40,9 +40,38 @@ function main() -> int {
 | `http.stream_error(stream)` | `string` | Per-stream transport/configuration error |
 | `http.stream_close(stream)` | `void` | Cancel and release the stream |
 
+## Progressive audio playback
+
+The Voice runtime can take ownership of an HTTP stream and pass its bytes to SDL2_mixer through a custom forward-only SDL_RWops source:
+
+```yl
+function main() -> int {
+    let string url = terminal.read_line("HTTPS audio URL: ");
+    let http_stream stream = http.stream_open("GET", url, "", "");
+
+    if (!voice.play_stream(stream)) {
+        print(voice.last_error());
+        voice.shutdown();
+        return 1;
+    }
+
+    while (!voice.is_finished()) {
+        tui.sleep_ms(20);
+    }
+
+    print(voice.last_error());
+    voice.shutdown();
+    return 0;
+}
+```
+
+Calling `voice.play_stream(stream)` transfers ownership of the stream to Voice, even if playback setup fails. Do not call `http.stream_read`, `http.stream_read_buffer`, `http.stream_done`, or `http.stream_close` on that handle after handoff. Voice closes the HTTP stream when playback is stopped, fails, or reaches EOF. Pause, resume, stop, and volume continue to use the regular `voice.*` functions.
+
+The audio reader is forward-only; seeking is not implemented. Actual MP3 support depends on the installed SDL2_mixer codec build. The callback-backed reader and HTTP bridge require runtime tests before being treated as production-ready.
+
 ## Current implementation limits
 
-- C backend and libcurl only.
+- C backend and libcurl only; progressive audio additionally requires SDL2_mixer.
 - Each stream uses a fixed 64 KiB response buffer; the runtime applies libcurl pause/resume backpressure when the consumer falls behind.
 - At most 16 active streams.
 - The API is blocking and pull-based; it is not a general asynchronous scheduler.
