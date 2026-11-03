@@ -15,5 +15,6 @@ function main() -> int {
     print(json.escape("line\nquote\""));
     print(json.valid("{broken"));
     print(json.last_error());
+    print(json.pretty("{\"text\":\"a, b: c\",\"n\":1}"));
     return 0;
 }
