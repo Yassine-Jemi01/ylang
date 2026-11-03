@@ -1882,6 +1882,13 @@ printf 'then-branch\nelse-branch\nfirst-arm\nsecond-arm\n' > build/owned-string-
 diff -u build/owned-string-control-flow-cleanup.expected build/owned-string-control-flow-cleanup.stdout
 grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-control-flow-cleanup.stderr
 
+# Moving the same owner in either branch releases the branch-local destination exactly once.
+./build/ylang build tests/owned-string-branch-transfer.yl -o build/test-owned-string-branch-transfer >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string-branch-transfer > build/owned-string-branch-transfer.stdout 2> build/owned-string-branch-transfer.stderr
+printf 'branch-owner\nbranch-owner\n' > build/owned-string-branch-transfer.expected
+diff -u build/owned-string-branch-transfer.expected build/owned-string-branch-transfer.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-branch-transfer.stderr
+
 # Early returns clean only active lexical scopes, and transfer the return owner.
 ./build/ylang build tests/owned-string-early-return.yl -o build/test-owned-string-early-return >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-owned-string-early-return > build/owned-string-early-return.stdout 2> build/owned-string-early-return.stderr
