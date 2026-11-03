@@ -1611,6 +1611,39 @@ true
 EOF
 diff -u build/binary-io-advanced.expected build/binary-io-advanced.stdout
 
+# Growable byte buffers, resizing, bounds checks, and file load/save.
+./build/ylang check tests/binary-buffer-dynamic.yl >/dev/null
+./build/ylang build tests/binary-buffer-dynamic.yl -o build/test-binary-buffer-dynamic >/dev/null
+./build/test-binary-buffer-dynamic > build/binary-buffer-dynamic.stdout
+cat > build/binary-buffer-dynamic.expected <<'EOF'
+true
+0
+2
+true
+true
+true
+3
+4
+255
+true
+true
+5
+8
+0
+5
+5
+3
+67
+255
+0
+true
+0
+true
+true
+-1
+EOF
+diff -u build/binary-buffer-dynamic.expected build/binary-buffer-dynamic.stdout
+
 # Native std.json parser, validation, object/array access, escaping and errors.
 ./build/ylang check tests/json.yl >/dev/null
 ./build/ylang build tests/json.yl -o build/test-json >/dev/null
