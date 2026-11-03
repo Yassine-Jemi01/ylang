@@ -19,7 +19,7 @@ else
 GAME2D_OUTPUT ?= build/dodge
 endif
 
-.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui check-sdl2 check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
+.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui voice install-voice check-sdl2 check-voice check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
 
 all: $(BIN)
 
@@ -95,6 +95,28 @@ build/libylang_gui.a: build/ylang_gui.o
 
 build/gui-example: examples/gui.c build/libylang_gui.a
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(GUI_CFLAGS) $< build/libylang_gui.a $(GUI_LIBS) -o $@
+
+VOICE_CFLAGS := $(shell pkg-config --cflags SDL2_mixer 2>/dev/null)
+VOICE_LIBS := $(shell pkg-config --libs SDL2_mixer 2>/dev/null)
+
+check-voice:
+	@pkg-config --exists SDL2_mixer || { echo 'SDL2_mixer development files and pkg-config are required (Fedora: SDL2_mixer-devel; Debian/Ubuntu: libsdl2-mixer-dev; macOS: brew install sdl2_mixer).' >&2; exit 1; }
+
+voice: check-voice build/libylang_voice.a
+
+build/ylang_voice.o: stdlib/voice/voice.c include/ylang/voice.h
+	@mkdir -p build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(VOICE_CFLAGS) -c stdlib/voice/voice.c -o $@
+
+build/libylang_voice.a: build/ylang_voice.o
+	$(AR) rcs $@ $<
+
+install-voice: voice
+	install -d '$(DESTDIR)$(PREFIX)/include/ylang' '$(DESTDIR)$(PREFIX)/lib' '$(DESTDIR)$(PREFIX)/share/ylang/stdlib/voice'
+	install -m 644 include/ylang/voice.h '$(DESTDIR)$(PREFIX)/include/ylang/voice.h'
+	install -m 644 stdlib/voice/voice.c '$(DESTDIR)$(PREFIX)/share/ylang/stdlib/voice/voice.c'
+	install -m 644 stdlib/voice/README.md '$(DESTDIR)$(PREFIX)/share/ylang/stdlib/voice/README.md'
+	install -m 644 build/libylang_voice.a '$(DESTDIR)$(PREFIX)/lib/libylang_voice.a'
 
 install-gui: gui
 	install -d '$(DESTDIR)$(PREFIX)/include/ylang' '$(DESTDIR)$(PREFIX)/lib' '$(DESTDIR)$(PREFIX)/share/ylang/stdlib/gui' '$(DESTDIR)$(PREFIX)/share/ylang/stdlib'
