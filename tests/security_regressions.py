@@ -26,6 +26,7 @@ def make_nested_program(depth: int) -> bytes:
         + b"if (true) {\n" * depth
         + b"return 0;\n"
         + b"}\n" * depth
+        + b"return 0;\n"
         + b"}\n"
     )
 
