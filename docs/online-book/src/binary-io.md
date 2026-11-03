@@ -11,7 +11,7 @@ let byte header[] = [byte(0x59), byte(0x4c), byte(0x41), byte(0x4e)];
 print(header[0]);
 ```
 
-Byte arrays are fixed-size arrays using YLang's existing array syntax. Buffer APIs require a named `byte[]` variable.
+Byte buffers use YLang's existing array syntax. Buffer APIs accept a named `byte[]` local or array parameter; parameter lengths are passed automatically.
 
 ## File API
 
