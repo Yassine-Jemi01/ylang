@@ -4,6 +4,8 @@ function main() -> int {
     print(json.valid(document));
     print(json.get_string(document, "name"));
     print(json.get_int(document, "version"));
+    print(json.get_float(document, "price"));
+    print(json.get_string(document, "unicode"));
     print(json.get_bool(document, "enabled"));
     print(json.has(document, "missing"));
     print(json.array_length(items));
