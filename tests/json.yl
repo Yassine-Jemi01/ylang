@@ -20,5 +20,14 @@ function main() -> int {
     print(json.get_string(zero_doc, "zero"));
     print(json.last_error());
     print(json.pretty("{\"text\":\"a, b: c\",\"n\":1}"));
+    let owned_string obj = json.object();
+    let owned_string obj2 = json.set(obj, "title", json.escape("Tilawa"));
+    let owned_string obj3 = json.set(obj2, "count", "3");
+    let owned_string arr = json.array();
+    let owned_string arr2 = json.push(arr, "1");
+    let owned_string arr3 = json.push(arr2, "true");
+    print(obj3);
+    print(arr3);
+    print(json.remove(obj3, "count"));
     return 0;
 }
