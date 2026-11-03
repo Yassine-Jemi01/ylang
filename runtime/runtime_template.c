@@ -842,7 +842,7 @@ static bool yl_json_key_equal(const char *s, size_t a, size_t b, const char *key
                 i += 4U;
                 if (cp >= 0xD800U && cp <= 0xDBFFU) {
                     uint32_t low;
-                    if (b - i < 6U || s[i + 1U] != '\\' || s[i + 2U] != 'u' ||
+                    if (b - i < 7U || s[i + 1U] != '\\' || s[i + 2U] != 'u' ||
                         !yl_json_hex4(s + i + 3U, &low) || low < 0xDC00U || low > 0xDFFFU) return false;
                     i += 6U;
                     cp = 0x10000U + ((cp - 0xD800U) << 10U) + (low - 0xDC00U);
