@@ -200,6 +200,10 @@ function main() -> int {
 
 See [enum reference](docs/ENUMS.md) and [runnable example](examples/enums.yl). Payload variants, generic enums, and matching bindings are not implemented in this milestone.
 
+## Terminal input and output
+
+The built-in `terminal.*` namespace provides synchronous command-line input and output: prompted line reads, checked integer/float/boolean parsing, flushed writes, screen clearing, and interactive-stdin detection. See [the std.terminal guide](docs/TERMINAL.md) and [runnable example](examples/terminal-input.yl).
+
 ## JSON standard library
 
 The built-in `json.*` namespace provides a bounded native JSON parser and accessors. It validates JSON syntax, supports nested objects and arrays, JSON escapes and Unicode escape decoding, and limits input to 16 MiB and nesting to 128 levels. Parsed documents are represented as `owned_string` JSON text; `json.get` and `json.at` return owned raw JSON fragments. `json.pretty` formats an existing JSON value with two-space indentation. See [the JSON guide](docs/JSON.md) for the API and current limitations.

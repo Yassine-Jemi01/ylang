@@ -1,0 +1,5 @@
+Name: Hello, Ada
+Age: Score: Ready: 42
+1.5
+true
+false

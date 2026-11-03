@@ -1670,4 +1670,10 @@ if ./build/ylang check tests/json-type-error.yl > build/json-type-error.out 2>&1
 fi
 grep -q 'JSON argument type mismatch' build/json-type-error.out
 
+# std.terminal line input, typed parsing, flushing, and redirected stdin detection.
+./build/ylang check tests/terminal-input.yl >/dev/null
+./build/ylang build tests/terminal-input.yl -o build/test-terminal-input >/dev/null
+printf 'Ada\\n42\\n1.5\\nyes\\n' | ./build/test-terminal-input > build/terminal-input.stdout
+diff -u tests/expected-terminal-input.txt build/terminal-input.stdout
+
 echo "All YLang tests passed."
