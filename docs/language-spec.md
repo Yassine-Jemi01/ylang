@@ -331,7 +331,7 @@ The native `json.*` namespace parses and validates JSON without a third-party de
 - `json.valid(text)` checks syntax and returns `bool`.
 - `json.get(document, key)` returns a property as raw JSON; typed accessors include `json.get_string`, `json.get_int`, `json.get_float`, and `json.get_bool`.
 - `json.has(document, key)` checks for an object property; `json.array_length` and `json.at` inspect arrays.
-- `json.stringify(raw)` validates and copies an already-serialized JSON value. `json.pretty(raw)` formats one with two-space indentation.
+- `json.stringify(raw)` validates and copies an already-serialized JSON value. `json.pretty(raw)` formats one with two-space indentation. `json.object()` and `json.array()` create empty containers; `json.set(object, key, raw_value)`, `json.remove(object, key)`, and `json.push(array, raw_value)` return new JSON strings rather than mutating their inputs.
 - `json.escape(text)` encodes a YLang string as a JSON string literal; `json.last_error()` returns the latest diagnostic.
 
 This is currently a raw-document API, not a mutable JSON DOM: it does not build objects or arrays from YLang values. See [the JSON guide](JSON.md) for details.
