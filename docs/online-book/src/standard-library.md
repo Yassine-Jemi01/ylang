@@ -15,6 +15,7 @@ The current documentation covers namespaces such as:
 - \`image\` for supported image-related operations.
 - \`env.get(name)\` for reading a process environment variable without launching a shell.
 - \`http\` for optional synchronous GET/POST requests through libcurl; see [HTTP and API Requests](reference/HTTP.md) for dependency requirements and security defaults.
+- `tui` for dependency-free terminal applications with raw keyboard input, ANSI styling, cursor control, boxes, and progress bars; see [Terminal UI](tui.md).
 
 The namespaces do not all have the same maturity. Basic language operations and experimental additions should be evaluated separately. HTTP and environment helpers are newer experimental additions and are outside the stable-core compatibility guarantee.
 
