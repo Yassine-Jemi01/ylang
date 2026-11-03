@@ -1,0 +1,12 @@
+function main() -> int {
+    let owned_string name = terminal.read_line("Name: ");
+    terminal.write_line(f"Hello, {name}");
+
+    let int age = terminal.read_int("Age: ");
+    let bool continue_program = terminal.read_bool("Continue? (yes/no): ");
+
+    print("Age:", age);
+    print("Continue:", continue_program);
+    print("Interactive stdin:", terminal.is_interactive());
+    return 0;
+}
