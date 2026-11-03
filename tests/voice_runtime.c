@@ -134,6 +134,7 @@ int main(void)
     if (!ylvoice_is_playing()) return fail("stream playback did not enter the playing state");
     SDL_Delay(400U);
     if (!ylvoice_is_finished()) return fail("stream playback did not report natural completion");
+    if (test_stream.offset != test_stream.length) return fail("audio decoder did not consume the complete stream");
     if (test_stream.data != NULL) return fail("stream close callback did not release its source");
 
     if (ylvoice_set_volume(101)) return fail("volume above 100 was accepted");
