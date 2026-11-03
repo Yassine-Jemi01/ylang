@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 /* Optional SDL2_mixer-backed voice/audio playback runtime.
  * The runtime owns the loaded music object until stop/shutdown or next play.
