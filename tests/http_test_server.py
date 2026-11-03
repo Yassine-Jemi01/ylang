@@ -63,11 +63,11 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             try:
                 for chunk in (b"first-", b"second-", b"third"):
-                    self.wfile.write(("%X\\r\\n" % len(chunk)).encode("ascii"))
-                    self.wfile.write(chunk + b"\\r\\n")
+                    self.wfile.write(("%X\r\n" % len(chunk)).encode("ascii"))
+                    self.wfile.write(chunk + b"\r\n")
                     self.wfile.flush()
                     time.sleep(0.15)
-                self.wfile.write(b"0\\r\\n\\r\\n")
+                self.wfile.write(b"0\r\n\r\n")
                 self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 pass
@@ -77,7 +77,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_connection_close()
             self.end_headers()
             try:
-                self.wfile.write(b"0\\r\\n\\r\\n")
+                self.wfile.write(b"0\r\n\r\n")
             except (BrokenPipeError, ConnectionResetError):
                 pass
         elif self.path == "/slow":
