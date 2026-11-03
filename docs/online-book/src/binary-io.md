@@ -34,6 +34,7 @@ Use the opaque integer handle API when the amount of data is not known in advanc
 | Function | Return | Behavior |
 |---|---|---|
 | `io.buffer_new(initial_capacity)` | `int` | Create an empty growable buffer; returns a handle or `-1`. |
+| `io.buffer_slice(handle, offset, length)` | `int` | Create a non-owning view over a range of an existing buffer; returns a handle or `-1`. |
 | `io.buffer_length(handle)` | `int` | Current number of bytes, or `-1` for an invalid handle. |
 | `io.buffer_capacity(handle)` | `int` | Allocated capacity, or `-1`. |
 | `io.buffer_get(handle, index)` | `int` | Read a byte (0–255), or `-1` for an invalid index/handle. |
@@ -57,7 +58,7 @@ io.buffer_save("packet.bin", 0, packet);
 io.buffer_free(packet);
 ```
 
-The runtime releases any buffers not explicitly freed during normal program cleanup. Handles are process-local and must not be persisted.
+A slice shares its parent's storage: changing a byte through either handle is visible through the other. Slices may be nested. A slice cannot be resized, cleared, or appended to; it can be read, modified, and saved. Freeing the parent invalidates its slices, and shrinking a parent makes out-of-range slices temporarily inaccessible. Free slice handles explicitly. The runtime releases any buffers not explicitly freed during normal program cleanup. Handles are process-local and must not be persisted.
 
 ## Endian-aware integers
 
