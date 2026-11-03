@@ -1053,7 +1053,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                     if (arg_type != TYPE_INT && arg_type != TYPE_FLOAT && arg_type != TYPE_BOOL &&
                         arg_type != TYPE_CHAR && arg_type != TYPE_BYTE && !is_string_type(arg_type) && arg_type != TYPE_ERROR)
                         diagnostic(c, expr->token, "error", "E2045", "to_string cannot convert this type.",
-                                   "Supported types are int, float, bool, char, string, and owned_string.");
+                                   "Supported types are int, float, bool, char, byte, string, and owned_string.");
                     expr->type = arg_type == TYPE_OWNED_STRING ?
                         TYPE_OWNED_STRING : TYPE_STRING;
                 }
@@ -1123,8 +1123,6 @@ static YType check_expr(Checker *checker, Expr *expr)
                 strcmp(expr->as.call.name, "io.stream_read") == 0 ||
                 strcmp(expr->as.call.name, "io.stream_write") == 0) {
                 bool stream = strncmp(expr->as.call.name, "io.stream_", 10U) == 0;
-                bool read = strcmp(expr->as.call.name, "io.read_bytes") == 0 ||
-                            strcmp(expr->as.call.name, "io.stream_read") == 0;
                 size_t expected = stream ? 2U : 3U;
                 if (expr->as.call.count != expected)
                     diagnostic(c, expr->token, "error", "E2088",
@@ -1154,7 +1152,6 @@ static YType check_expr(Checker *checker, Expr *expr)
                     }
                 }
                 expr->type = TYPE_INT;
-                (void)read;
                 return expr->type;
             }
             const BinaryBuiltin *binary_builtin = find_binary_builtin(expr->as.call.name);
