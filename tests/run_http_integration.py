@@ -54,6 +54,33 @@ def main():
             sys.stderr.write("--- actual ---\n" + result.stdout)
             sys.stderr.write(result.stderr)
             raise SystemExit(1)
+        # The synchronous header callback must reject an append when its
+        # accumulator is already exactly at the configured 16 KiB limit.
+        header_source = ROOT / "build" / "http-header-overflow.yl"
+        header_source.write_text(
+            "fn main() -> int {\\n"
+            f'    let owned_string body = http.get("http://127.0.0.1:{port}/oversized-headers");\\n'
+            "    print(string.length(body));\\n"
+            '    print(string.contains(http.last_error(), "response headers exceeded"));\\n'
+            "    return 0;\\n"
+            "}\\n",
+            encoding="utf-8",
+        )
+        header_executable = "build/test-http-header-overflow.exe" if os.name == "nt" else "build/test-http-header-overflow"
+        run_checked([compiler, "check", str(header_source.relative_to(ROOT))])
+        run_checked([compiler, "build", str(header_source.relative_to(ROOT)), "-o", header_executable])
+        header_result = subprocess.run(
+            [str(ROOT / header_executable)],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            timeout=20,
+        )
+        if header_result.returncode != 0 or header_result.stdout != "0\\ntrue\\n":
+            sys.stderr.write(header_result.stdout)
+            sys.stderr.write(header_result.stderr)
+            raise SystemExit("HTTP oversized-header regression test failed")
+
         print("YLang HTTP integration tests passed.")
     finally:
         server.shutdown()
