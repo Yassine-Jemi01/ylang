@@ -162,6 +162,51 @@ def main():
             sys.stderr.write(binary_result.stderr)
             raise SystemExit("binary HTTP streaming integration test failed")
 
+        # If SDL2_mixer is installed, verify the compiler can hand an HTTP
+        # stream directly to the audio decoder without staging a local file.
+        mixer_available = subprocess.run(
+            ["pkg-config", "--exists", "SDL2_mixer"],
+            cwd=ROOT,
+            check=False,
+        ).returncode == 0
+        if mixer_available:
+            voice_source = ROOT / "build" / "http-voice-stream.yl"
+            voice_source.write_text(
+                "function main() -> int {\\n"
+                "    let string port = io.read_line();\\n"
+                '    let string base = string.concat("http://127.0.0.1:", port);\\n'
+                '    let http_stream stream = http.stream_open("GET", string.concat(base, "/stream-wav"), "", "");\\n'
+                "    if (!voice.play_stream(stream)) { print(voice.last_error()); return 1; }\\n"
+                "    while (!voice.is_finished()) { }\\n"
+                "    print(voice.is_finished());\\n"
+                "    print(voice.last_error());\\n"
+                "    voice.shutdown();\\n"
+                "    return 0;\\n"
+                "}\\n",
+                encoding="utf-8",
+            )
+            voice_output = "build/test-http-voice-stream.exe" if os.name == "nt" else "build/test-http-voice-stream"
+            run_checked([compiler, "check", str(voice_source.relative_to(ROOT))])
+            run_checked([compiler, "build", str(voice_source.relative_to(ROOT)), "-o", voice_output])
+            voice_env = os.environ.copy()
+            voice_env["SDL_AUDIODRIVER"] = "dummy"
+            voice_result = subprocess.run(
+                [str(ROOT / voice_output)],
+                cwd=ROOT,
+                input=f"{port}\\n",
+                text=True,
+                capture_output=True,
+                env=voice_env,
+                timeout=20,
+            )
+            expected_voice = "true\\nNo error\\n"
+            if voice_result.returncode != 0 or voice_result.stdout != expected_voice:
+                sys.stderr.write("--- expected HTTP voice output ---\\n" + expected_voice)
+                sys.stderr.write("--- actual HTTP voice output ---\\n" + voice_result.stdout)
+                sys.stderr.write(voice_result.stderr)
+                raise SystemExit("HTTP-to-Voice streaming integration test failed")
+        else:
+            print("SKIP: SDL2_mixer is unavailable; HTTP-to-Voice integration was not run.")
         print("YLang HTTP integration tests passed.")
     finally:
         server.shutdown()
