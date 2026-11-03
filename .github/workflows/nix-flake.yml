@@ -33,7 +33,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: nix-flake-${{ github.ref }}
+  group: nix-flake-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
