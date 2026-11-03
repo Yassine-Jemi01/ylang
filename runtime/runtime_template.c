@@ -811,7 +811,7 @@ static double yl_json_get_float(const char *text,const char *key) {
     size_t raw_length=b-a;
     char *raw=malloc(raw_length+1U), *end=NULL;
     if(!raw) yl_runtime_error("out of memory");
-    memcpy(raw,text+a,raw_length); raw[raw_length]='\\0';
+    memcpy(raw,text+a,raw_length); raw[raw_length]='\0';
     errno=0; double v=strtod(raw,&end); bool okay=errno!=ERANGE && end && *end=='\0'; free(raw);
     if(!okay){yl_json_error("JSON property is not a number");return 0.0;} return v;
 }
@@ -839,7 +839,7 @@ static const char *yl_json_at(const char *text,int64_t index) {
     p.i=a; if(p.s[p.i++]!='['){yl_json_error("JSON value is not an array");return "";}
     yl_json_ws(&p);
     for(int64_t i=0;;i++){size_t x,y;if(!yl_json_value(&p,&x,&y)){yl_json_error("JSON array index out of range");return "";}
-        if(i==index){size_t len=y-x;char *o=malloc(len+1U);if(!o)yl_runtime_error("out of memory");memcpy(o,text+x,len);o[len]='\\0';return (const char *)yl_track(o,len+1U);}
+        if(i==index){size_t len=y-x;char *o=malloc(len+1U);if(!o)yl_runtime_error("out of memory");memcpy(o,text+x,len);o[len]='\0';return (const char *)yl_track(o,len+1U);}
         yl_json_ws(&p);if(p.i>=p.n || p.s[p.i++]!=',')break;yl_json_ws(&p);}
     yl_json_error("JSON array index out of range");return "";
 }
