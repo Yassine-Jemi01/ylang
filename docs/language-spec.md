@@ -186,6 +186,10 @@ print(string.ends_with(name, "n"));
 - `path.basename(path)` returns the final path component, and `path.extension(path)` returns the suffix after the final dot (without the dot); a leading dot alone is not treated as an extension. These helpers use POSIX path separators.
 - `image.open(path)` launches the platform default opener (`xdg-open` on Linux, `open` on macOS) without invoking a shell and returns whether the launcher exits successfully. It requires a desktop session and a registered handler; it opens the file in an external application and does not decode or draw the image in a YLang window.
 
+## Terminal input and output
+
+The C runtime exposes synchronous command-line helpers through `terminal.*`. `terminal.read_line(prompt)` returns an `owned_string`; `terminal.read_int(prompt)`, `terminal.read_float(prompt)`, and `terminal.read_bool(prompt)` parse one line and terminate with a runtime error on invalid input. Boolean input accepts `true/false`, `yes/no`, and `1/0`. `terminal.write(text)` and `terminal.write_line(text)` return a boolean write status and flush stdout. `terminal.clear()` emits ANSI clear-screen sequences, while `terminal.is_interactive()` checks whether stdin is attached to a terminal. EOF in line input returns an empty string. Raw key events and password input are not supported. See [std.terminal](TERMINAL.md).
+
 ## Experimental owned strings
 
 The C backend has an experimental `owned_string` type. Unlike legacy `string`, an `owned_string` local owns its tracked heap allocation and is released automatically when its scope ends. This feature is not part of the stable 2.0.0 core compatibility contract and does not provide full Rust-style borrowing or lifetime checking.
