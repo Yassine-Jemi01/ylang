@@ -101,9 +101,9 @@ bool yltui_api_init(void) {
         raw.c_cc[VMIN]=0; raw.c_cc[VTIME]=0;
         if(tcsetattr(STDIN_FILENO,TCSAFLUSH,&raw)!=0) return false;
         yltui_termios_saved=true;
-        yltui_original_flags=fcntl(STDIN_FILENO,F_GETFL,0);
-        if(yltui_original_flags>=0) (void)fcntl(STDIN_FILENO,F_SETFL,yltui_original_flags|O_NONBLOCK);
     }
+    yltui_original_flags=fcntl(STDIN_FILENO,F_GETFL,0);
+    if(yltui_original_flags>=0) (void)fcntl(STDIN_FILENO,F_SETFL,yltui_original_flags|O_NONBLOCK);
 #endif
     yltui_initialized=true;
     (void)fputs("\033[?1049h\033[?25l\033[0m",stdout); (void)fflush(stdout);
