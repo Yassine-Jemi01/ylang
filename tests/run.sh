@@ -1562,6 +1562,33 @@ if ./build/ylang check tests/binary-io-type-error.yl > build/binary-io-type-erro
 fi
 grep -q 'E2133' build/binary-io-type-error.out
 
+# Byte arrays, direct buffer transfers, explicit endian helpers, and stream lifecycle.
+./build/ylang check tests/binary-io-advanced.yl >/dev/null
+./build/ylang build tests/binary-io-advanced.yl -o build/test-binary-io-advanced >/dev/null
+./build/test-binary-io-advanced > build/binary-io-advanced.stdout
+cat > build/binary-io-advanced.expected <<'EOF'
+4
+4
+65
+0
+255
+52
+true
+16909060
+67305985
+true
+4660
+13330
+true
+4
+true
+4
+0
+255
+true
+EOF
+diff -u build/binary-io-advanced.expected build/binary-io-advanced.stdout
+
 # Native std.json parser, validation, object/array access, escaping and errors.
 ./build/ylang check tests/json.yl >/dev/null
 ./build/ylang build tests/json.yl -o build/test-json >/dev/null
