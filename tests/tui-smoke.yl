@@ -11,8 +11,10 @@ function main() -> int {
     tui.move_to(2, 4);
     tui.println("std.tui works");
     tui.reset_style();
+    let int key = tui.read_key();
+    if (key < -1) { tui.shutdown(); return 6; }
     if (tui.key_available()) {
-        let int key = tui.read_key();
+        let int next_key = tui.read_key();
     }
     tui.sleep_ms(1);
     tui.shutdown();
