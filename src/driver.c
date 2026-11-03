@@ -233,7 +233,7 @@ static bool read_voice_flags(char *storage, size_t capacity,
 {
     FILE *pipe = popen("pkg-config --cflags --libs SDL2_mixer", "r");
     if (!pipe) {
-        fputs("ylang: could not start pkg-config while preparing the Voice build.\\n", stderr);
+        fputs("ylang: could not start pkg-config while preparing the Voice build.\n", stderr);
         return false;
     }
     size_t used = 0U;
@@ -242,7 +242,7 @@ static bool read_voice_flags(char *storage, size_t capacity,
         used += got;
         if (got == 0U) break;
     }
-    storage[used] = '\\0';
+    storage[used] = '\0';
     int status = pclose(pipe);
 #ifdef _WIN32
     if (status == -1 || status != 0 || used == 0U || used + 1U >= capacity) {
@@ -250,14 +250,14 @@ static bool read_voice_flags(char *storage, size_t capacity,
     if (status == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0 ||
         used == 0U || used + 1U >= capacity) {
 #endif
-        fputs("ylang: Voice builds require SDL2_mixer development files and pkg-config (Fedora: SDL2_mixer-devel; Debian/Ubuntu: libsdl2-mixer-dev; macOS: brew install sdl2_mixer pkg-config).\\n", stderr);
+        fputs("ylang: Voice builds require SDL2_mixer development files and pkg-config (Fedora: SDL2_mixer-devel; Debian/Ubuntu: libsdl2-mixer-dev; macOS: brew install sdl2_mixer pkg-config).\n", stderr);
         return false;
     }
     *flag_count = 0U;
-    for (char *part = strtok(storage, " \\t\\r\\n");
-         part != NULL; part = strtok(NULL, " \\t\\r\\n")) {
+    for (char *part = strtok(storage, " \t\r\n");
+         part != NULL; part = strtok(NULL, " \t\r\n")) {
         if (*flag_count >= flag_capacity) {
-            fputs("ylang: too many SDL2_mixer compiler flags returned by pkg-config.\\n", stderr);
+            fputs("ylang: too many SDL2_mixer compiler flags returned by pkg-config.\n", stderr);
             return false;
         }
         flags[(*flag_count)++] = part;
