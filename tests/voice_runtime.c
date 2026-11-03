@@ -48,6 +48,8 @@ typedef struct {
 } TestStream;
 
 static TestStream test_stream;
+static size_t test_stream_bytes_read;
+static size_t test_stream_expected_length;
 
 static int load_test_stream(const char *path)
 {
@@ -60,6 +62,8 @@ static int load_test_stream(const char *path)
     if (!test_stream.data) { fclose(file); return 0; }
     test_stream.length = (size_t)end;
     test_stream.offset = 0U;
+    test_stream_bytes_read = 0U;
+    test_stream_expected_length = (size_t)end;
     if (fread(test_stream.data, 1U, test_stream.length, file) != test_stream.length) {
         fclose(file);
         free(test_stream.data);
@@ -79,6 +83,7 @@ static int64_t test_stream_read(int64_t stream_id, void *destination, size_t max
     if (count) {
         memcpy(destination, test_stream.data + test_stream.offset, count);
         test_stream.offset += count;
+        test_stream_bytes_read += count;
     }
     return (int64_t)count;
 }
@@ -134,7 +139,7 @@ int main(void)
     if (!ylvoice_is_playing()) return fail("stream playback did not enter the playing state");
     SDL_Delay(400U);
     if (!ylvoice_is_finished()) return fail("stream playback did not report natural completion");
-    if (test_stream.offset != test_stream.length) return fail("audio decoder did not consume the complete stream");
+    if (test_stream_bytes_read != test_stream_expected_length) return fail("audio decoder did not consume the complete stream");
     if (test_stream.data != NULL) return fail("stream close callback did not release its source");
 
     if (ylvoice_set_volume(101)) return fail("volume above 100 was accepted");
