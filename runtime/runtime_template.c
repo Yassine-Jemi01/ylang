@@ -669,6 +669,7 @@ static bool yl_http_stream_pump(YLHttpStream *stream) {
     if (!stream || stream->done || !stream->multi) return false;
     int running = 0;
     CURLMcode code = curl_multi_perform(stream->multi, &running);
+    (void)running;
     if (code != CURLM_OK) {
         yl_http_stream_error_set(stream, curl_multi_strerror(code));
         stream->done = true;
@@ -699,10 +700,6 @@ static bool yl_http_stream_pump(YLHttpStream *stream) {
         }
         stream->done = true;
         return true;
-    }
-    if (running > 0 && stream->length == 0U) {
-        int descriptors = 0;
-        (void)curl_multi_poll(stream->multi, NULL, 0U, 1000, &descriptors);
     }
     return true;
 }
