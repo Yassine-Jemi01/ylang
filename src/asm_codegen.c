@@ -159,6 +159,18 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
             }
             return validate_expr(ctx, expr->as.assign.right);
         case EXPR_CALL:
+            if (strcmp(expr->as.call.name, "io.binary_size") == 0 ||
+                strcmp(expr->as.call.name, "io.read_bytes") == 0 ||
+                strcmp(expr->as.call.name, "io.write_bytes") == 0 ||
+                strcmp(expr->as.call.name, "io.read_binary_hex") == 0 ||
+                strcmp(expr->as.call.name, "io.write_binary_hex") == 0 ||
+                strncmp(expr->as.call.name, "io.read_u", 9U) == 0 ||
+                strncmp(expr->as.call.name, "io.write_u", 10U) == 0 ||
+                strncmp(expr->as.call.name, "io.stream_", 10U) == 0 ||
+                strncmp(expr->as.call.name, "io.buffer_", 10U) == 0) {
+                return asm_reject(ctx, expr->token,
+                                  "Binary I/O calls (use the C backend)");
+            }
             if (strncmp(expr->as.call.name, "voice.", 6) == 0) {
                 return asm_reject(ctx, expr->token, "Voice/audio calls (use the C backend with SDL2_mixer)");
             }
