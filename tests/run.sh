@@ -1638,16 +1638,25 @@ true
 8
 0
 5
+true
+2
+67
+true
+68
+2
+5
 5
 3
 67
-255
+68
 0
 true
 0
 true
 true
 -1
+-1
+true
 EOF
 diff -u build/binary-buffer-dynamic.expected build/binary-buffer-dynamic.stdout
 
