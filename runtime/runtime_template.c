@@ -1213,6 +1213,59 @@ static const char *yl_read_line(void) {
     line[length] = '\0';
     return (const char *)yl_track(line, capacity);
 }
+static const char *yl_terminal_read_line(const char *prompt) {
+    if (prompt && *prompt) {
+        if (fputs(prompt, stdout) == EOF || fflush(stdout) != 0)
+            yl_runtime_error("failed to write terminal prompt");
+    }
+    return yl_read_line();
+}
+static int64_t yl_terminal_read_int(const char *prompt) {
+    const char *line = yl_terminal_read_line(prompt);
+    char *end = NULL;
+    errno = 0;
+    long long value = strtoll(line, &end, 10);
+    while (end && (*end == ' ' || *end == '\\t' || *end == '\\r')) end++;
+    if (errno == ERANGE || end == line || !end || *end != '\\0')
+        yl_runtime_error("terminal input is not a valid signed integer");
+    return (int64_t)value;
+}
+static double yl_terminal_read_float(const char *prompt) {
+    const char *line = yl_terminal_read_line(prompt);
+    char *end = NULL;
+    errno = 0;
+    double value = strtod(line, &end);
+    while (end && (*end == ' ' || *end == '\\t' || *end == '\\r')) end++;
+    if (errno == ERANGE || end == line || !end || *end != '\\0' || !isfinite(value))
+        yl_runtime_error("terminal input is not a valid finite float");
+    return value;
+}
+static bool yl_terminal_read_bool(const char *prompt) {
+    const char *line = yl_terminal_read_line(prompt);
+    if (strcmp(line, "true") == 0 || strcmp(line, "yes") == 0 || strcmp(line, "1") == 0)
+        return true;
+    if (strcmp(line, "false") == 0 || strcmp(line, "no") == 0 || strcmp(line, "0") == 0)
+        return false;
+    yl_runtime_error("terminal input must be true/false, yes/no, or 1/0");
+    return false;
+}
+static bool yl_terminal_write(const char *text) {
+    return text && fputs(text, stdout) != EOF && fflush(stdout) == 0;
+}
+static bool yl_terminal_write_line(const char *text) {
+    return text && fputs(text, stdout) != EOF && fputc('\\n', stdout) != EOF &&
+           fflush(stdout) == 0;
+}
+static bool yl_terminal_clear(void) {
+    return fputs("\\033[2J\\033[H", stdout) != EOF && fflush(stdout) == 0;
+}
+static bool yl_terminal_is_interactive(void) {
+#ifdef _WIN32
+    return _isatty(_fileno(stdin)) != 0;
+#else
+    return isatty(fileno(stdin)) != 0;
+#endif
+}
 static const char *yl_read_file(const char *path) {
     FILE *file = fopen(path, "rb");
     if (!file) yl_runtime_error("cannot open file for reading");
