@@ -680,6 +680,7 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "tui.init") == 0) return "yl_tui_init";
     if (strcmp(name, "tui.shutdown") == 0) return "yl_tui_shutdown";
     if (strcmp(name, "tui.read_key") == 0) return "yl_tui_read_key";
+    if (strcmp(name, "tui.poll_key") == 0) return "yl_tui_poll_key";
     if (strcmp(name, "tui.width") == 0) return "yl_tui_width";
     if (strcmp(name, "tui.height") == 0) return "yl_tui_height";
     if (strcmp(name, "tui.clear") == 0) return "yl_tui_clear";
