@@ -28,7 +28,8 @@ The ordinary compiler and programs that do not call `http.*` do not require libc
 | `http.request(method, url, body, headers)` | `owned_string` | Synchronous request using GET, POST, PUT, PATCH, DELETE, or HEAD |
 | `http.request_async(method, url, body, headers)` | `http_task` | Queue a request without blocking on its response |
 | `http.stream_open(method, url, body, headers)` | `http_stream` | Start a bounded pull-based response stream |
-| `http.stream_read(stream, max_bytes)` | `owned_string` | Block until up to `max_bytes` are available, EOF, or error |
+| `http.stream_read(stream, max_bytes)` | `owned_string` | Block until text bytes are available, EOF, or error |
+| `http.stream_read_buffer(stream, buffer, max_bytes)` | `int` | Read raw bytes into a reusable root `io.buffer`, preserving embedded NUL bytes |
 | `http.stream_done(stream)` | `bool` | True after transfer completion and buffer drain |
 | `http.stream_status(stream)` | `int` | HTTP status for this stream |
 | `http.stream_headers(stream)` | `string` | Final response headers for this stream |
@@ -40,7 +41,7 @@ The ordinary compiler and programs that do not call `http.*` do not require libc
 | `http.response_headers()` | `string` | Final response headers, newline-separated |
 | `http.last_error()` | `string` | Transport/configuration error for the most recent request, or an empty string after a successful transfer |
 
-`http_stream` is a distinct handle type. Streaming reads currently return NUL-terminated `owned_string` chunks, so this first version is intended for text responses (such as server-sent events or newline-delimited JSON), not binary-safe audio/video or arbitrary file downloads. Binary streaming needs a length-carrying byte-buffer type.
+`http_stream` is a distinct handle type. `http.stream_read` returns NUL-terminated `owned_string` chunks for text responses. For arbitrary binary data, use `http.stream_read_buffer(stream, buffer, max_bytes)` with a root buffer from `io.buffer_new(0)`; it overwrites the buffer and returns the exact byte count. This preserves embedded NUL and high-bit bytes. The audio runtime is not yet wired to consume this stream directly.
 
 Pass headers as one header per line, separated by `\n`, for example `"Content-Type: application/json\nAuthorization: Bearer ..."`. Header names are validated and malformed headers are rejected. A task handle has the distinct `http_task` type, so the compiler rejects `await` or `http.cancel` on arbitrary integers. Await each task at most once. Cancellation frees its pending request state; using a consumed handle again reports an error/false result rather than reusing stale memory. Use `http.status()` to distinguish HTTP error responses such as 404 from transport failures: an HTTP 404 response is still a successful HTTP transfer and its body is returned. `http.response_headers()` returns the final response's headers as newline-separated lines, replacing intermediate response headers after redirects. `http.request(method, url, body, headers)` accepts only the uppercase methods GET, POST, PUT, PATCH, DELETE, or HEAD. Its `body` argument is used for POST/PUT/PATCH/DELETE; GET and HEAD ignore it.
 
