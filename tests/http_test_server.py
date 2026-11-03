@@ -71,6 +71,22 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 pass
+        elif self.path == "/stream-large":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Transfer-Encoding", "chunked")
+            self.send_connection_close()
+            self.end_headers()
+            chunk = b"x" * 65536
+            try:
+                for _ in range(144):  # 9 MiB: larger than the buffered HTTP API limit.
+                    self.wfile.write(("%X\\r\\n" % len(chunk)).encode("ascii"))
+                    self.wfile.write(chunk + b"\\r\\n")
+                    self.wfile.flush()
+                self.wfile.write(b"0\\r\\n\\r\\n")
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
         elif self.path == "/stream-empty":
             self.send_response(200)
             self.send_header("Transfer-Encoding", "chunked")
