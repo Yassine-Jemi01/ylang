@@ -307,6 +307,29 @@ typedef struct {
     YType result;
 } StringBuiltin;
 
+
+typedef struct { const char *name; size_t arity; YType result; YType args[2]; } JsonBuiltin;
+static const JsonBuiltin json_builtins[] = {
+    {"json.parse",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID}},
+    {"json.stringify",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID}},
+    {"json.valid",1,TYPE_BOOL,{TYPE_STRING,TYPE_VOID}},
+    {"json.get",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_STRING}},
+    {"json.get_string",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_STRING}},
+    {"json.get_int",2,TYPE_INT,{TYPE_STRING,TYPE_STRING}},
+    {"json.get_float",2,TYPE_FLOAT,{TYPE_STRING,TYPE_STRING}},
+    {"json.get_bool",2,TYPE_BOOL,{TYPE_STRING,TYPE_STRING}},
+    {"json.has",2,TYPE_BOOL,{TYPE_STRING,TYPE_STRING}},
+    {"json.array_length",1,TYPE_INT,{TYPE_STRING,TYPE_VOID}},
+    {"json.at",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_INT}},
+    {"json.escape",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID}},
+    {"json.last_error",0,TYPE_STRING,{TYPE_VOID,TYPE_VOID}}
+};
+static const JsonBuiltin *find_json_builtin(const char *name) {
+    for(size_t i=0;i<sizeof(json_builtins)/sizeof(json_builtins[0]);i++)
+        if(strcmp(name,json_builtins[i].name)==0) return &json_builtins[i];
+    return NULL;
+}
+
 static const StringBuiltin string_builtins[] = {
     {"string.length", 1, TYPE_INT},
     {"string.own", 1, TYPE_OWNED_STRING},
@@ -1092,6 +1115,30 @@ static YType check_expr(Checker *checker, Expr *expr)
                     }
                 }
                 expr->type = binary_builtin->result;
+                return expr->type;
+            }
+            const JsonBuiltin *json_builtin = find_json_builtin(expr->as.call.name);
+            if (json_builtin) {
+                if (expr->as.call.count != json_builtin->arity) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion,sizeof(suggestion),"%s expects %zu argument(s), but received %zu.",
+                        json_builtin->name,json_builtin->arity,expr->as.call.count);
+                    diagnostic(c,expr->token,"error","E2150","Incorrect number of JSON arguments.",suggestion);
+                }
+                for(size_t i=0;i<expr->as.call.count;i++) {
+                    YType actual=check_expr(checker,expr->as.call.args[i]);
+                    YType expected=i<json_builtin->arity?json_builtin->args[i]:TYPE_ERROR;
+                    bool okay=expected==TYPE_STRING?is_string_type(actual):actual==expected;
+                    if(actual!=TYPE_ERROR && !okay) {
+                        char suggestion[256];
+                        (void)snprintf(suggestion,sizeof(suggestion),"Argument %zu of %s expects %s, but received %s.",
+                            i+1U,json_builtin->name,semantic_type_name(c,expected),semantic_type_name(c,actual));
+                        diagnostic(c,expr->as.call.args[i]->token,"error","E2151","JSON argument type mismatch.",suggestion);
+                    }
+                    if(actual==TYPE_OWNED_STRING && is_owned_temporary_expression(expr->as.call.args[i]))
+                        diagnose_lost_owned_temporary(c,expr->as.call.args[i]);
+                }
+                expr->type=json_builtin->result;
                 return expr->type;
             }
             const StringBuiltin *string_builtin = find_string_builtin(expr->as.call.name);
