@@ -365,6 +365,24 @@ static const GuiBuiltin *find_gui_builtin(const char *name)
     return NULL;
 }
 
+typedef struct { const char *name; size_t arity; YType result; YType args[5]; } TuiBuiltin;
+static const TuiBuiltin tui_builtins[] = {
+    {"tui.init",0,TYPE_BOOL,{TYPE_VOID}}, {"tui.shutdown",0,TYPE_VOID,{TYPE_VOID}},
+    {"tui.clear",0,TYPE_VOID,{TYPE_VOID}}, {"tui.width",0,TYPE_INT,{TYPE_VOID}},
+    {"tui.height",0,TYPE_INT,{TYPE_VOID}}, {"tui.move_to",2,TYPE_VOID,{TYPE_INT,TYPE_INT}},
+    {"tui.write",1,TYPE_VOID,{TYPE_STRING}}, {"tui.println",1,TYPE_VOID,{TYPE_STRING}},
+    {"tui.read_key",0,TYPE_INT,{TYPE_VOID}}, {"tui.key_available",0,TYPE_BOOL,{TYPE_VOID}},
+    {"tui.set_color",2,TYPE_BOOL,{TYPE_INT,TYPE_INT}}, {"tui.reset_style",0,TYPE_VOID,{TYPE_VOID}},
+    {"tui.hide_cursor",0,TYPE_VOID,{TYPE_VOID}}, {"tui.show_cursor",0,TYPE_VOID,{TYPE_VOID}},
+    {"tui.draw_box",5,TYPE_BOOL,{TYPE_INT,TYPE_INT,TYPE_INT,TYPE_INT,TYPE_STRING}},
+    {"tui.progress_bar",5,TYPE_BOOL,{TYPE_INT,TYPE_INT,TYPE_INT,TYPE_INT,TYPE_INT}}
+};
+static const TuiBuiltin *find_tui_builtin(const char *name) {
+    for (size_t i=0;i<sizeof(tui_builtins)/sizeof(tui_builtins[0]);i++)
+        if (strcmp(name,tui_builtins[i].name)==0) return &tui_builtins[i];
+    return NULL;
+}
+
 static YType check_expr(Checker *checker, Expr *expr)
 {
     if (!expr) return TYPE_VOID;
@@ -929,6 +947,36 @@ static YType check_expr(Checker *checker, Expr *expr)
                 source->initialized = false;
                 expr->type = argument_type;
                 return expr->type;
+            }
+            if (strncmp(expr->as.call.name, "tui.", 4) == 0) {
+                c->uses_tui = true;
+                const TuiBuiltin *builtin = find_tui_builtin(expr->as.call.name);
+                if (!builtin) {
+                    diagnostic(c, expr->token, "error", "E2134", "Unknown TUI function.",
+                               "Use a documented tui.* function such as tui.init(), tui.write(), or tui.read_key().");
+                    for (size_t i=0;i<expr->as.call.count;i++) (void)check_expr(checker,expr->as.call.args[i]);
+                    expr->type=TYPE_ERROR; return expr->type;
+                }
+                if (expr->as.call.count != builtin->arity) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion,sizeof(suggestion),"%s expects %zu argument(s), but received %zu.",
+                                   builtin->name,builtin->arity,expr->as.call.count);
+                    diagnostic(c,expr->token,"error","E2135","Incorrect number of TUI function arguments.",suggestion);
+                }
+                for (size_t i=0;i<expr->as.call.count;i++) {
+                    YType actual=check_expr(checker,expr->as.call.args[i]);
+                    if (actual==TYPE_OWNED_STRING && is_owned_temporary_expression(expr->as.call.args[i]) &&
+                        i<builtin->arity && builtin->args[i]==TYPE_STRING)
+                        diagnose_lost_owned_temporary(c,expr->as.call.args[i]);
+                    if (i<builtin->arity && actual!=TYPE_ERROR && actual!=builtin->args[i] &&
+                        !(builtin->args[i]==TYPE_STRING && is_string_type(actual))) {
+                        char suggestion[256];
+                        (void)snprintf(suggestion,sizeof(suggestion),"Argument %zu of %s expects %s, but received %s.",
+                                       i+1,builtin->name,semantic_type_name(c,builtin->args[i]),semantic_type_name(c,actual));
+                        diagnostic(c,expr->as.call.args[i]->token,"error","E2136","TUI argument type mismatch.",suggestion);
+                    }
+                }
+                expr->type=builtin->result; return expr->type;
             }
             if (strncmp(expr->as.call.name, "gui.", 4) == 0) {
                 c->uses_gui = true;
