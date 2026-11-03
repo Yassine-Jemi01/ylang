@@ -653,6 +653,7 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "io.stream_open_read") == 0) return "yl_binary_stream_open_read";
     if (strcmp(name, "io.stream_open_write") == 0) return "yl_binary_stream_open_write";
     if (strcmp(name, "io.stream_close") == 0) return "yl_binary_stream_close";
+    if (strcmp(name, "io.buffer_slice") == 0) return "yl_binary_buffer_slice";
     if (strcmp(name, "io.buffer_new") == 0) return "yl_binary_buffer_new";
     if (strcmp(name, "io.buffer_length") == 0) return "yl_binary_buffer_length";
     if (strcmp(name, "io.buffer_capacity") == 0) return "yl_binary_buffer_capacity";
