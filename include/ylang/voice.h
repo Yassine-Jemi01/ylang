@@ -9,6 +9,13 @@
  */
 bool ylvoice_init(void);
 bool ylvoice_play(const char *path);
+typedef int64_t (*YLVoiceStreamRead)(int64_t stream, void *destination, size_t max_bytes);
+typedef const char *(*YLVoiceStreamError)(int64_t stream);
+typedef void (*YLVoiceStreamClose)(int64_t stream);
+/* Takes ownership of stream_id; the callbacks must remain valid until close. */
+bool ylvoice_play_stream(int64_t stream_id, YLVoiceStreamRead read_callback,
+                         YLVoiceStreamError error_callback,
+                         YLVoiceStreamClose close_callback);
 void ylvoice_pause(void);
 void ylvoice_resume(void);
 void ylvoice_stop(void);
