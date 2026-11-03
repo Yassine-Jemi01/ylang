@@ -1318,6 +1318,27 @@ if grep -Fq 'diagnostic-main.yl:2:' build/imports/diagnostic-attribution.out; th
     exit 1
 fi
 
+# Imported files may be outside the project: diagnostics must never echo their
+# source text or source-derived help strings into terminals and CI logs.
+cat > build/imports/diagnostic-secret.yl <<'EOF'
+TOP_SECRET=do-not-print
+EOF
+cat > build/imports/diagnostic-secret-main.yl <<EOF
+from "$PWD/build/imports/diagnostic-secret.yl" import TOP_SECRET;
+function main() -> int { return 0; }
+EOF
+if ./build/ylang check build/imports/diagnostic-secret-main.yl > build/imports/diagnostic-secret.out 2>&1; then
+    echo "FAIL: malformed imported source was unexpectedly accepted" >&2
+    exit 1
+fi
+grep -Fq 'diagnostic-secret.yl:1:' build/imports/diagnostic-secret.out
+grep -Fq '[source excerpt and help text omitted for imported module]' build/imports/diagnostic-secret.out
+if grep -Fq 'TOP_SECRET=do-not-print' build/imports/diagnostic-secret.out; then
+    echo "FAIL: diagnostic leaked a line from an imported local file" >&2
+    cat build/imports/diagnostic-secret.out >&2
+    exit 1
+fi
+
 
 # Names from a module remain private unless imported.
 cat > build/imports/private-name.yl <<'EOF'
