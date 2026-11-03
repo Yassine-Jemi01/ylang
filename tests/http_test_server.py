@@ -40,6 +40,18 @@ class Handler(BaseHTTPRequestHandler):
             import time
             time.sleep(0.2)
             self.send_bytes(200, "slow-response")
+        elif self.path == "/oversized-headers":
+            self.close_connection = True
+            payload = (
+                b"HTTP/1.1 200 OK\r\n"
+                + b"X: " + b"A" * 16377 + b"\r\n"
+                + b"a:\r\n"
+                + b"B: x\r\n"
+                + b"Content-Length: 5\r\n"
+                + b"Connection: close\r\n\r\n"
+                + b"hello"
+            )
+            self.connection.sendall(payload)
         elif self.path == "/hello":
             self.send_bytes(200, "hello")
         elif self.path == "/auth":

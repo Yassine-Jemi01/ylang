@@ -6,13 +6,19 @@
 
 Import paths may resolve to absolute paths or files outside the importing directory, including libraries found through `YLANG_PATH`. Imports are not a filesystem sandbox and the compiler must read imported source files to compile them. Diagnostics originating in imported files therefore retain the file path, line, column, and diagnostic code, but redact source excerpts and source-derived help text. Root source diagnostics continue to show their local source excerpt. Do not compile untrusted projects in an environment where they can access sensitive files or credentials; use filesystem permissions and an isolated build environment when working with untrusted source.
 
+## Compiler input limits and diagnostics
+
+The compiler rejects statement nesting deeper than 256 levels. Imported source graphs are bounded to 256 active import levels, 4096 distinct modules, 8 MiB per imported file, and 64 MiB total source per compilation. These limits prevent untrusted source trees from exhausting the compiler stack or consuming unbounded memory.
+
+The compiler emits at most 100 diagnostics per compilation. Source excerpts are limited to a 160-byte window, and control bytes or invalid UTF-8 in source excerpts, messages, suggestions, and displayed paths are rendered as visible escapes rather than being sent raw to terminals or log consumers.
+
 ## HTTP/HTTPS client
 
 The experimental C-backend client uses libcurl and applies these defaults:
 
 - Only `http://` and `https://` URLs are accepted. TLS certificate and hostname verification remain enabled; there is no insecure verification bypass.
 - Connection attempts time out after 5 seconds and the entire request after 15 seconds.
-- Response bodies are capped at 8 MiB, and request/response header text is bounded to 16 KiB.
+- Response bodies are capped at 8 MiB, and request/response header text is bounded to 16 KiB. Both synchronous and asynchronous response-header callbacks reject data once the accumulator reaches its limit, including the exact-full-buffer boundary.
 - Automatic redirects are limited to five and allowed only for HTTP/HTTPS. The built-in JSON `Content-Type` header is permitted through redirects, but if the request includes any other header, a 3xx response is returned directly rather than forwarding arbitrary headers such as `X-API-Key` to a new target.
 - HTTP status codes such as 401, 404, and 500 are response statuses, not transport errors. Check `http.status()` and `http.last_error()` separately.
 - At most 32 HTTP task handles may be in flight. `http_task` values are process-local, single-consumption handles; cancellation does not undo a request already received by the server.

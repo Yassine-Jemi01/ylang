@@ -78,7 +78,7 @@ Do not implement namespaces by rewriting every source file into a single string 
 
 Use a staged architecture:
 
-1. **Resolve:** parse import directives and normalize paths relative to the importing file. Enforce current limits on module count, nesting, and total source size.
+1. **Resolve:** parse import directives and normalize paths relative to the importing file. Enforce a maximum active import depth of 256, 4096 distinct modules, 8 MiB per imported source file, and 64 MiB total source per compilation.
 2. **Load once:** keep one module record per canonical path and report path errors against the import site.
 3. **Declare:** collect top-level function and type signatures per module before analyzing bodies. This permits forward references within a module and gives a basis for future cycle support.
 4. **Bind imports:** build a module-local symbol table mapping local names to a defining module and declaration.

@@ -54,6 +54,37 @@ def main():
             sys.stderr.write("--- actual ---\n" + result.stdout)
             sys.stderr.write(result.stderr)
             raise SystemExit(1)
+        # Fill the synchronous response-header accumulator to exactly 16 KiB,
+        # then send one more header. The runtime must reject it safely.
+        header_source = ROOT / "build" / "http-header-limit.yl"
+        header_source.write_text(
+            'function main() -> int {\n'
+            '    let string port = io.read_line();\n'
+            '    let string path = string.concat("http://127.0.0.1:", string.concat(port, "/oversized-headers"));\n'
+            '    let owned_string response = http.get(path);\n'
+            '    if (string.length(http.last_error()) == 0) return 1;\n'
+            '    return 0;\n'
+            '}\n',
+            encoding="utf-8",
+        )
+        header_executable = "build/http-header-limit.exe" if os.name == "nt" else "build/http-header-limit"
+        header_source_rel = str(header_source.relative_to(ROOT))
+        run_checked([compiler, "check", header_source_rel])
+        run_checked([compiler, "build", header_source_rel, "-o", header_executable])
+        header_result = subprocess.run(
+            [header_executable],
+            cwd=ROOT,
+            input=f"{port}\n",
+            text=True,
+            capture_output=True,
+            env=env,
+            timeout=20,
+        )
+        if header_result.returncode != 0:
+            sys.stderr.write(header_result.stdout)
+            sys.stderr.write(header_result.stderr)
+            raise SystemExit("Oversized HTTP response headers were not rejected safely.")
+        print("YLang HTTP header-limit regression passed.")
         print("YLang HTTP integration tests passed.")
     finally:
         server.shutdown()
