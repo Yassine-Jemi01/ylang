@@ -32,6 +32,10 @@ function main() -> int {
 
 Always call tui.shutdown() before leaving the application so the terminal's cursor, screen buffer, and input mode are restored.
 
+## YTilawa starter
+
+A keyboard-driven player shell is available at `examples/tilawa-player-tui.yl`. It demonstrates a now-playing panel, playback progress, a selectable menu, Up/Down navigation, Enter actions, and Q/Escape to quit. It is a UI shell only; connect its actions to YLang's audio engine and Quran/reciter data layer.
+
 ## API
 
 | Function | Return | Description |
@@ -41,10 +45,13 @@ Always call tui.shutdown() before leaving the application so the terminal's curs
 | tui.clear() | void | Clear the screen and move the cursor to the top-left. |
 | tui.width(), tui.height() | int | Current terminal dimensions; fallback is 80×24 if unavailable. |
 | tui.move_to(x, y) | void | Move to a 1-based column and row. |
+| tui.write_at(x, y, text) | void | Move to a 1-based position and write text. |
+| tui.clear_line() | void | Clear the entire current terminal row without moving the cursor. |
+| tui.fill_rect(x, y, width, height, character) | bool | Fill a rectangle using one printable ASCII character (32–126). Dimensions are bounded to 10,000. |
 | tui.write(text) | void | Write text without a newline. |
 | tui.println(text) | void | Write text followed by a newline. |
 | tui.key_available() | bool | Check whether a key can be read without blocking. |
-| tui.read_line(prompt, maximum) | string | Read an ASCII line into a bounded internal buffer. Enter accepts; Escape cancels and returns an empty string. |
+| tui.read_line(prompt, maximum) | string | Read a UTF-8 line into a bounded internal buffer (maximum is bytes). Enter accepts; Escape cancels and returns an empty string. |
 | tui.read_key() | int | Read one key byte, or return -1 when no key is waiting. |
 | tui.set_color(fg, bg) | bool | Set 256-color foreground and background (0–255). |
 | tui.reset_style() | void | Reset ANSI text styling. |
@@ -55,7 +62,7 @@ Always call tui.shutdown() before leaving the application so the terminal's curs
 
 ### Keyboard values
 
-tui.read_key() returns ASCII values for ordinary keys. Enter is 13, Escape is 27, and -1 means no key is ready. On Windows, arrow keys map to 1001 (up), 1002 (down), 1003 (left), and 1004 (right). POSIX terminals currently return the first byte of an escape sequence, so full arrow-key event decoding is not yet available there.
+tui.read_key() returns ASCII values for ordinary keys. Enter is 13, Escape is 27, and -1 means no key is ready. Arrow keys map to 1001 (up), 1002 (down), 1003 (left), and 1004 (right) on both Windows and POSIX. Home, End, Page Up, Page Down, Delete, and Insert map to 1005–1010. Modified CSI arrow sequences are accepted where the terminal emits the standard form.
 
 ## Backend and platform notes
 
@@ -69,4 +76,4 @@ tui.read_key() returns ASCII values for ordinary keys. Enter is 13, Escape is 27
 
 ## Current limits
 
-This first milestone provides low-level terminal primitives and a small set of drawing helpers. It is not yet a retained widget framework: there are no automatic layout containers, focus management, mouse events, text-input widgets, or full key-event objects. Those can be layered on after the runtime and input contracts are stable.
+This is a terminal rendering and input foundation, not yet a retained widget framework. Applications can implement menus, playback controls, status panels, progress indicators, and keyboard navigation using the primitives above. Automatic layout containers, built-in focus management, mouse events, Unicode-aware terminal cell-width measurement, and a managed text-input widget are not included yet. `fill_rect` deliberately accepts printable ASCII only; use it for backgrounds and separators, not Arabic or other multibyte glyphs. For text entry, use read_line(prompt, maximum). It supports Backspace, Enter, and Escape; the returned string uses an internal reusable buffer and must be copied if it needs to outlive the next read_line() call. UTF-8 input bytes are preserved (including Arabic text); cursor movement inside the line and grapheme-aware deletion are not implemented yet. The library currently treats strings as terminal output: sanitize untrusted text before passing it to tui.write(), tui.println(), or draw_box() because embedded terminal escape sequences can affect terminal state.
