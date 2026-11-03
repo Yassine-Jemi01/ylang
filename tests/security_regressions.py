@@ -89,13 +89,13 @@ def main() -> None:
     with (large_import_root.parent / "large.yl").open("r+b") as large_file:
         large_file.truncate(8 * 1024 * 1024 + 1)
     large_import_root.write_text(
-        'from "./large.yl" import ignored;\\n'
-        "function main() -> int { return 0; }\\n",
+        'from "./large.yl" import ignored;\n'
+        "function main() -> int { return 0; }\n",
         encoding="utf-8",
     )
     large_import_result = run_check(large_import_root)
     if large_import_result.returncode != 1 or b"E1027" not in large_import_result.stderr:
-        raise SystemExit("oversized imported source was not rejected with E1027")
+        raise SystemExit("oversized imported source was not rejected with E1027 (exit=" + str(large_import_result.returncode) + "):\n" + large_import_result.stderr.decode("utf-8", "replace"))
 
     # The root file is capped before malloc/read, not after the source is resident.
     large_root = BUILD / "security-root-over-limit.yl"
