@@ -433,7 +433,7 @@ void yltui_api_clear_line(void) {
 bool yltui_api_fill_rect(int64_t x, int64_t y, int64_t width,
                          int64_t height, int64_t character) {
     if (x < 1 || y < 1 || width < 1 || height < 1 ||
-        width > 10000 || height > 10000 ||
+        width > 10000 || height > 10000 || y > INT64_MAX - height ||
         character < 32 || character > 126) return false;
     for (int64_t row = 0; row < height; row++) {
         yltui_api_move_to(x, y + row);
