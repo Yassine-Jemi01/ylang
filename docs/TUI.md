@@ -48,7 +48,7 @@ A keyboard-driven player shell is available at `examples/tilawa-player-tui.yl`. 
 | tui.write(text) | void | Write text without a newline. |
 | tui.println(text) | void | Write text followed by a newline. |
 | tui.key_available() | bool | Check whether a key can be read without blocking. |
-| tui.read_line(prompt, maximum) | string | Read an ASCII line into a bounded internal buffer. Enter accepts; Escape cancels and returns an empty string. |
+| tui.read_line(prompt, maximum) | string | Read a UTF-8 line into a bounded internal buffer (maximum is bytes). Enter accepts; Escape cancels and returns an empty string. |
 | tui.read_key() | int | Read one key byte, or return -1 when no key is waiting. |
 | tui.set_color(fg, bg) | bool | Set 256-color foreground and background (0–255). |
 | tui.reset_style() | void | Reset ANSI text styling. |
@@ -73,4 +73,4 @@ tui.read_key() returns ASCII values for ordinary keys. Enter is 13, Escape is 27
 
 ## Current limits
 
-This is a terminal rendering and input foundation, not yet a retained widget framework. Applications can implement menus, playback controls, status panels, progress indicators, and keyboard navigation using the primitives above. Automatic layout containers, built-in focus management, mouse events, Unicode-aware cell-width measurement, and a managed text-input widget are not included yet. For basic ASCII text entry, use read_line(prompt, maximum). It supports Backspace, Enter, and Escape; the returned string uses an internal reusable buffer and must be copied if it needs to outlive the next read_line() call. Unicode editing and cursor movement inside the line are not implemented yet. The library currently treats strings as terminal output: sanitize untrusted text before passing it to tui.write(), tui.println(), or draw_box() because embedded terminal escape sequences can affect terminal state.
+This is a terminal rendering and input foundation, not yet a retained widget framework. Applications can implement menus, playback controls, status panels, progress indicators, and keyboard navigation using the primitives above. Automatic layout containers, built-in focus management, mouse events, Unicode-aware cell-width measurement, and a managed text-input widget are not included yet. For text entry, use read_line(prompt, maximum). It supports Backspace, Enter, and Escape; the returned string uses an internal reusable buffer and must be copied if it needs to outlive the next read_line() call. UTF-8 input bytes are preserved (including Arabic text); cursor movement inside the line and grapheme-aware deletion are not implemented yet. The library currently treats strings as terminal output: sanitize untrusted text before passing it to tui.write(), tui.println(), or draw_box() because embedded terminal escape sequences can affect terminal state.
