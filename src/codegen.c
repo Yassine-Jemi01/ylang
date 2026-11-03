@@ -653,6 +653,18 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "io.stream_open_read") == 0) return "yl_binary_stream_open_read";
     if (strcmp(name, "io.stream_open_write") == 0) return "yl_binary_stream_open_write";
     if (strcmp(name, "io.stream_close") == 0) return "yl_binary_stream_close";
+    if (strcmp(name, "io.buffer_new") == 0) return "yl_binary_buffer_new";
+    if (strcmp(name, "io.buffer_length") == 0) return "yl_binary_buffer_length";
+    if (strcmp(name, "io.buffer_capacity") == 0) return "yl_binary_buffer_capacity";
+    if (strcmp(name, "io.buffer_get") == 0) return "yl_binary_buffer_get";
+    if (strcmp(name, "io.buffer_set") == 0) return "yl_binary_buffer_set";
+    if (strcmp(name, "io.buffer_push") == 0) return "yl_binary_buffer_push";
+    if (strcmp(name, "io.buffer_resize") == 0) return "yl_binary_buffer_resize";
+    if (strcmp(name, "io.buffer_clear") == 0) return "yl_binary_buffer_clear";
+    if (strcmp(name, "io.buffer_free") == 0) return "yl_binary_buffer_free";
+    if (strcmp(name, "io.buffer_load") == 0) return "yl_binary_buffer_load";
+    if (strcmp(name, "io.buffer_save") == 0) return "yl_binary_buffer_save";
+
 
     if (strcmp(name, "io.read_line") == 0) return "yl_read_line";
     if (strcmp(name, "io.read_file") == 0) return "yl_read_file";
