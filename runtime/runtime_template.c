@@ -721,6 +721,10 @@ static int64_t yl_http_stream_open(const char *method, const char *url,
     if (!stream) { yl_http_set_error("Too many active HTTP streams (limit 16)"); return 0; }
     memset(stream, 0, sizeof(*stream));
     stream->active = true;
+    if (!yl_http_stream_shutdown_registered) {
+        (void)atexit(yl_http_stream_shutdown);
+        yl_http_stream_shutdown_registered = true;
+    }
     stream->id = yl_http_next_stream_id++;
     if (yl_http_next_stream_id <= 0) yl_http_next_stream_id = 1;
     size_t url_length = strlen(url), body_length = strlen(body ? body : "");
@@ -791,10 +795,6 @@ static int64_t yl_http_stream_open(const char *method, const char *url,
         return stream->id;
     }
     stream->attached = true;
-    if (!yl_http_stream_shutdown_registered) {
-        (void)atexit(yl_http_stream_shutdown);
-        yl_http_stream_shutdown_registered = true;
-    }
     return stream->id;
 }
 static const char *yl_http_stream_read(int64_t id, int64_t max_bytes) {
