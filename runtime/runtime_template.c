@@ -200,6 +200,60 @@ bool yltui_api_key_available(void) {
 #endif
 }
 
+#ifndef _WIN32
+static int yltui_read_byte_timeout(unsigned char *value, long timeout_ms) {
+    fd_set read_set;
+    struct timeval timeout;
+    FD_ZERO(&read_set);
+    FD_SET(STDIN_FILENO, &read_set);
+    timeout.tv_sec = timeout_ms / 1000;
+    timeout.tv_usec = (timeout_ms % 1000) * 1000;
+    int ready = select(STDIN_FILENO + 1, &read_set, NULL, NULL, &timeout);
+    if (ready <= 0) return 0;
+    return read(STDIN_FILENO, value, 1U) == 1 ? 1 : 0;
+}
+
+/* Decode common xterm/VT keyboard sequences without making normal reads block. */
+static int64_t yltui_decode_escape(void) {
+    unsigned char a = 0, b = 0, c = 0;
+    if (!yltui_read_byte_timeout(&a, 25)) return 27;
+    if (a != '[' && a != 'O') return 27;
+    if (!yltui_read_byte_timeout(&b, 25)) return 27;
+    if (a == 'O') {
+        switch (b) {
+            case 'A': return 1001;
+            case 'B': return 1002;
+            case 'C': return 1004;
+            case 'D': return 1003;
+            case 'H': return 1005;
+            case 'F': return 1006;
+            default: return 27;
+        }
+    }
+    /* CSI parameters may include modifiers, e.g. ESC [ 1 ; 5 A. */
+    unsigned char final = b;
+    while (final < 0x40 || final > 0x7e) {
+        if (!yltui_read_byte_timeout(&c, 10)) return 27;
+        final = c;
+    }
+    switch (final) {
+        case 'A': return 1001;
+        case 'B': return 1002;
+        case 'C': return 1004;
+        case 'D': return 1003;
+        case 'H': return 1005;
+        case 'F': return 1006;
+        case '~':
+            if (b == '5') return 1007;
+            if (b == '6') return 1008;
+            if (b == '3') return 1009;
+            if (b == '2') return 1010;
+            return 27;
+        default: return 27;
+    }
+}
+#endif
+
 int64_t yltui_api_read_key(void) {
     if (!yltui_initialized) return -1;
 #ifdef _WIN32
@@ -211,14 +265,21 @@ int64_t yltui_api_read_key(void) {
         if (extended == 80) return 1002;
         if (extended == 75) return 1003;
         if (extended == 77) return 1004;
+        if (extended == 71) return 1005;
+        if (extended == 79) return 1006;
+        if (extended == 73) return 1007;
+        if (extended == 81) return 1008;
+        if (extended == 83) return 1009;
+        if (extended == 82) return 1010;
         return -1;
     }
     return (int64_t)key;
 #else
     if (!yltui_api_key_available()) return -1;
     unsigned char key = 0;
-    ssize_t count = read(STDIN_FILENO, &key, 1U);
-    return count == 1 ? (int64_t)key : -1;
+    if (read(STDIN_FILENO, &key, 1U) != 1) return -1;
+    if (key == 27) return yltui_decode_escape();
+    return (int64_t)key;
 #endif
 }
 
