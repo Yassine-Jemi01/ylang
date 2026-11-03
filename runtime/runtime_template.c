@@ -606,6 +606,29 @@ static bool yl_json_hex4(const char *s, uint32_t *out) {
     }
     *out = v; return true;
 }
+static bool yl_json_utf8_advance(YLJson *p, unsigned char lead) {
+    unsigned need;
+    unsigned char second_min = 0x80U, second_max = 0xBFU;
+    if (lead >= 0xC2U && lead <= 0xDFU) need = 1U;
+    else if (lead >= 0xE0U && lead <= 0xEFU) {
+        need = 2U;
+        if (lead == 0xE0U) second_min = 0xA0U;
+        if (lead == 0xEDU) second_max = 0x9FU;
+    } else if (lead >= 0xF0U && lead <= 0xF4U) {
+        need = 3U;
+        if (lead == 0xF0U) second_min = 0x90U;
+        if (lead == 0xF4U) second_max = 0x8FU;
+    } else return false;
+    if (p->n - p->i < need) return false;
+    unsigned char second = (unsigned char)p->s[p->i];
+    if (second < second_min || second > second_max) return false;
+    p->i++;
+    for (unsigned j = 1U; j < need; j++) {
+        unsigned char next = (unsigned char)p->s[p->i++];
+        if (next < 0x80U || next > 0xBFU) return false;
+    }
+    return true;
+}
 static bool yl_json_string_end(YLJson *p, size_t *begin, size_t *end) {
     if (p->i >= p->n || p->s[p->i] != '"') return false;
     p->i++; *begin = p->i;
@@ -613,6 +636,7 @@ static bool yl_json_string_end(YLJson *p, size_t *begin, size_t *end) {
         unsigned char c = (unsigned char)p->s[p->i++];
         if (c == '"') { *end = p->i - 1U; return true; }
         if (c < 0x20U) return false;
+        if (c >= 0x80U && !yl_json_utf8_advance(p, c)) return false;
         if (c == '\\') {
             if (p->i >= p->n) return false;
             char e = p->s[p->i++];
@@ -806,21 +830,50 @@ static const char *yl_json_pretty(const char *raw) {
 static bool yl_json_key_equal(const char *s, size_t a, size_t b, const char *key) {
     size_t k = 0U;
     for (size_t i = a; i < b; i++) {
+        unsigned char bytes[4];
+        size_t count = 1U;
         unsigned char c = (unsigned char)s[i];
-        if (c == '\\' && i + 1U < b) {
-            char e = s[++i];
+        if (c == '\\') {
+            if (++i >= b) return false;
+            char e = s[i];
             if (e == 'u') {
                 uint32_t cp;
-                if (b - i - 1U < 4U || !yl_json_hex4(s + i + 1U, &cp) || cp > 0x7FU) return false;
-                i += 4U; c = (unsigned char)cp;
+                if (b - i - 1U < 4U || !yl_json_hex4(s + i + 1U, &cp)) return false;
+                i += 4U;
+                if (cp >= 0xD800U && cp <= 0xDBFFU) {
+                    uint32_t low;
+                    if (b - i < 6U || s[i + 1U] != '\\' || s[i + 2U] != 'u' ||
+                        !yl_json_hex4(s + i + 3U, &low) || low < 0xDC00U || low > 0xDFFFU) return false;
+                    i += 6U;
+                    cp = 0x10000U + ((cp - 0xD800U) << 10U) + (low - 0xDC00U);
+                } else if (cp >= 0xDC00U && cp <= 0xDFFFU) return false;
+                if (cp < 0x80U) bytes[0] = (unsigned char)cp;
+                else if (cp < 0x800U) {
+                    bytes[0] = (unsigned char)(0xC0U | (cp >> 6U));
+                    bytes[1] = (unsigned char)(0x80U | (cp & 63U)); count = 2U;
+                } else if (cp < 0x10000U) {
+                    bytes[0] = (unsigned char)(0xE0U | (cp >> 12U));
+                    bytes[1] = (unsigned char)(0x80U | ((cp >> 6U) & 63U));
+                    bytes[2] = (unsigned char)(0x80U | (cp & 63U)); count = 3U;
+                } else {
+                    bytes[0] = (unsigned char)(0xF0U | (cp >> 18U));
+                    bytes[1] = (unsigned char)(0x80U | ((cp >> 12U) & 63U));
+                    bytes[2] = (unsigned char)(0x80U | ((cp >> 6U) & 63U));
+                    bytes[3] = (unsigned char)(0x80U | (cp & 63U)); count = 4U;
+                }
             } else {
-                switch (e) { case 'n': c='\n'; break; case 'r': c='\r'; break;
-                    case 't': c='\t'; break; case 'b': c='\b'; break; case 'f': c='\f'; break;
-                    default: c=(unsigned char)e; break; }
+                switch (e) {
+                    case '"': c = '"'; break; case '\\': c = '\\'; break; case '/': c = '/'; break;
+                    case 'b': c = '\b'; break; case 'f': c = '\f'; break; case 'n': c = '\n'; break;
+                    case 'r': c = '\r'; break; case 't': c = '\t'; break; default: return false;
+                }
+                bytes[0] = c;
             }
+        } else bytes[0] = c;
+        for (size_t j = 0U; j < count; j++) {
+            if (!key[k] || (unsigned char)key[k] != bytes[j]) return false;
+            k++;
         }
-        if (!key[k] || (unsigned char)key[k] != c) return false;
-        k++;
     }
     return key[k] == '\0';
 }
@@ -861,6 +914,11 @@ static const char *yl_json_decode_string(const char *s, size_t a, size_t b) {
                 if(cp>=0xD800U && cp<=0xDBFFU) {
                     uint32_t low; (void)yl_json_hex4(s+i+3U,&low); i+=6U;
                     cp=0x10000U+((cp-0xD800U)<<10U)+(low-0xDC00U);
+                }
+                if(cp==0U) {
+                    free(out);
+                    yl_json_error("JSON string contains U+0000, which YLang strings cannot represent");
+                    return "";
                 }
                 if(cp<0x80U) out[n++]=(char)cp;
                 else if(cp<0x800U){out[n++]=(char)(0xC0U|(cp>>6U));out[n++]=(char)(0x80U|(cp&63U));}
