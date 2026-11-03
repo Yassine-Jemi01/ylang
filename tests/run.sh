@@ -41,10 +41,10 @@ grep -q "Maximum statement nesting depth exceeded" build/nesting-too-deep.out
 from pathlib import Path
 import subprocess
 
-name = "build/bad-\\x1b[2J.yl"
+name = "build/bad-\x1b[2J.yl"
 Path(name).write_bytes(
-    b"fn main() -> int {\\n    " + b"\\x01" * 5000 +
-    b"\\n    return 0;\\n}\\n"
+    b"fn main() -> int {\n    " + b"\x01" * 5000 +
+    b"\n    return 0;\n}\n"
 )
 result = subprocess.run(
     ["./build/ylang", "check", name],
@@ -58,9 +58,9 @@ assert b"too many errors" in result.stderr
 assert b":2:5" in result.stderr
 assert b"\\x1b" in result.stderr
 assert b"\\x01" in result.stderr
-assert b"\\x1b" not in result.stderr.replace(b"\\\\x1b", b"")
-assert b"\\x1b" not in result.stderr and b"\\x07" not in result.stderr
-assert b"\\r" not in result.stderr
+assert b"\x1b" not in result.stderr
+assert b"\x07" not in result.stderr
+assert b"\r" not in result.stderr
 PY
 
 ./build/ylang build examples/type-conversions.yl -o build/test-type-conversions >/dev/null
