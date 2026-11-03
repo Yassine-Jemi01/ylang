@@ -12,15 +12,15 @@ The first implementation targets the C backend and libcurl. The existing buffere
 
 ~~~ylang
 fn main() -> int {
-    let http_stream stream = http.stream_open(
+    let stream: http_stream = http.stream_open(
         "GET",
         "https://example.com/large-file",
         "",
         ""
     )
 
-    while !http.stream_done(stream) {
-        let owned_string chunk = http.stream_read(stream, 16384)
+    while (!http.stream_done(stream)) {
+        let chunk: owned_string = http.stream_read(stream, 16384)
         if string.length(chunk) > 0 {
             process(chunk)
         }
