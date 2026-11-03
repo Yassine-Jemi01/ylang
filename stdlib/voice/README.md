@@ -11,7 +11,8 @@ The compiler recognizes these builtins directly; no import is required:
 | Function | Return | Purpose |
 |---|---|---|
 | `voice.init()` | `bool` | Initialize the audio device |
-| `voice.play(path)` | `bool` | Play one file, replacing the current track |
+| `voice.play(path)` | `bool` | Play one local file, replacing the current track |
+| `voice.play_stream(stream)` | `bool` | Consume an `http_stream` and decode it progressively through SDL2_mixer |
 | `voice.pause()` / `voice.resume()` | `void` | Pause or resume playback |
 | `voice.stop()` | `void` | Stop and release the current track |
 | `voice.is_playing()` | `bool` | Check whether music is actively playing |
@@ -26,7 +27,8 @@ See [`examples/voice.yl`](../../examples/voice.yl) for a complete compiler-level
 ## Current C API
 
 - `ylvoice_init()` — initialize the audio device.
-- `ylvoice_play(path)` — load and play one audio file, replacing the previous track.
+- `ylvoice_play(path)` — load and play one local audio file, replacing the previous track.
+- `ylvoice_play_stream(stream, read, error, close)` — consume a pull-based stream through a custom SDL_RWops reader.
 - `ylvoice_pause()`, `ylvoice_resume()`, `ylvoice_stop()`.
 - `ylvoice_is_playing()` — report whether playback is active and reap a naturally completed track.
 - `ylvoice_is_paused()` — report whether the current track is paused.
@@ -37,10 +39,13 @@ See [`examples/voice.yl`](../../examples/voice.yl) for a complete compiler-level
 
 The runtime uses SDL2_mixer codecs available in the installed build (commonly WAV,
 Ogg Vorbis, FLAC, and MP3). Codec support depends on how SDL2_mixer was packaged.
-It currently supports one local music track at a time. Natural completion is observable
+It currently supports one music track at a time. Natural completion is observable
 through `voice.is_finished()`; polling either state query releases the completed mixer
-object. Text-to-speech, multiple simultaneous voices, seeking, playlists, recording,
-and network streaming are not implemented yet.
+object. `voice.play_stream(http_stream)` transfers ownership of the stream to the audio
+runtime and reads incrementally through SDL_RWops; do not use the HTTP handle again after
+passing it to Voice. The stream reader is forward-only and does not support seeking.
+Text-to-speech, multiple simultaneous voices, seeking, playlists, and recording are not
+implemented yet.
 
 ## Build
 
