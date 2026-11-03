@@ -36,7 +36,7 @@ Use the opaque integer handle API when the amount of data is not known in advanc
 | `io.buffer_new(initial_capacity)` | `int` | Create an empty growable buffer; returns a handle or `-1`. |
 | `io.buffer_slice(handle, offset, length)` | `int` | Create a non-owning view over a range of an existing buffer; returns a handle or `-1`. |
 | `io.buffer_length(handle)` | `int` | Current number of bytes, or `-1` for an invalid handle. |
-| `io.buffer_capacity(handle)` | `int` | Allocated capacity, or `-1`. |
+| `io.buffer_capacity(handle)` | `int` | Allocated capacity (slice extent for a view), or `-1`. |
 | `io.buffer_get(handle, index)` | `int` | Read a byte (0–255), or `-1` for an invalid index/handle. |
 | `io.buffer_set(handle, index, value)` | `bool` | Replace an existing byte; value must be 0–255. |
 | `io.buffer_push(handle, value)` | `bool` | Append a byte and grow capacity when required. |
