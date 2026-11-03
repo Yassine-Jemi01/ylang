@@ -5,7 +5,7 @@ function main() -> int {
     let bool finished = voice.is_finished();
     let bool volume_ok = voice.set_volume(65);
     let bool played = voice.play("sample.wav");
-    let http_stream stream = http.stream_open("GET", "https://example.invalid/audio.mp3", "", "");
+    let http_stream stream = http.stream_open("GET", "", "", "");
     let bool streamed = voice.play_stream(stream);
     voice.pause();
     voice.resume();
