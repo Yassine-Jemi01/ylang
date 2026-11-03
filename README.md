@@ -461,6 +461,7 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [YLang Book (online HTML)](https://yassine-jemi01.github.io/ylang/learn/index.html)
 - [Language specification](docs/language-spec.md)
 - [Architecture](docs/architecture.md)
+- [YLang 2.3 roadmap](docs/ROADMAP-2.3-3.0.md)
 - [YLang 3.0 roadmap](docs/ROADMAP-3.0.md)
 - [YLang 3.0 language design RFC](docs/RFC-3.0-LANGUAGE-DESIGN.md)
 - [YLang 3.0 LLVM backend RFC](docs/RFC-3.0-LLVM-BACKEND.md)
