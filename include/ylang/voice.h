@@ -13,6 +13,8 @@ void ylvoice_pause(void);
 void ylvoice_resume(void);
 void ylvoice_stop(void);
 bool ylvoice_is_playing(void);
+bool ylvoice_is_paused(void);
+bool ylvoice_is_finished(void);
 bool ylvoice_set_volume(int64_t percent);
 const char *ylvoice_last_error(void);
 void ylvoice_shutdown(void);
