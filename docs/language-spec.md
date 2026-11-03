@@ -342,6 +342,8 @@ The optional `byte` scalar type is an unsigned 8-bit integer. `byte(value)` chec
 
 The binary file API includes `io.binary_size`, `io.read_u8`, `io.write_u8`, `io.read_bytes`, `io.write_bytes`, `io.read_binary_hex`, and `io.write_binary_hex`. Buffer functions accept a named byte array and return a byte count, or `-1` on error. Hex helpers remain limited to 16 MiB per call.
 
+Dynamic byte buffers are available through opaque integer handles: `io.buffer_new`, `io.buffer_length`, `io.buffer_capacity`, `io.buffer_get`, `io.buffer_set`, `io.buffer_push`, `io.buffer_resize`, `io.buffer_clear`, `io.buffer_free`, `io.buffer_load`, and `io.buffer_save`. Buffers grow automatically, are limited to 256 MiB each, and at most 64 may be live. Resizing to a larger length zero-fills new bytes. Invalid handles or indices return documented sentinel values/false. Buffers not explicitly freed are released during normal runtime cleanup.
+
 Endian-aware scalar helpers are available for unsigned 16-, 32-, and 64-bit values in both little- and big-endian forms: `io.read_u16_le/be`, `io.read_u32_le/be`, `io.read_u64_le/be` and matching `io.write_u16_le/be`, `io.write_u32_le/be`, `io.write_u64_le/be`. 64-bit reads return the raw bit pattern through signed `int`, so values with the high bit set appear negative; `-1` is also the failure sentinel.
 
 Streaming uses `io.stream_open_read(path)`, `io.stream_open_write(path)`, `io.stream_read(handle, byte_array)`, `io.stream_write(handle, byte_array)`, and `io.stream_close(handle)`. Stream reads return zero at EOF and `-1` on error. The runtime supports up to 64 simultaneous streams and closes remaining handles during normal cleanup. Streaming is synchronous and currently has no seek or async operation.
