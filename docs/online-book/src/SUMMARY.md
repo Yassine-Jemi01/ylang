@@ -20,6 +20,7 @@
 # Part III — Build Real Things
 
 - [GUI and Game2D](gui-game2d.md)
+- [Terminal UI](tui.md)
 - [Platform Support](platform-support.md)
 - [Editor Support](editor-support.md)
 
