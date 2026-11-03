@@ -1,6 +1,7 @@
 function main() -> int {
     let bool initialized = tui.init();
     let int key = tui.read_key();
+    let int pending = tui.poll_key();
     let int width = tui.width();
     let int height = tui.height();
     let bool cleared = tui.clear();
