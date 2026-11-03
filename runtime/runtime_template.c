@@ -215,6 +215,7 @@ int64_t yltui_api_read_key(void) {
     }
     return (int64_t)key;
 #else
+    if (!yltui_api_key_available()) return -1;
     unsigned char key = 0;
     ssize_t count = read(STDIN_FILENO, &key, 1U);
     return count == 1 ? (int64_t)key : -1;
