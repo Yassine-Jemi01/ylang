@@ -7,6 +7,7 @@
 
 static bool voice_initialized;
 static Mix_Music *voice_music;
+static bool voice_track_completed;
 static char voice_error[256];
 
 static void voice_set_error(const char *message)
@@ -33,6 +34,15 @@ bool ylvoice_init(void)
     }
     voice_initialized = true;
     return true;
+}
+
+static void voice_release_if_finished(void)
+{
+    if (voice_music && Mix_PlayingMusic() == 0 && Mix_PausedMusic() == 0) {
+        Mix_FreeMusic(voice_music);
+        voice_music = NULL;
+        voice_track_completed = true;
+    }
 }
 
 bool ylvoice_play(const char *path)
@@ -70,11 +80,24 @@ void ylvoice_stop(void)
         Mix_FreeMusic(voice_music);
         voice_music = NULL;
     }
+    voice_track_completed = false;
 }
 
 bool ylvoice_is_playing(void)
 {
-    return voice_initialized && Mix_PlayingMusic() != 0;
+    voice_release_if_finished();
+    return voice_initialized && voice_music != NULL && Mix_PlayingMusic() != 0;
+}
+
+bool ylvoice_is_paused(void)
+{
+    return voice_initialized && voice_music != NULL && Mix_PausedMusic() != 0;
+}
+
+bool ylvoice_is_finished(void)
+{
+    voice_release_if_finished();
+    return voice_track_completed;
 }
 
 bool ylvoice_set_volume(int64_t percent)
