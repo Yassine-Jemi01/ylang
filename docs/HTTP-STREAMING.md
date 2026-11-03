@@ -46,7 +46,7 @@ fn main() -> int {
 | http.stream_error(stream) | string | Transport/configuration error, or empty on success. |
 | http.stream_close(stream) | void | Cancel if active and release all stream resources. |
 
-The handle has its own http_stream type. It must not be interchangeable with integers or http_task handles. A stream is single-consumer and must be closed; process shutdown also releases active streams.
+The handle has its own http_stream type. It must not be interchangeable with integers or http_task handles. A stream is single-consumer and must be closed; process shutdown also releases active streams. The current chunk type is `owned_string`, so this API is for text/UTF-8-style response data; it is not a binary-safe audio/video or arbitrary-file API because YLang strings are NUL-terminated. A length-carrying byte-buffer type is required before binary streaming can be supported safely.
 
 ## Runtime design
 
@@ -65,4 +65,4 @@ The loopback integration suite now checks delayed chunk delivery, partial reads,
 
 ## Compatibility and scope
 
-This milestone does not add a general-purpose async scheduler or promise API. The stream API is blocking and pull-based: `stream_read` waits for the next bytes, EOF, or failure. The application controls backpressure by deciding when to read again. `stream_done` becomes true only after the transfer has ended and all buffered bytes have been consumed. HTTP 4xx/5xx responses are not transport errors; inspect `stream_status` and read their response bodies normally. A future async stream API can be layered on the same bounded queue after the runtime task scheduling model is defined.
+This milestone does not add a general-purpose async scheduler or promise API. The stream API is blocking and pull-based: `stream_read` waits for the next text bytes, EOF, or failure. The application controls backpressure by deciding when to read again. `stream_done` becomes true only after the transfer has ended and all buffered bytes have been consumed. HTTP 4xx/5xx responses are not transport errors; inspect `stream_status` and read their response bodies normally. A future async stream API can be layered on the same bounded queue after the runtime task scheduling model is defined.
