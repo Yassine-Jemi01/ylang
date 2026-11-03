@@ -59,9 +59,9 @@ def main():
         stream_source = ROOT / "build" / "http-streaming.yl"
         stream_source.write_text(
             "fn main() -> int {\n"
-            "    let string port = io.read_line();\n"
-            '    let string base = string.concat("http://127.0.0.1:", port);\n'
-            '    let http_stream stream = http.stream_open("GET", string.concat(base, "/stream"), "", "");\n'
+            "    let port: string = io.read_line();\n"
+            '    let base: string = string.concat("http://127.0.0.1:", port);\n'
+            '    let stream: http_stream = http.stream_open("GET", string.concat(base, "/stream"), "", "");\n'
             "    print(http.stream_read(stream, 3));\n"
             "    print(http.stream_read(stream, 3));\n"
             "    print(http.stream_read(stream, 3));\n"
@@ -69,30 +69,30 @@ def main():
             "    print(http.stream_read(stream, 3));\n"
             "    print(http.stream_read(stream, 3));\n"
             "    while (!http.stream_done(stream)) {\n"
-            "        let owned_string rest = http.stream_read(stream, 16);\n"
+            "        let rest: owned_string = http.stream_read(stream, 16);\n"
             "        if (string.length(rest) > 0) { print(rest); }\n"
             "    }\n"
             "    print(http.stream_status(stream));\n"
             '    print(string.contains(http.stream_headers(stream), "Content-Type: text/plain; charset=utf-8"));\n'
             "    print(string.length(http.stream_error(stream)) == 0);\n"
             "    http.stream_close(stream);\n"
-            '    let http_stream missing = http.stream_open("GET", string.concat(base, "/missing"), "", "");\n'
+            '    let missing: http_stream = http.stream_open("GET", string.concat(base, "/missing"), "", "");\n'
             "    print(http.stream_read(missing, 32));\n"
             "    while (!http.stream_done(missing)) {\n"
-            "        let owned_string rest = http.stream_read(missing, 32);\n"
+            "        let rest: owned_string = http.stream_read(missing, 32);\n"
             "        if (string.length(rest) > 0) { print(rest); }\n"
             "    }\n"
             "    print(http.stream_status(missing));\n"
             "    http.stream_close(missing);\n"
-            '    let http_stream empty = http.stream_open("GET", string.concat(base, "/stream-empty"), "", "");\n'
+            '    let empty: http_stream = http.stream_open("GET", string.concat(base, "/stream-empty"), "", "");\n'
             "    print(string.length(http.stream_read(empty, 8)));\n"
             "    print(http.stream_done(empty));\n"
             "    print(http.stream_status(empty));\n"
             "    http.stream_close(empty);\n"
-            '    let http_stream large = http.stream_open("GET", string.concat(base, "/stream-large"), "", "");\n'
+            '    let large: http_stream = http.stream_open("GET", string.concat(base, "/stream-large"), "", "");\n'
             "    let mut total: int = 0;\n"
             "    while (!http.stream_done(large)) {\n"
-            "        let owned_string chunk = http.stream_read(large, 8192);\n"
+            "        let chunk: owned_string = http.stream_read(large, 8192);\n"
             "        total = total + string.length(chunk);\n"
             "    }\n"
             "    print(total);\n"
