@@ -879,6 +879,48 @@ static YType check_expr(Checker *checker, Expr *expr)
                 expr->type = argument_type;
                 return expr->type;
             }
+            if (strncmp(expr->as.call.name, "voice.", 6) == 0) {
+                c->uses_voice = true;
+                const VoiceBuiltin *builtin = find_voice_builtin(expr->as.call.name);
+                if (!builtin) {
+                    diagnostic(c, expr->token, "error", "E2130",
+                               "Unknown Voice function.",
+                               "Use voice.init(), voice.play(...), voice.pause(), voice.resume(), voice.stop(), voice.is_playing(), voice.set_volume(...), voice.last_error(), or voice.shutdown().");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (expr->as.call.count != builtin->arity) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion, sizeof(suggestion),
+                        "%s expects %zu argument(s), but received %zu.",
+                        builtin->name, builtin->arity, expr->as.call.count);
+                    diagnostic(c, expr->token, "error", "E2131",
+                               "Incorrect number of Voice arguments.", suggestion);
+                }
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    YType actual = check_expr(checker, expr->as.call.args[i]);
+                    if (actual == TYPE_OWNED_STRING &&
+                        is_owned_temporary_expression(expr->as.call.args[i]) &&
+                        i < builtin->arity && builtin->args[i] == TYPE_STRING) {
+                        diagnose_lost_owned_temporary(c, expr->as.call.args[i]);
+                    }
+                    if (i < builtin->arity && actual != TYPE_ERROR &&
+                        actual != builtin->args[i] &&
+                        !(builtin->args[i] == TYPE_STRING && is_string_type(actual))) {
+                        char suggestion[256];
+                        (void)snprintf(suggestion, sizeof(suggestion),
+                            "Argument %zu of %s expects %s, but received %s.",
+                            i + 1, builtin->name, semantic_type_name(c, builtin->args[i]),
+                            semantic_type_name(c, actual));
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2132",
+                                   "Voice argument type mismatch.", suggestion);
+                    }
+                }
+                expr->type = builtin->result;
+                return expr->type;
+            }
             if (strncmp(expr->as.call.name, "gui.", 4) == 0) {
                 c->uses_gui = true;
                 const GuiBuiltin *builtin = find_gui_builtin(expr->as.call.name);
