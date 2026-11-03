@@ -69,6 +69,8 @@ static bool asm_type_supported(AsmContext *ctx, YType type, Token token,
         case TYPE_INT:
         case TYPE_BOOL:
         case TYPE_CHAR:
+        case TYPE_BYTE:
+            return asm_reject(ctx, token, "byte values (use the C backend)");
         case TYPE_STRING:
         case TYPE_BORROWED_STRING:
             return true;
@@ -742,6 +744,8 @@ static bool emit_print_value(AsmContext *ctx, Expr *expr)
         case TYPE_CHAR:
             fputs("    mov rdi, rax\n    call yl_print_char\n", ctx->out);
             break;
+        case TYPE_BYTE:
+            return asm_reject(ctx, expr->token, "byte values (use the C backend)");
         case TYPE_STRING:
         case TYPE_BORROWED_STRING:
             fputs("    mov rdi, rax\n    call yl_print_cstr\n", ctx->out);
