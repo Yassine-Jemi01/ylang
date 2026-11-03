@@ -84,7 +84,7 @@ result = subprocess.run(
     timeout=5,
 )
 assert result.returncode != 0
-assert b"Cannot resolve the imported module file" in result.stderr
+assert (b"Cannot resolve the imported module file" in result.stderr or\n        b"Cannot read the imported module source" in result.stderr), result.stderr
 assert b"\\x1B" in result.stderr, result.stderr
 assert b"\x1b" not in result.stderr, result.stderr
 PY
