@@ -93,6 +93,8 @@ fi
 grep -q 'E2130' build/voice-invalid.out
 grep -q 'E2132' build/voice-invalid.out
 
+./build/ylang check tests/tui-builtins.yl >/dev/null
+python3 tests/run_tui_integration.py
 python3 tests/run_http_integration.py
 python3 tests/benchmark-smoke.py
 if ./build/ylang > build/no-args.out 2>&1; then
