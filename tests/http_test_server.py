@@ -2,7 +2,20 @@
 """Deterministic localhost HTTP fixture for YLang standard-library tests."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import io
 import sys
+import wave
+
+
+
+def make_test_wav():
+    output = io.BytesIO()
+    with wave.open(output, "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(44100)
+        wav_file.writeframes(b"\\x00\\x00" * (44100 // 4))
+    return output.getvalue()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -68,6 +81,23 @@ class Handler(BaseHTTPRequestHandler):
                     self.wfile.write(chunk + b"\r\n")
                     self.wfile.flush()
                 self.wfile.write(b"0\r\n\r\n")
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+        elif self.path == "/stream-wav":
+            payload = make_test_wav()
+            self.send_response(200)
+            self.send_header("Content-Type", "audio/wav")
+            self.send_header("Transfer-Encoding", "chunked")
+            self.send_connection_close()
+            self.end_headers()
+            try:
+                for offset in range(0, len(payload), 2048):
+                    chunk = payload[offset:offset + 2048]
+                    self.wfile.write(("%X\\r\\n" % len(chunk)).encode("ascii"))
+                    self.wfile.write(chunk + b"\\r\\n")
+                    self.wfile.flush()
+                self.wfile.write(b"0\\r\\n\\r\\n")
                 self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 pass
