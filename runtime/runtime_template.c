@@ -27,6 +27,9 @@
 #endif
 
 bool ylgui_api_init(void);
+#ifdef YLANG_USE_VOICE
+void ylvoice_shutdown(void);
+#endif
 bool ylvoice_init(void);
 bool ylvoice_play(const char *);
 void ylvoice_pause(void);
@@ -77,6 +80,9 @@ static size_t yl_saturating_add_size(size_t left, size_t right) {
 }
 
 static void yl_cleanup(void) {
+#ifdef YLANG_USE_VOICE
+    ylvoice_shutdown();
+#endif
     if (yl_memory_stats_enabled()) {
         fprintf(stderr,
                 "YLang memory stats: tracked_allocations=%zu tracked_bytes=%zu\n",
