@@ -1,0 +1,17 @@
+function main() -> int {
+    if (not tui.init()) { return 1; }
+    if (tui.width() < 1 or tui.height() < 1) {
+        tui.shutdown();
+        return 2;
+    }
+    tui.clear();
+    if (not tui.set_color(39, 16)) { tui.shutdown(); return 3; }
+    if (not tui.draw_box(1, 1, 24, 5, "smoke")) { tui.shutdown(); return 4; }
+    if (not tui.progress_bar(2, 3, 20, 3, 4)) { tui.shutdown(); return 5; }
+    tui.move_to(2, 4);
+    tui.println("std.tui works");
+    tui.reset_style();
+    tui.sleep_ms(1);
+    tui.shutdown();
+    return 0;
+}
