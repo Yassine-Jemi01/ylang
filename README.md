@@ -219,6 +219,10 @@ ylang fix <file.yl> -o <fixed.yl>
 - `emit-c` writes the generated C source so it can be inspected.
 - `fix` applies only the currently supported high-confidence fix (`pritn(...)` to `print(...)`) and requires `-o`. The output is written to the requested path; always run `check` on it. This is intentionally not a general-purpose automatic repair engine.
 
+## Terminal UI (built in)
+
+YLang includes a dependency-free `std.tui` namespace for terminal applications. It provides terminal lifecycle management, raw key input, screen dimensions, cursor movement, ANSI colors, boxes, and progress bars. The C backend supports it without SDL2 or other external libraries; the experimental NASM backend rejects TUI calls explicitly. See [the Terminal UI guide](docs/TUI.md).
+
 ## Optional GUI runtime (SDL2)
 
 YLang includes an optional SDL2-backed GUI namespace for `.yl` programs: `gui.init()`, `gui.create_window(...)`, `gui.poll()`, `gui.clear(...)`, `gui.draw_rect(...)`, `gui.present()`, `gui.last_error()`, `gui.close()`, and `gui.shutdown()`. The compiler checks argument types without requiring SDL2; native builds that use `gui.*` need SDL2 development files and `pkg-config`. Linux and macOS remain the primary tested targets; native Windows x86-64 with MinGW-w64 is experimental. See the [Windows setup guide](docs/WINDOWS.md) for its tested scope and limitations.
