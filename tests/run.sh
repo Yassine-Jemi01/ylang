@@ -27,6 +27,10 @@ def write_nested(path, depth):
 
 write_nested("build/nesting-valid.yl", 100)
 write_nested("build/nesting-too-deep.yl", 257)
+chain = ["fn main() -> int {", "if (true) {}"]
+chain.extend("else if (true) {}" for _ in range(257))
+chain.extend(["else { return 0; }", "return 0;", "}"])
+Path("build/nesting-else-if-too-deep.yl").write_text("\\n".join(chain) + "\\n", encoding="utf-8")
 PY
 ./build/ylang build build/nesting-valid.yl -o build/nesting-valid >/dev/null
 ./build/nesting-valid >/dev/null
@@ -35,6 +39,11 @@ if ./build/ylang check build/nesting-too-deep.yl > build/nesting-too-deep.out 2>
     exit 1
 fi
 grep -q "Maximum statement nesting depth exceeded" build/nesting-too-deep.out
+if ./build/ylang check build/nesting-else-if-too-deep.yl > build/nesting-else-if-too-deep.out 2>&1; then
+    echo "FAIL: parser accepted an excessive else-if chain" >&2
+    exit 1
+fi
+grep -q "Maximum statement nesting depth exceeded" build/nesting-else-if-too-deep.out
 
 # Diagnostics must cap output, bound long source excerpts, and escape terminal controls.
 "$PYTHON" - <<'PY'
