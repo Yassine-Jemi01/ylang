@@ -1661,6 +1661,14 @@ true
 true
 EOF
 diff -u build/binary-buffer-dynamic.expected build/binary-buffer-dynamic.stdout
+# Binary buffer append supports chunked streaming downloads without text conversion.
+rm -f build/buffer-append.bin
+./build/ylang check tests/binary-buffer-append.yl >/dev/null
+./build/ylang build tests/binary-buffer-append.yl -o build/test-binary-buffer-append >/dev/null
+./build/test-binary-buffer-append > build/binary-buffer-append.stdout
+printf '2\\n2\\n4\\n' > build/binary-buffer-append.expected
+diff -u build/binary-buffer-append.expected build/binary-buffer-append.stdout
+
 
 # Native std.json parser, validation, object/array access, escaping and errors.
 ./build/ylang check tests/json.yl >/dev/null
