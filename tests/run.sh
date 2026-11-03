@@ -36,6 +36,33 @@ if ./build/ylang check build/nesting-too-deep.yl > build/nesting-too-deep.out 2>
 fi
 grep -q "Maximum statement nesting depth exceeded" build/nesting-too-deep.out
 
+# Diagnostics must cap output, bound long source excerpts, and escape terminal controls.
+"$PYTHON" - <<'PY'
+from pathlib import Path
+import subprocess
+
+name = "build/bad-\\x1b[2J.yl"
+Path(name).write_bytes(
+    b"fn main() -> int {\\n    " + b"\\x01" * 5000 +
+    b"\\n    return 0;\\n}\\n"
+)
+result = subprocess.run(
+    ["./build/ylang", "check", name],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    timeout=5,
+)
+assert result.returncode != 0
+assert len(result.stderr) < 1_000_000, len(result.stderr)
+assert b"too many errors" in result.stderr
+assert b":2:5" in result.stderr
+assert b"\\x1b" in result.stderr
+assert b"\\x01" in result.stderr
+assert b"\\x1b" not in result.stderr.replace(b"\\\\x1b", b"")
+assert b"\\x1b" not in result.stderr and b"\\x07" not in result.stderr
+assert b"\\r" not in result.stderr
+PY
+
 ./build/ylang build examples/type-conversions.yl -o build/test-type-conversions >/dev/null
 ./build/test-type-conversions > build/type-conversions.out
 diff -u tests/expected-type-conversions.txt build/type-conversions.out
