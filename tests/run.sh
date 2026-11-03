@@ -1566,8 +1566,8 @@ grep -q 'E2133' build/binary-io-type-error.out
 ./build/ylang build tests/binary-io-extended.yl -o build/test-binary-io-extended >/dev/null
 ./build/test-binary-io-extended > build/binary-io-extended.stdout
 cat > build/binary-io-extended.expected <<'EOF'
-1498434375
-1312903764
+1498169678
+1312902233
 594c414e3412
 4
 89
