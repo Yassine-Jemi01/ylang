@@ -1,5 +1,7 @@
 #include "ylang/voice.h"
 
+#include <SDL.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,9 +60,17 @@ int main(void)
     if (!ylvoice_is_playing()) return fail("music did not enter the playing state");
 
     ylvoice_pause();
+    if (!ylvoice_is_paused()) return fail("pause state was not reported");
     ylvoice_resume();
+    if (ylvoice_is_paused()) return fail("resume did not clear the paused state");
+    SDL_Delay(2100U);
+    if (!ylvoice_is_finished()) return fail("natural playback completion was not reported");
+    if (ylvoice_is_playing()) return fail("completed music still reports as playing");
+
+    if (!ylvoice_play(path)) return fail("replay after completion failed");
     ylvoice_stop();
     if (ylvoice_is_playing()) return fail("stop did not stop playback");
+    if (ylvoice_is_finished()) return fail("explicit stop was incorrectly reported as natural completion");
 
     if (ylvoice_set_volume(101)) return fail("volume above 100 was accepted");
     if (strstr(ylvoice_last_error(), "volume") == NULL)
