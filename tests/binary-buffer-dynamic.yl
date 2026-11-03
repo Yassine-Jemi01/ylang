@@ -1,0 +1,31 @@
+function main() -> int {
+    let int buffer = io.buffer_new(2);
+    print(buffer > 0);
+    print(io.buffer_length(buffer));
+    print(io.buffer_capacity(buffer));
+    print(io.buffer_push(buffer, 65));
+    print(io.buffer_push(buffer, 66));
+    print(io.buffer_push(buffer, 255));
+    print(io.buffer_length(buffer));
+    print(io.buffer_capacity(buffer));
+    print(io.buffer_get(buffer, 2));
+    print(io.buffer_set(buffer, 1, 67));
+    print(io.buffer_resize(buffer, 5));
+    print(io.buffer_length(buffer));
+    print(io.buffer_capacity(buffer));
+    print(io.buffer_get(buffer, 3));
+    print(io.buffer_save("build/dynamic-buffer-test.bin", 0, buffer));
+    print(io.binary_size("build/dynamic-buffer-test.bin"));
+
+    let int loaded = io.buffer_load("build/dynamic-buffer-test.bin", 1, 3);
+    print(io.buffer_length(loaded));
+    print(io.buffer_get(loaded, 0));
+    print(io.buffer_get(loaded, 1));
+    print(io.buffer_get(loaded, 2));
+    print(io.buffer_clear(loaded));
+    print(io.buffer_length(loaded));
+    print(io.buffer_free(loaded));
+    print(io.buffer_free(buffer));
+    print(io.buffer_length(buffer));
+    return 0;
+}
