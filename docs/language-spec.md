@@ -322,12 +322,16 @@ lowering is implemented.
 
 ## Binary file I/O (experimental)
 
-The optional binary file helpers are `io.binary_size(path)`, `io.read_u8(path, offset)`, `io.write_u8(path, offset, value)`, `io.read_binary_hex(path, offset, length)`, and `io.write_binary_hex(path, offset, hex)`. They operate on raw bytes and are separate from the text-only `io.read_file`/`io.write_file` functions. Offsets are zero-based. Size and byte reads return `-1` on failure or EOF; write operations return a boolean. Hex reads return an `owned_string` containing lowercase hex and are limited to 16 MiB per call. Hex writes require an even number of valid hexadecimal digits, overwrite from the given offset, and do not truncate trailing file contents. The API is synchronous and experimental; it does not yet expose byte arrays, streaming handles, or endian-aware scalar operations.
+The optional `byte` scalar type is an unsigned 8-bit integer. `byte(value)` checks that an `int` is in the range 0..255 and returns a byte; an out-of-range conversion terminates with a runtime error. Fixed arrays can be declared as `let byte data[] = [byte(0), byte(255)];`.
 
-## JSON standard library
+The binary file API includes `io.binary_size`, `io.read_u8`, `io.write_u8`, `io.read_bytes`, `io.write_bytes`, `io.read_binary_hex`, and `io.write_binary_hex`. Buffer functions accept a named byte array and return a byte count, or `-1` on error. Hex helpers remain limited to 16 MiB per call.
 
-The native `json.*` namespace supports validation and access to serialized JSON text. Documents are stored as `owned_string` values. The API includes `json.parse`, `json.valid`, `json.stringify`, `json.get`, typed object getters, `json.has`, `json.array_length`, `json.at`, `json.escape`, and `json.last_error`. See [the JSON guide](JSON.md) for exact signatures and limits. The current implementation does not yet expose a typed JSON DOM or object/array builders.
+Endian-aware scalar helpers are available for unsigned 16-, 32-, and 64-bit values in both little- and big-endian forms: `io.read_u16_le/be`, `io.read_u32_le/be`, `io.read_u64_le/be` and matching `io.write_u16_le/be`, `io.write_u32_le/be`, `io.write_u64_le/be`. 64-bit reads return the raw bit pattern through signed `int`, so values with the high bit set appear negative; `-1` is also the failure sentinel.
 
+Streaming uses `io.stream_open_read(path)`, `io.stream_open_write(path)`, `io.stream_read(handle, byte_array)`, `io.stream_write(handle, byte_array)`, and `io.stream_close(handle)`. Stream reads return zero at EOF and `-1` on error. The runtime supports up to 64 simultaneous streams and closes remaining handles during normal cleanup. Streaming is synchronous and currently has no seek or async operation.
+
+All these facilities are experimental, synchronous, and supported by the C backend only. They do not yet provide dynamic byte buffers, slices, memory mapping, or async streams. Text file APIs remain separate.
+ 
 ## 12. Unsupported features and implementation limits
 
 The following are not supported by the current language subset: classes, methods on structs, inheritance, payload enums, generic `Option<T>`/`Result<T, E>`, exception syntax (`try`/`catch`), generics, raw pointers/references, returning arrays, nested/const arrays, and a dedicated LLVM/native backend. Typed structs and enums are implemented as experimental extensions described in [the struct reference](STRUCTS.md) and [the enum reference](ENUMS.md); they are not part of the stable-core compatibility guarantee. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
