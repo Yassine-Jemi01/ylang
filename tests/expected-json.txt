@@ -1,0 +1,13 @@
+true
+YLang
+23
+true
+false
+3
+2
+hello
+world
+{"name":"YLang","version":23,"enabled":true,"items":[1,2,3],"message":"hello\nworld"}
+"line\nquote\""
+false
+Invalid JSON syntax
