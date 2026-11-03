@@ -647,6 +647,9 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "tui.width") == 0) return "yltui_api_width";
     if (strcmp(name, "tui.height") == 0) return "yltui_api_height";
     if (strcmp(name, "tui.move_to") == 0) return "yltui_api_move_to";
+    if (strcmp(name, "tui.write_at") == 0) return "yltui_api_write_at";
+    if (strcmp(name, "tui.clear_line") == 0) return "yltui_api_clear_line";
+    if (strcmp(name, "tui.fill_rect") == 0) return "yltui_api_fill_rect";
     if (strcmp(name, "tui.write") == 0) return "yltui_api_write";
     if (strcmp(name, "tui.println") == 0) return "yltui_api_println";
     if (strcmp(name, "tui.read_key") == 0) return "yltui_api_read_key";
