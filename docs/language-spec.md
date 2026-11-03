@@ -44,7 +44,8 @@ let const int LIMIT = 100;
 | `int` | Signed 64-bit integer |
 | `float` | 64-bit floating-point value |
 | `bool` | `true` or `false` |
-| `char` | One byte; ASCII-oriented character value |\n| `byte` | Unsigned 8-bit integer (0–255); experimental Binary I/O type |
+| `char` | One byte; ASCII-oriented character value |
+| `byte` | Unsigned 8-bit integer (0–255); experimental Binary I/O type |
 | `string` | Immutable string data represented as a C string by the current backend |
 | `void` | Function return type only; cannot be used as a variable type |
 
@@ -78,11 +79,13 @@ let int n = 42;
 let float ratio = 1.25;
 let bool ready = true;
 let char initial = 'Y';
-let string message = "Hello\n";
+let string message = "Hello
+";
 let string greeting = f"Hello {message}";
 ```
 
-`char` is one byte, not a Unicode scalar. Integer literals support decimal notation and hexadecimal notation such as `0xFF`; floating-point literals support decimal notation and scientific notation such as `1e3` or `2.5e-4`. A string literal must be terminated. F-strings begin with `f"` and interpolate expressions inside `{}`. Supported interpolations include variables and operators. Function calls and assignments are not allowed inside interpolation expressions; compute the value in a preceding statement. Quoted string and character literals decode `\n`, `\r`, `\t`, `\0`, `\\`, `\'`, `\"`, `\{`, `\}`, `\/`, and `\xNN`. A hexadecimal escape consumes exactly two hexadecimal digits, so `\x4142` means byte `0x41` followed by `42`. Unknown or incomplete escapes drop the backslash and keep the following character; for example, `\q` becomes `q`. Character literals must decode to exactly one byte. F-strings apply the same escapes to literal text. Literal braces can also be escaped with doubled braces (`{{` and `}}`).
+`char` is one byte, not a Unicode scalar. Integer literals support decimal notation and hexadecimal notation such as `0xFF`; floating-point literals support decimal notation and scientific notation such as `1e3` or `2.5e-4`. A string literal must be terminated. F-strings begin with `f"` and interpolate expressions inside `{}`. Supported interpolations include variables and operators. Function calls and assignments are not allowed inside interpolation expressions; compute the value in a preceding statement. Quoted string and character literals decode `
+`, `\r`, `\t`, `\0`, `\\`, `\'`, `\"`, `\{`, `\}`, `\/`, and `\xNN`. A hexadecimal escape consumes exactly two hexadecimal digits, so `\x4142` means byte `0x41` followed by `42`. Unknown or incomplete escapes drop the backslash and keep the following character; for example, `\q` becomes `q`. Character literals must decode to exactly one byte. F-strings apply the same escapes to literal text. Literal braces can also be escaped with doubled braces (`{{` and `}}`).
 
 ## 6. Output
 
