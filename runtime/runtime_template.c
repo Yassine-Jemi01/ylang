@@ -2397,6 +2397,19 @@ static int64_t yl_binary_buffer_save(const char *path, int64_t offset, int64_t i
     if (fclose(file) != 0) failed = true;
     return failed ? -1 : (int64_t)count;
 }
+static int64_t yl_binary_buffer_append_file(const char *path, int64_t id) {
+    YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
+    size_t base = 0U;
+    YLBinaryBuffer *root = yl_binary_buffer_resolve(buffer, &base);
+    if (!path || !root) return -1;
+    FILE *file = fopen(path, "ab");
+    if (!file) return -1;
+    size_t count = buffer->length
+        ? fwrite(root->data + base, 1U, buffer->length, file) : 0U;
+    bool failed = count != buffer->length || ferror(file) != 0;
+    if (fclose(file) != 0) failed = true;
+    return failed ? -1 : (int64_t)count;
+}
 static void yl_binary_buffer_shutdown(void) {
     for (size_t i = 0; i < YL_BINARY_BUFFER_SLOTS; i++) {
         if (yl_binary_buffers[i].parent_id == 0)
