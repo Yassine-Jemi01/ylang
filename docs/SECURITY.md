@@ -2,6 +2,10 @@
 
 **YLang is a compiled toolchain, not a sandbox.** A YLang executable runs with the privileges of the user who starts it. The compiler does not isolate file access, processes, network access, or imported native code.
 
+## Imported source files and diagnostics
+
+Import paths may resolve to absolute paths or files outside the importing directory, including libraries found through `YLANG_PATH`. Imports are not a filesystem sandbox and the compiler must read imported source files to compile them. Diagnostics originating in imported files therefore retain the file path, line, column, and diagnostic code, but redact source excerpts and source-derived help text. Root source diagnostics continue to show their local source excerpt. Do not compile untrusted projects in an environment where they can access sensitive files or credentials; use filesystem permissions and an isolated build environment when working with untrusted source.
+
 ## HTTP/HTTPS client
 
 The experimental C-backend client uses libcurl and applies these defaults:
