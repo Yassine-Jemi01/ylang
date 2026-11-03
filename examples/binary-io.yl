@@ -1,0 +1,20 @@
+function main() -> int {
+    let string path = "header.bin";
+
+    if (!io.write_binary_hex(path, 0, "594c414e4700ff")) {
+        print("Could not write binary header.");
+        return 1;
+    }
+
+    print("Size:", io.binary_size(path));
+    print("Magic bytes:", io.read_binary_hex(path, 0, 4));
+    print("First byte:", io.read_u8(path, 0));
+
+    if (!io.write_u8(path, 4, 50)) {
+        print("Could not update byte.");
+        return 1;
+    }
+
+    print("Updated:", io.read_binary_hex(path, 0, 7));
+    return 0;
+}
