@@ -78,10 +78,13 @@ static size_t yl_saturating_add_size(size_t left, size_t right) {
     return SIZE_MAX - left < right ? SIZE_MAX : left + right;
 }
 
+static void yl_binary_stream_shutdown(void);
+
 static void yl_cleanup(void) {
 #ifdef YLANG_USE_VOICE
     ylvoice_shutdown();
 #endif
+    yl_binary_stream_shutdown();
     if (yl_memory_stats_enabled()) {
         fprintf(stderr,
                 "YLang memory stats: tracked_allocations=%zu tracked_bytes=%zu\n",
@@ -1191,6 +1194,152 @@ static bool yl_binary_write_hex(const char *path, int64_t offset, const char *he
     }
     if (fclose(file) != 0) ok = false;
     return ok;
+}
+
+static uint8_t yl_to_byte(int64_t value) {
+    if (value < 0 || value > 255) yl_runtime_error("byte conversion is outside the range 0..255");
+    return (uint8_t)value;
+}
+static int64_t yl_binary_read_bytes(const char *path, int64_t offset,
+                                    uint8_t *buffer, size_t capacity) {
+    if (!path || (!buffer && capacity != 0U) || offset < 0 ||
+        (uint64_t)offset > (uint64_t)LONG_MAX) return -1;
+    FILE *file = fopen(path, "rb");
+    if (!file) return -1;
+    bool positioned = yl_binary_seek(file, offset);
+    size_t count = positioned && capacity ? fread(buffer, 1U, capacity, file) : 0U;
+    bool failed = !positioned || ferror(file) != 0;
+    fclose(file);
+    return failed ? -1 : (int64_t)count;
+}
+static int64_t yl_binary_write_bytes(const char *path, int64_t offset,
+                                     const uint8_t *buffer, size_t length) {
+    if (!path || (!buffer && length != 0U) || offset < 0 ||
+        (uint64_t)offset > (uint64_t)LONG_MAX) return -1;
+    FILE *file = fopen(path, "r+b");
+    if (!file) file = fopen(path, "w+b");
+    if (!file) return -1;
+    bool positioned = yl_binary_seek(file, offset);
+    size_t count = positioned && length ? fwrite(buffer, 1U, length, file) : 0U;
+    bool failed = !positioned || ferror(file) != 0;
+    if (fclose(file) != 0) failed = true;
+    return failed ? -1 : (int64_t)count;
+}
+static bool yl_binary_read_scalar(const char *path, int64_t offset,
+                                  unsigned width, bool big_endian,
+                                  uint64_t *value) {
+    if (!path || !value || offset < 0 || width == 0U || width > 8U) return false;
+    FILE *file = fopen(path, "rb");
+    if (!file) return false;
+    bool ok = yl_binary_seek(file, offset);
+    uint8_t bytes[8] = {0};
+    if (ok) ok = fread(bytes, 1U, width, file) == width;
+    if (fclose(file) != 0) ok = false;
+    if (!ok) return false;
+    uint64_t result = 0U;
+    for (unsigned i = 0; i < width; i++) {
+        unsigned source = big_endian ? i : (width - 1U - i);
+        result = (result << 8U) | (uint64_t)bytes[source];
+    }
+    *value = result;
+    return true;
+}
+static bool yl_binary_write_scalar(const char *path, int64_t offset,
+                                   unsigned width, bool big_endian,
+                                   uint64_t value) {
+    if (!path || offset < 0 || width == 0U || width > 8U) return false;
+    FILE *file = fopen(path, "r+b");
+    if (!file) file = fopen(path, "w+b");
+    if (!file) return false;
+    bool ok = yl_binary_seek(file, offset);
+    for (unsigned i = 0; ok && i < width; i++) {
+        unsigned shift = big_endian ? (width - 1U - i) * 8U : i * 8U;
+        if (fputc((int)((value >> shift) & UINT64_C(0xff)), file) == EOF) ok = false;
+    }
+    if (fclose(file) != 0) ok = false;
+    return ok;
+}
+#define YL_DEFINE_BINARY_SCALAR(bits, width) \
+static int64_t yl_binary_read_u##bits##_le(const char *p, int64_t o) { \
+    uint64_t v = 0U; return yl_binary_read_scalar(p, o, width, false, &v) ? (int64_t)v : -1; \
+} \
+static int64_t yl_binary_read_u##bits##_be(const char *p, int64_t o) { \
+    uint64_t v = 0U; return yl_binary_read_scalar(p, o, width, true, &v) ? (int64_t)v : -1; \
+} \
+static bool yl_binary_write_u##bits##_le(const char *p, int64_t o, int64_t v) { \
+    return yl_binary_write_scalar(p, o, width, false, (uint64_t)v); \
+} \
+static bool yl_binary_write_u##bits##_be(const char *p, int64_t o, int64_t v) { \
+    return yl_binary_write_scalar(p, o, width, true, (uint64_t)v); \
+}
+YL_DEFINE_BINARY_SCALAR(16, 2U)
+YL_DEFINE_BINARY_SCALAR(32, 4U)
+YL_DEFINE_BINARY_SCALAR(64, 8U)
+#undef YL_DEFINE_BINARY_SCALAR
+
+#define YL_BINARY_STREAM_SLOTS 64U
+typedef struct {
+    int64_t id;
+    FILE *file;
+} YLBinaryStream;
+static YLBinaryStream yl_binary_streams[YL_BINARY_STREAM_SLOTS];
+static int64_t yl_binary_next_stream_id = 1;
+static int64_t yl_binary_stream_open(const char *path, const char *mode) {
+    if (!path) return -1;
+    size_t slot = YL_BINARY_STREAM_SLOTS;
+    for (size_t i = 0; i < YL_BINARY_STREAM_SLOTS; i++) {
+        if (!yl_binary_streams[i].file) { slot = i; break; }
+    }
+    if (slot == YL_BINARY_STREAM_SLOTS || yl_binary_next_stream_id <= 0 ||
+        yl_binary_next_stream_id == INT64_MAX) return -1;
+    FILE *file = fopen(path, mode);
+    if (!file) return -1;
+    int64_t id = yl_binary_next_stream_id++;
+    yl_binary_streams[slot].id = id;
+    yl_binary_streams[slot].file = file;
+    return id;
+}
+static int64_t yl_binary_stream_open_read(const char *path) {
+    return yl_binary_stream_open(path, "rb");
+}
+static int64_t yl_binary_stream_open_write(const char *path) {
+    return yl_binary_stream_open(path, "wb");
+}
+static YLBinaryStream *yl_binary_stream_find(int64_t id) {
+    if (id <= 0) return NULL;
+    for (size_t i = 0; i < YL_BINARY_STREAM_SLOTS; i++)
+        if (yl_binary_streams[i].file && yl_binary_streams[i].id == id)
+            return &yl_binary_streams[i];
+    return NULL;
+}
+static int64_t yl_binary_stream_read(int64_t id, uint8_t *buffer, size_t capacity) {
+    YLBinaryStream *stream = yl_binary_stream_find(id);
+    if (!stream || (!buffer && capacity != 0U)) return -1;
+    size_t count = capacity ? fread(buffer, 1U, capacity, stream->file) : 0U;
+    return ferror(stream->file) ? -1 : (int64_t)count;
+}
+static int64_t yl_binary_stream_write(int64_t id, const uint8_t *buffer, size_t length) {
+    YLBinaryStream *stream = yl_binary_stream_find(id);
+    if (!stream || (!buffer && length != 0U)) return -1;
+    size_t count = length ? fwrite(buffer, 1U, length, stream->file) : 0U;
+    return ferror(stream->file) ? -1 : (int64_t)count;
+}
+static bool yl_binary_stream_close(int64_t id) {
+    YLBinaryStream *stream = yl_binary_stream_find(id);
+    if (!stream) return false;
+    FILE *file = stream->file;
+    stream->file = NULL;
+    stream->id = 0;
+    return fclose(file) == 0;
+}
+static void yl_binary_stream_shutdown(void) {
+    for (size_t i = 0; i < YL_BINARY_STREAM_SLOTS; i++) {
+        if (yl_binary_streams[i].file) {
+            fclose(yl_binary_streams[i].file);
+            yl_binary_streams[i].file = NULL;
+            yl_binary_streams[i].id = 0;
+        }
+    }
 }
 static bool yl_path_exists(const char *path) {
     struct stat info;
