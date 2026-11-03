@@ -79,6 +79,8 @@ static bool asm_type_supported(AsmContext *ctx, YType type, Token token,
             return asm_reject(ctx, token, "owned strings (use the C backend)");
         case TYPE_HTTP_TASK:
             return asm_reject(ctx, token, "HTTP async tasks (use the C backend)");
+        case TYPE_HTTP_STREAM:
+            return asm_reject(ctx, token, "HTTP streams (use the C backend)");
         case TYPE_VOID:
             if (allow_void) return true;
             return asm_reject(ctx, token, "void values");
