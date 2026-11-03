@@ -28,8 +28,9 @@ void diagnostic(Compiler *c, Token token, const char *level,
         c->warning_count++;
     }
     if (c->quiet_diagnostics) return;
-    if (c->error_count > YLANG_MAX_DIAGNOSTICS) {
-        if (c->error_count == YLANG_MAX_DIAGNOSTICS + 1U) {
+    unsigned diagnostic_count = c->error_count + c->warning_count;
+    if (diagnostic_count > YLANG_MAX_DIAGNOSTICS) {
+        if (diagnostic_count == YLANG_MAX_DIAGNOSTICS + 1U) {
             fputs("error: too many errors; stopping after 100 diagnostics.\n\n", stderr);
         }
         return;
