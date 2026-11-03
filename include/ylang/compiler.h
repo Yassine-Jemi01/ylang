@@ -33,7 +33,8 @@ typedef enum {
     TYPE_BORROWED_STRING,
     TYPE_OWNED_STRING,
     TYPE_VOID,
-    TYPE_HTTP_TASK
+    TYPE_HTTP_TASK,
+    TYPE_HTTP_STREAM
 } YType;
 
 /* User-defined enum and struct types occupy disjoint identity ranges. */
