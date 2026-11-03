@@ -79,7 +79,7 @@ void diagnostic(Compiler *c, Token token, const char *level,
     }
     const char *line_end = line_start;
     while (shown_source && line_end < shown_source + shown_source_length &&
-           *line_end && *line_end != '\n' && *line_end != '\\r') line_end++;
+           *line_end && *line_end != '\n' && *line_end != '\r') line_end++;
     if (shown_source && line_start < shown_source + shown_source_length &&
         *line_start && current_line == line) {
         size_t source_line_length = (size_t)(line_end - line_start);
