@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include <math.h>
 #include <errno.h>
+#include <time.h>
 #include <sys/stat.h>
 #ifdef YLANG_USE_HTTP
 #include <curl/curl.h>
@@ -56,6 +57,7 @@ void yltui_api_write(const char *);
 void yltui_api_println(const char *);
 int64_t yltui_api_read_key(void);
 bool yltui_api_key_available(void);
+void yltui_api_sleep_ms(int64_t);
 bool yltui_api_set_color(int64_t, int64_t);
 void yltui_api_reset_style(void);
 void yltui_api_hide_cursor(void);
@@ -157,6 +159,18 @@ int64_t yltui_api_read_key(void) {
     return (int64_t)key;
 #else
     unsigned char key=0; ssize_t n=read(STDIN_FILENO,&key,1U); return n==1?(int64_t)key:-1;
+#endif
+}
+void yltui_api_sleep_ms(int64_t milliseconds) {
+    if (milliseconds <= 0) return;
+#ifdef _WIN32
+    if ((uint64_t)milliseconds > (uint64_t)UINT32_MAX) milliseconds = (int64_t)UINT32_MAX;
+    Sleep((DWORD)milliseconds);
+#else
+    struct timespec delay;
+    delay.tv_sec = (time_t)(milliseconds / 1000);
+    delay.tv_nsec = (long)((milliseconds % 1000) * 1000000);
+    while (nanosleep(&delay, &delay) != 0 && errno == EINTR) { }
 #endif
 }
 bool yltui_api_set_color(int64_t fg,int64_t bg) {
