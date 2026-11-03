@@ -1162,6 +1162,9 @@ static void emit_print_value(FILE *out, Expr *expr, unsigned indent)
         case TYPE_CHAR:
             fputs("printf(\"%c\", (int)(", out); emit_expr_to_file(out, expr);
             fputs("));\n", out); break;
+        case TYPE_BYTE:
+            fputs("printf(\"%u\", (unsigned)(", out); emit_expr_to_file(out, expr);
+            fputs("));\n", out); break;
         case TYPE_FLOAT:
             fputs("printf(\"%.17g\", (double)(", out); emit_expr_to_file(out, expr);
             fputs("));\n", out); break;
