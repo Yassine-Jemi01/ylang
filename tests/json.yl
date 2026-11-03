@@ -1,5 +1,5 @@
 function main() -> int {
-    let owned_string document = json.parse("{\"name\":\"YLang\",\"version\":23,\"enabled\":true,\"items\":[1,2,3],\"message\":\"hello\\nworld\"}");
+    let owned_string document = json.parse("{\"name\":\"YLang\",\"version\":23,\"price\":2.5,\"unicode\":\"\\uD83D\\uDE00\",\"enabled\":true,\"items\":[1,2,3],\"message\":\"hello\\nworld\"}");
     let owned_string items = json.get(document, "items");
     print(json.valid(document));
     print(json.get_string(document, "name"));
