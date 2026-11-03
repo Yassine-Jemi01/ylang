@@ -1698,6 +1698,8 @@ test ! -e build/asm-unsupported.asm
 ./build/ylang emit-c tests/tui-smoke.yl -o build/tui-generated.c >/dev/null
 grep -q 'yltui_api_draw_box' build/tui-generated.c
 grep -q 'yltui_api_read_key' build/tui-generated.c
+grep -q 'yltui_api_fill_rect' build/tui-generated.c
+grep -q 'yltui_api_write_at' build/tui-generated.c
 ./build/ylang build tests/tui-smoke.yl -o build/test-tui >/dev/null
 ./build/test-tui > /dev/null
 if ./build/ylang check tests/tui-type-error.yl > build/tui-type-error.out 2>&1; then
