@@ -338,6 +338,26 @@ typedef struct {
     YType args[7];
 } GuiBuiltin;
 
+typedef GuiBuiltin VoiceBuiltin;
+static const VoiceBuiltin voice_builtins[] = {
+    {"voice.init", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"voice.play", 1, TYPE_BOOL, {TYPE_STRING}},
+    {"voice.pause", 0, TYPE_VOID, {TYPE_VOID}},
+    {"voice.resume", 0, TYPE_VOID, {TYPE_VOID}},
+    {"voice.stop", 0, TYPE_VOID, {TYPE_VOID}},
+    {"voice.is_playing", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"voice.set_volume", 1, TYPE_BOOL, {TYPE_INT}},
+    {"voice.last_error", 0, TYPE_STRING, {TYPE_VOID}},
+    {"voice.shutdown", 0, TYPE_VOID, {TYPE_VOID}}
+};
+
+static const VoiceBuiltin *find_voice_builtin(const char *name)
+{
+    for (size_t i = 0; i < sizeof(voice_builtins) / sizeof(voice_builtins[0]); i++)
+        if (strcmp(name, voice_builtins[i].name) == 0) return &voice_builtins[i];
+    return NULL;
+}
+
 static const GuiBuiltin gui_builtins[] = {
     {"gui.init", 0, TYPE_BOOL, {TYPE_VOID}},
     {"gui.create_window", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
