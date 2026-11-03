@@ -962,8 +962,12 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                 if (!stream) sb_append(sb, ", ");
                 emit_expr(sb, buffer_arg);
                 sb_append(sb, ", ");
-                if (buffer) sb_appendf(sb, "((size_t)%zu)", buffer->array_length);
-                else sb_append(sb, "((size_t)0)");
+                if (buffer && buffer->array_length > 0U)
+                    sb_appendf(sb, "((size_t)%zu)", buffer->array_length);
+                else if (buffer)
+                    sb_appendf(sb, "((size_t)%s_len)", buffer->c_name);
+                else
+                    sb_append(sb, "((size_t)0)");
                 sb_append(sb, ")");
                 break;
             }
