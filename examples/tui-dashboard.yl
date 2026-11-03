@@ -1,0 +1,18 @@
+function main() -> int {
+    if (not tui.init()) { print("Terminal initialization failed"); return 1; }
+    tui.clear();
+    tui.set_color(39, 16);
+    tui.draw_box(2, 2, 48, 12, "YLang Package Manager");
+    tui.move_to(4, 4);
+    tui.println("Installed packages: 24");
+    tui.move_to(4, 6);
+    tui.write("Update progress");
+    tui.progress_bar(4, 7, 38, 18, 24);
+    tui.move_to(4, 10);
+    tui.println("Press any key to exit");
+    while (not tui.key_available()) { tui.sleep_ms(10); }
+    let int key = tui.read_key();
+    tui.reset_style();
+    tui.shutdown();
+    return 0;
+}
