@@ -156,6 +156,9 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
             }
             return validate_expr(ctx, expr->as.assign.right);
         case EXPR_CALL:
+            if (strncmp(expr->as.call.name, "tui.", 4) == 0) {
+                return asm_reject(ctx, expr->token, "TUI calls (use the C backend)");
+            }
             if (strncmp(expr->as.call.name, "gui.", 4) == 0) {
                 return asm_reject(ctx, expr->token, "GUI calls (use the C backend with SDL2)");
             }
