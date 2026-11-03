@@ -9,6 +9,7 @@
 | `tui.init()` | `bool` | Enable raw input and disable terminal echo |
 | `tui.shutdown()` | `void` | Restore the terminal's saved input mode |
 | `tui.read_key()` | `int` | Block until a key or supported escape sequence is read |
+| `tui.poll_key()` | `int` | Return a key immediately, or `-1` when no key is available |
 | `tui.width()` / `tui.height()` | `int` | Query current terminal dimensions |
 | `tui.clear()` | `bool` | Clear the screen and move the cursor home |
 | `tui.write(text)` | `bool` | Write text/ANSI sequences and flush stdout |
@@ -31,6 +32,6 @@ Unknown escape sequences return Escape (27). The current implementation does not
 
 Call `tui.init()` before entering the UI loop and always call `tui.shutdown()` before normal exit. The runtime also registers a process-exit restoration handler, so a normal process exit restores the saved terminal mode. Applications should still use a cleanup path for errors and user-requested exits.
 
-The API is synchronous. `tui.read_key()` blocks until input arrives; use `tui.sleep_ms()` when polling audio or other background state to avoid busy loops.
+The API is synchronous. `tui.read_key()` blocks until input arrives; `tui.poll_key()` is nonblocking and returns `-1` when idle. Use `tui.sleep_ms()` between event-loop polls to avoid busy loops.
 
 The C backend is supported. The experimental NASM backend rejects raw TUI calls. POSIX raw-key behavior has a pseudo-terminal integration test; Windows console input is implemented but still requires a dedicated interactive Windows test before claiming parity.
