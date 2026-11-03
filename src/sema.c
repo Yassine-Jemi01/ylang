@@ -442,6 +442,29 @@ static const VoiceBuiltin *find_voice_builtin(const char *name)
     return NULL;
 }
 
+typedef GuiBuiltin TuiBuiltin;
+static const TuiBuiltin tui_builtins[] = {
+    {"tui.init", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"tui.shutdown", 0, TYPE_VOID, {TYPE_VOID}},
+    {"tui.read_key", 0, TYPE_INT, {TYPE_VOID}},
+    {"tui.width", 0, TYPE_INT, {TYPE_VOID}},
+    {"tui.height", 0, TYPE_INT, {TYPE_VOID}},
+    {"tui.clear", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"tui.write", 1, TYPE_BOOL, {TYPE_STRING}},
+    {"tui.set_cursor", 2, TYPE_BOOL, {TYPE_INT, TYPE_INT}},
+    {"tui.hide_cursor", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"tui.show_cursor", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"tui.sleep_ms", 1, TYPE_BOOL, {TYPE_INT}},
+    {"tui.last_error", 0, TYPE_STRING, {TYPE_VOID}}
+};
+
+static const TuiBuiltin *find_tui_builtin(const char *name)
+{
+    for (size_t i = 0; i < sizeof(tui_builtins) / sizeof(tui_builtins[0]); i++)
+        if (strcmp(name, tui_builtins[i].name) == 0) return &tui_builtins[i];
+    return NULL;
+}
+
 static const GuiBuiltin gui_builtins[] = {
     {"gui.init", 0, TYPE_BOOL, {TYPE_VOID}},
     {"gui.create_window", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
@@ -1001,6 +1024,47 @@ static YType check_expr(Checker *checker, Expr *expr)
                             semantic_type_name(c, actual));
                         diagnostic(c, expr->as.call.args[i]->token, "error", "E2132",
                                    "Voice argument type mismatch.", suggestion);
+                    }
+                }
+                expr->type = builtin->result;
+                return expr->type;
+            }
+            if (strncmp(expr->as.call.name, "tui.", 4) == 0) {
+                const TuiBuiltin *builtin = find_tui_builtin(expr->as.call.name);
+                if (!builtin) {
+                    diagnostic(c, expr->token, "error", "E2152",
+                               "Unknown TUI function.",
+                               "Use tui.init, tui.read_key, tui.width, tui.height, tui.clear, tui.write, tui.set_cursor, tui.hide_cursor, tui.show_cursor, tui.sleep_ms, tui.last_error, or tui.shutdown.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (expr->as.call.count != builtin->arity) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion, sizeof(suggestion),
+                        "%s expects %zu argument(s), but received %zu.",
+                        builtin->name, builtin->arity, expr->as.call.count);
+                    diagnostic(c, expr->token, "error", "E2153",
+                               "Incorrect number of TUI arguments.", suggestion);
+                }
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    YType actual = check_expr(checker, expr->as.call.args[i]);
+                    if (actual == TYPE_OWNED_STRING &&
+                        is_owned_temporary_expression(expr->as.call.args[i]) &&
+                        i < builtin->arity && builtin->args[i] == TYPE_STRING) {
+                        diagnose_lost_owned_temporary(c, expr->as.call.args[i]);
+                    }
+                    if (i < builtin->arity && actual != TYPE_ERROR &&
+                        actual != builtin->args[i] &&
+                        !(builtin->args[i] == TYPE_STRING && is_string_type(actual))) {
+                        char suggestion[256];
+                        (void)snprintf(suggestion, sizeof(suggestion),
+                            "Argument %zu of %s expects %s, but received %s.",
+                            i + 1, builtin->name, semantic_type_name(c, builtin->args[i]),
+                            semantic_type_name(c, actual));
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2154",
+                                   "TUI argument type mismatch.", suggestion);
                     }
                 }
                 expr->type = builtin->result;
