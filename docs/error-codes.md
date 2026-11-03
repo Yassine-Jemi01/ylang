@@ -95,6 +95,8 @@ YLang diagnostics include stable codes to help users search documentation and re
 | E2130 | Unknown Voice function. | Check the `voice.*` API documentation. |
 | E2131 | Wrong number of Voice function arguments. | Follow the Voice function's documented signature. |
 | E2132 | Voice function argument type mismatch. | Pass values of the types required by the Voice API. |
-| E2133 | Binary I/O argument type mismatch. | Pass a string path, integer offset/value, or integer stream handle as documented. |\n| E2134 | Invalid byte conversion. | Pass one integer in the inclusive range 0..255 to `byte(value)`. |\n| E2135 | Binary buffer is not a byte array. | Pass a named `byte[]` variable to a buffer or streaming operation. |
+| E2133 | Binary I/O argument type mismatch. | Pass a string path, integer offset/value, or integer stream handle as documented. |
+| E2134 | Invalid byte conversion. | Pass one integer in the inclusive range 0..255 to `byte(value)`. |
+| E2135 | Binary buffer is not a byte array. | Pass a named `byte[]` variable to a buffer or streaming operation. |
 
 Runtime arithmetic and bounds failures currently use descriptive text rather than compiler error codes. Runtime source line and function attribution are not yet implemented.
