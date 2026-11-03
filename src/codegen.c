@@ -604,6 +604,7 @@ static const char *builtin_c_name(const char *name)
     if (math_name) return math_name;
     if (strcmp(name, "json.parse") == 0) return "yl_json_parse";
     if (strcmp(name, "json.stringify") == 0) return "yl_json_stringify";
+    if (strcmp(name, "json.pretty") == 0) return "yl_json_pretty";
     if (strcmp(name, "json.valid") == 0) return "yl_json_valid";
     if (strcmp(name, "json.get") == 0) return "yl_json_get";
     if (strcmp(name, "json.get_string") == 0) return "yl_json_get_string";
