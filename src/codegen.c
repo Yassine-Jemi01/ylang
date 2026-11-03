@@ -565,6 +565,9 @@ static void emit_fstring_expr(StringBuilder *sb, Expr *expr)
                 case TYPE_CHAR:
                     sb_append(&args, "(int)("); emit_expr(&args, embedded); sb_append(&args, ")");
                     break;
+                case TYPE_BYTE:
+                    sb_append(&args, "(unsigned int)("); emit_expr(&args, embedded); sb_append(&args, ")");
+                    break;
                 case TYPE_STRING:
                 case TYPE_BORROWED_STRING:
                 case TYPE_OWNED_STRING:
