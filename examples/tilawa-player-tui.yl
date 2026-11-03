@@ -52,6 +52,14 @@ function main() -> int {
         } else {
             tui.println("  Next Surah");
         }
+        tui.move_to(7, 18);
+        if (selected == 3) {
+            tui.set_color(16, 51);
+            tui.println("> Search Surah / Reciter");
+            tui.reset_style();
+        } else {
+            tui.println("  Search Surah / Reciter");
+        }
         tui.move_to(5, tui.height() - 3);
         tui.println("Up/Down: navigate   Enter: select   Q: quit");
 
@@ -59,16 +67,24 @@ function main() -> int {
             key = tui.read_key();
             if (key == 1001) {
                 selected = selected - 1;
-                if (selected < 0) { selected = 2; }
+                if (selected < 0) { selected = 3; }
             } else if (key == 1002) {
                 selected = selected + 1;
-                if (selected > 2) { selected = 0; }
+                if (selected > 3) { selected = 0; }
             } else if (key == 13) {
                 // Connect these actions to the audio engine in YTilawa.
                 if (selected == 0) { tui.move_to(5, tui.height() - 2); tui.println("Playback action selected"); }
                 if (selected == 1) { tui.move_to(5, tui.height() - 2); tui.println("Previous Surah selected"); }
                 if (selected == 2) { tui.move_to(5, tui.height() - 2); tui.println("Next Surah selected"); }
-                tui.sleep_ms(350);
+                if (selected == 3) {
+                    tui.move_to(5, tui.height() - 2);
+                    let string query = tui.read_line("Search: ", 96);
+                    tui.move_to(5, tui.height() - 1);
+                    tui.println(query);
+                    tui.sleep_ms(700);
+                } else {
+                    tui.sleep_ms(350);
+                }
             } else if (key == 113 || key == 81 || key == 27) {
                 running = false;
             }
