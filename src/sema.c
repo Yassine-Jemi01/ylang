@@ -327,6 +327,7 @@ typedef struct { const char *name; size_t arity; YType result; YType args[2]; } 
 static const JsonBuiltin json_builtins[] = {
     {"json.parse",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID}},
     {"json.stringify",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID}},
+    {"json.pretty",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID}},
     {"json.valid",1,TYPE_BOOL,{TYPE_STRING,TYPE_VOID}},
     {"json.get",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_STRING}},
     {"json.get_string",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_STRING}},
