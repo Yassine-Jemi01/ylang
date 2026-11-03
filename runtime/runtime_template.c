@@ -107,10 +107,10 @@ bool yltui_api_init(void) {
         raw.c_cc[VTIME] = 0;
         if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) != 0) return false;
         yltui_termios_saved = true;
+        yltui_original_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+        if (yltui_original_flags >= 0)
+            (void)fcntl(STDIN_FILENO, F_SETFL, yltui_original_flags | O_NONBLOCK);
     }
-    yltui_original_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-    if (yltui_original_flags >= 0)
-        (void)fcntl(STDIN_FILENO, F_SETFL, yltui_original_flags | O_NONBLOCK);
 #endif
     yltui_initialized = true;
     (void)atexit(yltui_api_shutdown);
@@ -236,10 +236,13 @@ static int64_t yltui_decode_escape(void) {
     }
     /* CSI parameters may include modifiers, e.g. ESC [ 1 ; 5 A. */
     unsigned char final = b;
-    while (final < 0x40 || final > 0x7e) {
+    for (int sequence_length = 0;
+         (final < 0x40 || final > 0x7e) && sequence_length < 16;
+         sequence_length++) {
         if (!yltui_read_byte_timeout(&c, 10)) return 27;
         final = c;
     }
+    if (final < 0x40 || final > 0x7e) return 27;
     switch (final) {
         case 'A': return 1001;
         case 'B': return 1002;
