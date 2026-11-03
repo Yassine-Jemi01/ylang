@@ -700,6 +700,8 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "voice.resume") == 0) return "ylvoice_resume";
     if (strcmp(name, "voice.stop") == 0) return "ylvoice_stop";
     if (strcmp(name, "voice.is_playing") == 0) return "ylvoice_is_playing";
+    if (strcmp(name, "voice.is_paused") == 0) return "ylvoice_is_paused";
+    if (strcmp(name, "voice.is_finished") == 0) return "ylvoice_is_finished";
     if (strcmp(name, "voice.set_volume") == 0) return "ylvoice_set_volume";
     if (strcmp(name, "voice.last_error") == 0) return "ylvoice_last_error";
     if (strcmp(name, "voice.shutdown") == 0) return "ylvoice_shutdown";
