@@ -304,6 +304,7 @@ static bool bind_imports(Compiler *compiler, Module *module)
 
 static bool load_module(Compiler *compiler, Module *module)
 {
+    compiler->module_load_depth++;
     module->loading = true;
     set_module_context(compiler, module);
     unsigned errors_before = compiler->error_count;
@@ -326,6 +327,7 @@ static bool load_module(Compiler *compiler, Module *module)
             if (needed < 0) {
                 fputs("ylang: failed to create a module function name\n", stderr);
                 module->loading = false;
+                compiler->module_load_depth--;
                 return false;
             }
             function->c_name = arena_alloc(&compiler->arena,
@@ -368,6 +370,13 @@ static bool load_module(Compiler *compiler, Module *module)
             continue;
         }
         if (!target) {
+            if (compiler->module_load_depth >= 256U) {
+                diagnostic(compiler, import->token, "error", "E1027",
+                           "Maximum module import depth exceeded.",
+                           "Keep import chains at or below 256 modules; split the dependency graph into shallower modules.");
+                okay = false;
+                continue;
+            }
             size_t source_length = 0;
             char *source = read_module_source(compiler, canonical, &source_length);
             if (!source) {
@@ -393,6 +402,7 @@ static bool load_module(Compiler *compiler, Module *module)
     module->loading = false;
     module->loaded = okay;
     set_module_context(compiler, module);
+    compiler->module_load_depth--;
     return okay;
 }
 
