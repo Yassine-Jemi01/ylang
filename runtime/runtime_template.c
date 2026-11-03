@@ -378,9 +378,12 @@ static void yl_http_stream_shutdown(void);
 static void yl_http_async_shutdown(void) {
     for (size_t i = 0; i < YL_HTTP_MAX_TASKS; i++)
         if (yl_http_tasks[i].active) yl_http_task_release(&yl_http_tasks[i]);
-    if (yl_http_multi) { curl_multi_cleanup(yl_http_multi); yl_http_multi = NULL; }
     yl_http_stream_shutdown();
-    curl_global_cleanup();
+    if (yl_http_multi) { curl_multi_cleanup(yl_http_multi); yl_http_multi = NULL; }
+    if (yl_http_initialized) {
+        curl_global_cleanup();
+        yl_http_initialized = false;
+    }
 }
 static YLHttpTask *yl_http_task_find(int64_t id) {
     for (size_t i = 0; i < YL_HTTP_MAX_TASKS; i++)
@@ -616,6 +619,11 @@ static void yl_http_stream_release(YLHttpStream *stream) {
 static void yl_http_stream_shutdown(void) {
     for (size_t i = 0; i < YL_HTTP_MAX_STREAMS; i++)
         if (yl_http_streams[i].active) yl_http_stream_release(&yl_http_streams[i]);
+    /* If the async task subsystem is active, its shutdown owns global cleanup. */
+    if (!yl_http_multi && yl_http_initialized) {
+        curl_global_cleanup();
+        yl_http_initialized = false;
+    }
 }
 static size_t yl_http_stream_write(char *data, size_t size, size_t count, void *userdata) {
     YLHttpStream *stream = (YLHttpStream *)userdata;
