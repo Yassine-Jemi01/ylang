@@ -651,6 +651,7 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "tui.println") == 0) return "yltui_api_println";
     if (strcmp(name, "tui.read_key") == 0) return "yltui_api_read_key";
     if (strcmp(name, "tui.key_available") == 0) return "yltui_api_key_available";
+    if (strcmp(name, "tui.sleep_ms") == 0) return "yltui_api_sleep_ms";
     if (strcmp(name, "tui.set_color") == 0) return "yltui_api_set_color";
     if (strcmp(name, "tui.reset_style") == 0) return "yltui_api_reset_style";
     if (strcmp(name, "tui.hide_cursor") == 0) return "yltui_api_hide_cursor";
