@@ -16,6 +16,7 @@
 - [Functions and Modules](modules.md)
 - [The Standard Library](standard-library.md)
 - [HTTP and API Requests](reference/HTTP.md)
+- [Voice and Audio Playback](voice-audio.md)
 
 # Part III — Build Real Things
 
