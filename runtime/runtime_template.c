@@ -374,10 +374,12 @@ static void yl_http_task_release(YLHttpTask *task) {
     free(task->body.data);
     memset(task, 0, sizeof(*task));
 }
+static void yl_http_stream_shutdown(void);
 static void yl_http_async_shutdown(void) {
     for (size_t i = 0; i < YL_HTTP_MAX_TASKS; i++)
         if (yl_http_tasks[i].active) yl_http_task_release(&yl_http_tasks[i]);
     if (yl_http_multi) { curl_multi_cleanup(yl_http_multi); yl_http_multi = NULL; }
+    yl_http_stream_shutdown();
     curl_global_cleanup();
 }
 static YLHttpTask *yl_http_task_find(int64_t id) {
@@ -654,31 +656,6 @@ static size_t yl_http_stream_header_callback(char *data, size_t size, size_t cou
     stream->response_headers[stream->response_header_length++] = '\n';
     stream->response_headers[stream->response_header_length] = '\0';
     return bytes;
-}
-static void yl_http_stream_complete(YLHttpStream *stream) {
-    if (!stream || stream->done || !stream->easy) return;
-    long response_code = 0;
-    (void)curl_easy_getinfo(stream->easy, CURLINFO_RESPONSE_CODE, &response_code);
-    stream->status = (int64_t)response_code;
-    if (stream->attached && stream->multi) {
-        (void)curl_multi_remove_handle(stream->multi, stream->easy);
-        stream->attached = false;
-    }
-    int remaining = 0;
-    CURLMsg *message = NULL;
-    while (stream->multi && (message = curl_multi_info_read(stream->multi, &remaining)) != NULL) {
-        if (message->msg != CURLMSG_DONE || message->easy_handle != stream->easy) continue;
-        if (message->data.result != CURLE_OK) {
-            if (stream->response_headers_too_large)
-                yl_http_stream_error_set(stream, "HTTP response headers exceeded the 16 KiB limit");
-            else if (stream->error_buffer[0])
-                yl_http_stream_error_set(stream, stream->error_buffer);
-            else
-                yl_http_stream_error_set(stream, curl_easy_strerror(message->data.result));
-        }
-        break;
-    }
-    stream->done = true;
 }
 static bool yl_http_stream_pump(YLHttpStream *stream) {
     if (!stream || stream->done || !stream->multi) return false;
