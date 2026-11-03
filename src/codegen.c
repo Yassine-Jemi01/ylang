@@ -694,6 +694,7 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "http.request_async") == 0) return "yl_http_request_async";
     if (strcmp(name, "http.stream_open") == 0) return "yl_http_stream_open";
     if (strcmp(name, "http.stream_read") == 0) return "yl_http_stream_read";
+    if (strcmp(name, "http.stream_read_buffer") == 0) return "yl_http_stream_read_buffer";
     if (strcmp(name, "http.stream_done") == 0) return "yl_http_stream_done";
     if (strcmp(name, "http.stream_status") == 0) return "yl_http_stream_status";
     if (strcmp(name, "http.stream_headers") == 0) return "yl_http_stream_headers";
