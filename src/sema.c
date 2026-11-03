@@ -1050,7 +1050,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                     expr->type = TYPE_INT;
                 } else {
                     if (arg_type != TYPE_INT && arg_type != TYPE_FLOAT && arg_type != TYPE_BOOL &&
-                        arg_type != TYPE_CHAR && !is_string_type(arg_type) && arg_type != TYPE_ERROR)
+                        arg_type != TYPE_CHAR && arg_type != TYPE_BYTE && !is_string_type(arg_type) && arg_type != TYPE_ERROR)
                         diagnostic(c, expr->token, "error", "E2045", "to_string cannot convert this type.",
                                    "Supported types are int, float, bool, char, string, and owned_string.");
                     expr->type = arg_type == TYPE_OWNED_STRING ?
