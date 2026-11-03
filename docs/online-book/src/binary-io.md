@@ -44,7 +44,8 @@ Use the opaque integer handle API when the amount of data is not known in advanc
 | `io.buffer_clear(handle)` | `bool` | Set length to zero while retaining capacity. |
 | `io.buffer_free(handle)` | `bool` | Release the buffer and invalidate its handle. |
 | `io.buffer_load(path, offset, length)` | `int` | Load up to length bytes into a new buffer; returns its handle or `-1`. |
-| `io.buffer_save(path, offset, handle)` | `int` | Write buffer contents and return bytes written, or `-1`. |
+| `io.buffer_save(path, offset, handle)` | `int` | Write buffer contents at a file offset and return bytes written, or `-1`. |
+| `io.buffer_append_file(path, handle)` | `int` | Append raw buffer bytes to a file and return bytes written, or `-1`. |
 
 Example:
 
