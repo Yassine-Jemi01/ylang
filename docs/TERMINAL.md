@@ -39,5 +39,5 @@ function main() -> int {
 - Prompts are written to stdout and flushed before waiting for input.
 - `is_interactive` checks stdin; redirected input and pipes return false.
 - `clear` emits ANSI escape sequences. It does not attempt terminal capability detection.
-- The API is synchronous and uses standard input/output. Raw key events, password input with echo disabled, terminal resizing, colors, and cursor positioning are not part of this initial implementation.
+- The `terminal.*` API is line-oriented. For raw key events, terminal dimensions, cursor movement, ANSI output, and interactive screen control, use the separate [std.tui runtime](../stdlib/tui/README.md).
 - The C backend is supported. The experimental NASM backend does not implement standard-library terminal calls.
