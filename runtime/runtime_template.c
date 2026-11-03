@@ -52,6 +52,9 @@ void yltui_api_clear(void);
 int64_t yltui_api_width(void);
 int64_t yltui_api_height(void);
 void yltui_api_move_to(int64_t, int64_t);
+void yltui_api_write_at(int64_t, int64_t, const char *);
+void yltui_api_clear_line(void);
+bool yltui_api_fill_rect(int64_t, int64_t, int64_t, int64_t, int64_t);
 void yltui_api_write(const char *);
 void yltui_api_println(const char *);
 int64_t yltui_api_read_key(void);
@@ -415,6 +418,31 @@ bool yltui_api_progress_bar(int64_t x, int64_t y, int64_t width,
     return ferror(stdout) == 0;
 }
 
+
+void yltui_api_write_at(int64_t x, int64_t y, const char *text) {
+    if (x < 1 || y < 1 || !text) return;
+    yltui_api_move_to(x, y);
+    yltui_api_write(text);
+}
+
+void yltui_api_clear_line(void) {
+    (void)fputs("\033[2K", stdout);
+    (void)fflush(stdout);
+}
+
+bool yltui_api_fill_rect(int64_t x, int64_t y, int64_t width,
+                         int64_t height, int64_t character) {
+    if (x < 1 || y < 1 || width < 1 || height < 1 ||
+        width > 10000 || height > 10000 ||
+        character < 32 || character > 126) return false;
+    for (int64_t row = 0; row < height; row++) {
+        yltui_api_move_to(x, y + row);
+        for (int64_t col = 0; col < width; col++)
+            if (fputc((int)character, stdout) == EOF) return false;
+    }
+    (void)fflush(stdout);
+    return ferror(stdout) == 0;
+}
 
 static void yl_runtime_error(const char *message) {
     fprintf(stderr, "YLang runtime error: %s\n", message);
