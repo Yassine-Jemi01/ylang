@@ -48,7 +48,7 @@ function main() -> int {
 - The API is blocking and pull-based; it is not a general asynchronous scheduler.
 - A stream is single-consumer and must be closed. Process shutdown also releases active streams.
 - HTTP 4xx/5xx statuses are responses, not transport errors; inspect the status and read the body.
-- Redirects and TLS verification follow the existing HTTP runtime policy.
+- Redirects and TLS verification follow the existing HTTP runtime policy. Connection setup has a 5-second timeout; the stream has no whole-transfer timeout so long recitations are not cut off after 15 seconds.
 
 **Binary-safe path:** use `http.stream_read_buffer(stream, buffer, max_bytes)` with a root buffer created by `io.buffer_new(0)`. Each call overwrites that buffer with the next raw bytes and returns the exact byte count. Embedded NUL bytes and values from 0 through 255 are preserved. The caller owns the buffer and must call `io.buffer_free` when finished. Slices are rejected as destinations.
 
