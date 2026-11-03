@@ -1114,6 +1114,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 YType result_type = TYPE_ERROR;
                 if (strcmp(name, "http.stream_open") == 0) { expected = 4U; result_type = TYPE_HTTP_STREAM; }
                 else if (strcmp(name, "http.stream_read") == 0) { expected = 2U; result_type = TYPE_OWNED_STRING; }
+                else if (strcmp(name, "http.stream_read_buffer") == 0) { expected = 3U; result_type = TYPE_INT; }
                 else if (strcmp(name, "http.stream_done") == 0) { expected = 1U; result_type = TYPE_BOOL; }
                 else if (strcmp(name, "http.stream_status") == 0) { expected = 1U; result_type = TYPE_INT; }
                 else if (strcmp(name, "http.stream_headers") == 0 || strcmp(name, "http.stream_error") == 0) { expected = 1U; result_type = TYPE_STRING; }
@@ -1121,7 +1122,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 else {
                     diagnostic(c, expr->token, "error", "E2150",
                                "Unknown HTTP streaming function.",
-                               "Use stream_open, stream_read, stream_done, stream_status, stream_headers, stream_error, or stream_close.");
+                               "Use stream_open, stream_read, stream_read_buffer, stream_done, stream_status, stream_headers, stream_error, or stream_close.");
                     for (size_t i = 0; i < expr->as.call.count; i++) (void)check_expr(checker, expr->as.call.args[i]);
                     expr->type = TYPE_ERROR;
                     return expr->type;
@@ -1137,6 +1138,8 @@ static YType check_expr(Checker *checker, Expr *expr)
                     if (strcmp(name, "http.stream_open") == 0) valid = valid || is_string_type(arg_type);
                     else if (strcmp(name, "http.stream_read") == 0)
                         valid = valid || (i == 0U ? arg_type == TYPE_HTTP_STREAM : arg_type == TYPE_INT);
+                    else if (strcmp(name, "http.stream_read_buffer") == 0)
+                        valid = valid || (i == 0U ? arg_type == TYPE_HTTP_STREAM : arg_type == TYPE_INT);
                     else valid = valid || arg_type == TYPE_HTTP_STREAM;
                     if (!valid) {
                         diagnostic(c, expr->as.call.args[i]->token, "error", "E2151",
@@ -1145,7 +1148,9 @@ static YType check_expr(Checker *checker, Expr *expr)
                                      ? "stream_open expects string arguments."
                                      : (strcmp(name, "http.stream_read") == 0
                                          ? "stream_read expects an http_stream and an int byte limit."
-                                         : "This function expects an http_stream handle."));
+                                         : (strcmp(name, "http.stream_read_buffer") == 0
+                                             ? "stream_read_buffer expects an http_stream, a byte-buffer handle, and an int byte limit."
+                                             : "This function expects an http_stream handle.")));
                     }
                 }
                 expr->type = result_type;
