@@ -46,7 +46,6 @@ bool ylgui_api_present(void);
 const char *ylgui_api_last_error(void);
 void ylgui_api_close(void);
 void ylgui_api_shutdown(void);
-
 bool yltui_api_init(void);
 void yltui_api_shutdown(void);
 void yltui_api_clear(void);
@@ -62,6 +61,204 @@ bool yltui_api_set_color(int64_t, int64_t);
 void yltui_api_reset_style(void);
 void yltui_api_hide_cursor(void);
 void yltui_api_show_cursor(void);
+bool yltui_api_draw_box(int64_t, int64_t, int64_t, int64_t, const char *);
+bool yltui_api_progress_bar(int64_t, int64_t, int64_t, int64_t, int64_t);
+
+/* -------------------------- std.tui runtime --------------------------- */
+static bool yltui_initialized;
+#ifdef _WIN32
+static HANDLE yltui_input_handle = INVALID_HANDLE_VALUE;
+static HANDLE yltui_output_handle = INVALID_HANDLE_VALUE;
+static DWORD yltui_original_input_mode, yltui_original_output_mode;
+static bool yltui_input_mode_saved, yltui_output_mode_saved;
+#else
+static struct termios yltui_original_termios;
+static int yltui_original_flags = -1;
+static bool yltui_termios_saved;
+#endif
+
+bool yltui_api_init(void) {
+    if (yltui_initialized) return true;
+#ifdef _WIN32
+    yltui_input_handle = GetStdHandle(STD_INPUT_HANDLE);
+    yltui_output_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (yltui_input_handle != INVALID_HANDLE_VALUE &&
+        GetConsoleMode(yltui_input_handle, &yltui_original_input_mode)) {
+        DWORD mode = yltui_original_input_mode & ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+        if (SetConsoleMode(yltui_input_handle, mode)) yltui_input_mode_saved = true;
+    }
+    if (yltui_output_handle != INVALID_HANDLE_VALUE &&
+        GetConsoleMode(yltui_output_handle, &yltui_original_output_mode)) {
+        DWORD mode = yltui_original_output_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+        if (SetConsoleMode(yltui_output_handle, mode)) yltui_output_mode_saved = true;
+    }
+#else
+    if (isatty(STDIN_FILENO)) {
+        struct termios raw;
+        if (tcgetattr(STDIN_FILENO, &yltui_original_termios) != 0) return false;
+        raw = yltui_original_termios;
+        raw.c_lflag &= (tcflag_t)~(ICANON | ECHO);
+        raw.c_iflag &= (tcflag_t)~(IXON | ICRNL);
+        raw.c_cc[VMIN] = 0;
+        raw.c_cc[VTIME] = 0;
+        if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) != 0) return false;
+        yltui_termios_saved = true;
+    }
+    yltui_original_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+    if (yltui_original_flags >= 0)
+        (void)fcntl(STDIN_FILENO, F_SETFL, yltui_original_flags | O_NONBLOCK);
+#endif
+    yltui_initialized = true;
+    (void)atexit(yltui_api_shutdown);
+    (void)fputs("\033[?1049h\033[?25l\033[0m", stdout);
+    (void)fflush(stdout);
+    return true;
+}
+
+void yltui_api_shutdown(void) {
+    if (!yltui_initialized) return;
+    (void)fputs("\033[0m\033[?25h\033[?1049l", stdout);
+    (void)fflush(stdout);
+#ifdef _WIN32
+    if (yltui_input_mode_saved)
+        (void)SetConsoleMode(yltui_input_handle, yltui_original_input_mode);
+    if (yltui_output_mode_saved)
+        (void)SetConsoleMode(yltui_output_handle, yltui_original_output_mode);
+    yltui_input_mode_saved = false;
+    yltui_output_mode_saved = false;
+#else
+    if (yltui_termios_saved)
+        (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &yltui_original_termios);
+    if (yltui_original_flags >= 0)
+        (void)fcntl(STDIN_FILENO, F_SETFL, yltui_original_flags);
+    yltui_termios_saved = false;
+    yltui_original_flags = -1;
+#endif
+    yltui_initialized = false;
+}
+
+void yltui_api_clear(void) {
+    (void)fputs("\033[2J\033[H", stdout);
+    (void)fflush(stdout);
+}
+
+int64_t yltui_api_width(void) {
+#ifdef _WIN32
+    CONSOLE_SCREEN_BUFFER_INFO info;
+    if (yltui_output_handle != INVALID_HANDLE_VALUE &&
+        GetConsoleScreenBufferInfo(yltui_output_handle, &info))
+        return (int64_t)(info.srWindow.Right - info.srWindow.Left + 1);
+#else
+    struct winsize size;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == 0 && size.ws_col > 0)
+        return (int64_t)size.ws_col;
+#endif
+    return 80;
+}
+
+int64_t yltui_api_height(void) {
+#ifdef _WIN32
+    CONSOLE_SCREEN_BUFFER_INFO info;
+    if (yltui_output_handle != INVALID_HANDLE_VALUE &&
+        GetConsoleScreenBufferInfo(yltui_output_handle, &info))
+        return (int64_t)(info.srWindow.Bottom - info.srWindow.Top + 1);
+#else
+    struct winsize size;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == 0 && size.ws_row > 0)
+        return (int64_t)size.ws_row;
+#endif
+    return 24;
+}
+
+void yltui_api_move_to(int64_t x, int64_t y) {
+    if (x >= 1 && y >= 1)
+        (void)printf("\033[%lld;%lldH", (long long)y, (long long)x);
+    (void)fflush(stdout);
+}
+
+void yltui_api_write(const char *text) {
+    if (text) (void)fputs(text, stdout);
+    (void)fflush(stdout);
+}
+
+void yltui_api_println(const char *text) {
+    if (text) (void)fputs(text, stdout);
+    (void)fputc('\n', stdout);
+    (void)fflush(stdout);
+}
+
+bool yltui_api_key_available(void) {
+    if (!yltui_initialized) return false;
+#ifdef _WIN32
+    return _kbhit() != 0;
+#else
+    fd_set read_set;
+    struct timeval timeout = {0, 0};
+    FD_ZERO(&read_set);
+    FD_SET(STDIN_FILENO, &read_set);
+    return select(STDIN_FILENO + 1, &read_set, NULL, NULL, &timeout) > 0;
+#endif
+}
+
+int64_t yltui_api_read_key(void) {
+    if (!yltui_initialized) return -1;
+#ifdef _WIN32
+    if (!_kbhit()) return -1;
+    int key = _getch();
+    if (key == 0 || key == 224) {
+        int extended = _getch();
+        if (extended == 72) return 1001;
+        if (extended == 80) return 1002;
+        if (extended == 75) return 1003;
+        if (extended == 77) return 1004;
+        return -1;
+    }
+    return (int64_t)key;
+#else
+    unsigned char key = 0;
+    ssize_t count = read(STDIN_FILENO, &key, 1U);
+    return count == 1 ? (int64_t)key : -1;
+#endif
+}
+
+void yltui_api_sleep_ms(int64_t milliseconds) {
+    if (milliseconds <= 0) return;
+#ifdef _WIN32
+    if ((uint64_t)milliseconds > (uint64_t)UINT32_MAX)
+        milliseconds = (int64_t)UINT32_MAX;
+    Sleep((DWORD)milliseconds);
+#else
+    struct timespec delay;
+    delay.tv_sec = (time_t)(milliseconds / 1000);
+    delay.tv_nsec = (long)((milliseconds % 1000) * 1000000);
+    while (nanosleep(&delay, &delay) != 0 && errno == EINTR) { }
+#endif
+}
+
+bool yltui_api_set_color(int64_t foreground, int64_t background) {
+    if (foreground < 0 || foreground > 255 ||
+        background < 0 || background > 255) return false;
+    (void)printf("\033[38;5;%lldm\033[48;5;%lldm",
+                 (long long)foreground, (long long)background);
+    (void)fflush(stdout);
+    return true;
+}
+
+void yltui_api_reset_style(void) {
+    (void)fputs("\033[0m", stdout);
+    (void)fflush(stdout);
+}
+
+void yltui_api_hide_cursor(void) {
+    (void)fputs("\033[?25l", stdout);
+    (void)fflush(stdout);
+}
+
+void yltui_api_show_cursor(void) {
+    (void)fputs("\033[?25h", stdout);
+    (void)fflush(stdout);
+}
+
 bool yltui_api_draw_box(int64_t x, int64_t y, int64_t width,
                         int64_t height, const char *title) {
     if (x < 1 || y < 1 || width < 2 || height < 2 ||
@@ -87,6 +284,7 @@ bool yltui_api_draw_box(int64_t x, int64_t y, int64_t width,
     (void)fflush(stdout);
     return ferror(stdout) == 0;
 }
+
 bool yltui_api_progress_bar(int64_t x, int64_t y, int64_t width,
                             int64_t value, int64_t maximum) {
     if (x < 1 || y < 1 || width < 3 || width > 10000 || maximum <= 0)
