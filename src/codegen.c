@@ -599,6 +599,19 @@ static const char *builtin_c_name(const char *name)
 {
     const char *math_name = math_c_name(name);
     if (math_name) return math_name;
+    if (strcmp(name, "json.parse") == 0) return "yl_json_parse";
+    if (strcmp(name, "json.stringify") == 0) return "yl_json_stringify";
+    if (strcmp(name, "json.valid") == 0) return "yl_json_valid";
+    if (strcmp(name, "json.get") == 0) return "yl_json_get";
+    if (strcmp(name, "json.get_string") == 0) return "yl_json_get_string";
+    if (strcmp(name, "json.get_int") == 0) return "yl_json_get_int";
+    if (strcmp(name, "json.get_float") == 0) return "yl_json_get_float";
+    if (strcmp(name, "json.get_bool") == 0) return "yl_json_get_bool";
+    if (strcmp(name, "json.has") == 0) return "yl_json_has";
+    if (strcmp(name, "json.array_length") == 0) return "yl_json_array_length";
+    if (strcmp(name, "json.at") == 0) return "yl_json_at";
+    if (strcmp(name, "json.escape") == 0) return "yl_json_escape";
+    if (strcmp(name, "json.last_error") == 0) return "yl_json_last_error";
     if (strcmp(name, "string.length") == 0) return "yl_string_length";
     if (strcmp(name, "string.own") == 0) return "yl_string_own";
     if (strcmp(name, "owned_string.concat") == 0) return "yl_string_concat";
