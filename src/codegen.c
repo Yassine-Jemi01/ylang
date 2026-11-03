@@ -667,6 +667,7 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "io.buffer_free") == 0) return "yl_binary_buffer_free";
     if (strcmp(name, "io.buffer_load") == 0) return "yl_binary_buffer_load";
     if (strcmp(name, "io.buffer_save") == 0) return "yl_binary_buffer_save";
+    if (strcmp(name, "io.buffer_append_file") == 0) return "yl_binary_buffer_append_file";
 
 
     if (strcmp(name, "terminal.read_line") == 0) return "yl_terminal_read_line";
