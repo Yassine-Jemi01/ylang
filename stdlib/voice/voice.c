@@ -286,6 +286,7 @@ bool ylvoice_is_playing(void)
 
 bool ylvoice_is_paused(void)
 {
+    voice_release_if_finished();
     return voice_initialized && voice_music != NULL && Mix_PausedMusic() != 0;
 }
 
