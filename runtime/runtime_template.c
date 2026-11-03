@@ -1697,9 +1697,10 @@ static bool yl_tui_read_byte_timeout(unsigned char *value, int timeout_ms) {
 }
 #endif
 
-static int64_t yl_tui_read_key(void) {
+static int64_t yl_tui_read_key_internal(bool blocking) {
     if (!yl_tui_active && !yl_tui_init()) return -1;
 #ifdef _WIN32
+    if (!blocking && !_kbhit()) return -1;
     int key = _getch();
     if (key == 0 || key == 224) {
         int scan = _getch();
@@ -1719,18 +1720,22 @@ static int64_t yl_tui_read_key(void) {
     return (int64_t)key;
 #else
     unsigned char first = 0U;
-    ssize_t count;
-    do { count = read(STDIN_FILENO, &first, 1U); }
-    while (count < 0 && errno == EINTR);
+    ssize_t count = 0;
+    if (blocking) {
+        do { count = read(STDIN_FILENO, &first, 1U); }
+        while (count < 0 && errno == EINTR);
+    } else {
+        count = yl_tui_read_byte_timeout(&first, 0) ? 1 : 0;
+    }
     if (count != 1) {
-        yl_tui_set_error("failed to read a terminal key");
+        if (blocking) yl_tui_set_error("failed to read a terminal key");
         return -1;
     }
     if (first != 0x1bU) return (int64_t)first;
     unsigned char second = 0U, third = 0U;
-    if (!yl_tui_read_byte_timeout(&second, 35)) return 27;
+    if (!yl_tui_read_byte_timeout(&second, blocking ? 35 : 2)) return 27;
     if (second != '[' && second != 'O') return 27;
-    if (!yl_tui_read_byte_timeout(&third, 35)) return 27;
+    if (!yl_tui_read_byte_timeout(&third, blocking ? 35 : 2)) return 27;
     if (second == 'O') {
         if (third == 'H') return 1005;
         if (third == 'F') return 1006;
@@ -1747,13 +1752,15 @@ static int64_t yl_tui_read_key(void) {
         case '5':
         case '6': {
             unsigned char terminator = 0U;
-            if (!yl_tui_read_byte_timeout(&terminator, 35) || terminator != '~') return 27;
+            if (!yl_tui_read_byte_timeout(&terminator, blocking ? 35 : 2) || terminator != '~') return 27;
             return third == '3' ? 1007 : (third == '5' ? 1008 : 1009);
         }
         default: return 27;
     }
 #endif
 }
+static int64_t yl_tui_read_key(void) { return yl_tui_read_key_internal(true); }
+static int64_t yl_tui_poll_key(void) { return yl_tui_read_key_internal(false); }
 
 static int64_t yl_tui_width(void) {
 #ifdef _WIN32
