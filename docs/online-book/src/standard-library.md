@@ -32,7 +32,7 @@ Use the documented \`io\` and \`path\` operations for file-related work instead 
 
 The \`env.get(name)\` helper reads a process environment variable without launching a shell. Environment variables may contain missing, empty, or unexpected values; check the documented return behavior and validate the value before depending on it. Avoid storing secrets in source code or printing sensitive environment values to logs.
 
-## HTTP requests
+See [Binary I/O](binary-io.md) for byte-oriented file access and its current limits.\n\n## HTTP requests
 
 The HTTP namespace is an experimental integration and may require libcurl at build or runtime. Network access introduces failures that ordinary local calculations do not have: a server can be unreachable, return an error status, send unexpected content, or redirect a request.
 
