@@ -177,7 +177,7 @@ def main():
                 '    let string base = string.concat("http://127.0.0.1:", port);\\n'
                 '    let http_stream stream = http.stream_open("GET", string.concat(base, "/stream-wav"), "", "");\\n'
                 "    if (!voice.play_stream(stream)) { print(voice.last_error()); return 1; }\\n"
-                "    while (!voice.is_finished()) { }\\n"
+                "    while (!voice.is_finished()) { tui.sleep_ms(5); }\\n"
                 "    print(voice.is_finished());\\n"
                 "    print(voice.last_error());\\n"
                 "    voice.shutdown();\\n"
