@@ -28,8 +28,6 @@
 
 bool ylgui_api_init(void);
 #ifdef YLANG_USE_VOICE
-void ylvoice_shutdown(void);
-#endif
 bool ylvoice_init(void);
 bool ylvoice_play(const char *);
 void ylvoice_pause(void);
@@ -39,6 +37,7 @@ bool ylvoice_is_playing(void);
 bool ylvoice_set_volume(int64_t);
 const char *ylvoice_last_error(void);
 void ylvoice_shutdown(void);
+#endif
 bool ylgui_api_create_window(const char *, int64_t, int64_t);
 bool ylgui_api_poll(void);
 bool ylgui_api_key_down(const char *);
