@@ -44,6 +44,7 @@ Always call tui.shutdown() before leaving the application so the terminal's curs
 | tui.write(text) | void | Write text without a newline. |
 | tui.println(text) | void | Write text followed by a newline. |
 | tui.key_available() | bool | Check whether a key can be read without blocking. |
+| tui.read_line(prompt, maximum) | string | Read an ASCII line into a bounded internal buffer. Enter accepts; Escape cancels and returns an empty string. |
 | tui.read_key() | int | Read one key byte, or return -1 when no key is waiting. |
 | tui.set_color(fg, bg) | bool | Set 256-color foreground and background (0–255). |
 | tui.reset_style() | void | Reset ANSI text styling. |
