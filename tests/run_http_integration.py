@@ -54,6 +54,71 @@ def main():
             sys.stderr.write("--- actual ---\n" + result.stdout)
             sys.stderr.write(result.stderr)
             raise SystemExit(1)
+        # Pull-based streaming: partial chunks, final metadata, EOF, 404 bodies,
+        # empty responses, and a payload larger than the buffered HTTP body cap.
+        stream_source = ROOT / "build" / "http-streaming.yl"
+        stream_source.write_text(
+            "function main() -> int {\\n"
+            "    let string port = io.read_line();\\n"
+            '    let string base = string.concat("http://127.0.0.1:", port);\\n'
+            '    let http_stream stream = http.stream_open("GET", string.concat(base, "/stream"), "", "");\\n'
+            "    print(http.stream_read(stream, 3));\\n"
+            "    print(http.stream_read(stream, 3));\\n"
+            "    print(http.stream_read(stream, 3));\\n"
+            "    print(http.stream_read(stream, 3));\\n"
+            "    print(http.stream_read(stream, 3));\\n"
+            "    print(http.stream_read(stream, 3));\\n"
+            "    while (!http.stream_done(stream)) {\\n"
+            "        let owned_string rest = http.stream_read(stream, 16);\\n"
+            "        if (string.length(rest) > 0) { print(rest); }\\n"
+            "    }\\n"
+            "    print(http.stream_status(stream));\\n"
+            '    print(string.contains(http.stream_headers(stream), "Content-Type: text/plain; charset=utf-8"));\\n'
+            "    print(string.length(http.stream_error(stream)) == 0);\\n"
+            "    http.stream_close(stream);\\n"
+            '    let http_stream missing = http.stream_open("GET", string.concat(base, "/missing"), "", "");\\n'
+            "    print(http.stream_read(missing, 32));\\n"
+            "    while (!http.stream_done(missing)) {\\n"
+            "        let owned_string rest = http.stream_read(missing, 32);\\n"
+            "        if (string.length(rest) > 0) { print(rest); }\\n"
+            "    }\\n"
+            "    print(http.stream_status(missing));\\n"
+            "    http.stream_close(missing);\\n"
+            '    let http_stream empty = http.stream_open("GET", string.concat(base, "/stream-empty"), "", "");\\n'
+            "    print(string.length(http.stream_read(empty, 8)));\\n"
+            "    print(http.stream_done(empty));\\n"
+            "    print(http.stream_status(empty));\\n"
+            "    http.stream_close(empty);\\n"
+            '    let http_stream large = http.stream_open("GET", string.concat(base, "/stream-large"), "", "");\\n'
+            "    let int total = 0;\\n"
+            "    while (!http.stream_done(large)) {\\n"
+            "        let owned_string chunk = http.stream_read(large, 8192);\\n"
+            "        total = total + string.length(chunk);\\n"
+            "    }\\n"
+            "    print(total);\\n"
+            "    print(http.stream_status(large));\\n"
+            "    http.stream_close(large);\\n"
+            "    return 0;\\n"
+            "}\\n",
+            encoding="utf-8",
+        )
+        stream_output = "build/test-http-streaming.exe" if os.name == "nt" else "build/test-http-streaming"
+        run_checked([compiler, "check", str(stream_source.relative_to(ROOT))])
+        run_checked([compiler, "build", str(stream_source.relative_to(ROOT)), "-o", stream_output])
+        stream_result = subprocess.run(
+            [str(ROOT / stream_output)],
+            cwd=ROOT,
+            input=f"{port}\\n",
+            text=True,
+            capture_output=True,
+            timeout=30,
+        )
+        expected_stream = "fir\\nst-\\nsec\\nond\\nthir\\nd\\n200\\ntrue\\ntrue\\nnot-found\\n404\\n0\\ntrue\\n200\\n9437184\\n200\\n"
+        if stream_result.returncode != 0 or stream_result.stdout != expected_stream:
+            sys.stderr.write("--- expected streaming output ---\\n" + expected_stream)
+            sys.stderr.write("--- actual streaming output ---\\n" + stream_result.stdout)
+            sys.stderr.write(stream_result.stderr)
+            raise SystemExit("HTTP streaming integration test failed")
         print("YLang HTTP integration tests passed.")
     finally:
         server.shutdown()
