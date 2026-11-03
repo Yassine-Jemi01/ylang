@@ -352,6 +352,7 @@ static bool load_module(Compiler *compiler, Module *module)
 
     if (compiler->error_count != errors_before) {
         module->loading = false;
+        compiler->module_load_depth--;
         return false;
     }
 
