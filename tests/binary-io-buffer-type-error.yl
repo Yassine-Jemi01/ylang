@@ -1,0 +1,5 @@
+function main() -> int {
+    let int wrong[] = [1, 2, 3];
+    io.read_bytes("data.bin", 0, wrong);
+    return 0;
+}
