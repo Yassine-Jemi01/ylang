@@ -13,6 +13,28 @@ grep -q 'ylang run' build/help.out
 grep -q 'ylang debug' build/help.out
 grep -Fq "YLang v${EXPECTED_VERSION} — compiled language toolchain" build/help.out
 ./build/ylang check examples/type-conversions.yl >/dev/null
+# Deep statement nesting must produce a parser diagnostic, never exhaust the C stack.
+"$PYTHON" - <<'PY'
+from pathlib import Path
+
+def write_nested(path, depth):
+    lines = ["fn main() -> int {"]
+    lines.extend("if (true) {" for _ in range(depth))
+    lines.append("return 0;")
+    lines.extend("}" for _ in range(depth))
+    lines.extend(["return 0;", "}"])
+    Path(path).write_text("\\n".join(lines) + "\\n", encoding="utf-8")
+
+write_nested("build/nesting-valid.yl", 100)
+write_nested("build/nesting-too-deep.yl", 257)
+PY
+./build/ylang check build/nesting-valid.yl >/dev/null
+if ./build/ylang check build/nesting-too-deep.yl > build/nesting-too-deep.out 2>&1; then
+    echo "FAIL: parser accepted excessive statement nesting" >&2
+    exit 1
+fi
+grep -q "Maximum statement nesting depth exceeded" build/nesting-too-deep.out
+
 ./build/ylang build examples/type-conversions.yl -o build/test-type-conversions >/dev/null
 ./build/test-type-conversions > build/type-conversions.out
 diff -u tests/expected-type-conversions.txt build/type-conversions.out
