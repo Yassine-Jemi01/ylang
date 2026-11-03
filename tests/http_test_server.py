@@ -80,10 +80,10 @@ class Handler(BaseHTTPRequestHandler):
             chunk = b"x" * 65536
             try:
                 for _ in range(144):  # 9 MiB: larger than the buffered HTTP API limit.
-                    self.wfile.write(("%X\\r\\n" % len(chunk)).encode("ascii"))
-                    self.wfile.write(chunk + b"\\r\\n")
+                    self.wfile.write(("%X\r\n" % len(chunk)).encode("ascii"))
+                    self.wfile.write(chunk + b"\r\n")
                     self.wfile.flush()
-                self.wfile.write(b"0\\r\\n\\r\\n")
+                self.wfile.write(b"0\r\n\r\n")
                 self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 pass
