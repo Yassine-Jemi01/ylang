@@ -10,7 +10,7 @@ false
 2
 hello
 world
-{"name":"YLang","version":23,"enabled":true,"items":[1,2,3],"message":"hello\nworld"}
+{"name":"YLang","\u03bb":42,"version":23,"price":2.5,"unicode":"\uD83D\uDE00","enabled":true,"items":[1,2,3],"message":"hello\nworld"}
 "line\nquote\""
 false
 Invalid JSON syntax
