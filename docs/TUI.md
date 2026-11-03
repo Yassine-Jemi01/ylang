@@ -32,6 +32,10 @@ function main() -> int {
 
 Always call tui.shutdown() before leaving the application so the terminal's cursor, screen buffer, and input mode are restored.
 
+## YTilawa starter
+
+A keyboard-driven player shell is available at `examples/tilawa-player-tui.yl`. It demonstrates a now-playing panel, playback progress, a selectable menu, Up/Down navigation, Enter actions, and Q/Escape to quit. It is a UI shell only; connect its actions to YLang's audio engine and Quran/reciter data layer.
+
 ## API
 
 | Function | Return | Description |
