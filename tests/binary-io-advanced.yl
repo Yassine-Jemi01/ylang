@@ -1,0 +1,32 @@
+function main() -> int {
+    let string path = "build/binary-buffer-test.bin";
+    let byte data[] = [byte(0x41), byte(0x00), byte(0xff), byte(0x34)];
+    let byte readback[] = [byte(0), byte(0), byte(0), byte(0)];
+
+    print(io.write_bytes(path, 0, data));
+    print(io.read_bytes(path, 0, readback));
+    print(readback[0]);
+    print(readback[1]);
+    print(readback[2]);
+    print(readback[3]);
+
+    print(io.write_u32_be(path, 0, 16909060));
+    print(io.read_u32_be(path, 0));
+    print(io.read_u32_le(path, 0));
+    print(io.write_u16_le(path, 4, 4660));
+    print(io.read_u16_le(path, 4));
+    print(io.read_u16_be(path, 4));
+
+    let int writer = io.stream_open_write("build/binary-stream-test.bin");
+    print(writer > 0);
+    print(io.stream_write(writer, data));
+    print(io.stream_close(writer));
+
+    let int reader = io.stream_open_read("build/binary-stream-test.bin");
+    let byte streamed[] = [byte(0), byte(0), byte(0), byte(0)];
+    print(io.stream_read(reader, streamed));
+    print(io.stream_read(reader, streamed));
+    print(streamed[2]);
+    print(io.stream_close(reader));
+    return 0;
+}
