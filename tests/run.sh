@@ -1915,6 +1915,13 @@ if ./build/ylang check tests/owned-string-branch-join.yl > build/owned-string-br
 fi
 grep -q 'E2110' build/owned-string-branch-join.out
 
+# Reinitializing an owner on one branch restores it at the control-flow join.
+./build/ylang build tests/owned-string-branch-reinitialize.yl -o build/test-owned-string-branch-reinitialize >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string-branch-reinitialize > build/owned-string-branch-reinitialize.stdout 2> build/owned-string-branch-reinitialize.stderr
+printf 'original\\nreplacement\\noriginal\\n' > build/owned-string-branch-reinitialize.expected
+diff -u build/owned-string-branch-reinitialize.expected build/owned-string-branch-reinitialize.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-branch-reinitialize.stderr
+
 # A moved mutable binding may be initialized again without releasing the transferred owner.
 ./build/ylang build tests/owned-string-reinitialize.yl -o build/test-owned-string-reinitialize >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-owned-string-reinitialize > build/owned-string-reinitialize.stdout 2> build/owned-string-reinitialize.stderr
