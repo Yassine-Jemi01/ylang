@@ -28,7 +28,8 @@ def write_nested(path, depth):
 write_nested("build/nesting-valid.yl", 100)
 write_nested("build/nesting-too-deep.yl", 257)
 PY
-./build/ylang check build/nesting-valid.yl >/dev/null
+./build/ylang build build/nesting-valid.yl -o build/nesting-valid >/dev/null
+./build/nesting-valid >/dev/null
 if ./build/ylang check build/nesting-too-deep.yl > build/nesting-too-deep.out 2>&1; then
     echo "FAIL: parser accepted excessive statement nesting" >&2
     exit 1
