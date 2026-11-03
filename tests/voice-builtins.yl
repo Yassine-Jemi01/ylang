@@ -1,0 +1,12 @@
+function main() -> int {
+    let bool ok = voice.init();
+    let bool playing = voice.is_playing();
+    let bool volume_ok = voice.set_volume(65);
+    let bool played = voice.play("sample.wav");
+    voice.pause();
+    voice.resume();
+    voice.stop();
+    print(voice.last_error());
+    voice.shutdown();
+    return 0;
+}

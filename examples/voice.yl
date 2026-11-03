@@ -1,0 +1,31 @@
+# YLang Voice example
+# Build with SDL2_mixer installed:
+#   ylang build examples/voice.yl -o voice-demo
+
+function main() -> int {
+    if (!voice.init()) {
+        print(voice.last_error());
+        return 1;
+    }
+
+    if (!voice.set_volume(80)) {
+        print(voice.last_error());
+        voice.shutdown();
+        return 1;
+    }
+
+    if (!voice.play("recitation.mp3")) {
+        print(voice.last_error());
+        voice.shutdown();
+        return 1;
+    }
+
+    print("Playback started.");
+    print(voice.is_playing());
+
+    voice.pause();
+    voice.resume();
+    voice.stop();
+    voice.shutdown();
+    return 0;
+}

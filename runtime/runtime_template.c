@@ -27,6 +27,17 @@
 #endif
 
 bool ylgui_api_init(void);
+#ifdef YLANG_USE_VOICE
+bool ylvoice_init(void);
+bool ylvoice_play(const char *);
+void ylvoice_pause(void);
+void ylvoice_resume(void);
+void ylvoice_stop(void);
+bool ylvoice_is_playing(void);
+bool ylvoice_set_volume(int64_t);
+const char *ylvoice_last_error(void);
+void ylvoice_shutdown(void);
+#endif
 bool ylgui_api_create_window(const char *, int64_t, int64_t);
 bool ylgui_api_poll(void);
 bool ylgui_api_key_down(const char *);
@@ -68,6 +79,9 @@ static size_t yl_saturating_add_size(size_t left, size_t right) {
 }
 
 static void yl_cleanup(void) {
+#ifdef YLANG_USE_VOICE
+    ylvoice_shutdown();
+#endif
     if (yl_memory_stats_enabled()) {
         fprintf(stderr,
                 "YLang memory stats: tracked_allocations=%zu tracked_bytes=%zu\n",

@@ -209,6 +209,62 @@ static bool resolve_gui_paths(char *runtime_path, size_t runtime_capacity,
 }
 
 
+static bool resolve_voice_paths(char *runtime_path, size_t runtime_capacity,
+                                char *include_path, size_t include_capacity)
+{
+    if (access("stdlib/voice/voice.c", R_OK) == 0 &&
+        access("include/ylang/voice.h", R_OK) == 0) {
+        if (snprintf(runtime_path, runtime_capacity, "%s", "stdlib/voice/voice.c") >=
+                (int)runtime_capacity ||
+            snprintf(include_path, include_capacity, "%s", "include") >=
+                (int)include_capacity) return false;
+        return true;
+    }
+    if (snprintf(runtime_path, runtime_capacity, "%s/stdlib/voice/voice.c",
+                 YLANG_SHARE_DIR) >= (int)runtime_capacity ||
+        snprintf(include_path, include_capacity, "%s", YLANG_INCLUDE_DIR) >=
+                 (int)include_capacity) return false;
+    return access(runtime_path, R_OK) == 0 && access(include_path, R_OK) == 0;
+}
+
+static bool read_voice_flags(char *storage, size_t capacity,
+                             char **flags, size_t flag_capacity,
+                             size_t *flag_count)
+{
+    FILE *pipe = popen("pkg-config --cflags --libs SDL2_mixer", "r");
+    if (!pipe) {
+        fputs("ylang: could not start pkg-config while preparing the Voice build.\n", stderr);
+        return false;
+    }
+    size_t used = 0U;
+    while (used + 1U < capacity) {
+        size_t got = fread(storage + used, 1U, capacity - used - 1U, pipe);
+        used += got;
+        if (got == 0U) break;
+    }
+    storage[used] = '\0';
+    int status = pclose(pipe);
+#ifdef _WIN32
+    if (status == -1 || status != 0 || used == 0U || used + 1U >= capacity) {
+#else
+    if (status == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0 ||
+        used == 0U || used + 1U >= capacity) {
+#endif
+        fputs("ylang: Voice builds require SDL2_mixer development files and pkg-config (Fedora: SDL2_mixer-devel; Debian/Ubuntu: libsdl2-mixer-dev; macOS: brew install sdl2_mixer pkg-config).\n", stderr);
+        return false;
+    }
+    *flag_count = 0U;
+    for (char *part = strtok(storage, " \t\r\n");
+         part != NULL; part = strtok(NULL, " \t\r\n")) {
+        if (*flag_count >= flag_capacity) {
+            fputs("ylang: too many SDL2_mixer compiler flags returned by pkg-config.\n", stderr);
+            return false;
+        }
+        flags[(*flag_count)++] = part;
+    }
+    return *flag_count > 0U;
+}
+
 static char *create_temporary_directory(const char *prefix)
 {
 #ifdef _WIN32
@@ -336,7 +392,7 @@ static bool read_http_flags(char *storage, size_t capacity,
 
 static int run_native_compiler(const char *cc, const char *c_path,
                                const char *output_path, bool uses_gui,
-                               bool debug_mode, bool uses_http)
+                               bool debug_mode, bool uses_http, bool uses_voice)
 {
     const char *requested_opt = getenv("YLANG_OPT_LEVEL");
     const char *optimization = debug_mode ? "-O0" : "-O2";
@@ -354,30 +410,48 @@ static int run_native_compiler(const char *cc, const char *c_path,
         }
     }
 
-    char runtime_path[4096], include_path[4096];
-    char flag_storage[4096], http_flag_storage[4096];
-    char *sdl_flags[64], *http_flags[64];
-    size_t sdl_flag_count = 0, http_flag_count = 0;
+    char gui_runtime[4096], voice_runtime[4096], include_path[4096];
+    char gui_flag_storage[4096], http_flag_storage[4096], voice_flag_storage[4096];
+    char *sdl_flags[64], *http_flags[64], *voice_flags[64];
+    size_t sdl_flag_count = 0U, http_flag_count = 0U, voice_flag_count = 0U;
     if (uses_http &&
         !read_http_flags(http_flag_storage, sizeof(http_flag_storage),
                          http_flags, sizeof(http_flags) / sizeof(http_flags[0]),
                          &http_flag_count)) return 1;
     if (uses_gui) {
-        if (!resolve_gui_paths(runtime_path, sizeof(runtime_path),
+        if (!resolve_gui_paths(gui_runtime, sizeof(gui_runtime),
                                include_path, sizeof(include_path))) {
             fprintf(stderr,
                     "ylang: GUI runtime source or header not found. Run from the YLang source tree or install the optional GUI files with 'make install-gui'.\n");
             return 1;
         }
-        if (!read_sdl2_flags(flag_storage, sizeof(flag_storage), sdl_flags,
+        if (!read_sdl2_flags(gui_flag_storage, sizeof(gui_flag_storage), sdl_flags,
                              sizeof(sdl_flags) / sizeof(sdl_flags[0]),
                              &sdl_flag_count)) return 1;
     }
+    if (uses_voice) {
+        char voice_include[4096];
+        if (!resolve_voice_paths(voice_runtime, sizeof(voice_runtime),
+                                 voice_include, sizeof(voice_include))) {
+            fprintf(stderr,
+                    "ylang: Voice runtime source or header not found. Run from the YLang source tree or install it with 'make install-voice'.\n");
+            return 1;
+        }
+        if (uses_gui && strcmp(include_path, voice_include) != 0) {
+            fputs("ylang: GUI and Voice runtimes resolve to different include directories.\n", stderr);
+            return 1;
+        }
+        if (!uses_gui) (void)snprintf(include_path, sizeof(include_path), "%s", voice_include);
+        if (!read_voice_flags(voice_flag_storage, sizeof(voice_flag_storage),
+                              voice_flags, sizeof(voice_flags) / sizeof(voice_flags[0]),
+                              &voice_flag_count)) return 1;
+    }
 
     char *args[192];
-    size_t n = 0;
+    size_t n = 0U;
     args[n++] = (char *)cc;
     if (uses_http) args[n++] = "-DYLANG_USE_HTTP=1";
+    if (uses_voice) args[n++] = "-DYLANG_USE_VOICE=1";
     args[n++] = "-std=c17";
     args[n++] = "-Wall";
     args[n++] = "-Wextra";
@@ -395,32 +469,24 @@ static int run_native_compiler(const char *cc, const char *c_path,
 #if !defined(_WIN32)
     args[n++] = "-fPIE";
 #endif
-    if (uses_gui) {
+    args[n++] = (char *)c_path;
+    if (uses_gui || uses_voice) {
         args[n++] = "-I";
         args[n++] = include_path;
-        args[n++] = (char *)c_path;
-        args[n++] = runtime_path;
-        args[n++] = "-lm";
-        for (size_t i = 0; i < sdl_flag_count; i++) args[n++] = sdl_flags[i];
-#if defined(__APPLE__)
-        args[n++] = "-pie";
-#elif !defined(_WIN32)
-        args[n++] = "-pie";
-        args[n++] = "-Wl,-z,relro,-z,now";
-#endif
-    } else {
-        args[n++] = (char *)c_path;
-        args[n++] = "-lm";
-#if defined(__APPLE__)
-        args[n++] = "-pie";
-#elif !defined(_WIN32)
-        args[n++] = "-pie";
-        args[n++] = "-Wl,-z,relro,-z,now";
-#endif
     }
-    for (size_t i = 0; i < http_flag_count; i++) args[n++] = http_flags[i];
+    if (uses_gui) args[n++] = gui_runtime;
+    if (uses_voice) args[n++] = voice_runtime;
+    args[n++] = "-lm";
+    for (size_t i = 0U; i < sdl_flag_count; i++) args[n++] = sdl_flags[i];
+    for (size_t i = 0U; i < voice_flag_count; i++) args[n++] = voice_flags[i];
+    for (size_t i = 0U; i < http_flag_count; i++) args[n++] = http_flags[i];
+#if defined(__APPLE__)
+    args[n++] = "-pie";
+#elif !defined(_WIN32)
+    args[n++] = "-pie";
+    args[n++] = "-Wl,-z,relro,-z,now";
+#endif
 #ifdef _WIN32
-    /* The generated runtime uses ShellExecuteA for image.open(). */
     args[n++] = "-lshell32";
 #endif
     args[n++] = "-o";
@@ -752,7 +818,8 @@ int ylang_run(const char *command, const char *input_path,
         const char *target = native_target;
         bool debug_mode = strcmp(command, "debug") == 0;
         result = run_native_compiler(cc ? cc : "gcc", c_path, target,
-                                     compiler.uses_gui, debug_mode, compiler.uses_http);
+                                     compiler.uses_gui, debug_mode, compiler.uses_http,
+                                     compiler.uses_voice);
         if (result == 0) {
             printf("Build succeeded: %s\n", target);
             if (debug_mode) {

@@ -633,6 +633,15 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "http.status") == 0) return "yl_http_status";
     if (strcmp(name, "http.response_headers") == 0) return "yl_http_response_headers";
     if (strcmp(name, "http.last_error") == 0) return "yl_http_last_error";
+    if (strcmp(name, "voice.init") == 0) return "ylvoice_init";
+    if (strcmp(name, "voice.play") == 0) return "ylvoice_play";
+    if (strcmp(name, "voice.pause") == 0) return "ylvoice_pause";
+    if (strcmp(name, "voice.resume") == 0) return "ylvoice_resume";
+    if (strcmp(name, "voice.stop") == 0) return "ylvoice_stop";
+    if (strcmp(name, "voice.is_playing") == 0) return "ylvoice_is_playing";
+    if (strcmp(name, "voice.set_volume") == 0) return "ylvoice_set_volume";
+    if (strcmp(name, "voice.last_error") == 0) return "ylvoice_last_error";
+    if (strcmp(name, "voice.shutdown") == 0) return "ylvoice_shutdown";
     if (strcmp(name, "gui.init") == 0) return "ylgui_api_init";
     if (strcmp(name, "gui.create_window") == 0) return "ylgui_api_create_window";
     if (strcmp(name, "gui.poll") == 0) return "ylgui_api_poll";

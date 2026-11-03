@@ -84,6 +84,15 @@ fi
 grep -q 'E2123' build/await-type-error.out
 
 # HTTP integration runs its loopback server in-process to avoid background process leakage.
+# Voice builtins are type-checked by the compiler without requiring audio dev packages.
+./build/ylang check tests/voice-builtins.yl >/dev/null
+if ./build/ylang check tests/voice-invalid-builtins.yl > build/voice-invalid.out 2>&1; then
+    echo "FAIL: invalid Voice builtin calls were accepted" >&2
+    exit 1
+fi
+grep -q 'E2130' build/voice-invalid.out
+grep -q 'E2132' build/voice-invalid.out
+
 python3 tests/run_http_integration.py
 python3 tests/benchmark-smoke.py
 if ./build/ylang > build/no-args.out 2>&1; then

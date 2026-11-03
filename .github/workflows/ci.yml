@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Install toolchain (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y build-essential clang libclang-rt-dev nasm gdb libsdl2-dev libcurl4-openssl-dev pkg-config
+        run: sudo apt-get update && sudo apt-get install -y build-essential clang libclang-rt-dev nasm gdb libsdl2-dev libsdl2-mixer-dev libcurl4-openssl-dev pkg-config
       - name: Install toolchain (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -30,6 +30,7 @@ jobs:
           brew list llvm >/dev/null 2>&1 || brew install llvm
           brew list make >/dev/null 2>&1 || brew install make
           brew list sdl2 >/dev/null 2>&1 || brew install sdl2
+          brew list sdl2_mixer >/dev/null 2>&1 || brew install sdl2_mixer
           brew list curl >/dev/null 2>&1 || brew install curl
           brew list pkg-config >/dev/null 2>&1 || brew install pkg-config
           echo "PKG_CONFIG_PATH=$(brew --prefix curl)/lib/pkgconfig:${PKG_CONFIG_PATH:-}" >> "$GITHUB_ENV"
@@ -50,6 +51,8 @@ jobs:
         run: ${{ steps.compiler.outputs.make }} clean all CC="${{ steps.compiler.outputs.cc }}"
       - name: Build optional GUI runtime
         run: ${{ steps.compiler.outputs.make }} gui gui-example game2d-example CC="${{ steps.compiler.outputs.cc }}"
+      - name: Build optional Voice runtime and YLang example
+        run: ${{ steps.compiler.outputs.make }} voice voice-example voice-test CC="${{ steps.compiler.outputs.cc }}"
       - name: Run regression tests
         run: ${{ steps.compiler.outputs.make }} test CC="${{ steps.compiler.outputs.cc }}"
       - name: Fuzz lexer/parser smoke test
@@ -75,6 +78,7 @@ jobs:
           install: >-
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-SDL2_mixer
             mingw-w64-x86_64-curl
             mingw-w64-x86_64-pkgconf
             make
@@ -85,6 +89,8 @@ jobs:
         run: make clean all CC=gcc PYTHON=python
       - name: Build optional SDL2 GUI runtime
         run: make gui gui-example game2d-example CC=gcc PYTHON=python
+      - name: Build optional SDL2_mixer Voice runtime
+        run: make voice CC=gcc PYTHON=python
       - name: Check, compile, and run a native Windows program
         run: |
           mkdir -p build/windows-smoke

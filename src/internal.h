@@ -42,6 +42,7 @@ struct Compiler {
     Module *current_module;
     bool uses_gui;
     bool uses_http;
+    bool uses_voice;
     bool quiet_diagnostics;
 };
 
