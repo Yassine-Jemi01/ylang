@@ -1,0 +1,5 @@
+function main() -> int {
+    let byte invalid = byte(256);
+    print(invalid);
+    return 0;
+}
