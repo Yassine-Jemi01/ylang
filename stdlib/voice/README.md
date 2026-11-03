@@ -4,7 +4,7 @@ The optional Voice runtime provides music/voice-file playback through SDL2_mixer
 It is designed as a small playback backend for narration, recitation, and game audio,
 not as a text-to-speech synthesizer.
 
-## Current C API
+## YLang API\n\nThe compiler recognizes these builtins directly; no import is required:\n\n| Function | Return | Purpose |\n|---|---|---|\n| `voice.init()` | `bool` | Initialize the audio device |\n| `voice.play(path)` | `bool` | Play one file, replacing the current track |\n| `voice.pause()` / `voice.resume()` | `void` | Pause or resume playback |\n| `voice.stop()` | `void` | Stop and release the current track |\n| `voice.is_playing()` | `bool` | Check playback state |\n| `voice.set_volume(0..100)` | `bool` | Set music volume |\n| `voice.last_error()` | `string` | Read the latest audio error |\n| `voice.shutdown()` | `void` | Release audio resources |\n\nSee [`examples/voice.yl`](../../examples/voice.yl) for a complete compiler-level example.\n\n## Current C API
 
 - `ylvoice_init()` — initialize the audio device.
 - `ylvoice_play(path)` — load and play one audio file, replacing the previous track.
