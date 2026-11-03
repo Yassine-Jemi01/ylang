@@ -667,6 +667,14 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "io.buffer_save") == 0) return "yl_binary_buffer_save";
 
 
+    if (strcmp(name, "terminal.read_line") == 0) return "yl_terminal_read_line";
+    if (strcmp(name, "terminal.read_int") == 0) return "yl_terminal_read_int";
+    if (strcmp(name, "terminal.read_float") == 0) return "yl_terminal_read_float";
+    if (strcmp(name, "terminal.read_bool") == 0) return "yl_terminal_read_bool";
+    if (strcmp(name, "terminal.write") == 0) return "yl_terminal_write";
+    if (strcmp(name, "terminal.write_line") == 0) return "yl_terminal_write_line";
+    if (strcmp(name, "terminal.clear") == 0) return "yl_terminal_clear";
+    if (strcmp(name, "terminal.is_interactive") == 0) return "yl_terminal_is_interactive";
     if (strcmp(name, "io.read_line") == 0) return "yl_read_line";
     if (strcmp(name, "io.read_file") == 0) return "yl_read_file";
     if (strcmp(name, "io.write_file") == 0) return "yl_write_file";
