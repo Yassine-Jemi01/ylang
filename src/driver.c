@@ -209,6 +209,62 @@ static bool resolve_gui_paths(char *runtime_path, size_t runtime_capacity,
 }
 
 
+static bool resolve_voice_paths(char *runtime_path, size_t runtime_capacity,
+                                char *include_path, size_t include_capacity)
+{
+    if (access("stdlib/voice/voice.c", R_OK) == 0 &&
+        access("include/ylang/voice.h", R_OK) == 0) {
+        if (snprintf(runtime_path, runtime_capacity, "%s", "stdlib/voice/voice.c") >=
+                (int)runtime_capacity ||
+            snprintf(include_path, include_capacity, "%s", "include") >=
+                (int)include_capacity) return false;
+        return true;
+    }
+    if (snprintf(runtime_path, runtime_capacity, "%s/stdlib/voice/voice.c",
+                 YLANG_SHARE_DIR) >= (int)runtime_capacity ||
+        snprintf(include_path, include_capacity, "%s", YLANG_INCLUDE_DIR) >=
+                 (int)include_capacity) return false;
+    return access(runtime_path, R_OK) == 0 && access(include_path, R_OK) == 0;
+}
+
+static bool read_voice_flags(char *storage, size_t capacity,
+                             char **flags, size_t flag_capacity,
+                             size_t *flag_count)
+{
+    FILE *pipe = popen("pkg-config --cflags --libs SDL2_mixer", "r");
+    if (!pipe) {
+        fputs("ylang: could not start pkg-config while preparing the Voice build.\\n", stderr);
+        return false;
+    }
+    size_t used = 0U;
+    while (used + 1U < capacity) {
+        size_t got = fread(storage + used, 1U, capacity - used - 1U, pipe);
+        used += got;
+        if (got == 0U) break;
+    }
+    storage[used] = '\\0';
+    int status = pclose(pipe);
+#ifdef _WIN32
+    if (status == -1 || status != 0 || used == 0U || used + 1U >= capacity) {
+#else
+    if (status == -1 || !WIFEXITED(status) || WEXITSTATUS(status) != 0 ||
+        used == 0U || used + 1U >= capacity) {
+#endif
+        fputs("ylang: Voice builds require SDL2_mixer development files and pkg-config (Fedora: SDL2_mixer-devel; Debian/Ubuntu: libsdl2-mixer-dev; macOS: brew install sdl2_mixer pkg-config).\\n", stderr);
+        return false;
+    }
+    *flag_count = 0U;
+    for (char *part = strtok(storage, " \\t\\r\\n");
+         part != NULL; part = strtok(NULL, " \\t\\r\\n")) {
+        if (*flag_count >= flag_capacity) {
+            fputs("ylang: too many SDL2_mixer compiler flags returned by pkg-config.\\n", stderr);
+            return false;
+        }
+        flags[(*flag_count)++] = part;
+    }
+    return *flag_count > 0U;
+}
+
 static char *create_temporary_directory(const char *prefix)
 {
 #ifdef _WIN32
