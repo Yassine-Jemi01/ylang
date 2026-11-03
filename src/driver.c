@@ -392,7 +392,7 @@ static bool read_http_flags(char *storage, size_t capacity,
 
 static int run_native_compiler(const char *cc, const char *c_path,
                                const char *output_path, bool uses_gui,
-                               bool debug_mode, bool uses_http)
+                               bool debug_mode, bool uses_http, bool uses_voice)
 {
     const char *requested_opt = getenv("YLANG_OPT_LEVEL");
     const char *optimization = debug_mode ? "-O0" : "-O2";
@@ -410,28 +410,45 @@ static int run_native_compiler(const char *cc, const char *c_path,
         }
     }
 
-    char runtime_path[4096], include_path[4096];
-    char flag_storage[4096], http_flag_storage[4096];
-    char *sdl_flags[64], *http_flags[64];
-    size_t sdl_flag_count = 0, http_flag_count = 0;
+    char gui_runtime[4096], voice_runtime[4096], include_path[4096];
+    char gui_flag_storage[4096], http_flag_storage[4096], voice_flag_storage[4096];
+    char *sdl_flags[64], *http_flags[64], *voice_flags[64];
+    size_t sdl_flag_count = 0U, http_flag_count = 0U, voice_flag_count = 0U;
     if (uses_http &&
         !read_http_flags(http_flag_storage, sizeof(http_flag_storage),
                          http_flags, sizeof(http_flags) / sizeof(http_flags[0]),
                          &http_flag_count)) return 1;
     if (uses_gui) {
-        if (!resolve_gui_paths(runtime_path, sizeof(runtime_path),
+        if (!resolve_gui_paths(gui_runtime, sizeof(gui_runtime),
                                include_path, sizeof(include_path))) {
             fprintf(stderr,
                     "ylang: GUI runtime source or header not found. Run from the YLang source tree or install the optional GUI files with 'make install-gui'.\n");
             return 1;
         }
-        if (!read_sdl2_flags(flag_storage, sizeof(flag_storage), sdl_flags,
+        if (!read_sdl2_flags(gui_flag_storage, sizeof(gui_flag_storage), sdl_flags,
                              sizeof(sdl_flags) / sizeof(sdl_flags[0]),
                              &sdl_flag_count)) return 1;
     }
+    if (uses_voice) {
+        char voice_include[4096];
+        if (!resolve_voice_paths(voice_runtime, sizeof(voice_runtime),
+                                 voice_include, sizeof(voice_include))) {
+            fprintf(stderr,
+                    "ylang: Voice runtime source or header not found. Run from the YLang source tree or install it with 'make install-voice'.\n");
+            return 1;
+        }
+        if (uses_gui && strcmp(include_path, voice_include) != 0) {
+            fputs("ylang: GUI and Voice runtimes resolve to different include directories.\n", stderr);
+            return 1;
+        }
+        if (!uses_gui) (void)snprintf(include_path, sizeof(include_path), "%s", voice_include);
+        if (!read_voice_flags(voice_flag_storage, sizeof(voice_flag_storage),
+                              voice_flags, sizeof(voice_flags) / sizeof(voice_flags[0]),
+                              &voice_flag_count)) return 1;
+    }
 
     char *args[192];
-    size_t n = 0;
+    size_t n = 0U;
     args[n++] = (char *)cc;
     if (uses_http) args[n++] = "-DYLANG_USE_HTTP=1";
     args[n++] = "-std=c17";
@@ -451,32 +468,24 @@ static int run_native_compiler(const char *cc, const char *c_path,
 #if !defined(_WIN32)
     args[n++] = "-fPIE";
 #endif
-    if (uses_gui) {
+    args[n++] = (char *)c_path;
+    if (uses_gui || uses_voice) {
         args[n++] = "-I";
         args[n++] = include_path;
-        args[n++] = (char *)c_path;
-        args[n++] = runtime_path;
-        args[n++] = "-lm";
-        for (size_t i = 0; i < sdl_flag_count; i++) args[n++] = sdl_flags[i];
-#if defined(__APPLE__)
-        args[n++] = "-pie";
-#elif !defined(_WIN32)
-        args[n++] = "-pie";
-        args[n++] = "-Wl,-z,relro,-z,now";
-#endif
-    } else {
-        args[n++] = (char *)c_path;
-        args[n++] = "-lm";
-#if defined(__APPLE__)
-        args[n++] = "-pie";
-#elif !defined(_WIN32)
-        args[n++] = "-pie";
-        args[n++] = "-Wl,-z,relro,-z,now";
-#endif
     }
-    for (size_t i = 0; i < http_flag_count; i++) args[n++] = http_flags[i];
+    if (uses_gui) args[n++] = gui_runtime;
+    if (uses_voice) args[n++] = voice_runtime;
+    args[n++] = "-lm";
+    for (size_t i = 0U; i < sdl_flag_count; i++) args[n++] = sdl_flags[i];
+    for (size_t i = 0U; i < voice_flag_count; i++) args[n++] = voice_flags[i];
+    for (size_t i = 0U; i < http_flag_count; i++) args[n++] = http_flags[i];
+#if defined(__APPLE__)
+    args[n++] = "-pie";
+#elif !defined(_WIN32)
+    args[n++] = "-pie";
+    args[n++] = "-Wl,-z,relro,-z,now";
+#endif
 #ifdef _WIN32
-    /* The generated runtime uses ShellExecuteA for image.open(). */
     args[n++] = "-lshell32";
 #endif
     args[n++] = "-o";
