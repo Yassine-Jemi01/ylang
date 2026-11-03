@@ -221,7 +221,7 @@ ylang fix <file.yl> -o <fixed.yl>
 
 ## Terminal UI (built in)
 
-YLang includes a dependency-free `std.tui` namespace for terminal applications. It provides terminal lifecycle management, raw key input, screen dimensions, cursor movement, ANSI colors, boxes, and progress bars. The C backend supports it without SDL2 or other external libraries; the experimental NASM backend rejects TUI calls explicitly. See [the Terminal UI guide](docs/TUI.md).
+YLang includes a dependency-free `std.tui` namespace for terminal applications. It provides terminal lifecycle management, raw key input, screen dimensions, positioned text, line clearing, rectangle fills, ANSI colors, boxes, and progress bars. The C backend supports it without SDL2 or other external libraries; the experimental NASM backend rejects TUI calls explicitly. See [the Terminal UI guide](docs/TUI.md).
 
 ## Optional GUI runtime (SDL2)
 
