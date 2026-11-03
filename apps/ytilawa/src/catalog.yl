@@ -17,29 +17,29 @@ function fetch_reciters() -> owned_string {
     return json.parse(response);
 }
 
-function surah_count(document: string) -> int {
+function surah_count(string document) -> int {
     let owned_string items = json.get(document, "suwar");
     return json.array_length(items);
 }
 
-function surah_name(document: string, index: int) -> owned_string {
+function surah_name(string document, int index) -> owned_string {
     let owned_string items = json.get(document, "suwar");
     let owned_string item = json.at(items, index);
     return json.get_string(item, "name");
 }
 
-function reciter_count(document: string) -> int {
+function reciter_count(string document) -> int {
     let owned_string items = json.get(document, "reciters");
     return json.array_length(items);
 }
 
-function reciter_name(document: string, index: int) -> owned_string {
+function reciter_name(string document, int index) -> owned_string {
     let owned_string items = json.get(document, "reciters");
     let owned_string item = json.at(items, index);
     return json.get_string(item, "name");
 }
 
-function reciter_audio_url(document: string, reciter_index: int, surah_id: int) -> owned_string {
+function reciter_audio_url(string document, int reciter_index, int surah_id) -> owned_string {
     let owned_string reciters = json.get(document, "reciters");
     let owned_string reciter = json.at(reciters, reciter_index);
     let owned_string moshaf_list = json.get(reciter, "moshaf");
