@@ -370,6 +370,8 @@ static const TuiBuiltin tui_builtins[] = {
     {"tui.init",0,TYPE_BOOL,{TYPE_VOID}}, {"tui.shutdown",0,TYPE_VOID,{TYPE_VOID}},
     {"tui.clear",0,TYPE_VOID,{TYPE_VOID}}, {"tui.width",0,TYPE_INT,{TYPE_VOID}},
     {"tui.height",0,TYPE_INT,{TYPE_VOID}}, {"tui.move_to",2,TYPE_VOID,{TYPE_INT,TYPE_INT}},
+    {"tui.write_at",3,TYPE_VOID,{TYPE_INT,TYPE_INT,TYPE_STRING}}, {"tui.clear_line",0,TYPE_VOID,{TYPE_VOID}},
+    {"tui.fill_rect",5,TYPE_BOOL,{TYPE_INT,TYPE_INT,TYPE_INT,TYPE_INT,TYPE_INT}},
     {"tui.write",1,TYPE_VOID,{TYPE_STRING}}, {"tui.println",1,TYPE_VOID,{TYPE_STRING}},
     {"tui.read_key",0,TYPE_INT,{TYPE_VOID}}, {"tui.key_available",0,TYPE_BOOL,{TYPE_VOID}},
     {"tui.read_line",2,TYPE_STRING,{TYPE_STRING,TYPE_INT}},
