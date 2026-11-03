@@ -68,6 +68,20 @@ For the optional GUI runtime, also install SDL2 and pkg-config:
 brew install sdl2 pkg-config
 ```
 
+For the experimental Voice playback runtime, install SDL2_mixer and pkg-config,
+then follow the [Voice and Audio Playback guide](docs/online-book/src/voice-audio.md):
+
+```sh
+# Fedora
+sudo dnf install SDL2-devel SDL2_mixer-devel pkgconf-pkg-config
+
+# Debian or Ubuntu
+sudo apt install libsdl2-dev libsdl2-mixer-dev pkg-config
+
+# macOS
+brew install sdl2 sdl2_mixer pkg-config
+```
+
 ### Experimental Windows setup
 
 Native Windows builds are tested with MinGW-w64 in an MSYS2 MINGW64 shell. MSVC is not supported by this initial port.
