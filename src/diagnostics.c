@@ -119,7 +119,9 @@ void diagnostic(Compiler *c, Token token, const char *level,
         fputc('\n', stderr);
     }
     if (suggestion && *suggestion) {
-        fprintf(stderr, "   = help: %s\n", suggestion);
+        fputs("   = help: ", stderr);
+        print_sanitized(stderr, suggestion, strlen(suggestion));
+        fputc('\n', stderr);
     }
     fputc('\n', stderr);
 }
