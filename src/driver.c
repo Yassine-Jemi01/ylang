@@ -451,6 +451,7 @@ static int run_native_compiler(const char *cc, const char *c_path,
     size_t n = 0U;
     args[n++] = (char *)cc;
     if (uses_http) args[n++] = "-DYLANG_USE_HTTP=1";
+    if (uses_voice) args[n++] = "-DYLANG_USE_VOICE=1";
     args[n++] = "-std=c17";
     args[n++] = "-Wall";
     args[n++] = "-Wextra";
