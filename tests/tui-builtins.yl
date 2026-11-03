@@ -1,0 +1,14 @@
+function main() -> int {
+    let bool initialized = tui.init();
+    let int key = tui.read_key();
+    let int width = tui.width();
+    let int height = tui.height();
+    let bool cleared = tui.clear();
+    let bool cursor = tui.set_cursor(1, 1);
+    let bool hidden = tui.hide_cursor();
+    let bool shown = tui.show_cursor();
+    let bool slept = tui.sleep_ms(1);
+    let string error = tui.last_error();
+    tui.shutdown();
+    return 0;
+}
