@@ -9,6 +9,7 @@ function main() -> int {
     if (not tui.draw_box(1, 1, 24, 5, "smoke")) { tui.shutdown(); return 4; }
     if (not tui.progress_bar(2, 3, 20, 3, 4)) { tui.shutdown(); return 5; }
     if (not tui.fill_rect(2, 5, 8, 1, 46)) { tui.shutdown(); return 7; }
+    if (tui.fill_rect(2, 5, 8, 1, 10)) { tui.shutdown(); return 8; }
     tui.write_at(2, 4, "std.tui works");
     tui.move_to(2, 6);
     tui.clear_line();
