@@ -13,3 +13,7 @@ world
 "line\nquote\""
 false
 Invalid JSON syntax
+{
+  "text": "a, b: c",
+  "n": 1
+}
