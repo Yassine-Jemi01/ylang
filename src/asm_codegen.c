@@ -156,6 +156,9 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
             }
             return validate_expr(ctx, expr->as.assign.right);
         case EXPR_CALL:
+            if (strncmp(expr->as.call.name, "voice.", 6) == 0) {
+                return asm_reject(ctx, expr->token, "Voice/audio calls (use the C backend with SDL2_mixer)");
+            }
             if (strncmp(expr->as.call.name, "gui.", 4) == 0) {
                 return asm_reject(ctx, expr->token, "GUI calls (use the C backend with SDL2)");
             }
