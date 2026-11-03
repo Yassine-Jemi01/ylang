@@ -823,11 +823,8 @@ static int64_t yl_http_stream_open(const char *method, const char *url,
     stream->attached = true;
     return stream->id;
 }
-static const char *yl_http_stream_read(int64_t id, int64_t max_bytes) {
-    YLHttpStream *stream = yl_http_stream_find(id);
-    if (!stream) { yl_http_set_error("Invalid or closed HTTP stream handle"); return yl_http_empty(); }
-    if (max_bytes <= 0) { yl_http_stream_error_set(stream, "stream_read max_bytes must be greater than zero"); return yl_http_empty(); }
-    if ((uint64_t)max_bytes > YL_HTTP_STREAM_BUFFER) max_bytes = (int64_t)YL_HTTP_STREAM_BUFFER;
+static size_t yl_http_stream_take(YLHttpStream *stream, void *destination, size_t max_bytes) {
+    if (!stream || max_bytes == 0U) return 0U;
     while (stream->length == 0U && !stream->done) {
         (void)yl_http_stream_pump(stream);
         if (stream->length == 0U && !stream->done) {
@@ -836,18 +833,33 @@ static const char *yl_http_stream_read(int64_t id, int64_t max_bytes) {
         }
     }
     size_t take = stream->length;
-    if ((uint64_t)take > (uint64_t)max_bytes) take = (size_t)max_bytes;
-    char *result = malloc(take + 1U);
-    if (!result) yl_runtime_error("out of memory reading HTTP stream");
-    if (take) memcpy(result, stream->buffer, take);
-    result[take] = '\0';
-    if (take < stream->length) memmove(stream->buffer, stream->buffer + take, stream->length - take);
+    if (take > max_bytes) take = max_bytes;
+    if (take && destination) memcpy(destination, stream->buffer, take);
+    if (take < stream->length)
+        memmove(stream->buffer, stream->buffer + take, stream->length - take);
     stream->length -= take;
     if (stream->paused && !stream->done && stream->easy) {
         stream->paused = false;
         CURLcode resume_code = curl_easy_pause(stream->easy, CURLPAUSE_CONT);
-        if (resume_code != CURLE_OK) yl_http_stream_error_set(stream, curl_easy_strerror(resume_code));
+        if (resume_code != CURLE_OK)
+            yl_http_stream_error_set(stream, curl_easy_strerror(resume_code));
     }
+    return take;
+}
+static const char *yl_http_stream_read(int64_t id, int64_t max_bytes) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    if (!stream) { yl_http_set_error("Invalid or closed HTTP stream handle"); return yl_http_empty(); }
+    if (max_bytes <= 0) {
+        yl_http_stream_error_set(stream, "stream_read max_bytes must be greater than zero");
+        return yl_http_empty();
+    }
+    if ((uint64_t)max_bytes > YL_HTTP_STREAM_BUFFER)
+        max_bytes = (int64_t)YL_HTTP_STREAM_BUFFER;
+    size_t capacity = (size_t)max_bytes;
+    char *result = malloc(capacity + 1U);
+    if (!result) yl_runtime_error("out of memory reading HTTP stream");
+    size_t take = yl_http_stream_take(stream, result, capacity);
+    result[take] = '\0';
     return (const char *)yl_track(result, take + 1U);
 }
 static bool yl_http_stream_done(int64_t id) {
@@ -2042,6 +2054,32 @@ static bool yl_binary_buffer_clear(int64_t id) {
     if (!buffer || buffer->parent_id != 0) return false;
     buffer->length = 0U;
     return true;
+}
+
+/* Copy the next HTTP stream bytes into a reusable binary buffer. This API
+   overwrites the destination buffer and never interprets payload bytes as text. */
+static int64_t yl_http_stream_read_buffer(int64_t stream_id, int64_t buffer_id,
+                                          int64_t max_bytes) {
+    YLHttpStream *stream = yl_http_stream_find(stream_id);
+    YLBinaryBuffer *buffer = yl_binary_buffer_find(buffer_id);
+    if (!stream || !buffer || buffer->parent_id != 0) {
+        if (stream) yl_http_stream_error_set(stream, "stream_read_buffer requires a live root byte buffer");
+        return -1;
+    }
+    if (max_bytes <= 0) {
+        yl_http_stream_error_set(stream, "stream_read_buffer max_bytes must be greater than zero");
+        return -1;
+    }
+    if ((uint64_t)max_bytes > YL_HTTP_STREAM_BUFFER)
+        max_bytes = (int64_t)YL_HTTP_STREAM_BUFFER;
+    size_t capacity = (size_t)max_bytes;
+    if (!yl_binary_buffer_reserve(buffer, capacity)) {
+        yl_http_stream_error_set(stream, "Could not reserve the destination byte buffer");
+        return -1;
+    }
+    size_t count = yl_http_stream_take(stream, buffer->data, capacity);
+    buffer->length = count;
+    return (int64_t)count;
 }
 static bool yl_binary_buffer_free(int64_t id) {
     YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
