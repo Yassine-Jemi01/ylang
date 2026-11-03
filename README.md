@@ -202,7 +202,7 @@ See [enum reference](docs/ENUMS.md) and [runnable example](examples/enums.yl). P
 
 ## JSON standard library
 
-The built-in `json.*` namespace provides a bounded native JSON parser and accessors. It validates JSON syntax, supports nested objects and arrays, JSON escapes and Unicode escape decoding, and limits input to 16 MiB and nesting to 128 levels. Parsed documents are represented as `owned_string` JSON text; `json.get` and `json.at` return owned raw JSON fragments. `json.pretty` formats an existing JSON value with two-space indentation. See [the JSON guide](docs/JSON.md) for the API and current limitations.
+The built-in `json.*` namespace provides a bounded native JSON parser and accessors. It validates JSON syntax, supports nested objects and arrays, JSON escapes and Unicode escape decoding, and limits input to 16 MiB and nesting to 128 levels. Parsed documents are represented as `owned_string` JSON text; `json.get` and `json.at` return owned raw JSON fragments. `json.pretty` formats an existing JSON value with two-space indentation. `json.object`, `json.array`, `json.set`, `json.remove`, and `json.push` build updated JSON text values without mutating their inputs. See [the JSON guide](docs/JSON.md) for the API and current limitations.
 
 ## Multi-file imports (experimental)
 
