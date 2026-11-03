@@ -200,6 +200,10 @@ function main() -> int {
 
 See [enum reference](docs/ENUMS.md) and [runnable example](examples/enums.yl). Payload variants, generic enums, and matching bindings are not implemented in this milestone.
 
+## JSON standard library
+
+The built-in `json.*` namespace provides a bounded native JSON parser and accessors. It validates JSON syntax, supports nested objects and arrays, JSON escapes and Unicode escape decoding, and limits input to 16 MiB and nesting to 128 levels. Parsed documents are represented as `owned_string` JSON text; `json.get` and `json.at` return owned raw JSON fragments. See [the JSON guide](docs/JSON.md) for the API and current limitations.
+
 ## Multi-file imports (experimental)
 
 YLang can import named functions and global variables from another source file. Paths are resolved relative to the importing file first.
