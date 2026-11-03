@@ -120,13 +120,13 @@ void diagnostic(Compiler *c, Token token, const char *level,
         c->warning_count++;
     }
     if (c->diagnostic_count <= YLANG_MAX_DIAGNOSTICS) c->diagnostic_count++;
+    if (c->quiet_diagnostics) return;
     if (c->diagnostic_count > YLANG_MAX_DIAGNOSTICS) {
         if (c->diagnostic_count == YLANG_MAX_DIAGNOSTICS + 1U)
             fputs("error[E1099]: Too many diagnostics; further messages are suppressed.\n",
                   stderr);
         return;
     }
-    if (c->quiet_diagnostics) return;
 
     size_t line = token.line ? token.line : 1U;
     size_t column = token.column ? token.column : 1U;

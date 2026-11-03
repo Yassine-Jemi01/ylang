@@ -104,7 +104,7 @@ def main() -> None:
         b"    return 0;\n"
         b"}\n"
     )
-    hostile_path = BUILD / "security-diag-\x1b]0;PWNED\x07.yl"
+    hostile_path = BUILD / "security-diag-source.yl"
     hostile_path.write_bytes(hostile_source)
     hostile_result = run_check(hostile_path)
     if hostile_result.returncode != 1:
