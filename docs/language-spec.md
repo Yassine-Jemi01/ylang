@@ -323,6 +323,19 @@ lowering is implemented.
 
 `fix input.yl -o output.yl` currently implements one high-confidence source transformation: changing a `pritn(...)` call typo to `print(...)` when no function named `pritn` is declared. It requires an output path and does not intentionally modify comment/string text. It is not a general repair engine. Always run `check` after applying a fix.
 
+## JSON documents
+
+The native `json.*` namespace parses and validates JSON without a third-party dependency. It supports nested objects and arrays, JSON escapes, and UTF-16 surrogate-pair decoding. Input is limited to 16 MiB and nesting to 128 levels.
+
+- `json.parse(text)` validates and retains a JSON document as `owned_string`.
+- `json.valid(text)` checks syntax and returns `bool`.
+- `json.get(document, key)` returns a property as raw JSON; typed accessors include `json.get_string`, `json.get_int`, `json.get_float`, and `json.get_bool`.
+- `json.has(document, key)` checks for an object property; `json.array_length` and `json.at` inspect arrays.
+- `json.stringify(raw)` validates and copies an already-serialized JSON value. `json.pretty(raw)` formats one with two-space indentation.
+- `json.escape(text)` encodes a YLang string as a JSON string literal; `json.last_error()` returns the latest diagnostic.
+
+This is currently a raw-document API, not a mutable JSON DOM: it does not build objects or arrays from YLang values. See [the JSON guide](JSON.md) for details.
+
 ## Binary file I/O (experimental)
 
 The optional `byte` scalar type is an unsigned 8-bit integer. `byte(value)` checks that an `int` is in the range 0..255 and returns a byte; an out-of-range conversion terminates with a runtime error. Fixed arrays can be declared as `let byte data[] = [byte(0), byte(255)];`.
