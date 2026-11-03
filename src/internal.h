@@ -34,6 +34,8 @@ struct Compiler {
     size_t next_var_id;
     Module **modules;
     size_t module_count;
+    size_t module_load_depth;
+    size_t module_total_source_bytes;
     Module *root_module;
     EnumDecl **enums;
     size_t enum_count;

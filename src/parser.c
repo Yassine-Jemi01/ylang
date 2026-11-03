@@ -18,6 +18,7 @@ static void append_fpart(Compiler *c, FPart **items, size_t *count, FPart item)
 }
 
 #define PARSER_MAX_EXPRESSION_DEPTH 256U
+#define PARSER_MAX_STATEMENT_DEPTH 256U
 
 typedef struct {
     Compiler *compiler;
@@ -27,6 +28,8 @@ typedef struct {
     int base_line;
     int base_column;
     unsigned expression_depth;
+    unsigned statement_depth;
+    bool statement_depth_reported;
 } Parser;
 
 static bool token_is(const Token *token, const char *text)
@@ -805,7 +808,19 @@ static Stmt *parse_if_after_keyword(Parser *p, Token token)
     stmt->as.if_stmt.then_branch = parse_block_after_open(p, p->previous);
     if (match(p, TOKEN_ELSE)) {
         if (match(p, TOKEN_IF)) {
-            stmt->as.if_stmt.else_branch = parse_if_after_keyword(p, p->previous);
+            if (p->statement_depth >= PARSER_MAX_STATEMENT_DEPTH) {
+                if (!p->statement_depth_reported) {
+                    diagnostic(p->compiler, p->previous, "error", "E1016",
+                               "Maximum statement nesting depth exceeded.",
+                               "Reduce nested blocks and control-flow statements; the limit is 256 levels.");
+                    p->statement_depth_reported = true;
+                }
+                synchronize(p);
+            } else {
+                p->statement_depth++;
+                stmt->as.if_stmt.else_branch = parse_if_after_keyword(p, p->previous);
+                p->statement_depth--;
+            }
         } else {
             consume(p, TOKEN_LEFT_BRACE, "Expected '{' before else body.",
                     "Start the else block with '{'.");
@@ -869,7 +884,7 @@ static Stmt *parse_match_after_keyword(Parser *p, Token token)
     return stmt;
 }
 
-static Stmt *parse_statement(Parser *p)
+static Stmt *parse_statement_impl(Parser *p)
 {
     Token token = p->current;
     if (p->current.type == TOKEN_IDENTIFIER && token_is(&p->current, "match")) {
@@ -984,6 +999,42 @@ static Stmt *parse_statement(Parser *p)
     stmt->as.expression = expr;
     consume(p, TOKEN_SEMICOLON, "Expected ';' after expression.",
             "End the statement with ';'.");
+    return stmt;
+}
+
+static Stmt *parse_statement(Parser *p)
+{
+    if (p->statement_depth >= PARSER_MAX_STATEMENT_DEPTH) {
+        if (!p->statement_depth_reported) {
+            diagnostic(p->compiler, p->current, "error", "E1016",
+                       "Maximum statement nesting depth exceeded.",
+                       "Reduce nested blocks and control-flow statements; the limit is 256 levels.");
+            p->statement_depth_reported = true;
+        }
+
+        /* Discard the over-deep block iteratively instead of recursing further. */
+        unsigned brace_depth = 0U;
+        bool saw_block = false;
+        while (p->current.type != TOKEN_EOF) {
+            if (p->current.type == TOKEN_LEFT_BRACE) {
+                brace_depth++;
+                saw_block = true;
+            } else if (p->current.type == TOKEN_RIGHT_BRACE) {
+                if (brace_depth == 0U) break;
+                brace_depth--;
+                if (saw_block && brace_depth == 0U) {
+                    advance_parser(p);
+                    break;
+                }
+            }
+            advance_parser(p);
+        }
+        return new_stmt(p->compiler, STMT_BLOCK, p->current);
+    }
+
+    p->statement_depth++;
+    Stmt *stmt = parse_statement_impl(p);
+    p->statement_depth--;
     return stmt;
 }
 

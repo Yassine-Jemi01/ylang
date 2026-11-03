@@ -13,6 +13,83 @@ grep -q 'ylang run' build/help.out
 grep -q 'ylang debug' build/help.out
 grep -Fq "YLang v${EXPECTED_VERSION} — compiled language toolchain" build/help.out
 ./build/ylang check examples/type-conversions.yl >/dev/null
+# Deep statement nesting must produce a parser diagnostic, never exhaust the C stack.
+"$PYTHON" - <<'PY'
+from pathlib import Path
+
+def write_nested(path, depth):
+    lines = ["fn main() -> int {"]
+    lines.extend("if (true) {" for _ in range(depth))
+    lines.append("return 0;")
+    lines.extend("}" for _ in range(depth))
+    lines.extend(["return 0;", "}"])
+    Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+write_nested("build/nesting-valid.yl", 100)
+write_nested("build/nesting-too-deep.yl", 257)
+chain = ["fn main() -> int {", "if (true) {}"]
+chain.extend("else if (true) {}" for _ in range(257))
+chain.extend(["else { return 0; }", "return 0;", "}"])
+Path("build/nesting-else-if-too-deep.yl").write_text("\n".join(chain) + "\n", encoding="utf-8")
+PY
+./build/ylang build build/nesting-valid.yl -o build/nesting-valid >/dev/null
+./build/nesting-valid >/dev/null
+if ./build/ylang check build/nesting-too-deep.yl > build/nesting-too-deep.out 2>&1; then
+    echo "FAIL: parser accepted excessive statement nesting" >&2
+    exit 1
+fi
+grep -q "Maximum statement nesting depth exceeded" build/nesting-too-deep.out
+if ./build/ylang check build/nesting-else-if-too-deep.yl > build/nesting-else-if-too-deep.out 2>&1; then
+    echo "FAIL: parser accepted an excessive else-if chain" >&2
+    exit 1
+fi
+grep -q "Maximum statement nesting depth exceeded" build/nesting-else-if-too-deep.out
+
+# Diagnostics must cap output, bound long source excerpts, and escape terminal controls.
+"$PYTHON" - <<'PY'
+from pathlib import Path
+import subprocess
+
+name = "build/bad-\x1b[2J.yl"
+Path(name).write_bytes(
+    b"fn main() -> int {\n    " + b"\x01" * 5000 +
+    b"\n    return 0;\n}\n"
+)
+result = subprocess.run(
+    ["./build/ylang", "check", name],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    timeout=5,
+)
+assert result.returncode != 0
+assert len(result.stderr) < 1_000_000, len(result.stderr)
+assert b"too many errors" in result.stderr
+assert b":2:5" in result.stderr
+assert b"\\x1b" in result.stderr
+assert b"\\x01" in result.stderr
+assert b"\x1b" not in result.stderr
+assert b"\x07" not in result.stderr
+assert b"\r" not in result.stderr
+
+# Import paths are echoed in help suggestions; terminal controls must be escaped there too.
+missing_import = "build/missing-import-control.yl"
+Path(missing_import).write_bytes(
+    b'from "./missing-\\x1b[2J-module.yl" import absent;\n'
+    b"fn main() -> int { return 0; }\n"
+)
+result = subprocess.run(
+    ["./build/ylang", "check", missing_import],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    timeout=5,
+)
+assert result.returncode != 0
+assert (b"Cannot resolve the imported module file" in result.stderr or
+        b"Cannot read the imported module source" in result.stderr), result.stderr
+assert b"\\x1B" in result.stderr, result.stderr
+assert b"\x1b" not in result.stderr, result.stderr
+PY
+
 ./build/ylang build examples/type-conversions.yl -o build/test-type-conversions >/dev/null
 ./build/test-type-conversions > build/type-conversions.out
 diff -u tests/expected-type-conversions.txt build/type-conversions.out
@@ -1166,6 +1243,64 @@ grep -q '^6$' build/compound-operators.out
 grep -q '^2$' build/compound-operators.out
 
 
+# Module import recursion is bounded and must fail diagnostically rather than overflow the stack.
+mkdir -p build/module-depth/valid build/module-depth/too-deep
+"$PYTHON" - <<'PY'
+from pathlib import Path
+
+def make_chain(depth, directory):
+    for index in range(depth):
+        imported = (
+            f'from "./m{index + 1}.yl" import f{index + 1};\n'
+            if index + 1 < depth else ""
+        )
+        call = f"f{index + 1}()" if index + 1 < depth else "0"
+        (directory / f"m{index}.yl").write_text(
+            imported + f"fn f{index}() -> int {{ return {call}; }}\n",
+            encoding="utf-8",
+        )
+    (directory / "root.yl").write_text(
+        'from "./m0.yl" import f0;\n'
+        "fn main() -> int { return f0(); }\n",
+        encoding="utf-8",
+    )
+
+make_chain(100, Path("build/module-depth/valid"))
+make_chain(2048, Path("build/module-depth/too-deep"))
+PY
+./build/ylang build build/module-depth/valid/root.yl -o build/module-depth/valid-program >/dev/null
+./build/module-depth/valid-program >/dev/null
+if ./build/ylang check build/module-depth/too-deep/root.yl > build/module-depth/too-deep.out 2>&1; then
+    echo "FAIL: compiler accepted an excessive module import chain" >&2
+    exit 1
+fi
+grep -q "Maximum module import depth exceeded" build/module-depth/too-deep.out
+
+# Wide import graphs must also respect the module-count cap.
+mkdir -p build/module-count
+"$PYTHON" - <<'PY'
+from pathlib import Path
+
+root = Path("build/module-count")
+imports = []
+for index in range(1024):
+    name = f"wide{index}"
+    (root / f"{name}.yl").write_text(
+        f"fn {name}() -> int {{ return {index}; }}\n",
+        encoding="utf-8",
+    )
+    imports.append(f'from "./{name}.yl" import {name};')
+(root / "root.yl").write_text(
+    "\n".join(imports) + "\nfn main() -> int { return 0; }\n",
+    encoding="utf-8",
+)
+PY
+if ./build/ylang check build/module-count/root.yl > build/module-count/out 2>&1; then
+    echo "FAIL: compiler accepted more than 1024 source modules" >&2
+    exit 1
+fi
+grep -q "Maximum module count exceeded" build/module-count/out
+
 # Multi-file imports resolve relative to the importing source file.
 mkdir -p build/imports
 cat > build/imports/suffix.yl <<'EOF'
@@ -1280,6 +1415,24 @@ if ./build/ylang check build/imports/missing-file.yl > build/imports/missing-fil
     exit 1
 fi
 grep -q 'E1022' build/imports/missing-file.out
+
+
+# Imported source with an embedded NUL must be rejected instead of truncated.
+"$PYTHON" - <<'PY'
+from pathlib import Path
+Path('build/imports/embedded-nul-module.yl').write_bytes(
+    b'fn imported_value() -> int { return 7; }\0fn hidden() -> int { return 9; }\n'
+)
+PY
+cat > build/imports/import-embedded-nul.yl <<'EOF'
+from "./embedded-nul-module.yl" import imported_value;
+fn main() -> int { return imported_value(); }
+EOF
+if ./build/ylang check build/imports/import-embedded-nul.yl > build/imports/embedded-nul.out 2>&1; then
+    echo "FAIL: compiler accepted an imported module containing an embedded NUL" >&2
+    exit 1
+fi
+grep -q 'E1022' build/imports/embedded-nul.out
 
 cat > build/imports/contains-main.yl <<'EOF'
 fn main() -> int { return 0; }
@@ -1747,6 +1900,34 @@ YLANG_MEMORY_STATS=1 ./build/test-owned-string-control-flow-cleanup > build/owne
 printf 'then-branch\nelse-branch\nfirst-arm\nsecond-arm\n' > build/owned-string-control-flow-cleanup.expected
 diff -u build/owned-string-control-flow-cleanup.expected build/owned-string-control-flow-cleanup.stdout
 grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-control-flow-cleanup.stderr
+
+# Moving the same owner in either branch releases the branch-local destination exactly once.
+./build/ylang build tests/owned-string-branch-transfer.yl -o build/test-owned-string-branch-transfer >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string-branch-transfer > build/owned-string-branch-transfer.stdout 2> build/owned-string-branch-transfer.stderr
+printf 'branch-owner\nbranch-owner\n' > build/owned-string-branch-transfer.expected
+diff -u build/owned-string-branch-transfer.expected build/owned-string-branch-transfer.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-branch-transfer.stderr
+
+# A move on only one branch invalidates the owner after the control-flow join.
+if ./build/ylang check tests/owned-string-branch-join.yl > build/owned-string-branch-join.out 2>&1; then
+    echo "FAIL: YLang accepted an owned value after a conditional move" >&2
+    exit 1
+fi
+grep -q 'E2110' build/owned-string-branch-join.out
+
+# Reinitializing an owner on one branch restores it at the control-flow join.
+./build/ylang build tests/owned-string-branch-reinitialize.yl -o build/test-owned-string-branch-reinitialize >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string-branch-reinitialize > build/owned-string-branch-reinitialize.stdout 2> build/owned-string-branch-reinitialize.stderr
+printf 'original\nreplacement\noriginal\n' > build/owned-string-branch-reinitialize.expected
+diff -u build/owned-string-branch-reinitialize.expected build/owned-string-branch-reinitialize.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-branch-reinitialize.stderr
+
+# A moved mutable binding may be initialized again without releasing the transferred owner.
+./build/ylang build tests/owned-string-reinitialize.yl -o build/test-owned-string-reinitialize >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-owned-string-reinitialize > build/owned-string-reinitialize.stdout 2> build/owned-string-reinitialize.stderr
+printf 'old-owner new-owner\n' > build/owned-string-reinitialize.expected
+diff -u build/owned-string-reinitialize.expected build/owned-string-reinitialize.stdout
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-reinitialize.stderr
 
 # Early returns clean only active lexical scopes, and transfer the return owner.
 ./build/ylang build tests/owned-string-early-return.yl -o build/test-owned-string-early-return >/dev/null

@@ -3,7 +3,7 @@
 **Status:** Active development  
 **Development baseline:** YLang 2.2.0  
 **Next release:** YLang 3.0.0  
-**Policy:** The previously proposed 2.3 feature line is folded into 3.0. No separate 2.3 stable release is planned.
+**Policy:** YLang 2.3 is the next focused stable release. YLang 3.0 remains a separate later major release for language redesign and LLVM completion. The 2.3 scope is defined in [ROADMAP-2.3-3.0.md](ROADMAP-2.3-3.0.md).
 
 YLang 3.0 is a single major effort: modernize the language, complete the native backends, establish an unmistakable reason to choose YLang, and prove performance with reproducible measurements.
 

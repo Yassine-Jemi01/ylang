@@ -1,7 +1,14 @@
 name: CI
 
+# A push to a PR branch and its pull_request event are the same source revision.
+# Share one concurrency group so duplicate matrix runs do not occupy runner slots.
+concurrency:
+  group: ci-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 

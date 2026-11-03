@@ -1170,6 +1170,7 @@ typedef struct {
     size_t *loop_marks;
     size_t loop_count;
     size_t loop_capacity;
+    unsigned statement_depth;
 } CodegenContext;
 
 static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent);
@@ -1424,6 +1425,13 @@ static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
 {
     if (!stmt) return;
     Compiler *c = ctx->compiler;
+    if (ctx->statement_depth >= 512U) {
+        diagnostic(c, stmt->token, "error", "E1018",
+                   "Maximum code-generation statement depth exceeded.",
+                   "Reduce deeply nested control-flow statements.");
+        return;
+    }
+    ctx->statement_depth++;
     FILE *out = ctx->out;
     emit_source_line_directive(c, out, stmt->token);
     switch (stmt->kind) {
@@ -1604,6 +1612,7 @@ static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
             }
             break;
     }
+    ctx->statement_depth--;
 }
 
 static void emit_control_body(CodegenContext *ctx, Stmt *body, unsigned indent)
@@ -1722,7 +1731,8 @@ bool generate_c(Compiler *c, const char *path)
             .scope_capacity = 0U,
             .loop_marks = NULL,
             .loop_count = 0U,
-            .loop_capacity = 0U
+            .loop_capacity = 0U,
+            .statement_depth = 0U
         };
         /* Keep the source function body's block scope, including parameter shadowing rules. */
         emit_stmt(&context, fn->body, 1U);

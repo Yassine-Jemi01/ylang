@@ -1,0 +1,9 @@
+fn main() -> int {
+    let owned_string source = string.own("branch-owner");
+    if (true) {
+        let owned_string destination = move(source);
+        print(destination);
+    }
+    print(source);
+    return 0;
+}

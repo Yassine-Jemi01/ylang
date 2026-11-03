@@ -1,0 +1,7 @@
+fn main() -> int {
+    let mut source: owned_string = string.own("old-owner");
+    let old_owner: owned_string = move(source);
+    source = string.own("new-owner");
+    print(old_owner, source);
+    return 0;
+}

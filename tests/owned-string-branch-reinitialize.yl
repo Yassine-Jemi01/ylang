@@ -1,0 +1,15 @@
+fn exercise(bool replace) -> void {
+    let mut source: owned_string = string.own("original");
+    if (replace) {
+        let owned_string previous = move(source);
+        source = string.own("replacement");
+        print(previous);
+    }
+    print(source);
+}
+
+fn main() -> int {
+    exercise(true);
+    exercise(false);
+    return 0;
+}

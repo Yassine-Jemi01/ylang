@@ -19,6 +19,7 @@ typedef struct {
     Scope *scope;
     Function *function;
     unsigned loop_depth;
+    unsigned statement_depth;
     Expr *allowed_assignment;
     bool allow_array_name;
     Module *module;
@@ -1197,6 +1198,13 @@ static void check_stmt(Checker *checker, Stmt *stmt)
 {
     if (!stmt) return;
     Compiler *c = checker->compiler;
+    if (checker->statement_depth >= 512U) {
+        diagnostic(c, stmt->token, "error", "E1017",
+                   "Maximum semantic statement traversal depth exceeded.",
+                   "Reduce deeply nested control-flow statements.");
+        return;
+    }
+    checker->statement_depth++;
     switch (stmt->kind) {
         case STMT_BLOCK: {
             Scope *outer = checker->scope;
@@ -1575,12 +1583,14 @@ static void check_stmt(Checker *checker, Stmt *stmt)
             break;
         }
     }
+    checker->statement_depth--;
 }
 
 bool check_program(Compiler *c)
 {
     Checker checker = {
         .compiler = c, .scope = NULL, .function = NULL, .loop_depth = 0,
+        .statement_depth = 0,
         .allowed_assignment = NULL, .allow_array_name = false, .module = NULL
     };
 
