@@ -204,7 +204,7 @@ static StructField *find_struct_field(StructDecl *structure, const char *name)
 static YType parse_type(Parser *p)
 {
     Token token = consume(p, TOKEN_IDENTIFIER,
-        "Expected a type name such as 'int', 'float', 'bool', 'char', 'string', or 'void'.",
+        "Expected a type name such as 'int', 'float', 'bool', 'char', 'byte', 'string', or 'void'.",
         "Write the type before the variable or parameter name.");
     if (token_is(&token, "int")) return TYPE_INT;
     if (token_is(&token, "float")) return TYPE_FLOAT;
