@@ -677,6 +677,18 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "terminal.write_line") == 0) return "yl_terminal_write_line";
     if (strcmp(name, "terminal.clear") == 0) return "yl_terminal_clear";
     if (strcmp(name, "terminal.is_interactive") == 0) return "yl_terminal_is_interactive";
+    if (strcmp(name, "tui.init") == 0) return "yl_tui_init";
+    if (strcmp(name, "tui.shutdown") == 0) return "yl_tui_shutdown";
+    if (strcmp(name, "tui.read_key") == 0) return "yl_tui_read_key";
+    if (strcmp(name, "tui.width") == 0) return "yl_tui_width";
+    if (strcmp(name, "tui.height") == 0) return "yl_tui_height";
+    if (strcmp(name, "tui.clear") == 0) return "yl_tui_clear";
+    if (strcmp(name, "tui.write") == 0) return "yl_tui_write";
+    if (strcmp(name, "tui.set_cursor") == 0) return "yl_tui_set_cursor";
+    if (strcmp(name, "tui.hide_cursor") == 0) return "yl_tui_hide_cursor";
+    if (strcmp(name, "tui.show_cursor") == 0) return "yl_tui_show_cursor";
+    if (strcmp(name, "tui.sleep_ms") == 0) return "yl_tui_sleep_ms";
+    if (strcmp(name, "tui.last_error") == 0) return "yl_tui_last_error";
     if (strcmp(name, "io.read_line") == 0) return "yl_read_line";
     if (strcmp(name, "io.read_file") == 0) return "yl_read_file";
     if (strcmp(name, "io.write_file") == 0) return "yl_write_file";
