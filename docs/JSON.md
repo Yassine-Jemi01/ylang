@@ -21,6 +21,11 @@ function main() -> int {
 | json.valid(text) | bool | Check JSON syntax without retaining a copy |
 | json.stringify(raw) | owned_string | Validate and copy an existing raw JSON value |
 | json.pretty(raw) | owned_string | Format a JSON value with two-space indentation |
+| json.object() | owned_string | Create an empty JSON object |
+| json.array() | owned_string | Create an empty JSON array |
+| json.set(object, key, raw_value) | owned_string | Return an object with a property added or replaced |
+| json.remove(object, key) | owned_string | Return an object without the selected property |
+| json.push(array, raw_value) | owned_string | Return an array with one value appended |
 | json.get(document, key) | owned_string | Get an object's property as raw JSON |
 | json.get_string(document, key) | owned_string | Get and decode a string property |
 | json.get_int(document, key) | int | Get a signed 64-bit integer property |
@@ -36,7 +41,7 @@ function main() -> int {
 
 JSON documents and extracted raw values are represented as owned strings, not as a dynamic YLang value tree. This keeps the first implementation compatible with the current type system and makes it useful for HTTP responses and configuration files. json.get and json.at return an empty string on lookup failure; typed getters return their zero value and set json.last_error(). Check json.has before accessing optional object properties.
 
-json.stringify currently validates and copies an already-serialized JSON value. `json.pretty` validates and formats an already-serialized value with two-space indentation. Neither function constructs objects or arrays from YLang values. Use json.escape when encoding a string value. A future typed JSON value/DOM API can add object construction and mutation without changing this raw-document representation.
+json.stringify currently validates and copies an already-serialized JSON value. `json.pretty` validates and formats an already-serialized value with two-space indentation. `json.object` and `json.array` create empty containers. `json.set`, `json.remove`, and `json.push` return new JSON text values; they do not mutate the original string. Values passed to `json.set` and `json.push` must already be valid JSON fragments (use `json.escape` for strings). Use json.escape when encoding a string value. A future typed JSON value/DOM API can add object construction and mutation without changing this raw-document representation.
 
 ## Safety limits
 
