@@ -2,6 +2,7 @@
 """Exercise raw-key TUI input under a pseudo-terminal on POSIX hosts."""
 import errno
 import os
+import re
 import pty
 import select
 import struct
@@ -89,8 +90,8 @@ def main():
         if process.returncode != 0:
             raise SystemExit(f"TUI key test exited {process.returncode}: {output!r}")
         text = output.decode("utf-8", errors="replace")
-        values = [line.strip() for line in text.splitlines() if line.strip().isdigit()]
-        if values[-3:] != ["80", "24", "1001"]:
+        values = re.findall(r"(?m)^(-?\\d+)$", text)
+        if values[-4:] != ["80", "24", "-1", "1001"]:
             raise SystemExit(f"TUI dimensions/key mismatch: {text!r}")
         restored = termios.tcgetattr(slave)
         mask = termios.ICANON | termios.ECHO
