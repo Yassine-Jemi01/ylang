@@ -28,7 +28,23 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Connection", "close")
 
     def do_GET(self):
-        if self.path == "/redirect":
+        if self.path == "/oversized-headers":
+            # Reproduce the exact boundary sequence that previously wrapped the
+            # synchronous header-length subtraction and wrote past its global buffer.
+            payload = (
+                b"HTTP/1.1 200 OK\\r\\n"
+                + b"X: " + b"A" * 16377 + b"\\r\\n"
+                + b"a:\\r\\n"
+                + b"B: x\\r\\n"
+                + b"\\r\\nhello"
+            )
+            try:
+                self.connection.sendall(payload)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            finally:
+                self.close_connection = True
+        elif self.path == "/redirect":
             self.send_response(302)
             self.send_header("Location", "/redirect-target")
             self.send_header("Content-Length", "0")
