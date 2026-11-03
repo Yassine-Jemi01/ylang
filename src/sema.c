@@ -306,7 +306,18 @@ static const BinaryBuiltin binary_builtins[] = {
     {"io.write_u64_be", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
     {"io.stream_open_read", 1, TYPE_INT, {TYPE_STRING}},
     {"io.stream_open_write", 1, TYPE_INT, {TYPE_STRING}},
-    {"io.stream_close", 1, TYPE_BOOL, {TYPE_INT}}
+    {"io.stream_close", 1, TYPE_BOOL, {TYPE_INT}},
+    {"io.buffer_new", 1, TYPE_INT, {TYPE_INT}},
+    {"io.buffer_length", 1, TYPE_INT, {TYPE_INT}},
+    {"io.buffer_capacity", 1, TYPE_INT, {TYPE_INT}},
+    {"io.buffer_get", 2, TYPE_INT, {TYPE_INT, TYPE_INT}},
+    {"io.buffer_set", 3, TYPE_BOOL, {TYPE_INT, TYPE_INT, TYPE_INT}},
+    {"io.buffer_push", 2, TYPE_BOOL, {TYPE_INT, TYPE_INT}},
+    {"io.buffer_resize", 2, TYPE_BOOL, {TYPE_INT, TYPE_INT}},
+    {"io.buffer_clear", 1, TYPE_BOOL, {TYPE_INT}},
+    {"io.buffer_free", 1, TYPE_BOOL, {TYPE_INT}},
+    {"io.buffer_load", 3, TYPE_INT, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.buffer_save", 3, TYPE_INT, {TYPE_STRING, TYPE_INT, TYPE_INT}}
 };
 
 static const BinaryBuiltin *find_binary_builtin(const char *name)
