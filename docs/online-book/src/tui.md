@@ -42,7 +42,8 @@ See [the std.tui reference](../../../stdlib/tui/README.md) for all functions and
 |---|---|---|
 | `tui.init()` | `bool` | Enable raw input and disable echo |
 | `tui.shutdown()` | `void` | Restore terminal input mode |
-| `tui.read_key()` | `int` | Read one key or supported navigation key |
+| `tui.read_key()` | `int` | Read one key or supported navigation key (blocking) |
+| `tui.poll_key()` | `int` | Read a key if available, otherwise return `-1` |
 | `tui.width()` / `tui.height()` | `int` | Read current terminal dimensions |
 | `tui.clear()` | `bool` | Clear and home |
 | `tui.write(text)` | `bool` | Write text or ANSI escape sequences |
@@ -55,4 +56,4 @@ Navigation key codes are Up 1001, Down 1002, Right 1003, Left 1004, Home 1005, E
 
 ## Limitations
 
-The first version is synchronous and single-key oriented. It does not yet provide mouse events, key-release events, Unicode grapheme editing, terminal resize events, or a full widget/layout system. Re-query dimensions during the event loop. The C backend is supported; the experimental NASM backend rejects TUI calls. POSIX raw-key behavior is covered by a pseudo-terminal integration test. Windows raw input still needs dedicated interactive CI coverage.
+The first version is synchronous and single-key oriented; use `tui.poll_key()` plus `tui.sleep_ms()` for a responsive polling event loop. It does not yet provide mouse events, key-release events, Unicode grapheme editing, terminal resize events, or a full widget/layout system. Re-query dimensions during the event loop. The C backend is supported; the experimental NASM backend rejects TUI calls. POSIX raw-key behavior is covered by a pseudo-terminal integration test. Windows raw input still needs dedicated interactive CI coverage.
