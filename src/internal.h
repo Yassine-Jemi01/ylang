@@ -28,6 +28,9 @@ struct Compiler {
     bool had_error;
     unsigned error_count;
     unsigned warning_count;
+    unsigned diagnostic_count;
+    unsigned module_load_depth;
+    size_t module_source_bytes;
     Program *program;
     VarDecl **all_vars;
     size_t all_var_count;

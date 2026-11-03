@@ -1166,6 +1166,9 @@ typedef struct {
     size_t *loop_marks;
     size_t loop_count;
     size_t loop_capacity;
+    unsigned statement_depth;
+    bool statement_depth_reported;
+    bool failed;
 } CodegenContext;
 
 static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent);
@@ -1339,7 +1342,7 @@ static void emit_source_line_directive(Compiler *compiler, FILE *out, Token toke
     fputs("\"\n", out);
 }
 
-static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
+static void emit_stmt_inner(CodegenContext *ctx, Stmt *stmt, unsigned indent)
 {
     if (!stmt) return;
     Compiler *c = ctx->compiler;
@@ -1522,6 +1525,26 @@ static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
     }
 }
 
+#define YLANG_MAX_CODEGEN_STATEMENT_DEPTH 512U
+
+static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
+{
+    if (!stmt) return;
+    if (ctx->statement_depth >= YLANG_MAX_CODEGEN_STATEMENT_DEPTH) {
+        if (!ctx->statement_depth_reported) {
+            diagnostic(ctx->compiler, stmt->token, "error", "E3001",
+                       "Code generation statement nesting exceeds the safety limit.",
+                       "Reduce nested statements; the code-generation traversal limit is 512.");
+            ctx->statement_depth_reported = true;
+        }
+        ctx->failed = true;
+        return;
+    }
+    ctx->statement_depth++;
+    emit_stmt_inner(ctx, stmt, indent);
+    ctx->statement_depth--;
+}
+
 static void emit_control_body(CodegenContext *ctx, Stmt *body, unsigned indent)
 {
     if (!body) {
@@ -1551,6 +1574,7 @@ static bool emit_runtime(FILE *out)
 
 bool generate_c(Compiler *c, const char *path)
 {
+    bool generation_failed = false;
     size_t next_codegen_id = 1U;
     for (size_t i = 0; i < c->program->global_count; i++)
         assign_expr_codegen_ids(c->program->globals[i]->initializer, &next_codegen_id);
@@ -1638,14 +1662,19 @@ bool generate_c(Compiler *c, const char *path)
             .scope_capacity = 0U,
             .loop_marks = NULL,
             .loop_count = 0U,
-            .loop_capacity = 0U
+            .loop_capacity = 0U,
+            .statement_depth = 0U,
+            .statement_depth_reported = false,
+            .failed = false
         };
         /* Keep the source function body's block scope, including parameter shadowing rules. */
         emit_stmt(&context, fn->body, 1U);
+        if (context.failed) generation_failed = true;
         emit_cleanup_function_owned(&context, 1U);
         free(context.scopes);
         free(context.loop_marks);
         fputs("}\n\n", out);
+        if (generation_failed) break;
     }
 
     Function *main_fn = find_function(c, "main");
@@ -1655,9 +1684,13 @@ bool generate_c(Compiler *c, const char *path)
         fprintf(out, "int main(void) { int64_t result = %s(); yl_cleanup(); return (int)result; }\n", main_fn->c_name);
     }
 
-    bool okay = !ferror(out);
+    bool okay = !ferror(out) && !generation_failed;
     if (fclose(out) != 0) okay = false;
-    if (!okay) fprintf(stderr, "ylang: failed while writing '%s'\n", path);
+    if (!okay) {
+        (void)remove(path);
+        if (!generation_failed)
+            fprintf(stderr, "ylang: failed while writing '%s'\n", path);
+    }
     return okay;
 }
 

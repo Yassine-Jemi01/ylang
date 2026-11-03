@@ -18,6 +18,7 @@ static void append_fpart(Compiler *c, FPart **items, size_t *count, FPart item)
 }
 
 #define PARSER_MAX_EXPRESSION_DEPTH 256U
+#define PARSER_MAX_STATEMENT_DEPTH 256U
 
 typedef struct {
     Compiler *compiler;
@@ -27,6 +28,8 @@ typedef struct {
     int base_line;
     int base_column;
     unsigned expression_depth;
+    unsigned statement_depth;
+    bool statement_depth_reported;
 } Parser;
 
 static bool token_is(const Token *token, const char *text)
@@ -245,6 +248,7 @@ const char *type_name(YType type)
 
 static Expr *parse_expression(Parser *p);
 static Stmt *parse_statement(Parser *p);
+static Stmt *parse_statement_inner(Parser *p);
 static Stmt *parse_block_after_open(Parser *p, Token opening);
 static Expr *parse_precedence(Parser *p, int min_precedence);
 
@@ -781,7 +785,7 @@ static Stmt *parse_match_after_keyword(Parser *p, Token token)
     return stmt;
 }
 
-static Stmt *parse_statement(Parser *p)
+static Stmt *parse_statement_inner(Parser *p)
 {
     Token token = p->current;
     if (p->current.type == TOKEN_IDENTIFIER && token_is(&p->current, "match")) {
@@ -889,6 +893,23 @@ static Stmt *parse_statement(Parser *p)
     consume(p, TOKEN_SEMICOLON, "Expected ';' after expression.",
             "End the statement with ';'.");
     return stmt;
+}
+
+static Stmt *parse_statement(Parser *p)
+{
+    if (p->statement_depth >= PARSER_MAX_STATEMENT_DEPTH) {
+        if (!p->statement_depth_reported) {
+            diagnostic(p->compiler, p->current, "error", "E1018",
+                       "Statement nesting exceeds the maximum supported depth.",
+                       "Reduce nested blocks, if/while/for statements, or match arms; the limit is 256.");
+            p->statement_depth_reported = true;
+        }
+        return NULL;
+    }
+    p->statement_depth++;
+    Stmt *statement = parse_statement_inner(p);
+    p->statement_depth--;
+    return statement;
 }
 
 static Function *parse_function(Parser *p)

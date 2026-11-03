@@ -22,6 +22,8 @@ typedef struct {
     Expr *allowed_assignment;
     bool allow_array_name;
     Module *module;
+    unsigned statement_depth;
+    bool statement_depth_reported;
 } Checker;
 
 static Scope *scope_new(Compiler *c, Scope *parent)
@@ -1383,7 +1385,7 @@ static bool global_initializer_is_constant(Expr *expr)
     }
 }
 
-static void check_stmt(Checker *checker, Stmt *stmt)
+static void check_stmt_inner(Checker *checker, Stmt *stmt)
 {
     if (!stmt) return;
     Compiler *c = checker->compiler;
@@ -1737,6 +1739,25 @@ static void check_stmt(Checker *checker, Stmt *stmt)
     }
 }
 
+#define YLANG_MAX_SEMANTIC_STATEMENT_DEPTH 512U
+
+static void check_stmt(Checker *checker, Stmt *stmt)
+{
+    if (!stmt) return;
+    if (checker->statement_depth >= YLANG_MAX_SEMANTIC_STATEMENT_DEPTH) {
+        if (!checker->statement_depth_reported) {
+            diagnostic(checker->compiler, stmt->token, "error", "E2065",
+                       "Semantic statement nesting exceeds the safety limit.",
+                       "Reduce nested statements; the semantic traversal limit is 512.");
+            checker->statement_depth_reported = true;
+        }
+        return;
+    }
+    checker->statement_depth++;
+    check_stmt_inner(checker, stmt);
+    checker->statement_depth--;
+}
+
 bool check_program(Compiler *c)
 {
     Checker checker = {
@@ -1849,6 +1870,8 @@ bool check_program(Compiler *c)
         checker.module = function->module;
         checker.function = function;
         checker.loop_depth = 0;
+        checker.statement_depth = 0U;
+        checker.statement_depth_reported = false;
         Scope *global_scope = function->module ?
             function->module->global_scope : NULL;
         checker.scope = scope_new(c, global_scope);
