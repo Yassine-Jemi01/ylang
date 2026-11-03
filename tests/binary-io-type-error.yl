@@ -1,0 +1,4 @@
+function main() -> int {
+    io.read_u8("data.bin", "zero");
+    return 0;
+}

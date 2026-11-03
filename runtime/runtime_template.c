@@ -830,6 +830,91 @@ static bool yl_write_file(const char *path, const char *content) {
     if (fclose(file) != 0) ok = false;
     return ok;
 }
+#define YL_BINARY_MAX_READ (16U * 1024U * 1024U)
+static bool yl_binary_seek(FILE *file, int64_t offset) {
+    return file && offset >= 0 && (uint64_t)offset <= (uint64_t)LONG_MAX &&
+           fseek(file, (long)offset, SEEK_SET) == 0;
+}
+static int64_t yl_binary_size(const char *path) {
+    if (!path) return -1;
+    FILE *file = fopen(path, "rb");
+    if (!file) return -1;
+    bool ok = fseek(file, 0, SEEK_END) == 0;
+    long end = ok ? ftell(file) : -1L;
+    if (fclose(file) != 0) ok = false;
+    return ok && end >= 0 ? (int64_t)end : -1;
+}
+static int64_t yl_binary_read_u8(const char *path, int64_t offset) {
+    if (!path || offset < 0) return -1;
+    FILE *file = fopen(path, "rb");
+    if (!file) return -1;
+    int value = yl_binary_seek(file, offset) ? fgetc(file) : EOF;
+    bool failed = ferror(file) != 0;
+    fclose(file);
+    return failed || value == EOF ? -1 : (int64_t)(unsigned char)value;
+}
+static bool yl_binary_write_u8(const char *path, int64_t offset, int64_t value) {
+    if (!path || offset < 0 || value < 0 || value > 255) return false;
+    FILE *file = fopen(path, "r+b");
+    if (!file) file = fopen(path, "w+b");
+    if (!file) return false;
+    bool ok = yl_binary_seek(file, offset) && fputc((unsigned char)value, file) != EOF;
+    if (fclose(file) != 0) ok = false;
+    return ok;
+}
+static const char *yl_binary_read_hex(const char *path, int64_t offset, int64_t length) {
+    static const char digits[] = "0123456789abcdef";
+    if (!path || offset < 0 || length < 0 || (uint64_t)length > YL_BINARY_MAX_READ)
+        yl_runtime_error("invalid binary read range (maximum 16 MiB)");
+    FILE *file = fopen(path, "rb");
+    if (!file) yl_runtime_error("cannot open binary file for reading");
+    if (!yl_binary_seek(file, offset)) {
+        fclose(file);
+        yl_runtime_error("cannot seek binary input file");
+    }
+    size_t count = (size_t)length;
+    unsigned char *bytes = count ? malloc(count) : NULL;
+    if (count && !bytes) { fclose(file); yl_runtime_error("out of memory"); }
+    size_t got = count ? fread(bytes, 1U, count, file) : 0U;
+    bool failed = ferror(file) != 0;
+    fclose(file);
+    if (failed) { free(bytes); yl_runtime_error("failed to read binary input"); }
+    size_t hex_size = got * 2U;
+    char *hex = malloc(hex_size + 1U);
+    if (!hex) { free(bytes); yl_runtime_error("out of memory"); }
+    for (size_t i = 0; i < got; i++) {
+        hex[i * 2U] = digits[bytes[i] >> 4U];
+        hex[i * 2U + 1U] = digits[bytes[i] & 15U];
+    }
+    hex[hex_size] = '\0';
+    free(bytes);
+    return (const char *)yl_track(hex, hex_size + 1U);
+}
+static int yl_binary_hex_value(char ch) {
+    if (ch >= '0' && ch <= '9') return ch - '0';
+    if (ch >= 'a' && ch <= 'f') return ch - 'a' + 10;
+    if (ch >= 'A' && ch <= 'F') return ch - 'A' + 10;
+    return -1;
+}
+static bool yl_binary_write_hex(const char *path, int64_t offset, const char *hex) {
+    if (!path || !hex || offset < 0) return false;
+    size_t length = strlen(hex);
+    if ((length & 1U) != 0U || length / 2U > YL_BINARY_MAX_READ) return false;
+    for (size_t i = 0; i < length; i++) {
+        if (yl_binary_hex_value(hex[i]) < 0) return false;
+    }
+    FILE *file = fopen(path, "r+b");
+    if (!file) file = fopen(path, "w+b");
+    if (!file) return false;
+    bool ok = yl_binary_seek(file, offset);
+    for (size_t i = 0; ok && i < length; i += 2U) {
+        int high = yl_binary_hex_value(hex[i]);
+        int low = yl_binary_hex_value(hex[i + 1U]);
+        if (fputc((high << 4) | low, file) == EOF) ok = false;
+    }
+    if (fclose(file) != 0) ok = false;
+    return ok;
+}
 static bool yl_path_exists(const char *path) {
     struct stat info;
     return path && stat(path, &info) == 0;

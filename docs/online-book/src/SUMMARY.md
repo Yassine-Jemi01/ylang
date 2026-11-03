@@ -17,6 +17,7 @@
 - [The Standard Library](standard-library.md)
 - [HTTP and API Requests](reference/HTTP.md)
 - [Voice and Audio Playback](voice-audio.md)
+- [Binary I/O](binary-io.md)
 
 # Part III — Build Real Things
 

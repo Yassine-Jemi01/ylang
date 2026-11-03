@@ -1539,4 +1539,27 @@ env -u YLANG_MEMORY_STATS ./build/test-memory-stats > build/memory-stats-default
 diff -u build/memory-stats.expected build/memory-stats-default.stdout
 [ ! -s build/memory-stats-default.stderr ]
 
+# Binary I/O handles arbitrary bytes separately from text strings.
+./build/ylang check examples/binary-io.yl >/dev/null
+./build/ylang build tests/binary-io.yl -o build/test-binary-io >/dev/null
+./build/test-binary-io > build/binary-io.stdout
+cat > build/binary-io.expected <<'EOF'
+3
+0
+65
+255
+-1
+0041ff
+true
+0042ff
+false
+3
+EOF
+diff -u build/binary-io.expected build/binary-io.stdout
+if ./build/ylang check tests/binary-io-type-error.yl > build/binary-io-type-error.out 2>&1; then
+    echo "FAIL: Binary I/O accepted a string where an integer offset was required" >&2
+    exit 1
+fi
+grep -q 'E2133' build/binary-io-type-error.out
+
 echo "All YLang tests passed."

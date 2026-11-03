@@ -320,6 +320,10 @@ lowering is implemented.
 
 `fix input.yl -o output.yl` currently implements one high-confidence source transformation: changing a `pritn(...)` call typo to `print(...)` when no function named `pritn` is declared. It requires an output path and does not intentionally modify comment/string text. It is not a general repair engine. Always run `check` after applying a fix.
 
+## Binary file I/O (experimental)
+
+The optional binary file helpers are `io.binary_size(path)`, `io.read_u8(path, offset)`, `io.write_u8(path, offset, value)`, `io.read_binary_hex(path, offset, length)`, and `io.write_binary_hex(path, offset, hex)`. They operate on raw bytes and are separate from the text-only `io.read_file`/`io.write_file` functions. Offsets are zero-based. Size and byte reads return `-1` on failure or EOF; write operations return a boolean. Hex reads return an `owned_string` containing lowercase hex and are limited to 16 MiB per call. Hex writes require an even number of valid hexadecimal digits, overwrite from the given offset, and do not truncate trailing file contents. The API is synchronous and experimental; it does not yet expose byte arrays, streaming handles, or endian-aware scalar operations.
+
 ## 12. Unsupported features and implementation limits
 
 The following are not supported by the current language subset: classes, methods on structs, inheritance, payload enums, generic `Option<T>`/`Result<T, E>`, exception syntax (`try`/`catch`), generics, raw pointers/references, returning arrays, nested/const arrays, and a dedicated LLVM/native backend. Typed structs and enums are implemented as experimental extensions described in [the struct reference](STRUCTS.md) and [the enum reference](ENUMS.md); they are not part of the stable-core compatibility guarantee. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.

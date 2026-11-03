@@ -614,6 +614,11 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "string.lower") == 0) return "yl_string_lower";
     if (strcmp(name, "string.parse_int") == 0) return "yl_string_parse_int";
     if (strcmp(name, "string.is_int") == 0) return "yl_string_is_int";
+    if (strcmp(name, "io.binary_size") == 0) return "yl_binary_size";
+    if (strcmp(name, "io.read_u8") == 0) return "yl_binary_read_u8";
+    if (strcmp(name, "io.write_u8") == 0) return "yl_binary_write_u8";
+    if (strcmp(name, "io.read_binary_hex") == 0) return "yl_binary_read_hex";
+    if (strcmp(name, "io.write_binary_hex") == 0) return "yl_binary_write_hex";
     if (strcmp(name, "io.read_line") == 0) return "yl_read_line";
     if (strcmp(name, "io.read_file") == 0) return "yl_read_file";
     if (strcmp(name, "io.write_file") == 0) return "yl_write_file";

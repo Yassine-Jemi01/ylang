@@ -1,0 +1,19 @@
+function main() -> int {
+    let string path = "build/binary-io-test.bin";
+
+    if (!io.write_binary_hex(path, 0, "0041ff")) {
+        print("write failed");
+        return 1;
+    }
+    print(io.binary_size(path));
+    print(io.read_u8(path, 0));
+    print(io.read_u8(path, 1));
+    print(io.read_u8(path, 2));
+    print(io.read_u8(path, 3));
+    print(io.read_binary_hex(path, 0, 3));
+    print(io.write_u8(path, 1, 66));
+    print(io.read_binary_hex(path, 0, 3));
+    print(io.write_binary_hex(path, 0, "0xz1"));
+    print(io.binary_size(path));
+    return 0;
+}

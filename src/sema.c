@@ -283,6 +283,28 @@ typedef struct {
     const char *name;
     size_t arity;
     YType result;
+    YType args[3];
+} BinaryBuiltin;
+
+static const BinaryBuiltin binary_builtins[] = {
+    {"io.binary_size", 1, TYPE_INT, {TYPE_STRING}},
+    {"io.read_u8", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}},
+    {"io.write_u8", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.read_binary_hex", 3, TYPE_OWNED_STRING, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.write_binary_hex", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_STRING}}
+};
+
+static const BinaryBuiltin *find_binary_builtin(const char *name)
+{
+    for (size_t i = 0; i < sizeof(binary_builtins) / sizeof(binary_builtins[0]); i++)
+        if (strcmp(name, binary_builtins[i].name) == 0) return &binary_builtins[i];
+    return NULL;
+}
+
+typedef struct {
+    const char *name;
+    size_t arity;
+    YType result;
 } StringBuiltin;
 
 static const StringBuiltin string_builtins[] = {
@@ -1040,6 +1062,36 @@ static YType check_expr(Checker *checker, Expr *expr)
                     }
                 }
                 expr->type = TYPE_BOOL;
+                return expr->type;
+            }
+            const BinaryBuiltin *binary_builtin = find_binary_builtin(expr->as.call.name);
+            if (binary_builtin) {
+                if (expr->as.call.count != binary_builtin->arity) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion, sizeof(suggestion),
+                        "%s expects %zu argument(s), but received %zu.",
+                        binary_builtin->name, binary_builtin->arity, expr->as.call.count);
+                    diagnostic(c, expr->token, "error", "E2088",
+                               "Incorrect number of binary I/O arguments.", suggestion);
+                }
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    YType actual = check_expr(checker, expr->as.call.args[i]);
+                    YType expected = i < binary_builtin->arity ? binary_builtin->args[i] : TYPE_ERROR;
+                    if (actual == TYPE_OWNED_STRING &&
+                        is_owned_temporary_expression(expr->as.call.args[i]) &&
+                        expected == TYPE_STRING) diagnose_lost_owned_temporary(c, expr->as.call.args[i]);
+                    if (actual != TYPE_ERROR && i < binary_builtin->arity &&
+                        actual != expected && !(expected == TYPE_STRING && is_string_type(actual))) {
+                        char suggestion[256];
+                        (void)snprintf(suggestion, sizeof(suggestion),
+                            "Argument %zu of %s expects %s, but received %s.",
+                            i + 1, binary_builtin->name, semantic_type_name(c, expected),
+                            semantic_type_name(c, actual));
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2133",
+                                   "Binary I/O argument type mismatch.", suggestion);
+                    }
+                }
+                expr->type = binary_builtin->result;
                 return expr->type;
             }
             const StringBuiltin *string_builtin = find_string_builtin(expr->as.call.name);
