@@ -27,6 +27,38 @@ Byte buffers use YLang's existing array syntax. Buffer APIs accept a named `byte
 
 Offsets are zero-based byte counts. Block reads return fewer bytes at EOF. Writes overwrite existing bytes and do not truncate trailing contents. A block write creates a file when it does not exist. Hex reads and writes are limited to 16 MiB per call; use byte buffers or streams for larger data.
 
+## Dynamic byte buffers
+
+Use the opaque integer handle API when the amount of data is not known in advance. Buffers grow automatically and are limited to 256 MiB each; at most 64 may be open at once.
+
+| Function | Return | Behavior |
+|---|---|---|
+| `io.buffer_new(initial_capacity)` | `int` | Create an empty growable buffer; returns a handle or `-1`. |
+| `io.buffer_length(handle)` | `int` | Current number of bytes, or `-1` for an invalid handle. |
+| `io.buffer_capacity(handle)` | `int` | Allocated capacity, or `-1`. |
+| `io.buffer_get(handle, index)` | `int` | Read a byte (0–255), or `-1` for an invalid index/handle. |
+| `io.buffer_set(handle, index, value)` | `bool` | Replace an existing byte; value must be 0–255. |
+| `io.buffer_push(handle, value)` | `bool` | Append a byte and grow capacity when required. |
+| `io.buffer_resize(handle, length)` | `bool` | Change length; newly added bytes are zero-filled. |
+| `io.buffer_clear(handle)` | `bool` | Set length to zero while retaining capacity. |
+| `io.buffer_free(handle)` | `bool` | Release the buffer and invalidate its handle. |
+| `io.buffer_load(path, offset, length)` | `int` | Load up to length bytes into a new buffer; returns its handle or `-1`. |
+| `io.buffer_save(path, offset, handle)` | `int` | Write buffer contents and return bytes written, or `-1`. |
+
+Example:
+
+```ylang
+let int packet = io.buffer_new(16);
+io.buffer_push(packet, 0x59);
+io.buffer_push(packet, 0x4c);
+io.buffer_push(packet, 0xff);
+print(io.buffer_length(packet));
+io.buffer_save("packet.bin", 0, packet);
+io.buffer_free(packet);
+```
+
+The runtime releases any buffers not explicitly freed during normal program cleanup. Handles are process-local and must not be persisted.
+
 ## Endian-aware integers
 
 The API provides `io.read_u16_le/be(path, offset)`, `io.read_u32_le/be(path, offset)`, and `io.read_u64_le/be(path, offset)`, plus matching `io.write_u16_le/be(path, offset, value)`, `io.write_u32_le/be(...)`, and `io.write_u64_le/be(...)` functions.
