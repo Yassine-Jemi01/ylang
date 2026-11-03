@@ -2056,6 +2056,7 @@ static bool yl_binary_buffer_clear(int64_t id) {
     return true;
 }
 
+#ifdef YLANG_USE_HTTP
 /* Copy the next HTTP stream bytes into a reusable binary buffer. This API
    overwrites the destination buffer and never interprets payload bytes as text. */
 static int64_t yl_http_stream_read_buffer(int64_t stream_id, int64_t buffer_id,
@@ -2081,6 +2082,7 @@ static int64_t yl_http_stream_read_buffer(int64_t stream_id, int64_t buffer_id,
     buffer->length = count;
     return (int64_t)count;
 }
+#endif
 static bool yl_binary_buffer_free(int64_t id) {
     YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
     if (!buffer) return false;
