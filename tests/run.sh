@@ -1580,6 +1580,13 @@ if ./build/ylang check tests/binary-io-buffer-type-error.yl > build/binary-io-bu
     exit 1
 fi
 grep -q 'E2135' build/binary-io-buffer-type-error.out
+./build/ylang build tests/binary-byte-range-error.yl -o build/test-binary-byte-range-error >/dev/null
+if ./build/test-binary-byte-range-error > build/binary-byte-range-error.out 2>&1; then
+    echo "FAIL: byte(256) did not reject an out-of-range value" >&2
+    exit 1
+fi
+grep -q 'outside the range 0..255' build/binary-byte-range-error.out
+
 
 
 # Byte arrays, direct buffer transfers, explicit endian helpers, and stream lifecycle.
