@@ -44,7 +44,7 @@ let const int LIMIT = 100;
 | `int` | Signed 64-bit integer |
 | `float` | 64-bit floating-point value |
 | `bool` | `true` or `false` |
-| `char` | One byte; ASCII-oriented |
+| `char` | One byte; ASCII-oriented character value |\n| `byte` | Unsigned 8-bit integer (0–255); experimental Binary I/O type |
 | `string` | Immutable string data represented as a C string by the current backend |
 | `void` | Function return type only; cannot be used as a variable type |
 
