@@ -95,5 +95,6 @@ YLang diagnostics include stable codes to help users search documentation and re
 | E2130 | Unknown Voice function. | Check the `voice.*` API documentation. |
 | E2131 | Wrong number of Voice function arguments. | Follow the Voice function's documented signature. |
 | E2132 | Voice function argument type mismatch. | Pass values of the types required by the Voice API. |
+| E2133 | Binary I/O argument type mismatch. | Pass a string path/hex payload and integer offsets, lengths, or byte values as documented. |
 
 Runtime arithmetic and bounds failures currently use descriptive text rather than compiler error codes. Runtime source line and function attribution are not yet implemented.
