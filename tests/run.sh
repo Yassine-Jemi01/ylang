@@ -1889,6 +1889,13 @@ printf 'branch-owner\nbranch-owner\n' > build/owned-string-branch-transfer.expec
 diff -u build/owned-string-branch-transfer.expected build/owned-string-branch-transfer.stdout
 grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/owned-string-branch-transfer.stderr
 
+# A move on only one branch invalidates the owner after the control-flow join.
+if ./build/ylang check tests/owned-string-branch-join.yl > build/owned-string-branch-join.out 2>&1; then
+    echo "FAIL: YLang accepted an owned value after a conditional move" >&2
+    exit 1
+fi
+grep -q 'E2110' build/owned-string-branch-join.out
+
 # Early returns clean only active lexical scopes, and transfer the return owner.
 ./build/ylang build tests/owned-string-early-return.yl -o build/test-owned-string-early-return >/dev/null
 YLANG_MEMORY_STATS=1 ./build/test-owned-string-early-return > build/owned-string-early-return.stdout 2> build/owned-string-early-return.stderr
