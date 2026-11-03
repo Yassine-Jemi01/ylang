@@ -81,7 +81,7 @@ The audio reader is forward-only; seeking is not implemented. Actual MP3 support
 
 **Binary-safe path:** use `http.stream_read_buffer(stream, buffer, max_bytes)` with a root buffer created by `io.buffer_new(0)`. Each call overwrites that buffer with the next raw bytes and returns the exact byte count. Embedded NUL bytes and values from 0 through 255 are preserved. The caller owns the buffer and must call `io.buffer_free` when finished. Slices are rejected as destinations.
 
-`http.stream_read` remains a text convenience API and is not safe for arbitrary binary payloads. The binary buffer path is now available, but the Voice runtime is not yet connected to an HTTP stream; progressive network MP3 playback is still a separate integration task.
+`http.stream_read` remains a text convenience API and is not safe for arbitrary binary payloads. The binary buffer path is available. The Voice runtime is connected through `voice.play_stream(http_stream)`: it consumes the HTTP stream incrementally through the callback-backed SDL_RWops reader and takes ownership of the handle. This bridge is implemented on the C backend, but an end-to-end HTTP-to-audio test and real MP3 playback validation are still required before calling it production-ready.
 
 ## Verification
 
