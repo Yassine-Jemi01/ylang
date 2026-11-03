@@ -86,6 +86,7 @@ static const char *format_for_type(YType type)
         case TYPE_BOOL: return "%s";
         case TYPE_CHAR: return "%c";
         case TYPE_BYTE: return "%u";
+        case TYPE_BYTE: return "%u";
         case TYPE_STRING:
         case TYPE_BORROWED_STRING:
         case TYPE_OWNED_STRING: return "%s";
