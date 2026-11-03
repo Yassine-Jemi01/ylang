@@ -86,8 +86,6 @@ static const char *format_for_type(YType type)
         case TYPE_BOOL: return "%s";
         case TYPE_CHAR: return "%c";
         case TYPE_BYTE: return "%u";
-        case TYPE_BYTE: return "%u";
-        case TYPE_BYTE: return "%u";
         case TYPE_STRING:
         case TYPE_BORROWED_STRING:
         case TYPE_OWNED_STRING: return "%s";
@@ -919,6 +917,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     case TYPE_FLOAT: sb_append(sb, "yl_to_string_float("); emit_expr(sb, arg); sb_append(sb, ")"); break;
                     case TYPE_BOOL: sb_append(sb, "yl_boolstr("); emit_expr(sb, arg); sb_append(sb, ")"); break;
                     case TYPE_CHAR: sb_append(sb, "yl_to_string_char("); emit_expr(sb, arg); sb_append(sb, ")"); break;
+                    case TYPE_BYTE: sb_append(sb, "yl_to_string_int((int64_t)("); emit_expr(sb, arg); sb_append(sb, "))"); break;
                     default: sb_append(sb, "\"\""); break;
                 }
                 break;
