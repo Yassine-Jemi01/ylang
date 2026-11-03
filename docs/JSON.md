@@ -36,7 +36,7 @@ function main() -> int {
 
 JSON documents and extracted raw values are represented as owned strings, not as a dynamic YLang value tree. This keeps the first implementation compatible with the current type system and makes it useful for HTTP responses and configuration files. json.get and json.at return an empty string on lookup failure; typed getters return their zero value and set json.last_error(). Check json.has before accessing optional object properties.
 
-json.stringify currently validates and copies an already-serialized JSON value. `json.pretty` validates and formats an already-serialized value with two-space indentation. Neither function constructs objects or arrays from YLang values. Use json.escape when encoding a string value. A future typed JSON value/DOM API can add object construction, mutation, and pretty printing without changing this raw-document representation.
+json.stringify currently validates and copies an already-serialized JSON value. `json.pretty` validates and formats an already-serialized value with two-space indentation. Neither function constructs objects or arrays from YLang values. Use json.escape when encoding a string value. A future typed JSON value/DOM API can add object construction and mutation without changing this raw-document representation.
 
 ## Safety limits
 
