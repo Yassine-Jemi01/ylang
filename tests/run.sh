@@ -1561,5 +1561,113 @@ if ./build/ylang check tests/binary-io-type-error.yl > build/binary-io-type-erro
     exit 1
 fi
 grep -q 'E2133' build/binary-io-type-error.out
+# Byte arrays, endian-aware scalars, and streaming file handles.
+./build/ylang check tests/binary-io-extended.yl >/dev/null
+./build/ylang build tests/binary-io-extended.yl -o build/test-binary-io-extended >/dev/null
+./build/test-binary-io-extended > build/binary-io-extended.stdout
+cat > build/binary-io-extended.expected <<'EOF'
+1498169678
+1312902233
+594c414e3412
+4
+89
+76
+4
+EOF
+diff -u build/binary-io-extended.expected build/binary-io-extended.stdout
+if ./build/ylang check tests/binary-io-buffer-type-error.yl > build/binary-io-buffer-type-error.out 2>&1; then
+    echo "FAIL: Binary I/O accepted an int array as a byte buffer" >&2
+    exit 1
+fi
+grep -q 'E2135' build/binary-io-buffer-type-error.out
+./build/ylang build tests/binary-byte-range-error.yl -o build/test-binary-byte-range-error >/dev/null
+if ./build/test-binary-byte-range-error > build/binary-byte-range-error.out 2>&1; then
+    echo "FAIL: byte(256) did not reject an out-of-range value" >&2
+    exit 1
+fi
+grep -q 'outside the range 0..255' build/binary-byte-range-error.out
+
+
+
+# Byte arrays, direct buffer transfers, explicit endian helpers, and stream lifecycle.
+./build/ylang check tests/binary-io-advanced.yl >/dev/null
+./build/ylang build tests/binary-io-advanced.yl -o build/test-binary-io-advanced >/dev/null
+./build/test-binary-io-advanced > build/binary-io-advanced.stdout
+cat > build/binary-io-advanced.expected <<'EOF'
+4
+4
+65
+0
+255
+52
+true
+16909060
+67305985
+true
+4660
+13330
+true
+72623859790382856
+578437695752307201
+4
+true
+4
+0
+255
+true
+EOF
+diff -u build/binary-io-advanced.expected build/binary-io-advanced.stdout
+
+# Growable byte buffers, resizing, bounds checks, and file load/save.
+./build/ylang check tests/binary-buffer-dynamic.yl >/dev/null
+./build/ylang build tests/binary-buffer-dynamic.yl -o build/test-binary-buffer-dynamic >/dev/null
+./build/test-binary-buffer-dynamic > build/binary-buffer-dynamic.stdout
+cat > build/binary-buffer-dynamic.expected <<'EOF'
+true
+0
+2
+true
+true
+true
+3
+4
+255
+true
+true
+5
+8
+0
+5
+5
+true
+2
+67
+true
+68
+2
+3
+67
+255
+0
+true
+0
+true
+true
+-1
+-1
+true
+EOF
+diff -u build/binary-buffer-dynamic.expected build/binary-buffer-dynamic.stdout
+
+# Native std.json parser, validation, object/array access, escaping and errors.
+./build/ylang check tests/json.yl >/dev/null
+./build/ylang build tests/json.yl -o build/test-json >/dev/null
+./build/test-json > build/json.stdout
+diff -u tests/expected-json.txt build/json.stdout
+if ./build/ylang check tests/json-type-error.yl > build/json-type-error.out 2>&1; then
+    echo "FAIL: std.json accepted a non-string JSON document" >&2
+    exit 1
+fi
+grep -q 'JSON argument type mismatch' build/json-type-error.out
 
 echo "All YLang tests passed."

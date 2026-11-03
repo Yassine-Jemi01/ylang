@@ -1,0 +1,22 @@
+true
+YLang
+42
+23
+2.5
+😀
+true
+false
+3
+2
+hello
+world
+{"name":"YLang","\u03bb":42,"version":23,"price":2.5,"unicode":"\uD83D\uDE00","enabled":true,"items":[1,2,3],"message":"hello\nworld"}
+"line\nquote\""
+false
+Invalid JSON syntax
+
+JSON string contains U+0000, which YLang strings cannot represent
+{
+  "text": "a, b: c",
+  "n": 1
+}

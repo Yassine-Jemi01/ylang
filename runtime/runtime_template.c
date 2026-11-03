@@ -78,10 +78,15 @@ static size_t yl_saturating_add_size(size_t left, size_t right) {
     return SIZE_MAX - left < right ? SIZE_MAX : left + right;
 }
 
+static void yl_binary_stream_shutdown(void);
+static void yl_binary_buffer_shutdown(void);
+
 static void yl_cleanup(void) {
 #ifdef YLANG_USE_VOICE
     ylvoice_shutdown();
 #endif
+    yl_binary_stream_shutdown();
+    yl_binary_buffer_shutdown();
     if (yl_memory_stats_enabled()) {
         fprintf(stderr,
                 "YLang memory stats: tracked_allocations=%zu tracked_bytes=%zu\n",
@@ -574,6 +579,425 @@ static bool yl_http_cancel(int64_t id) {
 
 #endif
 
+
+/* Bounded JSON parser used by the std.json built-ins. */
+#define YL_JSON_MAX_INPUT (16U * 1024U * 1024U)
+#define YL_JSON_MAX_DEPTH 128U
+static char yl_json_error_text[192];
+
+typedef struct { const char *s; size_t n; size_t i; unsigned depth; } YLJson;
+static void yl_json_error(const char *message) {
+    (void)snprintf(yl_json_error_text, sizeof(yl_json_error_text), "%s", message);
+}
+static void yl_json_ws(YLJson *p) {
+    while (p->i < p->n && (p->s[p->i] == ' ' || p->s[p->i] == '\t' ||
+           p->s[p->i] == '\r' || p->s[p->i] == '\n')) p->i++;
+}
+static bool yl_json_hex4(const char *s, uint32_t *out) {
+    uint32_t v = 0U;
+    for (size_t i = 0; i < 4U; i++) {
+        unsigned char c = (unsigned char)s[i];
+        unsigned d;
+        if (c >= '0' && c <= '9') d = (unsigned)(c - '0');
+        else if (c >= 'a' && c <= 'f') d = (unsigned)(c - 'a') + 10U;
+        else if (c >= 'A' && c <= 'F') d = (unsigned)(c - 'A') + 10U;
+        else return false;
+        v = (v << 4U) | d;
+    }
+    *out = v; return true;
+}
+static bool yl_json_utf8_advance(YLJson *p, unsigned char lead) {
+    unsigned need;
+    unsigned char second_min = 0x80U, second_max = 0xBFU;
+    if (lead >= 0xC2U && lead <= 0xDFU) need = 1U;
+    else if (lead >= 0xE0U && lead <= 0xEFU) {
+        need = 2U;
+        if (lead == 0xE0U) second_min = 0xA0U;
+        if (lead == 0xEDU) second_max = 0x9FU;
+    } else if (lead >= 0xF0U && lead <= 0xF4U) {
+        need = 3U;
+        if (lead == 0xF0U) second_min = 0x90U;
+        if (lead == 0xF4U) second_max = 0x8FU;
+    } else return false;
+    if (p->n - p->i < need) return false;
+    unsigned char second = (unsigned char)p->s[p->i];
+    if (second < second_min || second > second_max) return false;
+    p->i++;
+    for (unsigned j = 1U; j < need; j++) {
+        unsigned char next = (unsigned char)p->s[p->i++];
+        if (next < 0x80U || next > 0xBFU) return false;
+    }
+    return true;
+}
+static bool yl_json_string_end(YLJson *p, size_t *begin, size_t *end) {
+    if (p->i >= p->n || p->s[p->i] != '"') return false;
+    p->i++; *begin = p->i;
+    while (p->i < p->n) {
+        unsigned char c = (unsigned char)p->s[p->i++];
+        if (c == '"') { *end = p->i - 1U; return true; }
+        if (c < 0x20U) return false;
+        if (c >= 0x80U && !yl_json_utf8_advance(p, c)) return false;
+        if (c == '\\') {
+            if (p->i >= p->n) return false;
+            char e = p->s[p->i++];
+            if (e == '"' || e == '\\' || e == '/' || e == 'b' ||
+                e == 'f' || e == 'n' || e == 'r' || e == 't') continue;
+            if (e == 'u') {
+                uint32_t cp;
+                if (p->n - p->i < 4U || !yl_json_hex4(p->s + p->i, &cp)) return false;
+                p->i += 4U;
+                if (cp >= 0xD800U && cp <= 0xDBFFU) {
+                    uint32_t low;
+                    if (p->n - p->i < 6U || p->s[p->i] != '\\' ||
+                        p->s[p->i + 1U] != 'u' ||
+                        !yl_json_hex4(p->s + p->i + 2U, &low) ||
+                        low < 0xDC00U || low > 0xDFFFU) return false;
+                    p->i += 6U;
+                } else if (cp >= 0xDC00U && cp <= 0xDFFFU) return false;
+                continue;
+            }
+            return false;
+        }
+    }
+    return false;
+}
+static bool yl_json_value(YLJson *p, size_t *start, size_t *end);
+static bool yl_json_number(YLJson *p) {
+    size_t i = p->i;
+    if (i < p->n && p->s[i] == '-') i++;
+    if (i >= p->n) return false;
+    if (p->s[i] == '0') i++;
+    else {
+        if (p->s[i] < '1' || p->s[i] > '9') return false;
+        while (i < p->n && p->s[i] >= '0' && p->s[i] <= '9') i++;
+    }
+    if (i < p->n && p->s[i] == '.') {
+        i++;
+        if (i >= p->n || p->s[i] < '0' || p->s[i] > '9') return false;
+        while (i < p->n && p->s[i] >= '0' && p->s[i] <= '9') i++;
+    }
+    if (i < p->n && (p->s[i] == 'e' || p->s[i] == 'E')) {
+        i++;
+        if (i < p->n && (p->s[i] == '+' || p->s[i] == '-')) i++;
+        if (i >= p->n || p->s[i] < '0' || p->s[i] > '9') return false;
+        while (i < p->n && p->s[i] >= '0' && p->s[i] <= '9') i++;
+    }
+    p->i = i; return true;
+}
+static bool yl_json_value(YLJson *p, size_t *start, size_t *end) {
+    yl_json_ws(p);
+    if (p->depth >= YL_JSON_MAX_DEPTH || p->i >= p->n) return false;
+    *start = p->i;
+    char c = p->s[p->i];
+    if (c == '"') {
+        size_t a, b;
+        if (!yl_json_string_end(p, &a, &b)) return false;
+    } else if (c == '{' || c == '[') {
+        char close = c == '{' ? '}' : ']';
+        p->i++; p->depth++; yl_json_ws(p);
+        if (p->i < p->n && p->s[p->i] == close) p->i++;
+        else {
+            for (;;) {
+                if (c == '{') {
+                    size_t a, b;
+                    if (!yl_json_string_end(p, &a, &b)) { p->depth--; return false; }
+                    yl_json_ws(p);
+                    if (p->i >= p->n || p->s[p->i++] != ':') { p->depth--; return false; }
+                }
+                size_t vs, ve;
+                if (!yl_json_value(p, &vs, &ve)) { p->depth--; return false; }
+                yl_json_ws(p);
+                if (p->i < p->n && p->s[p->i] == close) { p->i++; break; }
+                if (p->i >= p->n || p->s[p->i++] != ',') { p->depth--; return false; }
+                yl_json_ws(p);
+            }
+        }
+        p->depth--;
+    } else if (c == '-' || (c >= '0' && c <= '9')) {
+        if (!yl_json_number(p)) return false;
+    } else if (p->n - p->i >= 4U && memcmp(p->s + p->i, "true", 4U) == 0) p->i += 4U;
+    else if (p->n - p->i >= 5U && memcmp(p->s + p->i, "false", 5U) == 0) p->i += 5U;
+    else if (p->n - p->i >= 4U && memcmp(p->s + p->i, "null", 4U) == 0) p->i += 4U;
+    else return false;
+    *end = p->i; return true;
+}
+static bool yl_json_root(const char *text, YLJson *p, size_t *start, size_t *end) {
+    if (!text) { yl_json_error("JSON input is null"); return false; }
+    size_t n = strlen(text);
+    if (n > YL_JSON_MAX_INPUT) { yl_json_error("JSON input exceeds the 16 MiB limit"); return false; }
+    p->s = text; p->n = n; p->i = 0U; p->depth = 0U;
+    if (!yl_json_value(p, start, end)) { yl_json_error("Invalid JSON syntax"); return false; }
+    yl_json_ws(p);
+    if (p->i != p->n) { yl_json_error("Unexpected data after JSON value"); return false; }
+    yl_json_error(""); return true;
+}
+static const char *yl_json_parse(const char *text) {
+    YLJson p; size_t a, b;
+    if (!yl_json_root(text, &p, &a, &b)) return "";
+    size_t length = strlen(text);
+    char *copy = malloc(length + 1U);
+    if (!copy) yl_runtime_error("out of memory");
+    memcpy(copy, text, length + 1U);
+    return (const char *)yl_track(copy, length + 1U);
+}
+static bool yl_json_valid(const char *text) {
+    YLJson p; size_t a, b; return yl_json_root(text, &p, &a, &b);
+}
+static const char *yl_json_stringify(const char *raw) {
+    YLJson p; size_t a, b;
+    if (!yl_json_root(raw, &p, &a, &b)) return "";
+    size_t length = strlen(raw);
+    char *copy = malloc(length + 1U);
+    if (!copy) yl_runtime_error("out of memory");
+    memcpy(copy, raw, length + 1U);
+    return (const char *)yl_track(copy, strlen(copy) + 1U);
+}
+
+typedef struct { char *data; size_t length; size_t capacity; } YLJsonBuffer;
+static void yl_json_buffer_reserve(YLJsonBuffer *b, size_t extra) {
+    if (extra > SIZE_MAX - b->length - 1U) yl_runtime_error("JSON output is too large");
+    size_t needed = b->length + extra + 1U;
+    if (needed <= b->capacity) return;
+    size_t capacity = b->capacity ? b->capacity : 128U;
+    while (capacity < needed) {
+        if (capacity > SIZE_MAX / 2U) { capacity = needed; break; }
+        capacity *= 2U;
+    }
+    char *next = realloc(b->data, capacity);
+    if (!next) yl_runtime_error("out of memory while formatting JSON");
+    b->data = next; b->capacity = capacity;
+}
+static void yl_json_buffer_char(YLJsonBuffer *b, char c) {
+    yl_json_buffer_reserve(b, 1U);
+    b->data[b->length++] = c;
+    b->data[b->length] = '\0';
+}
+static void yl_json_buffer_indent(YLJsonBuffer *b, unsigned depth) {
+    yl_json_buffer_char(b, '\n');
+    for (unsigned i = 0; i < depth * 2U; i++) yl_json_buffer_char(b, ' ');
+}
+static const char *yl_json_pretty(const char *raw) {
+    YLJson parser; size_t start, end;
+    if (!yl_json_root(raw, &parser, &start, &end)) return "";
+    YLJsonBuffer out = {0};
+    bool in_string = false, escaped = false;
+    unsigned depth = 0U;
+    for (size_t i = 0U; raw[i]; i++) {
+        char c = raw[i];
+        if (in_string) {
+            yl_json_buffer_char(&out, c);
+            if (escaped) escaped = false;
+            else if (c == '\\') escaped = true;
+            else if (c == '"') in_string = false;
+            continue;
+        }
+        if (c == ' ' || c == '\t' || c == '\r' || c == '\n') continue;
+        if (c == '"') {
+            in_string = true;
+            yl_json_buffer_char(&out, c);
+        } else if (c == '{' || c == '[') {
+            yl_json_buffer_char(&out, c);
+            size_t next = i + 1U;
+            while (raw[next] == ' ' || raw[next] == '\t' || raw[next] == '\r' || raw[next] == '\n') next++;
+            if (raw[next] != (c == '{' ? '}' : ']')) {
+                depth++;
+                yl_json_buffer_indent(&out, depth);
+            }
+        } else if (c == '}' || c == ']') {
+            char opening = c == '}' ? '{' : '[';
+            if (out.length && out.data[out.length - 1U] != opening) {
+                if (depth) depth--;
+                yl_json_buffer_indent(&out, depth);
+            }
+            yl_json_buffer_char(&out, c);
+        } else if (c == ',') {
+            yl_json_buffer_char(&out, c);
+            yl_json_buffer_indent(&out, depth);
+        } else if (c == ':') {
+            yl_json_buffer_char(&out, c);
+            yl_json_buffer_char(&out, ' ');
+        } else {
+            yl_json_buffer_char(&out, c);
+        }
+    }
+    if (!out.data) {
+        out.data = malloc(1U);
+        if (!out.data) yl_runtime_error("out of memory while formatting JSON");
+        out.data[0] = '\0';
+    }
+    return (const char *)yl_track(out.data, out.length + 1U);
+}
+static bool yl_json_key_equal(const char *s, size_t a, size_t b, const char *key) {
+    size_t k = 0U;
+    for (size_t i = a; i < b; i++) {
+        unsigned char bytes[4];
+        size_t count = 1U;
+        unsigned char c = (unsigned char)s[i];
+        if (c == '\\') {
+            if (++i >= b) return false;
+            char e = s[i];
+            if (e == 'u') {
+                uint32_t cp;
+                if (b - i - 1U < 4U || !yl_json_hex4(s + i + 1U, &cp)) return false;
+                i += 4U;
+                if (cp >= 0xD800U && cp <= 0xDBFFU) {
+                    uint32_t low;
+                    if (b - i < 7U || s[i + 1U] != '\\' || s[i + 2U] != 'u' ||
+                        !yl_json_hex4(s + i + 3U, &low) || low < 0xDC00U || low > 0xDFFFU) return false;
+                    i += 6U;
+                    cp = 0x10000U + ((cp - 0xD800U) << 10U) + (low - 0xDC00U);
+                } else if (cp >= 0xDC00U && cp <= 0xDFFFU) return false;
+                if (cp < 0x80U) bytes[0] = (unsigned char)cp;
+                else if (cp < 0x800U) {
+                    bytes[0] = (unsigned char)(0xC0U | (cp >> 6U));
+                    bytes[1] = (unsigned char)(0x80U | (cp & 63U)); count = 2U;
+                } else if (cp < 0x10000U) {
+                    bytes[0] = (unsigned char)(0xE0U | (cp >> 12U));
+                    bytes[1] = (unsigned char)(0x80U | ((cp >> 6U) & 63U));
+                    bytes[2] = (unsigned char)(0x80U | (cp & 63U)); count = 3U;
+                } else {
+                    bytes[0] = (unsigned char)(0xF0U | (cp >> 18U));
+                    bytes[1] = (unsigned char)(0x80U | ((cp >> 12U) & 63U));
+                    bytes[2] = (unsigned char)(0x80U | ((cp >> 6U) & 63U));
+                    bytes[3] = (unsigned char)(0x80U | (cp & 63U)); count = 4U;
+                }
+            } else {
+                switch (e) {
+                    case '"': c = '"'; break; case '\\': c = '\\'; break; case '/': c = '/'; break;
+                    case 'b': c = '\b'; break; case 'f': c = '\f'; break; case 'n': c = '\n'; break;
+                    case 'r': c = '\r'; break; case 't': c = '\t'; break; default: return false;
+                }
+                bytes[0] = c;
+            }
+        } else bytes[0] = c;
+        for (size_t j = 0U; j < count; j++) {
+            if (!key[k] || (unsigned char)key[k] != bytes[j]) return false;
+            k++;
+        }
+    }
+    return key[k] == '\0';
+}
+static bool yl_json_lookup(const char *text, const char *key, size_t *a, size_t *b) {
+    YLJson p; size_t rs, re;
+    if (!yl_json_root(text, &p, &rs, &re)) return false;
+    p.i = rs; yl_json_ws(&p);
+    if (p.i >= p.n || p.s[p.i++] != '{') { yl_json_error("JSON value is not an object"); return false; }
+    yl_json_ws(&p);
+    while (p.i < p.n && p.s[p.i] != '}') {
+        size_t ka, kb, vs, ve;
+        if (!yl_json_string_end(&p, &ka, &kb)) return false;
+        yl_json_ws(&p); p.i++; yl_json_ws(&p);
+        if (!yl_json_value(&p, &vs, &ve)) return false;
+        if (yl_json_key_equal(p.s, ka, kb, key ? key : "")) { *a=vs; *b=ve; return true; }
+        yl_json_ws(&p);
+        if (p.i < p.n && p.s[p.i] == ',') { p.i++; yl_json_ws(&p); }
+        else break;
+    }
+    yl_json_error("JSON object key was not found"); return false;
+}
+static const char *yl_json_get(const char *text, const char *key) {
+    size_t a,b;
+    if (!yl_json_lookup(text,key,&a,&b)) return "";
+    char *out = malloc(b-a+1U); if (!out) yl_runtime_error("out of memory");
+    memcpy(out,text+a,b-a); out[b-a]='\0';
+    return (const char *)yl_track(out,b-a+1U);
+}
+static const char *yl_json_decode_string(const char *s, size_t a, size_t b) {
+    size_t cap = (b-a)*3U+1U, n=0U;
+    char *out=malloc(cap); if(!out) yl_runtime_error("out of memory");
+    for(size_t i=a;i<b;i++) {
+        unsigned char c=(unsigned char)s[i];
+        if(c=='\\') {
+            char e=s[++i];
+            if(e=='u') {
+                uint32_t cp; (void)yl_json_hex4(s+i+1U,&cp); i+=4U;
+                if(cp>=0xD800U && cp<=0xDBFFU) {
+                    uint32_t low; (void)yl_json_hex4(s+i+3U,&low); i+=6U;
+                    cp=0x10000U+((cp-0xD800U)<<10U)+(low-0xDC00U);
+                }
+                if(cp==0U) {
+                    free(out);
+                    yl_json_error("JSON string contains U+0000, which YLang strings cannot represent");
+                    return "";
+                }
+                if(cp<0x80U) out[n++]=(char)cp;
+                else if(cp<0x800U){out[n++]=(char)(0xC0U|(cp>>6U));out[n++]=(char)(0x80U|(cp&63U));}
+                else if(cp<0x10000U){out[n++]=(char)(0xE0U|(cp>>12U));out[n++]=(char)(0x80U|((cp>>6U)&63U));out[n++]=(char)(0x80U|(cp&63U));}
+                else {out[n++]=(char)(0xF0U|(cp>>18U));out[n++]=(char)(0x80U|((cp>>12U)&63U));out[n++]=(char)(0x80U|((cp>>6U)&63U));out[n++]=(char)(0x80U|(cp&63U));}
+            } else { switch(e){case 'b':c='\b';break;case 'f':c='\f';break;case 'n':c='\n';break;case 'r':c='\r';break;case 't':c='\t';break;default:c=(unsigned char)e;break;} out[n++]=(char)c; }
+        } else out[n++]=(char)c;
+    }
+    out[n]='\0'; return (const char *)yl_track(out,n+1U);
+}
+static const char *yl_json_get_string(const char *text,const char *key) {
+    size_t a,b; if(!yl_json_lookup(text,key,&a,&b) || text[a]!='"') {yl_json_error("JSON property is not a string");return "";}
+    YLJson p={text,strlen(text),a,0U}; size_t x,y;
+    if(!yl_json_string_end(&p,&x,&y)) return "";
+    return yl_json_decode_string(text,x,y);
+}
+static int64_t yl_json_get_int(const char *text,const char *key) {
+    size_t a,b; if(!yl_json_lookup(text,key,&a,&b)) return 0;
+    char *end=NULL; errno=0; long long v=strtoll(text+a,&end,10);
+    if(errno==ERANGE || end!=text+b) {yl_json_error("JSON property is not a signed integer");return 0;}
+    return (int64_t)v;
+}
+static double yl_json_get_float(const char *text,const char *key) {
+    size_t a,b; if(!yl_json_lookup(text,key,&a,&b)) return 0.0;
+    size_t raw_length=b-a;
+    char *raw=malloc(raw_length+1U), *end=NULL;
+    if(!raw) yl_runtime_error("out of memory");
+    memcpy(raw,text+a,raw_length); raw[raw_length]='\0';
+    errno=0; double v=strtod(raw,&end); bool okay=errno!=ERANGE && end && *end=='\0'; free(raw);
+    if(!okay){yl_json_error("JSON property is not a number");return 0.0;} return v;
+}
+static bool yl_json_get_bool(const char *text,const char *key) {
+    size_t a,b; if(!yl_json_lookup(text,key,&a,&b)) return false;
+    if(b-a==4U && memcmp(text+a,"true",4U)==0) return true;
+    if(b-a==5U && memcmp(text+a,"false",5U)==0) return false;
+    yl_json_error("JSON property is not a boolean"); return false;
+}
+static bool yl_json_has(const char *text,const char *key) {
+    size_t a,b; return yl_json_lookup(text,key,&a,&b);
+}
+static int64_t yl_json_array_length(const char *text) {
+    YLJson p; size_t a,b; if(!yl_json_root(text,&p,&a,&b)) return 0;
+    p.i=a; if(p.s[p.i++]!='['){yl_json_error("JSON value is not an array");return 0;}
+    yl_json_ws(&p); if(p.i<p.n && p.s[p.i]==']') return 0;
+    int64_t count=0;
+    for(;;){size_t x,y;if(!yl_json_value(&p,&x,&y))return count;count++;yl_json_ws(&p);
+        if(p.i<p.n && p.s[p.i]==']') return count;
+        if(p.i>=p.n || p.s[p.i++]!=',') break;yl_json_ws(&p);}
+    yl_json_error("Invalid JSON array"); return count;
+}
+static const char *yl_json_at(const char *text,int64_t index) {
+    YLJson p; size_t a,b; if(index<0 || !yl_json_root(text,&p,&a,&b)) return "";
+    p.i=a; if(p.s[p.i++]!='['){yl_json_error("JSON value is not an array");return "";}
+    yl_json_ws(&p);
+    for(int64_t i=0;;i++){size_t x,y;if(!yl_json_value(&p,&x,&y)){yl_json_error("JSON array index out of range");return "";}
+        if(i==index){size_t len=y-x;char *o=malloc(len+1U);if(!o)yl_runtime_error("out of memory");memcpy(o,text+x,len);o[len]='\0';return (const char *)yl_track(o,len+1U);}
+        yl_json_ws(&p);if(p.i>=p.n || p.s[p.i++]!=',')break;yl_json_ws(&p);}
+    yl_json_error("JSON array index out of range");return "";
+}
+static const char *yl_json_escape(const char *value) {
+    size_t n=strlen(value), cap;
+    if(n>(SIZE_MAX-3U)/6U) yl_runtime_error("JSON string is too large");
+    cap=n*6U+3U; char *o=malloc(cap);if(!o)yl_runtime_error("out of memory");
+    size_t j=0U;o[j++]='"';
+    static const char hex[]="0123456789abcdef";
+    for(size_t i=0;i<n;i++){unsigned char c=(unsigned char)value[i];
+        if(c=='"'||c=='\\'){o[j++]='\\';o[j++]=(char)c;}
+        else if(c=='\b'){o[j++]='\\';o[j++]='b';}
+        else if(c=='\f'){o[j++]='\\';o[j++]='f';}
+        else if(c=='\n'){o[j++]='\\';o[j++]='n';}
+        else if(c=='\r'){o[j++]='\\';o[j++]='r';}
+        else if(c=='\t'){o[j++]='\\';o[j++]='t';}
+        else if(c<0x20U){o[j++]='\\';o[j++]='u';o[j++]='0';o[j++]='0';o[j++]=hex[c>>4U];o[j++]=hex[c&15U];}
+        else o[j++]=(char)c;
+    }
+    o[j++]='"';o[j]='\0';return (const char *)yl_track(o,j+1U);
+}
+static const char *yl_json_last_error(void) { return yl_json_error_text; }
+
 static const char *yl_env_get(const char *name) {
     if (!name || !*name) return "";
     const char *value = getenv(name);
@@ -915,6 +1339,158 @@ static bool yl_binary_write_hex(const char *path, int64_t offset, const char *he
     if (fclose(file) != 0) ok = false;
     return ok;
 }
+
+static uint8_t yl_to_byte(int64_t value) {
+    if (value < 0 || value > 255) yl_runtime_error("byte conversion is outside the range 0..255");
+    return (uint8_t)value;
+}
+static int64_t yl_binary_read_bytes(const char *path, int64_t offset,
+                                    uint8_t *buffer, size_t capacity) {
+    if (!path || (!buffer && capacity != 0U) || offset < 0 ||
+        (uint64_t)offset > (uint64_t)LONG_MAX) return -1;
+    FILE *file = fopen(path, "rb");
+    if (!file) return -1;
+    bool positioned = yl_binary_seek(file, offset);
+    size_t count = positioned && capacity ? fread(buffer, 1U, capacity, file) : 0U;
+    bool failed = !positioned || ferror(file) != 0;
+    fclose(file);
+    return failed ? -1 : (int64_t)count;
+}
+static int64_t yl_binary_write_bytes(const char *path, int64_t offset,
+                                     const uint8_t *buffer, size_t length) {
+    if (!path || (!buffer && length != 0U) || offset < 0 ||
+        (uint64_t)offset > (uint64_t)LONG_MAX) return -1;
+    FILE *file = fopen(path, "r+b");
+    if (!file) file = fopen(path, "w+b");
+    if (!file) return -1;
+    bool positioned = yl_binary_seek(file, offset);
+    size_t count = positioned && length ? fwrite(buffer, 1U, length, file) : 0U;
+    bool failed = !positioned || ferror(file) != 0;
+    if (fclose(file) != 0) failed = true;
+    return failed ? -1 : (int64_t)count;
+}
+static bool yl_binary_read_scalar(const char *path, int64_t offset,
+                                  unsigned width, bool big_endian,
+                                  uint64_t *value) {
+    if (!path || !value || offset < 0 || width == 0U || width > 8U) return false;
+    FILE *file = fopen(path, "rb");
+    if (!file) return false;
+    bool ok = yl_binary_seek(file, offset);
+    uint8_t bytes[8] = {0};
+    if (ok) ok = fread(bytes, 1U, width, file) == width;
+    if (fclose(file) != 0) ok = false;
+    if (!ok) return false;
+    uint64_t result = 0U;
+    for (unsigned i = 0; i < width; i++) {
+        unsigned source = big_endian ? i : (width - 1U - i);
+        result = (result << 8U) | (uint64_t)bytes[source];
+    }
+    *value = result;
+    return true;
+}
+static bool yl_binary_write_scalar(const char *path, int64_t offset,
+                                   unsigned width, bool big_endian,
+                                   uint64_t value) {
+    if (!path || offset < 0 || width == 0U || width > 8U) return false;
+    FILE *file = fopen(path, "r+b");
+    if (!file) file = fopen(path, "w+b");
+    if (!file) return false;
+    bool ok = yl_binary_seek(file, offset);
+    for (unsigned i = 0; ok && i < width; i++) {
+        unsigned shift = big_endian ? (width - 1U - i) * 8U : i * 8U;
+        if (fputc((int)((value >> shift) & UINT64_C(0xff)), file) == EOF) ok = false;
+    }
+    if (fclose(file) != 0) ok = false;
+    return ok;
+}
+#define YL_DEFINE_BINARY_SCALAR(bits, width) \
+static int64_t yl_binary_read_u##bits##_le(const char *p, int64_t o) { \
+    uint64_t v = 0U; int64_t r = -1; \
+    if (yl_binary_read_scalar(p, o, width, false, &v)) { \
+        if (width == 8U) memcpy(&r, &v, sizeof(r)); else r = (int64_t)v; \
+    } return r; \
+} \
+static int64_t yl_binary_read_u##bits##_be(const char *p, int64_t o) { \
+    uint64_t v = 0U; int64_t r = -1; \
+    if (yl_binary_read_scalar(p, o, width, true, &v)) { \
+        if (width == 8U) memcpy(&r, &v, sizeof(r)); else r = (int64_t)v; \
+    } return r; \
+} \
+static bool yl_binary_write_u##bits##_le(const char *p, int64_t o, int64_t v) { \
+    return yl_binary_write_scalar(p, o, width, false, (uint64_t)v); \
+} \
+static bool yl_binary_write_u##bits##_be(const char *p, int64_t o, int64_t v) { \
+    return yl_binary_write_scalar(p, o, width, true, (uint64_t)v); \
+}
+YL_DEFINE_BINARY_SCALAR(16, 2U)
+YL_DEFINE_BINARY_SCALAR(32, 4U)
+YL_DEFINE_BINARY_SCALAR(64, 8U)
+#undef YL_DEFINE_BINARY_SCALAR
+
+#define YL_BINARY_STREAM_SLOTS 64U
+typedef struct {
+    int64_t id;
+    FILE *file;
+} YLBinaryStream;
+static YLBinaryStream yl_binary_streams[YL_BINARY_STREAM_SLOTS];
+static int64_t yl_binary_next_stream_id = 1;
+static int64_t yl_binary_stream_open(const char *path, const char *mode) {
+    if (!path) return -1;
+    size_t slot = YL_BINARY_STREAM_SLOTS;
+    for (size_t i = 0; i < YL_BINARY_STREAM_SLOTS; i++) {
+        if (!yl_binary_streams[i].file) { slot = i; break; }
+    }
+    if (slot == YL_BINARY_STREAM_SLOTS || yl_binary_next_stream_id <= 0 ||
+        yl_binary_next_stream_id == INT64_MAX) return -1;
+    FILE *file = fopen(path, mode);
+    if (!file) return -1;
+    int64_t id = yl_binary_next_stream_id++;
+    yl_binary_streams[slot].id = id;
+    yl_binary_streams[slot].file = file;
+    return id;
+}
+static int64_t yl_binary_stream_open_read(const char *path) {
+    return yl_binary_stream_open(path, "rb");
+}
+static int64_t yl_binary_stream_open_write(const char *path) {
+    return yl_binary_stream_open(path, "wb");
+}
+static YLBinaryStream *yl_binary_stream_find(int64_t id) {
+    if (id <= 0) return NULL;
+    for (size_t i = 0; i < YL_BINARY_STREAM_SLOTS; i++)
+        if (yl_binary_streams[i].file && yl_binary_streams[i].id == id)
+            return &yl_binary_streams[i];
+    return NULL;
+}
+static int64_t yl_binary_stream_read(int64_t id, uint8_t *buffer, size_t capacity) {
+    YLBinaryStream *stream = yl_binary_stream_find(id);
+    if (!stream || (!buffer && capacity != 0U)) return -1;
+    size_t count = capacity ? fread(buffer, 1U, capacity, stream->file) : 0U;
+    return ferror(stream->file) ? -1 : (int64_t)count;
+}
+static int64_t yl_binary_stream_write(int64_t id, const uint8_t *buffer, size_t length) {
+    YLBinaryStream *stream = yl_binary_stream_find(id);
+    if (!stream || (!buffer && length != 0U)) return -1;
+    size_t count = length ? fwrite(buffer, 1U, length, stream->file) : 0U;
+    return ferror(stream->file) ? -1 : (int64_t)count;
+}
+static bool yl_binary_stream_close(int64_t id) {
+    YLBinaryStream *stream = yl_binary_stream_find(id);
+    if (!stream) return false;
+    FILE *file = stream->file;
+    stream->file = NULL;
+    stream->id = 0;
+    return fclose(file) == 0;
+}
+static void yl_binary_stream_shutdown(void) {
+    for (size_t i = 0; i < YL_BINARY_STREAM_SLOTS; i++) {
+        if (yl_binary_streams[i].file) {
+            fclose(yl_binary_streams[i].file);
+            yl_binary_streams[i].file = NULL;
+            yl_binary_streams[i].id = 0;
+        }
+    }
+}
 static bool yl_path_exists(const char *path) {
     struct stat info;
     return path && stat(path, &info) == 0;
@@ -970,3 +1546,196 @@ static bool yl_image_open(const char *path) {
     return WIFEXITED(status) && WEXITSTATUS(status) == 0;
 }
 #endif
+
+
+#define YL_BINARY_BUFFER_SLOTS 64U
+#define YL_BINARY_BUFFER_MAX (256U * 1024U * 1024U)
+typedef struct {
+    int64_t id;
+    uint8_t *data;
+    size_t length;
+    size_t capacity;
+    int64_t parent_id;
+    size_t offset;
+} YLBinaryBuffer;
+static YLBinaryBuffer yl_binary_buffers[YL_BINARY_BUFFER_SLOTS];
+static int64_t yl_binary_next_buffer_id = 1;
+static YLBinaryBuffer *yl_binary_buffer_find(int64_t id) {
+    if (id <= 0) return NULL;
+    for (size_t i = 0; i < YL_BINARY_BUFFER_SLOTS; i++)
+        if (yl_binary_buffers[i].id == id && id != 0) return &yl_binary_buffers[i];
+    return NULL;
+}
+static int64_t yl_binary_buffer_new(int64_t initial_capacity) {
+    if (initial_capacity < 0 || (uint64_t)initial_capacity > YL_BINARY_BUFFER_MAX ||
+        yl_binary_next_buffer_id <= 0 || yl_binary_next_buffer_id == INT64_MAX) return -1;
+    size_t slot = YL_BINARY_BUFFER_SLOTS;
+    for (size_t i = 0; i < YL_BINARY_BUFFER_SLOTS; i++)
+        if (yl_binary_buffers[i].id == 0) { slot = i; break; }
+    if (slot == YL_BINARY_BUFFER_SLOTS) return -1;
+    size_t capacity = (size_t)initial_capacity;
+    uint8_t *data = capacity ? malloc(capacity) : NULL;
+    if (capacity && !data) return -1;
+    int64_t id = yl_binary_next_buffer_id++;
+    yl_binary_buffers[slot] = (YLBinaryBuffer){
+        .id = id, .data = data, .length = 0U, .capacity = capacity,
+        .parent_id = 0, .offset = 0U
+    };
+    return id;
+}
+static bool yl_binary_buffer_reserve(YLBinaryBuffer *buffer, size_t needed) {
+    if (!buffer || needed > YL_BINARY_BUFFER_MAX) return false;
+    if (needed <= buffer->capacity) return true;
+    size_t capacity = buffer->capacity ? buffer->capacity : 16U;
+    while (capacity < needed) {
+        if (capacity > YL_BINARY_BUFFER_MAX / 2U) {
+            capacity = YL_BINARY_BUFFER_MAX;
+            break;
+        }
+        capacity *= 2U;
+    }
+    if (capacity < needed) return false;
+    uint8_t *grown = realloc(buffer->data, capacity);
+    if (!grown) return false;
+    buffer->data = grown;
+    buffer->capacity = capacity;
+    return true;
+}
+static YLBinaryBuffer *yl_binary_buffer_resolve(YLBinaryBuffer *buffer,
+                                                        size_t *base_offset) {
+    if (!buffer || !base_offset) return NULL;
+    size_t offset = 0U;
+    YLBinaryBuffer *current = buffer;
+    size_t depth = 0U;
+    while (current->parent_id != 0) {
+        if (++depth > YL_BINARY_BUFFER_SLOTS) return NULL;
+        YLBinaryBuffer *parent = yl_binary_buffer_find(current->parent_id);
+        if (!parent || current->offset > parent->length ||
+            current->length > parent->length - current->offset ||
+            SIZE_MAX - offset < current->offset) return NULL;
+        offset += current->offset;
+        current = parent;
+    }
+    if (offset > current->length || buffer->length > current->length - offset)
+        return NULL;
+    *base_offset = offset;
+    return current;
+}
+static int64_t yl_binary_buffer_slice(int64_t id, int64_t offset, int64_t length) {
+    YLBinaryBuffer *parent = yl_binary_buffer_find(id);
+    size_t parent_base = 0U;
+    if (!parent || (parent->parent_id != 0 &&
+                    !yl_binary_buffer_resolve(parent, &parent_base)) ||
+        offset < 0 || length < 0 ||
+        (uint64_t)offset > parent->length ||
+        (uint64_t)length > parent->length - (size_t)offset) return -1;
+    size_t slot = YL_BINARY_BUFFER_SLOTS;
+    for (size_t i = 0; i < YL_BINARY_BUFFER_SLOTS; i++)
+        if (yl_binary_buffers[i].id == 0) { slot = i; break; }
+    if (slot == YL_BINARY_BUFFER_SLOTS || yl_binary_next_buffer_id <= 0 ||
+        yl_binary_next_buffer_id == INT64_MAX) return -1;
+    int64_t slice_id = yl_binary_next_buffer_id++;
+    yl_binary_buffers[slot] = (YLBinaryBuffer){
+        .id = slice_id, .data = NULL, .length = (size_t)length,
+        .capacity = (size_t)length, .parent_id = id, .offset = (size_t)offset
+    };
+    return slice_id;
+}
+static int64_t yl_binary_buffer_length(int64_t id) {
+    YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
+    if (!buffer) return -1;
+    size_t base = 0U;
+    return buffer->parent_id == 0 || yl_binary_buffer_resolve(buffer, &base)
+        ? (int64_t)buffer->length : -1;
+}
+static int64_t yl_binary_buffer_capacity(int64_t id) {
+    YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
+    if (!buffer) return -1;
+    size_t base = 0U;
+    return buffer->parent_id == 0 || yl_binary_buffer_resolve(buffer, &base)
+        ? (int64_t)buffer->capacity : -1;
+}
+static int64_t yl_binary_buffer_get(int64_t id, int64_t index) {
+    YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
+    size_t base = 0U;
+    YLBinaryBuffer *root = yl_binary_buffer_resolve(buffer, &base);
+    if (!root || index < 0 || (uint64_t)index >= buffer->length) return -1;
+    return (int64_t)root->data[base + (size_t)index];
+}
+static bool yl_binary_buffer_set(int64_t id, int64_t index, int64_t value) {
+    YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
+    size_t base = 0U;
+    YLBinaryBuffer *root = yl_binary_buffer_resolve(buffer, &base);
+    if (!root || index < 0 || (uint64_t)index >= buffer->length ||
+        value < 0 || value > 255) return false;
+    root->data[base + (size_t)index] = (uint8_t)value;
+    return true;
+}
+static bool yl_binary_buffer_push(int64_t id, int64_t value) {
+    YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
+    if (!buffer || buffer->parent_id != 0 || value < 0 || value > 255 || buffer->length >= YL_BINARY_BUFFER_MAX ||
+        !yl_binary_buffer_reserve(buffer, buffer->length + 1U)) return false;
+    buffer->data[buffer->length++] = (uint8_t)value;
+    return true;
+}
+static bool yl_binary_buffer_resize(int64_t id, int64_t new_length) {
+    YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
+    if (!buffer || buffer->parent_id != 0 || new_length < 0 || (uint64_t)new_length > YL_BINARY_BUFFER_MAX) return false;
+    size_t length = (size_t)new_length;
+    if (!yl_binary_buffer_reserve(buffer, length)) return false;
+    if (length > buffer->length)
+        memset(buffer->data + buffer->length, 0, length - buffer->length);
+    buffer->length = length;
+    return true;
+}
+static bool yl_binary_buffer_clear(int64_t id) {
+    YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
+    if (!buffer || buffer->parent_id != 0) return false;
+    buffer->length = 0U;
+    return true;
+}
+static bool yl_binary_buffer_free(int64_t id) {
+    YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
+    if (!buffer) return false;
+    if (buffer->parent_id == 0) free(buffer->data);
+    memset(buffer, 0, sizeof(*buffer));
+    return true;
+}
+static int64_t yl_binary_buffer_load(const char *path, int64_t offset, int64_t length) {
+    if (!path || offset < 0 || length < 0 ||
+        (uint64_t)length > YL_BINARY_BUFFER_MAX) return -1;
+    FILE *file = fopen(path, "rb");
+    if (!file) return -1;
+    if (!yl_binary_seek(file, offset)) { fclose(file); return -1; }
+    int64_t id = yl_binary_buffer_new(length);
+    YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
+    if (!buffer) { fclose(file); return -1; }
+    size_t count = length ? fread(buffer->data, 1U, (size_t)length, file) : 0U;
+    bool failed = ferror(file) != 0;
+    if (fclose(file) != 0) failed = true;
+    if (failed) { (void)yl_binary_buffer_free(id); return -1; }
+    buffer->length = count;
+    return id;
+}
+static int64_t yl_binary_buffer_save(const char *path, int64_t offset, int64_t id) {
+    YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
+    size_t base = 0U;
+    YLBinaryBuffer *root = yl_binary_buffer_resolve(buffer, &base);
+    if (!path || !root || offset < 0) return -1;
+    FILE *file = fopen(path, "r+b");
+    if (!file) file = fopen(path, "w+b");
+    if (!file) return -1;
+    bool positioned = yl_binary_seek(file, offset);
+    size_t count = positioned && buffer->length ?
+        fwrite(root->data + base, 1U, buffer->length, file) : 0U;
+    bool failed = !positioned || ferror(file) != 0;
+    if (fclose(file) != 0) failed = true;
+    return failed ? -1 : (int64_t)count;
+}
+static void yl_binary_buffer_shutdown(void) {
+    for (size_t i = 0; i < YL_BINARY_BUFFER_SLOTS; i++) {
+        if (yl_binary_buffers[i].parent_id == 0)
+            free(yl_binary_buffers[i].data);
+        memset(&yl_binary_buffers[i], 0, sizeof(yl_binary_buffers[i]));
+    }
+}

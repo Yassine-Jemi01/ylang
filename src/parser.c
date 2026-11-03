@@ -204,12 +204,13 @@ static StructField *find_struct_field(StructDecl *structure, const char *name)
 static YType parse_type(Parser *p)
 {
     Token token = consume(p, TOKEN_IDENTIFIER,
-        "Expected a type name such as 'int', 'float', 'bool', 'char', 'string', or 'void'.",
+        "Expected a type name such as 'int', 'float', 'bool', 'char', 'byte', 'string', or 'void'.",
         "Write the type before the variable or parameter name.");
     if (token_is(&token, "int")) return TYPE_INT;
     if (token_is(&token, "float")) return TYPE_FLOAT;
     if (token_is(&token, "bool")) return TYPE_BOOL;
     if (token_is(&token, "char")) return TYPE_CHAR;
+    if (token_is(&token, "byte")) return TYPE_BYTE;
     if (token_is(&token, "string")) return TYPE_STRING;
     if (token_is(&token, "borrowed_string")) return TYPE_BORROWED_STRING;
     if (token_is(&token, "owned_string")) return TYPE_OWNED_STRING;
@@ -220,7 +221,7 @@ static YType parse_type(Parser *p)
     StructDecl *structure = find_struct(p->compiler, token_copy(p->compiler, token));
     if (structure) return structure->type;
     diagnostic(p->compiler, token, "error", "E2002", "Unknown type name.",
-               "Available built-in types are int, float, bool, char, string, and void; user-defined enums and structs must be declared before use.");
+               "Available built-in types are int, float, bool, char, byte, string, and void; user-defined enums and structs must be declared before use.");
     return TYPE_ERROR;
 }
 
@@ -233,6 +234,7 @@ const char *type_name(YType type)
         case TYPE_FLOAT: return "float";
         case TYPE_BOOL: return "bool";
         case TYPE_CHAR: return "char";
+        case TYPE_BYTE: return "byte";
         case TYPE_STRING: return "string";
         case TYPE_BORROWED_STRING: return "borrowed_string";
         case TYPE_OWNED_STRING: return "owned_string";

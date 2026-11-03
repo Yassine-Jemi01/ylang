@@ -30,6 +30,7 @@ static const char *c_base_type(Compiler *compiler, YType type)
         case TYPE_FLOAT: return "double";
         case TYPE_BOOL: return "bool";
         case TYPE_CHAR: return "char";
+        case TYPE_BYTE: return "uint8_t";
         case TYPE_STRING:
         case TYPE_BORROWED_STRING:
         case TYPE_OWNED_STRING: return "const char *";
@@ -84,6 +85,7 @@ static const char *format_for_type(YType type)
         case TYPE_FLOAT: return "%.17g";
         case TYPE_BOOL: return "%s";
         case TYPE_CHAR: return "%c";
+        case TYPE_BYTE: return "%u";
         case TYPE_STRING:
         case TYPE_BORROWED_STRING:
         case TYPE_OWNED_STRING: return "%s";
@@ -563,6 +565,9 @@ static void emit_fstring_expr(StringBuilder *sb, Expr *expr)
                 case TYPE_CHAR:
                     sb_append(&args, "(int)("); emit_expr(&args, embedded); sb_append(&args, ")");
                     break;
+                case TYPE_BYTE:
+                    sb_append(&args, "(unsigned int)("); emit_expr(&args, embedded); sb_append(&args, ")");
+                    break;
                 case TYPE_STRING:
                 case TYPE_BORROWED_STRING:
                 case TYPE_OWNED_STRING:
@@ -597,6 +602,20 @@ static const char *builtin_c_name(const char *name)
 {
     const char *math_name = math_c_name(name);
     if (math_name) return math_name;
+    if (strcmp(name, "json.parse") == 0) return "yl_json_parse";
+    if (strcmp(name, "json.stringify") == 0) return "yl_json_stringify";
+    if (strcmp(name, "json.pretty") == 0) return "yl_json_pretty";
+    if (strcmp(name, "json.valid") == 0) return "yl_json_valid";
+    if (strcmp(name, "json.get") == 0) return "yl_json_get";
+    if (strcmp(name, "json.get_string") == 0) return "yl_json_get_string";
+    if (strcmp(name, "json.get_int") == 0) return "yl_json_get_int";
+    if (strcmp(name, "json.get_float") == 0) return "yl_json_get_float";
+    if (strcmp(name, "json.get_bool") == 0) return "yl_json_get_bool";
+    if (strcmp(name, "json.has") == 0) return "yl_json_has";
+    if (strcmp(name, "json.array_length") == 0) return "yl_json_array_length";
+    if (strcmp(name, "json.at") == 0) return "yl_json_at";
+    if (strcmp(name, "json.escape") == 0) return "yl_json_escape";
+    if (strcmp(name, "json.last_error") == 0) return "yl_json_last_error";
     if (strcmp(name, "string.length") == 0) return "yl_string_length";
     if (strcmp(name, "string.own") == 0) return "yl_string_own";
     if (strcmp(name, "owned_string.concat") == 0) return "yl_string_concat";
@@ -619,6 +638,35 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "io.write_u8") == 0) return "yl_binary_write_u8";
     if (strcmp(name, "io.read_binary_hex") == 0) return "yl_binary_read_hex";
     if (strcmp(name, "io.write_binary_hex") == 0) return "yl_binary_write_hex";
+    if (strcmp(name, "io.read_u16_le") == 0) return "yl_binary_read_u16_le";
+    if (strcmp(name, "io.read_u16_be") == 0) return "yl_binary_read_u16_be";
+    if (strcmp(name, "io.read_u32_le") == 0) return "yl_binary_read_u32_le";
+    if (strcmp(name, "io.read_u32_be") == 0) return "yl_binary_read_u32_be";
+    if (strcmp(name, "io.read_u64_le") == 0) return "yl_binary_read_u64_le";
+    if (strcmp(name, "io.read_u64_be") == 0) return "yl_binary_read_u64_be";
+    if (strcmp(name, "io.write_u16_le") == 0) return "yl_binary_write_u16_le";
+    if (strcmp(name, "io.write_u16_be") == 0) return "yl_binary_write_u16_be";
+    if (strcmp(name, "io.write_u32_le") == 0) return "yl_binary_write_u32_le";
+    if (strcmp(name, "io.write_u32_be") == 0) return "yl_binary_write_u32_be";
+    if (strcmp(name, "io.write_u64_le") == 0) return "yl_binary_write_u64_le";
+    if (strcmp(name, "io.write_u64_be") == 0) return "yl_binary_write_u64_be";
+    if (strcmp(name, "io.stream_open_read") == 0) return "yl_binary_stream_open_read";
+    if (strcmp(name, "io.stream_open_write") == 0) return "yl_binary_stream_open_write";
+    if (strcmp(name, "io.stream_close") == 0) return "yl_binary_stream_close";
+    if (strcmp(name, "io.buffer_slice") == 0) return "yl_binary_buffer_slice";
+    if (strcmp(name, "io.buffer_new") == 0) return "yl_binary_buffer_new";
+    if (strcmp(name, "io.buffer_length") == 0) return "yl_binary_buffer_length";
+    if (strcmp(name, "io.buffer_capacity") == 0) return "yl_binary_buffer_capacity";
+    if (strcmp(name, "io.buffer_get") == 0) return "yl_binary_buffer_get";
+    if (strcmp(name, "io.buffer_set") == 0) return "yl_binary_buffer_set";
+    if (strcmp(name, "io.buffer_push") == 0) return "yl_binary_buffer_push";
+    if (strcmp(name, "io.buffer_resize") == 0) return "yl_binary_buffer_resize";
+    if (strcmp(name, "io.buffer_clear") == 0) return "yl_binary_buffer_clear";
+    if (strcmp(name, "io.buffer_free") == 0) return "yl_binary_buffer_free";
+    if (strcmp(name, "io.buffer_load") == 0) return "yl_binary_buffer_load";
+    if (strcmp(name, "io.buffer_save") == 0) return "yl_binary_buffer_save";
+
+
     if (strcmp(name, "io.read_line") == 0) return "yl_read_line";
     if (strcmp(name, "io.read_file") == 0) return "yl_read_file";
     if (strcmp(name, "io.write_file") == 0) return "yl_write_file";
@@ -886,8 +934,42 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     case TYPE_FLOAT: sb_append(sb, "yl_to_string_float("); emit_expr(sb, arg); sb_append(sb, ")"); break;
                     case TYPE_BOOL: sb_append(sb, "yl_boolstr("); emit_expr(sb, arg); sb_append(sb, ")"); break;
                     case TYPE_CHAR: sb_append(sb, "yl_to_string_char("); emit_expr(sb, arg); sb_append(sb, ")"); break;
+                    case TYPE_BYTE: sb_append(sb, "yl_to_string_int((int64_t)("); emit_expr(sb, arg); sb_append(sb, "))"); break;
                     default: sb_append(sb, "\"\""); break;
                 }
+                break;
+            }
+            if (strcmp(expr->as.call.name, "byte") == 0 && expr->as.call.count == 1U) {
+                sb_append(sb, "yl_to_byte(");
+                emit_expr(sb, expr->as.call.args[0]);
+                sb_append(sb, ")");
+                break;
+            }
+            if (strcmp(expr->as.call.name, "io.read_bytes") == 0 ||
+                strcmp(expr->as.call.name, "io.write_bytes") == 0 ||
+                strcmp(expr->as.call.name, "io.stream_read") == 0 ||
+                strcmp(expr->as.call.name, "io.stream_write") == 0) {
+                bool stream = strncmp(expr->as.call.name, "io.stream_", 10U) == 0;
+                bool read = strcmp(expr->as.call.name, "io.read_bytes") == 0 ||
+                            strcmp(expr->as.call.name, "io.stream_read") == 0;
+                Expr *buffer_arg = expr->as.call.args[stream ? 1U : 2U];
+                VarDecl *buffer = buffer_arg->kind == EXPR_NAME ? buffer_arg->as.name.variable : NULL;
+                sb_append(sb, read ? (stream ? "yl_binary_stream_read(" : "yl_binary_read_bytes(") :
+                                      (stream ? "yl_binary_stream_write(" : "yl_binary_write_bytes("));
+                for (size_t i = 0; i < (stream ? 1U : 2U); i++) {
+                    if (i) sb_append(sb, ", ");
+                    emit_expr(sb, expr->as.call.args[i]);
+                }
+                if (!stream) sb_append(sb, ", ");
+                emit_expr(sb, buffer_arg);
+                sb_append(sb, ", ");
+                if (buffer && buffer->array_length > 0U)
+                    sb_appendf(sb, "((size_t)%zu)", buffer->array_length);
+                else if (buffer)
+                    sb_appendf(sb, "((size_t)%s_len)", buffer->c_name);
+                else
+                    sb_append(sb, "((size_t)0)");
+                sb_append(sb, ")");
                 break;
             }
             if (strcmp(expr->as.call.name, "to_float") == 0 && expr->as.call.count == 1) {
@@ -1100,6 +1182,9 @@ static void emit_print_value(FILE *out, Expr *expr, unsigned indent)
             fputs("), stdout);\n", out); break;
         case TYPE_CHAR:
             fputs("printf(\"%c\", (int)(", out); emit_expr_to_file(out, expr);
+            fputs("));\n", out); break;
+        case TYPE_BYTE:
+            fputs("printf(\"%u\", (unsigned)(", out); emit_expr_to_file(out, expr);
             fputs("));\n", out); break;
         case TYPE_FLOAT:
             fputs("printf(\"%.17g\", (double)(", out); emit_expr_to_file(out, expr);

@@ -1,0 +1,27 @@
+function main() -> int {
+    let string path = "build/binary-io-extended.bin";
+    let byte data[] = [byte(0x59), byte(0x4c), byte(0x41), byte(0x4e)];
+
+    if (io.write_bytes(path, 0, data) != 4) return 1;
+    print(io.read_u32_be(path, 0));
+    print(io.read_u32_le(path, 0));
+
+    if (!io.write_u16_le(path, 4, 0x1234)) return 2;
+    print(io.read_binary_hex(path, 0, 6));
+
+    let byte chunk[] = [byte(0), byte(0), byte(0), byte(0)];
+    let int input = io.stream_open_read(path);
+    if (input < 0) return 3;
+    let int count = io.stream_read(input, chunk);
+    print(count);
+    print(chunk[0]);
+    print(chunk[1]);
+    if (!io.stream_close(input)) return 4;
+
+    let int output = io.stream_open_write("build/binary-stream-output.bin");
+    if (output < 0) return 5;
+    if (io.stream_write(output, data) != 4) return 6;
+    if (!io.stream_close(output)) return 7;
+    print(io.binary_size("build/binary-stream-output.bin"));
+    return 0;
+}

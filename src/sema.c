@@ -291,7 +291,34 @@ static const BinaryBuiltin binary_builtins[] = {
     {"io.read_u8", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}},
     {"io.write_u8", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
     {"io.read_binary_hex", 3, TYPE_OWNED_STRING, {TYPE_STRING, TYPE_INT, TYPE_INT}},
-    {"io.write_binary_hex", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_STRING}}
+    {"io.write_binary_hex", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_STRING}},
+    {"io.read_u16_le", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}},
+    {"io.read_u16_be", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}},
+    {"io.read_u32_le", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}},
+    {"io.read_u32_be", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}},
+    {"io.read_u64_le", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}},
+    {"io.read_u64_be", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}},
+    {"io.write_u16_le", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.write_u16_be", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.write_u32_le", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.write_u32_be", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.write_u64_le", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.write_u64_be", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.stream_open_read", 1, TYPE_INT, {TYPE_STRING}},
+    {"io.stream_open_write", 1, TYPE_INT, {TYPE_STRING}},
+    {"io.stream_close", 1, TYPE_BOOL, {TYPE_INT}},
+    {"io.buffer_slice", 3, TYPE_INT, {TYPE_INT, TYPE_INT, TYPE_INT}},
+    {"io.buffer_new", 1, TYPE_INT, {TYPE_INT}},
+    {"io.buffer_length", 1, TYPE_INT, {TYPE_INT}},
+    {"io.buffer_capacity", 1, TYPE_INT, {TYPE_INT}},
+    {"io.buffer_get", 2, TYPE_INT, {TYPE_INT, TYPE_INT}},
+    {"io.buffer_set", 3, TYPE_BOOL, {TYPE_INT, TYPE_INT, TYPE_INT}},
+    {"io.buffer_push", 2, TYPE_BOOL, {TYPE_INT, TYPE_INT}},
+    {"io.buffer_resize", 2, TYPE_BOOL, {TYPE_INT, TYPE_INT}},
+    {"io.buffer_clear", 1, TYPE_BOOL, {TYPE_INT}},
+    {"io.buffer_free", 1, TYPE_BOOL, {TYPE_INT}},
+    {"io.buffer_load", 3, TYPE_INT, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.buffer_save", 3, TYPE_INT, {TYPE_STRING, TYPE_INT, TYPE_INT}}
 };
 
 static const BinaryBuiltin *find_binary_builtin(const char *name)
@@ -306,6 +333,30 @@ typedef struct {
     size_t arity;
     YType result;
 } StringBuiltin;
+
+
+typedef struct { const char *name; size_t arity; YType result; YType args[2]; } JsonBuiltin;
+static const JsonBuiltin json_builtins[] = {
+    {"json.parse",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID}},
+    {"json.stringify",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID}},
+    {"json.pretty",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID}},
+    {"json.valid",1,TYPE_BOOL,{TYPE_STRING,TYPE_VOID}},
+    {"json.get",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_STRING}},
+    {"json.get_string",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_STRING}},
+    {"json.get_int",2,TYPE_INT,{TYPE_STRING,TYPE_STRING}},
+    {"json.get_float",2,TYPE_FLOAT,{TYPE_STRING,TYPE_STRING}},
+    {"json.get_bool",2,TYPE_BOOL,{TYPE_STRING,TYPE_STRING}},
+    {"json.has",2,TYPE_BOOL,{TYPE_STRING,TYPE_STRING}},
+    {"json.array_length",1,TYPE_INT,{TYPE_STRING,TYPE_VOID}},
+    {"json.at",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_INT}},
+    {"json.escape",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID}},
+    {"json.last_error",0,TYPE_STRING,{TYPE_VOID,TYPE_VOID}}
+};
+static const JsonBuiltin *find_json_builtin(const char *name) {
+    for(size_t i=0;i<sizeof(json_builtins)/sizeof(json_builtins[0]);i++)
+        if(strcmp(name,json_builtins[i].name)==0) return &json_builtins[i];
+    return NULL;
+}
 
 static const StringBuiltin string_builtins[] = {
     {"string.length", 1, TYPE_INT},
@@ -1012,9 +1063,9 @@ static YType check_expr(Checker *checker, Expr *expr)
                     expr->type = TYPE_INT;
                 } else {
                     if (arg_type != TYPE_INT && arg_type != TYPE_FLOAT && arg_type != TYPE_BOOL &&
-                        arg_type != TYPE_CHAR && !is_string_type(arg_type) && arg_type != TYPE_ERROR)
+                        arg_type != TYPE_CHAR && arg_type != TYPE_BYTE && !is_string_type(arg_type) && arg_type != TYPE_ERROR)
                         diagnostic(c, expr->token, "error", "E2045", "to_string cannot convert this type.",
-                                   "Supported types are int, float, bool, char, string, and owned_string.");
+                                   "Supported types are int, float, bool, char, byte, string, and owned_string.");
                     expr->type = arg_type == TYPE_OWNED_STRING ?
                         TYPE_OWNED_STRING : TYPE_STRING;
                 }
@@ -1064,6 +1115,57 @@ static YType check_expr(Checker *checker, Expr *expr)
                 expr->type = TYPE_BOOL;
                 return expr->type;
             }
+            if (strcmp(expr->as.call.name, "byte") == 0) {
+                if (expr->as.call.count != 1U) {
+                    diagnostic(c, expr->token, "error", "E2134",
+                               "byte() expects exactly one integer argument.",
+                               "Use byte(value) to perform a checked conversion from 0 through 255.");
+                }
+                YType input = expr->as.call.count ? check_expr(checker, expr->as.call.args[0]) : TYPE_ERROR;
+                for (size_t i = 1; i < expr->as.call.count; i++) (void)check_expr(checker, expr->as.call.args[i]);
+                if (input != TYPE_INT && input != TYPE_ERROR)
+                    diagnostic(c, expr->token, "error", "E2134",
+                               "byte() expects an int argument.",
+                               "Convert the integer explicitly before constructing a byte.");
+                expr->type = TYPE_BYTE;
+                return expr->type;
+            }
+            if (strcmp(expr->as.call.name, "io.read_bytes") == 0 ||
+                strcmp(expr->as.call.name, "io.write_bytes") == 0 ||
+                strcmp(expr->as.call.name, "io.stream_read") == 0 ||
+                strcmp(expr->as.call.name, "io.stream_write") == 0) {
+                bool stream = strncmp(expr->as.call.name, "io.stream_", 10U) == 0;
+                size_t expected = stream ? 2U : 3U;
+                if (expr->as.call.count != expected)
+                    diagnostic(c, expr->token, "error", "E2088",
+                               "Binary buffer function received the wrong number of arguments.",
+                               stream ? "Use io.stream_read(handle, bytes) or io.stream_write(handle, bytes)." :
+                                        "Use io.read_bytes(path, offset, bytes) or io.write_bytes(path, offset, bytes).");
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    Expr *arg = expr->as.call.args[i];
+                    if (i == (stream ? 1U : 2U)) {
+                        bool previous = checker->allow_array_name;
+                        checker->allow_array_name = true;
+                        (void)check_expr(checker, arg);
+                        checker->allow_array_name = previous;
+                        VarDecl *array = arg->kind == EXPR_NAME ? arg->as.name.variable : NULL;
+                        if (!array || !array->is_array || array->type != TYPE_BYTE)
+                            diagnostic(c, arg->token, "error", "E2135",
+                                       "Binary buffer operations require a byte array variable.",
+                                       "Declare a buffer such as let byte data[] = [byte(0), byte(255)];");
+                    } else {
+                        YType actual = check_expr(checker, arg);
+                        YType wanted = (i == 0U) ? (stream ? TYPE_INT : TYPE_STRING) : TYPE_INT;
+                        if (actual != wanted && actual != TYPE_ERROR &&
+                            !(wanted == TYPE_STRING && is_string_type(actual)))
+                            diagnostic(c, arg->token, "error", "E2133",
+                                       "Binary buffer argument type mismatch.",
+                                       stream ? "The stream handle must be int." : "Pass a path string and integer byte offset.");
+                    }
+                }
+                expr->type = TYPE_INT;
+                return expr->type;
+            }
             const BinaryBuiltin *binary_builtin = find_binary_builtin(expr->as.call.name);
             if (binary_builtin) {
                 if (expr->as.call.count != binary_builtin->arity) {
@@ -1092,6 +1194,30 @@ static YType check_expr(Checker *checker, Expr *expr)
                     }
                 }
                 expr->type = binary_builtin->result;
+                return expr->type;
+            }
+            const JsonBuiltin *json_builtin = find_json_builtin(expr->as.call.name);
+            if (json_builtin) {
+                if (expr->as.call.count != json_builtin->arity) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion,sizeof(suggestion),"%s expects %zu argument(s), but received %zu.",
+                        json_builtin->name,json_builtin->arity,expr->as.call.count);
+                    diagnostic(c,expr->token,"error","E2150","Incorrect number of JSON arguments.",suggestion);
+                }
+                for(size_t i=0;i<expr->as.call.count;i++) {
+                    YType actual=check_expr(checker,expr->as.call.args[i]);
+                    YType expected=i<json_builtin->arity?json_builtin->args[i]:TYPE_ERROR;
+                    bool okay=expected==TYPE_STRING?is_string_type(actual):actual==expected;
+                    if(actual!=TYPE_ERROR && !okay) {
+                        char suggestion[256];
+                        (void)snprintf(suggestion,sizeof(suggestion),"Argument %zu of %s expects %s, but received %s.",
+                            i+1U,json_builtin->name,semantic_type_name(c,expected),semantic_type_name(c,actual));
+                        diagnostic(c,expr->as.call.args[i]->token,"error","E2151","JSON argument type mismatch.",suggestion);
+                    }
+                    if(actual==TYPE_OWNED_STRING && is_owned_temporary_expression(expr->as.call.args[i]))
+                        diagnose_lost_owned_temporary(c,expr->as.call.args[i]);
+                }
+                expr->type=json_builtin->result;
                 return expr->type;
             }
             const StringBuiltin *string_builtin = find_string_builtin(expr->as.call.name);

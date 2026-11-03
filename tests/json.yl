@@ -1,0 +1,24 @@
+function main() -> int {
+    let owned_string document = json.parse("{\"name\":\"YLang\",\"\\u03bb\":42,\"version\":23,\"price\":2.5,\"unicode\":\"\\uD83D\\uDE00\",\"enabled\":true,\"items\":[1,2,3],\"message\":\"hello\\nworld\"}");
+    let owned_string items = json.get(document, "items");
+    print(json.valid(document));
+    print(json.get_string(document, "name"));
+    print(json.get_int(document, "λ"));
+    print(json.get_int(document, "version"));
+    print(json.get_float(document, "price"));
+    print(json.get_string(document, "unicode"));
+    print(json.get_bool(document, "enabled"));
+    print(json.has(document, "missing"));
+    print(json.array_length(items));
+    print(json.at(items, 1));
+    print(json.get_string(document, "message"));
+    print(json.stringify(document));
+    print(json.escape("line\nquote\""));
+    print(json.valid("{broken"));
+    print(json.last_error());
+    let owned_string zero_doc = json.parse("{\"zero\":\"\\u0000\"}");
+    print(json.get_string(zero_doc, "zero"));
+    print(json.last_error());
+    print(json.pretty("{\"text\":\"a, b: c\",\"n\":1}"));
+    return 0;
+}
