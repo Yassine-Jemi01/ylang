@@ -69,6 +69,7 @@ static bool asm_type_supported(AsmContext *ctx, YType type, Token token,
         case TYPE_INT:
         case TYPE_BOOL:
         case TYPE_CHAR:
+            return true;
         case TYPE_BYTE:
             return asm_reject(ctx, token, "byte values (use the C backend)");
         case TYPE_STRING:
