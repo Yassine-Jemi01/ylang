@@ -634,6 +634,22 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "io.write_u8") == 0) return "yl_binary_write_u8";
     if (strcmp(name, "io.read_binary_hex") == 0) return "yl_binary_read_hex";
     if (strcmp(name, "io.write_binary_hex") == 0) return "yl_binary_write_hex";
+    if (strcmp(name, "io.read_u16_le") == 0) return "yl_binary_read_u16_le";
+    if (strcmp(name, "io.read_u16_be") == 0) return "yl_binary_read_u16_be";
+    if (strcmp(name, "io.read_u32_le") == 0) return "yl_binary_read_u32_le";
+    if (strcmp(name, "io.read_u32_be") == 0) return "yl_binary_read_u32_be";
+    if (strcmp(name, "io.read_u64_le") == 0) return "yl_binary_read_u64_le";
+    if (strcmp(name, "io.read_u64_be") == 0) return "yl_binary_read_u64_be";
+    if (strcmp(name, "io.write_u16_le") == 0) return "yl_binary_write_u16_le";
+    if (strcmp(name, "io.write_u16_be") == 0) return "yl_binary_write_u16_be";
+    if (strcmp(name, "io.write_u32_le") == 0) return "yl_binary_write_u32_le";
+    if (strcmp(name, "io.write_u32_be") == 0) return "yl_binary_write_u32_be";
+    if (strcmp(name, "io.write_u64_le") == 0) return "yl_binary_write_u64_le";
+    if (strcmp(name, "io.write_u64_be") == 0) return "yl_binary_write_u64_be";
+    if (strcmp(name, "io.stream_open_read") == 0) return "yl_binary_stream_open_read";
+    if (strcmp(name, "io.stream_open_write") == 0) return "yl_binary_stream_open_write";
+    if (strcmp(name, "io.stream_close") == 0) return "yl_binary_stream_close";
+
     if (strcmp(name, "io.read_line") == 0) return "yl_read_line";
     if (strcmp(name, "io.read_file") == 0) return "yl_read_file";
     if (strcmp(name, "io.write_file") == 0) return "yl_write_file";
@@ -903,6 +919,35 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     case TYPE_CHAR: sb_append(sb, "yl_to_string_char("); emit_expr(sb, arg); sb_append(sb, ")"); break;
                     default: sb_append(sb, "\"\""); break;
                 }
+                break;
+            }
+            if (strcmp(expr->as.call.name, "byte") == 0 && expr->as.call.count == 1U) {
+                sb_append(sb, "yl_to_byte(");
+                emit_expr(sb, expr->as.call.args[0]);
+                sb_append(sb, ")");
+                break;
+            }
+            if (strcmp(expr->as.call.name, "io.read_bytes") == 0 ||
+                strcmp(expr->as.call.name, "io.write_bytes") == 0 ||
+                strcmp(expr->as.call.name, "io.stream_read") == 0 ||
+                strcmp(expr->as.call.name, "io.stream_write") == 0) {
+                bool stream = strncmp(expr->as.call.name, "io.stream_", 10U) == 0;
+                bool read = strcmp(expr->as.call.name, "io.read_bytes") == 0 ||
+                            strcmp(expr->as.call.name, "io.stream_read") == 0;
+                Expr *buffer_arg = expr->as.call.args[stream ? 1U : 2U];
+                VarDecl *buffer = buffer_arg->kind == EXPR_NAME ? buffer_arg->as.name.variable : NULL;
+                sb_append(sb, read ? (stream ? "yl_binary_stream_read(" : "yl_binary_read_bytes(") :
+                                      (stream ? "yl_binary_stream_write(" : "yl_binary_write_bytes("));
+                for (size_t i = 0; i < (stream ? 1U : 2U); i++) {
+                    if (i) sb_append(sb, ", ");
+                    emit_expr(sb, expr->as.call.args[i]);
+                }
+                if (!stream) sb_append(sb, ", ");
+                emit_expr(sb, buffer_arg);
+                sb_append(sb, ", ");
+                if (buffer) sb_appendf(sb, "((size_t)%zu)", buffer->array_length);
+                else sb_append(sb, "((size_t)0)");
+                sb_append(sb, ")");
                 break;
             }
             if (strcmp(expr->as.call.name, "to_float") == 0 && expr->as.call.count == 1) {
