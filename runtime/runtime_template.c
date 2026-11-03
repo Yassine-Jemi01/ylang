@@ -900,6 +900,9 @@ static bool yl_binary_write_hex(const char *path, int64_t offset, const char *he
     if (!path || !hex || offset < 0) return false;
     size_t length = strlen(hex);
     if ((length & 1U) != 0U || length / 2U > YL_BINARY_MAX_READ) return false;
+    for (size_t i = 0; i < length; i++) {
+        if (yl_binary_hex_value(hex[i]) < 0) return false;
+    }
     FILE *file = fopen(path, "r+b");
     if (!file) file = fopen(path, "w+b");
     if (!file) return false;
@@ -907,7 +910,7 @@ static bool yl_binary_write_hex(const char *path, int64_t offset, const char *he
     for (size_t i = 0; ok && i < length; i += 2U) {
         int high = yl_binary_hex_value(hex[i]);
         int low = yl_binary_hex_value(hex[i + 1U]);
-        if (high < 0 || low < 0 || fputc((high << 4) | low, file) == EOF) ok = false;
+        if (fputc((high << 4) | low, file) == EOF) ok = false;
     }
     if (fclose(file) != 0) ok = false;
     return ok;
