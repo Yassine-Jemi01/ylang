@@ -142,6 +142,20 @@ int main(void)
     if (test_stream_bytes_read != test_stream_expected_length) return fail("audio decoder did not consume the complete stream");
     if (test_stream.data != NULL) return fail("stream close callback did not release its source");
 
+    /* Pause/resume/stop must also work for callback-backed streams and
+       stopping must release the transferred stream exactly once. */
+    if (!load_test_stream(path)) return fail("could not reload the callback stream fixture");
+    if (!ylvoice_play_stream(7, test_stream_read, test_stream_error, test_stream_close))
+        return fail("second callback-backed stream playback failed");
+    ylvoice_pause();
+    if (!ylvoice_is_paused()) return fail("stream pause state was not reported");
+    ylvoice_resume();
+    if (ylvoice_is_paused()) return fail("stream resume did not clear the paused state");
+    SDL_Delay(20U);
+    ylvoice_stop();
+    if (ylvoice_is_playing()) return fail("stopped stream still reports as playing");
+    if (test_stream.data != NULL) return fail("stopping a stream did not release its source");
+
     if (ylvoice_set_volume(101)) return fail("volume above 100 was accepted");
     if (strstr(ylvoice_last_error(), "volume") == NULL)
         return fail("invalid volume did not produce a useful error");
