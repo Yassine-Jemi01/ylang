@@ -21,5 +21,9 @@ JSON string contains U+0000, which YLang strings cannot represent
   "n": 1
 }
 {"title":"Tilawa","count":3}
+Tilawa
+3
+{"title":"Tilawa","count":4}
 [1,true]
+2
 {"title":"Tilawa"}
