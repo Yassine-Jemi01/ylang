@@ -23,7 +23,7 @@ def write_nested(path, depth):
     lines.append("return 0;")
     lines.extend("}" for _ in range(depth))
     lines.extend(["return 0;", "}"])
-    Path(path).write_text("\\n".join(lines) + "\\n", encoding="utf-8")
+    Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 write_nested("build/nesting-valid.yl", 100)
 write_nested("build/nesting-too-deep.yl", 257)
