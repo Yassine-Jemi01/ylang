@@ -52,7 +52,7 @@ jobs:
       - name: Build optional GUI runtime
         run: ${{ steps.compiler.outputs.make }} gui gui-example game2d-example CC="${{ steps.compiler.outputs.cc }}"
       - name: Build optional Voice runtime and YLang example
-        run: ${{ steps.compiler.outputs.make }} voice voice-example CC="${{ steps.compiler.outputs.cc }}"
+        run: ${{ steps.compiler.outputs.make }} voice voice-example voice-test CC="${{ steps.compiler.outputs.cc }}"
       - name: Run regression tests
         run: ${{ steps.compiler.outputs.make }} test CC="${{ steps.compiler.outputs.cc }}"
       - name: Fuzz lexer/parser smoke test
