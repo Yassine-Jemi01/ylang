@@ -68,4 +68,4 @@ tui.read_key() returns ASCII values for ordinary keys. Enter is 13, Escape is 27
 
 ## Current limits
 
-This first milestone provides low-level terminal primitives and a small set of drawing helpers. It is not yet a retained widget framework: there are no automatic layout containers, focus management, mouse events, text-input widgets, or full key-event objects. Those can be layered on after the runtime and input contracts are stable.
+This is a terminal rendering and input foundation, not yet a retained widget framework. Applications can implement menus, playback controls, status panels, progress indicators, and keyboard navigation using the primitives above. Automatic layout containers, built-in focus management, mouse events, Unicode-aware cell-width measurement, and a managed text-input widget are not included yet. For text entry, compose characters from read_key() and handle Backspace, Enter, and Escape in the application. The library currently treats strings as terminal output: sanitize untrusted text before passing it to tui.write(), tui.println(), or draw_box() because embedded terminal escape sequences can affect terminal state.
