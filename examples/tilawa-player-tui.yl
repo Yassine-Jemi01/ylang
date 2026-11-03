@@ -1,0 +1,82 @@
+// Keyboard-driven terminal player shell for YTilawa.
+// Audio playback is intentionally kept behind a separate audio module.
+function main() -> int {
+    if (not tui.init()) {
+        print("Could not initialize the terminal");
+        return 1;
+    }
+
+    let-mut int selected = 0;
+    let-mut bool running = true;
+    let-mut int key = -1;
+
+    while (running) {
+        tui.clear();
+        tui.set_color(39, 16);
+        tui.draw_box(2, 1, tui.width() - 4, tui.height() - 2, "YTilawa - Quran Player");
+        tui.set_color(226, 16);
+        tui.move_to(5, 3);
+        tui.println("NOW PLAYING");
+        tui.reset_style();
+        tui.move_to(5, 4);
+        tui.println("Surah Al-Fatiha");
+        tui.move_to(5, 5);
+        tui.println("Reciter: Mishary Alafasy");
+        tui.draw_box(5, 7, tui.width() - 10, 5, "Playback");
+        tui.move_to(7, 9);
+        tui.write("00:32 ");
+        tui.progress_bar(14, 9, tui.width() - 25, 32, 180);
+        tui.move_to(5, 13);
+        tui.println("Library");
+        tui.move_to(7, 15);
+        if (selected == 0) {
+            tui.set_color(16, 51);
+            tui.println("> Play / Pause");
+            tui.reset_style();
+        } else {
+            tui.println("  Play / Pause");
+        }
+        tui.move_to(7, 16);
+        if (selected == 1) {
+            tui.set_color(16, 51);
+            tui.println("> Previous Surah");
+            tui.reset_style();
+        } else {
+            tui.println("  Previous Surah");
+        }
+        tui.move_to(7, 17);
+        if (selected == 2) {
+            tui.set_color(16, 51);
+            tui.println("> Next Surah");
+            tui.reset_style();
+        } else {
+            tui.println("  Next Surah");
+        }
+        tui.move_to(5, tui.height() - 3);
+        tui.println("Up/Down: navigate   Enter: select   Q: quit");
+
+        if (tui.key_available()) {
+            key = tui.read_key();
+            if (key == 1001) {
+                selected = selected - 1;
+                if (selected < 0) { selected = 2; }
+            } else if (key == 1002) {
+                selected = selected + 1;
+                if (selected > 2) { selected = 0; }
+            } else if (key == 13) {
+                // Connect these actions to the audio engine in YTilawa.
+                if (selected == 0) { tui.move_to(5, tui.height() - 2); tui.println("Playback action selected"); }
+                if (selected == 1) { tui.move_to(5, tui.height() - 2); tui.println("Previous Surah selected"); }
+                if (selected == 2) { tui.move_to(5, tui.height() - 2); tui.println("Next Surah selected"); }
+                tui.sleep_ms(350);
+            } else if (key == 113 || key == 81 || key == 27) {
+                running = false;
+            }
+        }
+        tui.sleep_ms(16);
+    }
+
+    tui.reset_style();
+    tui.shutdown();
+    return 0;
+}
