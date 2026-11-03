@@ -1,5 +1,6 @@
 true
 YLang
+42
 23
 2.5
 😀
@@ -13,6 +14,8 @@ world
 "line\nquote\""
 false
 Invalid JSON syntax
+
+JSON string contains U+0000, which YLang strings cannot represent
 {
   "text": "a, b: c",
   "n": 1
