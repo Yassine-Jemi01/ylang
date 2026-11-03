@@ -1270,10 +1270,16 @@ static bool yl_binary_write_scalar(const char *path, int64_t offset,
 }
 #define YL_DEFINE_BINARY_SCALAR(bits, width) \
 static int64_t yl_binary_read_u##bits##_le(const char *p, int64_t o) { \
-    uint64_t v = 0U; return yl_binary_read_scalar(p, o, width, false, &v) ? (int64_t)v : -1; \
+    uint64_t v = 0U; int64_t r = -1; \
+    if (yl_binary_read_scalar(p, o, width, false, &v)) { \
+        if (width == 8U) memcpy(&r, &v, sizeof(r)); else r = (int64_t)v; \
+    } return r; \
 } \
 static int64_t yl_binary_read_u##bits##_be(const char *p, int64_t o) { \
-    uint64_t v = 0U; return yl_binary_read_scalar(p, o, width, true, &v) ? (int64_t)v : -1; \
+    uint64_t v = 0U; int64_t r = -1; \
+    if (yl_binary_read_scalar(p, o, width, true, &v)) { \
+        if (width == 8U) memcpy(&r, &v, sizeof(r)); else r = (int64_t)v; \
+    } return r; \
 } \
 static bool yl_binary_write_u##bits##_le(const char *p, int64_t o, int64_t v) { \
     return yl_binary_write_scalar(p, o, width, false, (uint64_t)v); \
