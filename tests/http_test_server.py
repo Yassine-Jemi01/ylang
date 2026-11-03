@@ -32,11 +32,11 @@ class Handler(BaseHTTPRequestHandler):
             # Reproduce the exact boundary sequence that previously wrapped the
             # synchronous header-length subtraction and wrote past its global buffer.
             payload = (
-                b"HTTP/1.1 200 OK\\r\\n"
-                + b"X: " + b"A" * 16377 + b"\\r\\n"
-                + b"a:\\r\\n"
-                + b"B: x\\r\\n"
-                + b"\\r\\nhello"
+                b"HTTP/1.1 200 OK\r\n"
+                + b"X: " + b"A" * 16377 + b"\r\n"
+                + b"a:\r\n"
+                + b"B: x\r\n"
+                + b"\r\nhello"
             )
             try:
                 self.connection.sendall(payload)
