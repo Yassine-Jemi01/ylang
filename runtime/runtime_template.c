@@ -550,6 +550,7 @@ static const char *yl_http_await(int64_t id) {
     yl_http_task_release(task);
     return (const char *)yl_track(result, result_length + 1U);
 }
+
 static bool yl_http_cancel(int64_t id) {
     YLHttpTask *task = yl_http_task_find(id);
     if (!task) { yl_http_set_error("Invalid, cancelled, or already awaited HTTP task handle"); return false; }
@@ -557,6 +558,315 @@ static bool yl_http_cancel(int64_t id) {
     yl_http_last_status_code = 0; yl_http_response_header_text[0] = '\0';
     yl_http_task_release(task);
     return true;
+}
+
+/* Pull-based HTTP streams. Each stream owns a CURLM handle and a fixed-size
+   queue, so a slow consumer applies backpressure instead of growing memory. */
+#define YL_HTTP_STREAM_BUFFER (64U * 1024U)
+#define YL_HTTP_MAX_STREAMS 16U
+typedef struct {
+    int64_t id;
+    bool active;
+    bool done;
+    bool attached;
+    bool paused;
+    CURL *easy;
+    CURLM *multi;
+    struct curl_slist *headers;
+    char *url;
+    char *body_text;
+    char error_buffer[CURL_ERROR_SIZE];
+    char error[256];
+    int64_t status;
+    char buffer[YL_HTTP_STREAM_BUFFER];
+    size_t length;
+    char response_headers[YL_HTTP_MAX_HEADERS + 1U];
+    size_t response_header_length;
+    bool response_headers_too_large;
+} YLHttpStream;
+static YLHttpStream yl_http_streams[YL_HTTP_MAX_STREAMS];
+static int64_t yl_http_next_stream_id = 1;
+static bool yl_http_stream_shutdown_registered;
+
+static void yl_http_stream_error_set(YLHttpStream *stream, const char *message) {
+    if (stream) (void)snprintf(stream->error, sizeof(stream->error), "%s",
+                              message ? message : "unknown HTTP streaming error");
+}
+static YLHttpStream *yl_http_stream_find(int64_t id) {
+    for (size_t i = 0; i < YL_HTTP_MAX_STREAMS; i++)
+        if (yl_http_streams[i].active && yl_http_streams[i].id == id)
+            return &yl_http_streams[i];
+    return NULL;
+}
+static void yl_http_stream_release(YLHttpStream *stream) {
+    if (!stream) return;
+    if (stream->easy) {
+        if (stream->attached && stream->multi)
+            (void)curl_multi_remove_handle(stream->multi, stream->easy);
+        curl_easy_cleanup(stream->easy);
+    }
+    if (stream->multi) curl_multi_cleanup(stream->multi);
+    curl_slist_free_all(stream->headers);
+    free(stream->url);
+    free(stream->body_text);
+    memset(stream, 0, sizeof(*stream));
+}
+static void yl_http_stream_shutdown(void) {
+    for (size_t i = 0; i < YL_HTTP_MAX_STREAMS; i++)
+        if (yl_http_streams[i].active) yl_http_stream_release(&yl_http_streams[i]);
+}
+static size_t yl_http_stream_write(char *data, size_t size, size_t count, void *userdata) {
+    YLHttpStream *stream = (YLHttpStream *)userdata;
+    if (!stream || (size && count > SIZE_MAX / size)) return 0U;
+    size_t bytes = size * count;
+    if (bytes > YL_HTTP_STREAM_BUFFER) {
+        yl_http_stream_error_set(stream, "A libcurl response chunk exceeded the stream buffer");
+        return 0U;
+    }
+    if (bytes > YL_HTTP_STREAM_BUFFER - stream->length) {
+        stream->paused = true;
+        return CURL_WRITEFUNC_PAUSE;
+    }
+    memcpy(stream->buffer + stream->length, data, bytes);
+    stream->length += bytes;
+    return bytes;
+}
+static size_t yl_http_stream_header_callback(char *data, size_t size, size_t count, void *userdata) {
+    YLHttpStream *stream = (YLHttpStream *)userdata;
+    if (!stream || (size && count > SIZE_MAX / size)) return 0U;
+    size_t bytes = size * count;
+    if (bytes >= 5U && memcmp(data, "HTTP/", 5U) == 0) {
+        stream->response_header_length = 0U;
+        stream->response_headers[0] = '\0';
+        stream->response_headers_too_large = false;
+        return bytes;
+    }
+    size_t length = bytes;
+    while (length && (data[length - 1U] == '\r' || data[length - 1U] == '\n')) length--;
+    if (!length) return bytes;
+    if (stream->response_header_length >= YL_HTTP_MAX_HEADERS ||
+        length > YL_HTTP_MAX_HEADERS - stream->response_header_length - 1U) {
+        stream->response_headers_too_large = true;
+        return 0U;
+    }
+    memcpy(stream->response_headers + stream->response_header_length, data, length);
+    stream->response_header_length += length;
+    stream->response_headers[stream->response_header_length++] = '\n';
+    stream->response_headers[stream->response_header_length] = '\0';
+    return bytes;
+}
+static void yl_http_stream_complete(YLHttpStream *stream) {
+    if (!stream || stream->done || !stream->easy) return;
+    long response_code = 0;
+    (void)curl_easy_getinfo(stream->easy, CURLINFO_RESPONSE_CODE, &response_code);
+    stream->status = (int64_t)response_code;
+    if (stream->attached && stream->multi) {
+        (void)curl_multi_remove_handle(stream->multi, stream->easy);
+        stream->attached = false;
+    }
+    int remaining = 0;
+    CURLMsg *message = NULL;
+    while (stream->multi && (message = curl_multi_info_read(stream->multi, &remaining)) != NULL) {
+        if (message->msg != CURLMSG_DONE || message->easy_handle != stream->easy) continue;
+        if (message->data.result != CURLE_OK) {
+            if (stream->response_headers_too_large)
+                yl_http_stream_error_set(stream, "HTTP response headers exceeded the 16 KiB limit");
+            else if (stream->error_buffer[0])
+                yl_http_stream_error_set(stream, stream->error_buffer);
+            else
+                yl_http_stream_error_set(stream, curl_easy_strerror(message->data.result));
+        }
+        break;
+    }
+    stream->done = true;
+}
+static bool yl_http_stream_pump(YLHttpStream *stream) {
+    if (!stream || stream->done || !stream->multi) return false;
+    int running = 0;
+    CURLMcode code = curl_multi_perform(stream->multi, &running);
+    if (code != CURLM_OK) {
+        yl_http_stream_error_set(stream, curl_multi_strerror(code));
+        stream->done = true;
+        if (stream->attached) {
+            (void)curl_multi_remove_handle(stream->multi, stream->easy);
+            stream->attached = false;
+        }
+        return false;
+    }
+    int remaining = 0;
+    CURLMsg *message = NULL;
+    while ((message = curl_multi_info_read(stream->multi, &remaining)) != NULL) {
+        if (message->msg != CURLMSG_DONE || message->easy_handle != stream->easy) continue;
+        long response_code = 0;
+        (void)curl_easy_getinfo(stream->easy, CURLINFO_RESPONSE_CODE, &response_code);
+        stream->status = (int64_t)response_code;
+        if (stream->attached) {
+            (void)curl_multi_remove_handle(stream->multi, stream->easy);
+            stream->attached = false;
+        }
+        if (message->data.result != CURLE_OK) {
+            if (stream->response_headers_too_large)
+                yl_http_stream_error_set(stream, "HTTP response headers exceeded the 16 KiB limit");
+            else if (stream->error_buffer[0])
+                yl_http_stream_error_set(stream, stream->error_buffer);
+            else
+                yl_http_stream_error_set(stream, curl_easy_strerror(message->data.result));
+        }
+        stream->done = true;
+        return true;
+    }
+    if (running > 0 && stream->length == 0U) {
+        int descriptors = 0;
+        (void)curl_multi_poll(stream->multi, NULL, 0U, 1000, &descriptors);
+    }
+    return true;
+}
+static int64_t yl_http_stream_open(const char *method, const char *url,
+                                   const char *body, const char *raw_headers) {
+    yl_http_set_error("");
+    bool allowed = method &&
+        (strcmp(method, "GET") == 0 || strcmp(method, "POST") == 0 ||
+         strcmp(method, "PUT") == 0 || strcmp(method, "PATCH") == 0 ||
+         strcmp(method, "DELETE") == 0 || strcmp(method, "HEAD") == 0);
+    if (!allowed) { yl_http_set_error("Unsupported HTTP method; use GET, POST, PUT, PATCH, DELETE, or HEAD"); return 0; }
+    if (!url || (strncmp(url, "http://", 7U) != 0 && strncmp(url, "https://", 8U) != 0)) {
+        yl_http_set_error("URL must begin with http:// or https://"); return 0;
+    }
+    if (!yl_http_initialized) {
+        if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
+            yl_http_set_error("Could not initialize HTTP runtime"); return 0;
+        }
+        yl_http_initialized = true;
+    }
+    YLHttpStream *stream = NULL;
+    for (size_t i = 0; i < YL_HTTP_MAX_STREAMS; i++)
+        if (!yl_http_streams[i].active) { stream = &yl_http_streams[i]; break; }
+    if (!stream) { yl_http_set_error("Too many active HTTP streams (limit 16)"); return 0; }
+    memset(stream, 0, sizeof(*stream));
+    stream->active = true;
+    stream->id = yl_http_next_stream_id++;
+    if (yl_http_next_stream_id <= 0) yl_http_next_stream_id = 1;
+    size_t url_length = strlen(url), body_length = strlen(body ? body : "");
+    stream->url = malloc(url_length + 1U);
+    stream->body_text = malloc(body_length + 1U);
+    if (!stream->url || !stream->body_text) {
+        yl_http_stream_error_set(stream, "Out of memory preparing HTTP stream");
+        stream->done = true;
+        return stream->id;
+    }
+    memcpy(stream->url, url, url_length + 1U);
+    memcpy(stream->body_text, body ? body : "", body_length + 1U);
+    if (!yl_http_headers(raw_headers, &stream->headers)) {
+        yl_http_stream_error_set(stream, yl_http_error);
+        stream->done = true;
+        return stream->id;
+    }
+    stream->easy = curl_easy_init();
+    stream->multi = curl_multi_init();
+    if (!stream->easy || !stream->multi) {
+        yl_http_stream_error_set(stream, "Could not initialize HTTP stream handles");
+        stream->done = true;
+        return stream->id;
+    }
+#define YL_HTTP_STREAM_OPTION(option, value) do { if (code == CURLE_OK) code = curl_easy_setopt(stream->easy, option, value); } while (0)
+    CURLcode code = CURLE_OK;
+    YL_HTTP_STREAM_OPTION(CURLOPT_URL, stream->url);
+    YL_HTTP_STREAM_OPTION(CURLOPT_PRIVATE, stream);
+    YL_HTTP_STREAM_OPTION(CURLOPT_ERRORBUFFER, stream->error_buffer);
+    YL_HTTP_STREAM_OPTION(CURLOPT_WRITEFUNCTION, yl_http_stream_write);
+    YL_HTTP_STREAM_OPTION(CURLOPT_WRITEDATA, stream);
+    YL_HTTP_STREAM_OPTION(CURLOPT_HEADERFUNCTION, yl_http_stream_header_callback);
+    YL_HTTP_STREAM_OPTION(CURLOPT_HEADERDATA, stream);
+    YL_HTTP_STREAM_OPTION(CURLOPT_NOSIGNAL, 1L);
+    YL_HTTP_STREAM_OPTION(CURLOPT_CONNECTTIMEOUT_MS, 5000L);
+    YL_HTTP_STREAM_OPTION(CURLOPT_TIMEOUT_MS, 15000L);
+    YL_HTTP_STREAM_OPTION(CURLOPT_FOLLOWLOCATION, yl_http_redirects_allowed(stream->headers) ? 1L : 0L);
+    YL_HTTP_STREAM_OPTION(CURLOPT_MAXREDIRS, 5L);
+    YL_HTTP_STREAM_OPTION(CURLOPT_SSL_VERIFYPEER, 1L);
+    YL_HTTP_STREAM_OPTION(CURLOPT_SSL_VERIFYHOST, 2L);
+    YL_HTTP_STREAM_OPTION(CURLOPT_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
+    YL_HTTP_STREAM_OPTION(CURLOPT_REDIR_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
+    YL_HTTP_STREAM_OPTION(CURLOPT_USERAGENT, "YLang/2.3");
+    if (stream->headers) YL_HTTP_STREAM_OPTION(CURLOPT_HTTPHEADER, stream->headers);
+    if (strcmp(method, "GET") == 0) YL_HTTP_STREAM_OPTION(CURLOPT_HTTPGET, 1L);
+    else if (strcmp(method, "HEAD") == 0) {
+        YL_HTTP_STREAM_OPTION(CURLOPT_CUSTOMREQUEST, "HEAD");
+        YL_HTTP_STREAM_OPTION(CURLOPT_NOBODY, 1L);
+    } else if (strcmp(method, "POST") == 0) {
+        YL_HTTP_STREAM_OPTION(CURLOPT_POST, 1L);
+        YL_HTTP_STREAM_OPTION(CURLOPT_POSTFIELDS, stream->body_text);
+        YL_HTTP_STREAM_OPTION(CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)body_length);
+    } else {
+        YL_HTTP_STREAM_OPTION(CURLOPT_CUSTOMREQUEST, method);
+        YL_HTTP_STREAM_OPTION(CURLOPT_POSTFIELDS, stream->body_text);
+        YL_HTTP_STREAM_OPTION(CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)body_length);
+    }
+#undef YL_HTTP_STREAM_OPTION
+    if (code != CURLE_OK) {
+        yl_http_stream_error_set(stream, curl_easy_strerror(code));
+        stream->done = true;
+        return stream->id;
+    }
+    CURLMcode multi_code = curl_multi_add_handle(stream->multi, stream->easy);
+    if (multi_code != CURLM_OK) {
+        yl_http_stream_error_set(stream, curl_multi_strerror(multi_code));
+        stream->done = true;
+        return stream->id;
+    }
+    stream->attached = true;
+    if (!yl_http_stream_shutdown_registered) {
+        (void)atexit(yl_http_stream_shutdown);
+        yl_http_stream_shutdown_registered = true;
+    }
+    return stream->id;
+}
+static const char *yl_http_stream_read(int64_t id, int64_t max_bytes) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    if (!stream) { yl_http_set_error("Invalid or closed HTTP stream handle"); return yl_http_empty(); }
+    if (max_bytes <= 0) { yl_http_stream_error_set(stream, "stream_read max_bytes must be greater than zero"); return yl_http_empty(); }
+    if ((uint64_t)max_bytes > YL_HTTP_STREAM_BUFFER) max_bytes = (int64_t)YL_HTTP_STREAM_BUFFER;
+    while (stream->length == 0U && !stream->done) {
+        (void)yl_http_stream_pump(stream);
+        if (stream->length == 0U && !stream->done) {
+            int descriptors = 0;
+            (void)curl_multi_poll(stream->multi, NULL, 0U, 1000, &descriptors);
+        }
+    }
+    size_t take = stream->length;
+    if ((uint64_t)take > (uint64_t)max_bytes) take = (size_t)max_bytes;
+    char *result = malloc(take + 1U);
+    if (!result) yl_runtime_error("out of memory reading HTTP stream");
+    if (take) memcpy(result, stream->buffer, take);
+    result[take] = '\0';
+    if (take < stream->length) memmove(stream->buffer, stream->buffer + take, stream->length - take);
+    stream->length -= take;
+    if (stream->paused && !stream->done && stream->easy) {
+        stream->paused = false;
+        CURLcode resume_code = curl_easy_pause(stream->easy, CURLPAUSE_CONT);
+        if (resume_code != CURLE_OK) yl_http_stream_error_set(stream, curl_easy_strerror(resume_code));
+    }
+    return (const char *)yl_track(result, take + 1U);
+}
+static bool yl_http_stream_done(int64_t id) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    if (!stream) return true;
+    return stream->done && stream->length == 0U;
+}
+static int64_t yl_http_stream_status(int64_t id) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    return stream ? stream->status : 0;
+}
+static const char *yl_http_stream_headers(int64_t id) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    return stream ? stream->response_headers : "";
+}
+static const char *yl_http_stream_error(int64_t id) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    return stream ? stream->error : "Invalid or closed HTTP stream handle";
+}
+static void yl_http_stream_close(int64_t id) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    if (stream) yl_http_stream_release(stream);
 }
 
 #endif
