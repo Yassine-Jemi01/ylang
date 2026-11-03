@@ -91,9 +91,7 @@ bool ylvoice_set_volume(int64_t percent)
 
 const char *ylvoice_last_error(void)
 {
-    if (voice_error[0]) return voice_error;
-    if (voice_initialized) return Mix_GetError();
-    return SDL_GetError();
+    return voice_error[0] ? voice_error : "No error";
 }
 
 void ylvoice_shutdown(void)
