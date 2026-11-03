@@ -18,6 +18,7 @@ function main() -> int {
     print("Streaming audio. Press Ctrl+C to stop.");
     while (!voice.is_finished()) {
         // The decoder thread pulls bounded chunks from the HTTP stream.
+        tui.sleep_ms(20);
     }
 
     let string error = voice.last_error();
