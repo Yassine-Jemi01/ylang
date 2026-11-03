@@ -62,7 +62,7 @@ def main():
             '    let string port = io.read_line();\n'
             '    let string path = string.concat("http://127.0.0.1:", string.concat(port, "/oversized-headers"));\n'
             '    let owned_string response = http.get(path);\n'
-            '    if (string.length(http.last_error()) == 0) return 1;\n'
+            '    if (string.length(http.last_error()) == 0) { return 1; }\n'
             '    return 0;\n'
             '}\n',
             encoding="utf-8",
