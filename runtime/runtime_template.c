@@ -1555,6 +1555,8 @@ typedef struct {
     uint8_t *data;
     size_t length;
     size_t capacity;
+    int64_t parent_id;
+    size_t offset;
 } YLBinaryBuffer;
 static YLBinaryBuffer yl_binary_buffers[YL_BINARY_BUFFER_SLOTS];
 static int64_t yl_binary_next_buffer_id = 1;
@@ -1575,7 +1577,10 @@ static int64_t yl_binary_buffer_new(int64_t initial_capacity) {
     uint8_t *data = capacity ? malloc(capacity) : NULL;
     if (capacity && !data) return -1;
     int64_t id = yl_binary_next_buffer_id++;
-    yl_binary_buffers[slot] = (YLBinaryBuffer){id, data, 0U, capacity};
+    yl_binary_buffers[slot] = (YLBinaryBuffer){
+        .id = id, .data = data, .length = 0U, .capacity = capacity,
+        .parent_id = 0, .offset = 0U
+    };
     return id;
 }
 static bool yl_binary_buffer_reserve(YLBinaryBuffer *buffer, size_t needed) {
@@ -1596,6 +1601,43 @@ static bool yl_binary_buffer_reserve(YLBinaryBuffer *buffer, size_t needed) {
     buffer->capacity = capacity;
     return true;
 }
+static YLBinaryBuffer *yl_binary_buffer_resolve(YLBinaryBuffer *buffer,
+                                                        size_t *base_offset) {
+    if (!buffer || !base_offset) return NULL;
+    size_t offset = 0U;
+    YLBinaryBuffer *current = buffer;
+    size_t depth = 0U;
+    while (current->parent_id != 0) {
+        if (++depth > YL_BINARY_BUFFER_SLOTS) return NULL;
+        YLBinaryBuffer *parent = yl_binary_buffer_find(current->parent_id);
+        if (!parent || current->offset > parent->length ||
+            current->length > parent->length - current->offset ||
+            SIZE_MAX - offset < current->offset) return NULL;
+        offset += current->offset;
+        current = parent;
+    }
+    if (offset > current->length || buffer->length > current->length - offset)
+        return NULL;
+    *base_offset = offset;
+    return current;
+}
+static int64_t yl_binary_buffer_slice(int64_t id, int64_t offset, int64_t length) {
+    YLBinaryBuffer *parent = yl_binary_buffer_find(id);
+    if (!parent || offset < 0 || length < 0 ||
+        (uint64_t)offset > parent->length ||
+        (uint64_t)length > parent->length - (size_t)offset) return -1;
+    size_t slot = YL_BINARY_BUFFER_SLOTS;
+    for (size_t i = 0; i < YL_BINARY_BUFFER_SLOTS; i++)
+        if (yl_binary_buffers[i].id == 0) { slot = i; break; }
+    if (slot == YL_BINARY_BUFFER_SLOTS || yl_binary_next_buffer_id <= 0 ||
+        yl_binary_next_buffer_id == INT64_MAX) return -1;
+    int64_t slice_id = yl_binary_next_buffer_id++;
+    yl_binary_buffers[slot] = (YLBinaryBuffer){
+        .id = slice_id, .data = NULL, .length = (size_t)length,
+        .capacity = (size_t)length, .parent_id = id, .offset = (size_t)offset
+    };
+    return slice_id;
+}
 static int64_t yl_binary_buffer_length(int64_t id) {
     YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
     return buffer ? (int64_t)buffer->length : -1;
@@ -1606,26 +1648,30 @@ static int64_t yl_binary_buffer_capacity(int64_t id) {
 }
 static int64_t yl_binary_buffer_get(int64_t id, int64_t index) {
     YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
-    if (!buffer || index < 0 || (uint64_t)index >= buffer->length) return -1;
-    return (int64_t)buffer->data[(size_t)index];
+    size_t base = 0U;
+    YLBinaryBuffer *root = yl_binary_buffer_resolve(buffer, &base);
+    if (!root || index < 0 || (uint64_t)index >= buffer->length) return -1;
+    return (int64_t)root->data[base + (size_t)index];
 }
 static bool yl_binary_buffer_set(int64_t id, int64_t index, int64_t value) {
     YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
-    if (!buffer || index < 0 || (uint64_t)index >= buffer->length ||
+    size_t base = 0U;
+    YLBinaryBuffer *root = yl_binary_buffer_resolve(buffer, &base);
+    if (!root || index < 0 || (uint64_t)index >= buffer->length ||
         value < 0 || value > 255) return false;
-    buffer->data[(size_t)index] = (uint8_t)value;
+    root->data[base + (size_t)index] = (uint8_t)value;
     return true;
 }
 static bool yl_binary_buffer_push(int64_t id, int64_t value) {
     YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
-    if (!buffer || value < 0 || value > 255 || buffer->length >= YL_BINARY_BUFFER_MAX ||
+    if (!buffer || buffer->parent_id != 0 || value < 0 || value > 255 || buffer->length >= YL_BINARY_BUFFER_MAX ||
         !yl_binary_buffer_reserve(buffer, buffer->length + 1U)) return false;
     buffer->data[buffer->length++] = (uint8_t)value;
     return true;
 }
 static bool yl_binary_buffer_resize(int64_t id, int64_t new_length) {
     YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
-    if (!buffer || new_length < 0 || (uint64_t)new_length > YL_BINARY_BUFFER_MAX) return false;
+    if (!buffer || buffer->parent_id != 0 || new_length < 0 || (uint64_t)new_length > YL_BINARY_BUFFER_MAX) return false;
     size_t length = (size_t)new_length;
     if (!yl_binary_buffer_reserve(buffer, length)) return false;
     if (length > buffer->length)
@@ -1635,14 +1681,14 @@ static bool yl_binary_buffer_resize(int64_t id, int64_t new_length) {
 }
 static bool yl_binary_buffer_clear(int64_t id) {
     YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
-    if (!buffer) return false;
+    if (!buffer || buffer->parent_id != 0) return false;
     buffer->length = 0U;
     return true;
 }
 static bool yl_binary_buffer_free(int64_t id) {
     YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
     if (!buffer) return false;
-    free(buffer->data);
+    if (buffer->parent_id == 0) free(buffer->data);
     memset(buffer, 0, sizeof(*buffer));
     return true;
 }
@@ -1664,20 +1710,23 @@ static int64_t yl_binary_buffer_load(const char *path, int64_t offset, int64_t l
 }
 static int64_t yl_binary_buffer_save(const char *path, int64_t offset, int64_t id) {
     YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
-    if (!path || !buffer || offset < 0) return -1;
+    size_t base = 0U;
+    YLBinaryBuffer *root = yl_binary_buffer_resolve(buffer, &base);
+    if (!path || !root || offset < 0) return -1;
     FILE *file = fopen(path, "r+b");
     if (!file) file = fopen(path, "w+b");
     if (!file) return -1;
     bool positioned = yl_binary_seek(file, offset);
     size_t count = positioned && buffer->length ?
-        fwrite(buffer->data, 1U, buffer->length, file) : 0U;
+        fwrite(root->data + base, 1U, buffer->length, file) : 0U;
     bool failed = !positioned || ferror(file) != 0;
     if (fclose(file) != 0) failed = true;
     return failed ? -1 : (int64_t)count;
 }
 static void yl_binary_buffer_shutdown(void) {
     for (size_t i = 0; i < YL_BINARY_BUFFER_SLOTS; i++) {
-        free(yl_binary_buffers[i].data);
+        if (yl_binary_buffers[i].parent_id == 0)
+            free(yl_binary_buffers[i].data);
         memset(&yl_binary_buffers[i], 0, sizeof(yl_binary_buffers[i]));
     }
 }
