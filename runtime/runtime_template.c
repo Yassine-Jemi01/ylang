@@ -21,9 +21,14 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <io.h>
+#include <conio.h>
 #else
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/ioctl.h>
+#include <sys/select.h>
+#include <termios.h>
+#include <time.h>
 #include <unistd.h>
 #endif
 
@@ -1595,6 +1600,248 @@ static bool yl_terminal_is_interactive(void) {
 #else
     return isatty(fileno(stdin)) != 0;
 #endif
+}
+
+/* std.tui: raw key input and portable terminal control. */
+static bool yl_tui_active;
+static bool yl_tui_restore_registered;
+static char yl_tui_error_text[192];
+#ifdef _WIN32
+static HANDLE yl_tui_input_handle;
+static DWORD yl_tui_saved_input_mode;
+#else
+static struct termios yl_tui_saved_termios;
+#endif
+
+static void yl_tui_set_error(const char *message) {
+    (void)snprintf(yl_tui_error_text, sizeof(yl_tui_error_text), "%s",
+                   message ? message : "unknown terminal error");
+}
+
+static void yl_tui_restore(void) {
+    if (!yl_tui_active) return;
+#ifdef _WIN32
+    if (yl_tui_input_handle != INVALID_HANDLE_VALUE)
+        (void)SetConsoleMode(yl_tui_input_handle, yl_tui_saved_input_mode);
+#else
+    (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &yl_tui_saved_termios);
+#endif
+    (void)fputs("\033[?25h", stdout);
+    (void)fflush(stdout);
+    yl_tui_active = false;
+}
+
+static bool yl_tui_init(void) {
+    if (yl_tui_active) return true;
+    if (!yl_terminal_is_interactive()) {
+        yl_tui_set_error("std.tui requires an interactive terminal");
+        return false;
+    }
+#ifdef _WIN32
+    yl_tui_input_handle = GetStdHandle(STD_INPUT_HANDLE);
+    if (yl_tui_input_handle == INVALID_HANDLE_VALUE ||
+        !GetConsoleMode(yl_tui_input_handle, &yl_tui_saved_input_mode)) {
+        yl_tui_set_error("could not read Windows console input mode");
+        return false;
+    }
+    DWORD mode = yl_tui_saved_input_mode;
+    mode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+#ifdef ENABLE_VIRTUAL_TERMINAL_INPUT
+    mode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
+#endif
+    if (!SetConsoleMode(yl_tui_input_handle, mode)) {
+        yl_tui_set_error("could not enable raw Windows console input");
+        return false;
+    }
+#else
+    if (tcgetattr(STDIN_FILENO, &yl_tui_saved_termios) != 0) {
+        yl_tui_set_error("could not read terminal attributes");
+        return false;
+    }
+    struct termios raw = yl_tui_saved_termios;
+    raw.c_lflag &= (tcflag_t)~(ICANON | ECHO);
+    raw.c_iflag &= (tcflag_t)~(IXON | ICRNL);
+    raw.c_cc[VMIN] = 1;
+    raw.c_cc[VTIME] = 0;
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) != 0) {
+        yl_tui_set_error("could not enable raw terminal input");
+        return false;
+    }
+#endif
+    yl_tui_active = true;
+    if (!yl_tui_restore_registered) {
+        (void)atexit(yl_tui_restore);
+        yl_tui_restore_registered = true;
+    }
+    yl_tui_error_text[0] = '\0';
+    return true;
+}
+
+#ifndef _WIN32
+static bool yl_tui_read_byte_timeout(unsigned char *value, int timeout_ms) {
+    if (!value) return false;
+    fd_set read_set;
+    FD_ZERO(&read_set);
+    FD_SET(STDIN_FILENO, &read_set);
+    struct timeval timeout;
+    timeout.tv_sec = timeout_ms / 1000;
+    timeout.tv_usec = (timeout_ms % 1000) * 1000;
+    int ready;
+    do { ready = select(STDIN_FILENO + 1, &read_set, NULL, NULL, &timeout); }
+    while (ready < 0 && errno == EINTR);
+    if (ready <= 0) return false;
+    ssize_t count;
+    do { count = read(STDIN_FILENO, value, 1U); }
+    while (count < 0 && errno == EINTR);
+    return count == 1;
+}
+#endif
+
+static int64_t yl_tui_read_key(void) {
+    if (!yl_tui_active && !yl_tui_init()) return -1;
+#ifdef _WIN32
+    int key = _getch();
+    if (key == 0 || key == 224) {
+        int scan = _getch();
+        switch (scan) {
+            case 72: return 1001; /* up */
+            case 80: return 1002; /* down */
+            case 77: return 1003; /* right */
+            case 75: return 1004; /* left */
+            case 71: return 1005; /* home */
+            case 79: return 1006; /* end */
+            case 83: return 1007; /* delete */
+            case 73: return 1008; /* page up */
+            case 81: return 1009; /* page down */
+            default: return 1010 + scan;
+        }
+    }
+    return (int64_t)key;
+#else
+    unsigned char first = 0U;
+    ssize_t count;
+    do { count = read(STDIN_FILENO, &first, 1U); }
+    while (count < 0 && errno == EINTR);
+    if (count != 1) {
+        yl_tui_set_error("failed to read a terminal key");
+        return -1;
+    }
+    if (first != 0x1bU) return (int64_t)first;
+    unsigned char second = 0U, third = 0U;
+    if (!yl_tui_read_byte_timeout(&second, 35)) return 27;
+    if (second != '[' && second != 'O') return 27;
+    if (!yl_tui_read_byte_timeout(&third, 35)) return 27;
+    if (second == 'O') {
+        if (third == 'H') return 1005;
+        if (third == 'F') return 1006;
+        return 27;
+    }
+    switch (third) {
+        case 'A': return 1001;
+        case 'B': return 1002;
+        case 'C': return 1003;
+        case 'D': return 1004;
+        case 'H': return 1005;
+        case 'F': return 1006;
+        case '3':
+        case '5':
+        case '6': {
+            unsigned char terminator = 0U;
+            if (!yl_tui_read_byte_timeout(&terminator, 35) || terminator != '~') return 27;
+            return third == '3' ? 1007 : (third == '5' ? 1008 : 1009);
+        }
+        default: return 27;
+    }
+#endif
+}
+
+static int64_t yl_tui_width(void) {
+#ifdef _WIN32
+    CONSOLE_SCREEN_BUFFER_INFO info;
+    if (!GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info)) return 0;
+    return (int64_t)(info.srWindow.Right - info.srWindow.Left + 1);
+#else
+    struct winsize size;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) != 0) return 0;
+    return (int64_t)size.ws_col;
+#endif
+}
+
+static int64_t yl_tui_height(void) {
+#ifdef _WIN32
+    CONSOLE_SCREEN_BUFFER_INFO info;
+    if (!GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info)) return 0;
+    return (int64_t)(info.srWindow.Bottom - info.srWindow.Top + 1);
+#else
+    struct winsize size;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) != 0) return 0;
+    return (int64_t)size.ws_row;
+#endif
+}
+
+static bool yl_tui_clear(void) {
+    bool okay = fputs("\033[2J\033[H", stdout) != EOF && fflush(stdout) == 0;
+    if (!okay) yl_tui_set_error("could not clear the terminal");
+    return okay;
+}
+
+static bool yl_tui_write(const char *text) {
+    bool okay = text && fputs(text, stdout) != EOF && fflush(stdout) == 0;
+    if (!okay) yl_tui_set_error("could not write terminal output");
+    return okay;
+}
+
+static bool yl_tui_set_cursor(int64_t column, int64_t row) {
+    if (column < 1 || row < 1) {
+        yl_tui_set_error("terminal cursor coordinates are 1-based and must be positive");
+        return false;
+    }
+    bool okay = fprintf(stdout, "\033[%lld;%lldH", (long long)row,
+                        (long long)column) >= 0 && fflush(stdout) == 0;
+    if (!okay) yl_tui_set_error("could not position the terminal cursor");
+    return okay;
+}
+
+static bool yl_tui_hide_cursor(void) {
+    bool okay = fputs("\033[?25l", stdout) != EOF && fflush(stdout) == 0;
+    if (!okay) yl_tui_set_error("could not hide the terminal cursor");
+    return okay;
+}
+
+static bool yl_tui_show_cursor(void) {
+    bool okay = fputs("\033[?25h", stdout) != EOF && fflush(stdout) == 0;
+    if (!okay) yl_tui_set_error("could not show the terminal cursor");
+    return okay;
+}
+
+static bool yl_tui_sleep_ms(int64_t milliseconds) {
+    if (milliseconds < 0 || (uint64_t)milliseconds > (uint64_t)UINT32_MAX) {
+        yl_tui_set_error("sleep duration is outside the supported range");
+        return false;
+    }
+#ifdef _WIN32
+    Sleep((DWORD)milliseconds);
+#else
+    struct timespec request;
+    request.tv_sec = (time_t)(milliseconds / 1000);
+    request.tv_nsec = (long)((milliseconds % 1000) * 1000000);
+    while (nanosleep(&request, &request) != 0) {
+        if (errno != EINTR) {
+            yl_tui_set_error("terminal sleep failed");
+            return false;
+        }
+    }
+#endif
+    return true;
+}
+
+static void yl_tui_shutdown(void) {
+    yl_tui_restore();
+    yl_tui_error_text[0] = '\0';
+}
+
+static const char *yl_tui_last_error(void) {
+    return yl_tui_error_text[0] ? yl_tui_error_text : "No error";
 }
 static const char *yl_read_file(const char *path) {
     FILE *file = fopen(path, "rb");
