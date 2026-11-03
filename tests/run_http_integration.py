@@ -58,12 +58,12 @@ def main():
         # accumulator is already exactly at the configured 16 KiB limit.
         header_source = ROOT / "build" / "http-header-overflow.yl"
         header_source.write_text(
-            "fn main() -> int {\\n"
-            f'    let owned_string body = http.get("http://127.0.0.1:{port}/oversized-headers");\\n'
-            "    print(string.length(body));\\n"
-            '    print(string.contains(http.last_error(), "response headers exceeded"));\\n'
-            "    return 0;\\n"
-            "}\\n",
+            "fn main() -> int {\n"
+            f'    let owned_string body = http.get("http://127.0.0.1:{port}/oversized-headers");\n'
+            "    print(string.length(body));\n"
+            '    print(string.contains(http.last_error(), "response headers exceeded"));\n'
+            "    return 0;\n"
+            "}\n",
             encoding="utf-8",
         )
         header_executable = "build/test-http-header-overflow.exe" if os.name == "nt" else "build/test-http-header-overflow"
@@ -76,7 +76,7 @@ def main():
             capture_output=True,
             timeout=20,
         )
-        if header_result.returncode != 0 or header_result.stdout != "0\\ntrue\\n":
+        if header_result.returncode != 0 or header_result.stdout != "0\ntrue\n":
             sys.stderr.write(header_result.stdout)
             sys.stderr.write(header_result.stderr)
             raise SystemExit("HTTP oversized-header regression test failed")
