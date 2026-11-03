@@ -16,7 +16,7 @@ The current documentation covers namespaces such as:
 - \`env.get(name)\` for reading a process environment variable without launching a shell.
 - \`http\` for optional synchronous GET/POST requests through libcurl; see [HTTP and API Requests](reference/HTTP.md) for dependency requirements and security defaults.
 
-The namespaces do not all have the same maturity. Basic language operations and experimental additions should be evaluated separately. HTTP and environment helpers are newer experimental additions and are outside the stable-core compatibility guarantee.
+The namespaces do not all have the same maturity. Basic language operations and experimental additions should be evaluated separately. HTTP, environment, and Voice/audio helpers are optional experimental additions and are outside the stable-core compatibility guarantee.
 
 ## Strings and parsing
 
@@ -54,7 +54,7 @@ The [Compiler Error Codes](reference/error-codes.md) page includes diagnostics f
 
 ## Optional graphical helpers
 
-GUI and Game2D are optional and have their own SDL2 requirements. They are not required for ordinary command-line programs. Start with [GUI and Game2D](gui-game2d.md) if you need windows, input, or simple 2D drawing.
+GUI, Game2D, and Voice are optional and have their own SDL2 requirements. Voice additionally requires SDL2_mixer. See [Voice and Audio Playback](voice-audio.md) for setup and the current playback API. They are not required for ordinary command-line programs. Start with [GUI and Game2D](gui-game2d.md) if you need windows, input, or simple 2D drawing.
 
 ## Practice
 
