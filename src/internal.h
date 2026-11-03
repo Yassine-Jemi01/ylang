@@ -46,6 +46,7 @@ struct Compiler {
     size_t struct_count;
     Module *current_module;
     bool uses_gui;
+    bool uses_tui;
     bool uses_http;
     bool quiet_diagnostics;
 };
