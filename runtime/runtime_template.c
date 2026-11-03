@@ -777,6 +777,8 @@ static void yl_json_buffer_indent(YLJsonBuffer *b, unsigned depth) {
     for (unsigned i = 0; i < depth * 2U; i++) yl_json_buffer_char(b, ' ');
 }
 
+static bool yl_json_key_equal(const char *s, size_t a, size_t b, const char *key);
+static const char *yl_json_escape(const char *value);
 static void yl_json_buffer_text(YLJsonBuffer *b, const char *s, size_t n) {
     yl_json_buffer_reserve(b, n);
     memcpy(b->data + b->length, s, n);
@@ -791,8 +793,8 @@ static const char *yl_json_buffer_finish(YLJsonBuffer *b) {
     }
     return (const char *)yl_track(b->data, b->length + 1U);
 }
-static const char *yl_json_object(void) { return "{}"; }
-static const char *yl_json_array(void) { return "[]"; }
+static const char *yl_json_object(void) { char *p = malloc(3U); if (!p) yl_runtime_error("out of memory"); memcpy(p, "{}", 3U); return (const char *)yl_track(p, 3U); }
+static const char *yl_json_array(void) { char *p = malloc(3U); if (!p) yl_runtime_error("out of memory"); memcpy(p, "[]", 3U); return (const char *)yl_track(p, 3U); }
 static const char *yl_json_set(const char *raw, const char *key, const char *value) {
     YLJson vp; size_t va, vb;
     if (!yl_json_root(value, &vp, &va, &vb)) return "";
