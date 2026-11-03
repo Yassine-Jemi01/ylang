@@ -17,6 +17,18 @@ static void print_sanitized(FILE *out, const char *text, size_t length)
     }
 }
 
+static size_t sanitized_width(const char *text, size_t length)
+{
+    size_t width = 0U;
+    for (size_t i = 0; i < length; i++) {
+        unsigned char ch = (unsigned char)text[i];
+        size_t add = (ch < 0x20U || ch >= 0x7fU) ? 4U : 1U;
+        if (width > SIZE_MAX - add) return SIZE_MAX;
+        width += add;
+    }
+    return width;
+}
+
 void diagnostic(Compiler *c, Token token, const char *level,
                    const char *code, const char *message,
                    const char *suggestion)
@@ -86,19 +98,23 @@ void diagnostic(Compiler *c, Token token, const char *level,
         if (window_end < source_line_length) fputs("...", stderr);
         fputs("\n   | ", stderr);
 
-        size_t caret_column = caret_offset >= window_start
-                                  ? caret_offset - window_start : 0U;
+        size_t caret_column = 0U;
+        if (caret_offset >= window_start && caret_offset <= window_end) {
+            caret_column = sanitized_width(line_start + window_start,
+                                           caret_offset - window_start);
+        }
         if (window_start > 0U) caret_column += 3U;
-        if (caret_column > YLANG_DIAGNOSTIC_LINE_WINDOW + 3U)
-            caret_column = YLANG_DIAGNOSTIC_LINE_WINDOW + 3U;
+        size_t max_caret_column = YLANG_DIAGNOSTIC_LINE_WINDOW * 4U + 3U;
+        if (caret_column > max_caret_column) caret_column = max_caret_column;
         for (size_t i = 0; i < caret_column; i++) fputc(' ', stderr);
 
-        size_t width = token.length > 0U ? token.length : 1U;
-        if (width > 60U) width = 1U;
-        size_t visible_width = window_end - window_start;
-        if (caret_offset >= window_start && caret_offset < window_end &&
-            width > visible_width - (caret_offset - window_start))
-            width = visible_width - (caret_offset - window_start);
+        size_t width = token.length > 0U && token.start
+                           ? sanitized_width(token.start, token.length) : 1U;
+        if (width > 240U) width = 1U;
+        size_t visible_width = sanitized_width(line_start + window_start,
+                                               window_end - window_start);
+        if (caret_column <= visible_width && width > visible_width - caret_column)
+            width = visible_width - caret_column;
         for (size_t i = 0; i < width; i++) fputc('^', stderr);
         fputc('\n', stderr);
     }
