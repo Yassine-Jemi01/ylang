@@ -1,0 +1,7 @@
+function main() -> int {
+    if (not tui.init()) { return 1; }
+    let string query = tui.read_line("Search reciter: ", 80);
+    tui.println(query);
+    tui.shutdown();
+    return 0;
+}
