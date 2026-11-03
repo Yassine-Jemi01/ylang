@@ -70,6 +70,23 @@ assert b"\\x01" in result.stderr
 assert b"\x1b" not in result.stderr
 assert b"\x07" not in result.stderr
 assert b"\r" not in result.stderr
+
+# Import paths are echoed in help suggestions; terminal controls must be escaped there too.
+missing_import = "build/missing-import-control.yl"
+Path(missing_import).write_bytes(
+    b'from "./missing-\x1b[2J-module.yl" import absent;\n'
+    b"fn main() -> int { return 0; }\n"
+)
+result = subprocess.run(
+    ["./build/ylang", "check", missing_import],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    timeout=5,
+)
+assert result.returncode != 0
+assert b"Cannot resolve the imported module file" in result.stderr
+assert b"\\x1B" in result.stderr, result.stderr
+assert b"\x1b" not in result.stderr, result.stderr
 PY
 
 ./build/ylang build examples/type-conversions.yl -o build/test-type-conversions >/dev/null
