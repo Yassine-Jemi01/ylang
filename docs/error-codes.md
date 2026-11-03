@@ -93,4 +93,8 @@ YLang diagnostics include stable codes to help users search documentation and re
 | E2098 | Math function argument is not a `float`. | Use a float literal or explicitly convert an integer with `to_float`. |
 | E2099 | Function array argument has the wrong element type. | Pass an array whose element type matches the parameter. |
 
+| E2134 | Unknown TUI function. | Use a documented `tui.*` function. |
+| E2135 | Incorrect number of TUI function arguments. | Follow the TUI function's documented signature. |
+| E2136 | TUI argument type mismatch. | Pass values of the types required by the TUI API. |
+
 Runtime arithmetic and bounds failures currently use descriptive text rather than compiler error codes. Runtime source line and function attribution are not yet implemented.
