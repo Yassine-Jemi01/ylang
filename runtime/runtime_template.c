@@ -1623,7 +1623,10 @@ static YLBinaryBuffer *yl_binary_buffer_resolve(YLBinaryBuffer *buffer,
 }
 static int64_t yl_binary_buffer_slice(int64_t id, int64_t offset, int64_t length) {
     YLBinaryBuffer *parent = yl_binary_buffer_find(id);
-    if (!parent || offset < 0 || length < 0 ||
+    size_t parent_base = 0U;
+    if (!parent || (parent->parent_id != 0 &&
+                    !yl_binary_buffer_resolve(parent, &parent_base)) ||
+        offset < 0 || length < 0 ||
         (uint64_t)offset > parent->length ||
         (uint64_t)length > parent->length - (size_t)offset) return -1;
     size_t slot = YL_BINARY_BUFFER_SLOTS;
@@ -1640,11 +1643,17 @@ static int64_t yl_binary_buffer_slice(int64_t id, int64_t offset, int64_t length
 }
 static int64_t yl_binary_buffer_length(int64_t id) {
     YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
-    return buffer ? (int64_t)buffer->length : -1;
+    if (!buffer) return -1;
+    size_t base = 0U;
+    return buffer->parent_id == 0 || yl_binary_buffer_resolve(buffer, &base)
+        ? (int64_t)buffer->length : -1;
 }
 static int64_t yl_binary_buffer_capacity(int64_t id) {
     YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
-    return buffer ? (int64_t)buffer->capacity : -1;
+    if (!buffer) return -1;
+    size_t base = 0U;
+    return buffer->parent_id == 0 || yl_binary_buffer_resolve(buffer, &base)
+        ? (int64_t)buffer->capacity : -1;
 }
 static int64_t yl_binary_buffer_get(int64_t id, int64_t index) {
     YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
