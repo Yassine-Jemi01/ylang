@@ -18,6 +18,7 @@
 - [HTTP and API Requests](reference/HTTP.md)
 - [Voice and Audio Playback](voice-audio.md)
 - [Binary I/O](binary-io.md)
+- [Terminal UI (std.tui)](tui.md)
 
 # Part III — Build Real Things
 
