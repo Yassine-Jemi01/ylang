@@ -817,7 +817,8 @@ int ylang_run(const char *command, const char *input_path,
         const char *target = native_target;
         bool debug_mode = strcmp(command, "debug") == 0;
         result = run_native_compiler(cc ? cc : "gcc", c_path, target,
-                                     compiler.uses_gui, debug_mode, compiler.uses_http);
+                                     compiler.uses_gui, debug_mode, compiler.uses_http,
+                                     compiler.uses_voice);
         if (result == 0) {
             printf("Build succeeded: %s\n", target);
             if (debug_mode) {
