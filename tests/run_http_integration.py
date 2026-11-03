@@ -88,16 +88,16 @@ def main():
             "    print(string.length(http.stream_read(empty, 8)));\n"
             "    print(http.stream_done(empty));\n"
             "    print(http.stream_status(empty));\n"
-            "    http.stream_close(empty);\\n"
-            '    let http_stream large = http.stream_open("GET", string.concat(base, "/stream-large"), "", "");\\n'
-            "    let mut total: int = 0;\\n"
-            "    while (!http.stream_done(large)) {\\n"
-            "        let owned_string chunk = http.stream_read(large, 8192);\\n"
-            "        total = total + string.length(chunk);\\n"
-            "    }\\n"
-            "    print(total);\\n"
-            "    print(http.stream_status(large));\\n"
-            "    http.stream_close(large);\\n"
+            "    http.stream_close(empty);\n"
+            '    let http_stream large = http.stream_open("GET", string.concat(base, "/stream-large"), "", "");\n'
+            "    let mut total: int = 0;\n"
+            "    while (!http.stream_done(large)) {\n"
+            "        let owned_string chunk = http.stream_read(large, 8192);\n"
+            "        total = total + string.length(chunk);\n"
+            "    }\n"
+            "    print(total);\n"
+            "    print(http.stream_status(large));\n"
+            "    http.stream_close(large);\n"
             "    return 0;\\n"
             "}\n",
             encoding="utf-8",
