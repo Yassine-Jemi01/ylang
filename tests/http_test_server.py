@@ -71,6 +71,12 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 pass
+        elif self.path == "/stream-binary":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Length", "8")
+            self.end_headers()
+            self.wfile.write(bytes((0x00, 0x01, 0xff, 0x41, 0x42, 0x43, 0x00, 0xfe)))
         elif self.path == "/stream-empty":
             self.send_response(200)
             self.send_header("Transfer-Encoding", "chunked")
