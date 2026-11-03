@@ -36,6 +36,50 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
         elif self.path == "/redirect-target":
             self.send_bytes(200, "redirect-target-reached")
+        elif self.path == "/stream":
+            # Chunked transfer with delays: clients must be able to consume each
+            # piece before the complete response has been sent.
+            import time
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Transfer-Encoding", "chunked")
+            self.send_connection_close()
+            self.end_headers()
+            try:
+                for chunk in (b"first-", b"second-", b"third"):
+                    self.wfile.write(("%X\r\n" % len(chunk)).encode("ascii"))
+                    self.wfile.write(chunk + b"\r\n")
+                    self.wfile.flush()
+                    time.sleep(0.15)
+                self.wfile.write(b"0\r\n\r\n")
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+        elif self.path == "/stream-large":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Transfer-Encoding", "chunked")
+            self.send_connection_close()
+            self.end_headers()
+            chunk = b"x" * 65536
+            try:
+                for _ in range(144):  # 9 MiB: larger than the buffered HTTP API limit.
+                    self.wfile.write(("%X\r\n" % len(chunk)).encode("ascii"))
+                    self.wfile.write(chunk + b"\r\n")
+                    self.wfile.flush()
+                self.wfile.write(b"0\r\n\r\n")
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+        elif self.path == "/stream-empty":
+            self.send_response(200)
+            self.send_header("Transfer-Encoding", "chunked")
+            self.send_connection_close()
+            self.end_headers()
+            try:
+                self.wfile.write(b"0\r\n\r\n")
+            except (BrokenPipeError, ConnectionResetError):
+                pass
         elif self.path == "/slow":
             import time
             time.sleep(0.2)
