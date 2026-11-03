@@ -1216,6 +1216,34 @@ grep -q '^6$' build/compound-operators.out
 grep -q '^2$' build/compound-operators.out
 
 
+# Module import recursion is bounded and must fail diagnostically rather than overflow the stack.
+"$PYTHON" - <<'PY'
+from pathlib import Path
+
+root = Path("build/module-depth")
+root.mkdir(parents=True, exist_ok=True)
+
+def make_chain(depth, directory):
+    for index in range(depth):
+        imported = (
+            f'from "./m{index + 1}.yl" import f{index + 1};\\n'
+            if index + 1 < depth else ""
+        )
+        call = f"f{index + 1}()" if index + 1 < depth else "0"
+        (directory / f"m{index}.yl").write_text(
+            imported + f"fn f{index}() -> int {{ return {call}; }}\\n",
+            encoding="utf-8",
+        )
+    (directory / "root.yl").write_text(
+        'from "./m0.yl" import f0;\\n'
+        "fn main() -> int { return f0(); }\\n",
+        encoding="utf-8",
+    )
+
+make_chain(100, root / "valid")
+make_chain(2048, root / "too-deep")
+PY
+mkdir -p build/module-depth/valid build/module-depth/too-deep
 # Multi-file imports resolve relative to the importing source file.
 mkdir -p build/imports
 cat > build/imports/suffix.yl <<'EOF'
