@@ -119,6 +119,49 @@ def main():
             sys.stderr.write("--- actual streaming output ---\\n" + stream_result.stdout)
             sys.stderr.write(stream_result.stderr)
             raise SystemExit("HTTP streaming integration test failed")
+        # Binary streaming must preserve embedded NUL and high-bit bytes.
+        binary_source = ROOT / "build" / "http-stream-binary.yl"
+        binary_source.write_text(
+            "function main() -> int {\\n"
+            "    let string port = io.read_line();\\n"
+            '    let string url = string.concat("http://127.0.0.1:", port);\\n'
+            '    let http_stream stream = http.stream_open("GET", string.concat(url, "/stream-binary"), "", "");\\n'
+            "    let int buffer = io.buffer_new(0);\\n"
+            "    let int count = http.stream_read_buffer(stream, buffer, 32);\\n"
+            "    print(count);\\n"
+            "    let int index = 0;\\n"
+            "    while (index < count) {\\n"
+            "        print(io.buffer_get(buffer, index));\\n"
+            "        index = index + 1;\\n"
+            "    }\\n"
+            "    while (!http.stream_done(stream)) {\\n"
+            "        http.stream_read_buffer(stream, buffer, 32);\\n"
+            "    }\\n"
+            "    print(http.stream_status(stream));\\n"
+            "    io.buffer_free(buffer);\\n"
+            "    http.stream_close(stream);\\n"
+            "    return 0;\\n"
+            "}\\n",
+            encoding="utf-8",
+        )
+        binary_output = "build/test-http-stream-binary.exe" if os.name == "nt" else "build/test-http-stream-binary"
+        run_checked([compiler, "check", str(binary_source.relative_to(ROOT))])
+        run_checked([compiler, "build", str(binary_source.relative_to(ROOT)), "-o", binary_output])
+        binary_result = subprocess.run(
+            [str(ROOT / binary_output)],
+            cwd=ROOT,
+            input=f"{port}\\n",
+            text=True,
+            capture_output=True,
+            timeout=20,
+        )
+        expected_binary = "8\\n0\\n1\\n255\\n65\\n66\\n67\\n0\\n254\\n200\\n"
+        if binary_result.returncode != 0 or binary_result.stdout != expected_binary:
+            sys.stderr.write("--- expected binary stream output ---\\n" + expected_binary)
+            sys.stderr.write("--- actual binary stream output ---\\n" + binary_result.stdout)
+            sys.stderr.write(binary_result.stderr)
+            raise SystemExit("binary HTTP streaming integration test failed")
+
         print("YLang HTTP integration tests passed.")
     finally:
         server.shutdown()
