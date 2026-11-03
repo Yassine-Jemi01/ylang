@@ -2,6 +2,10 @@
 
 **Status: experimental development feature for YLang 2.2.** HTTP functions are implemented on the C backend behind an optional libcurl dependency. The API includes synchronous calls plus an initial asynchronous task API built on libcurl's multi interface; async/await is currently restricted to HTTP task handles, not general-purpose YLang functions.
 
+## Streaming
+
+The pull-based HTTP Streaming API is being designed for YLang 2.3. Its implementation contract and acceptance criteria are tracked in [HTTP-STREAMING.md](HTTP-STREAMING.md). The API is not available in this branch yet; existing buffered and asynchronous HTTP APIs are unchanged.
+
 ## Requirements
 
 Install libcurl development files and pkg-config only on machines that build programs using the HTTP namespace.
