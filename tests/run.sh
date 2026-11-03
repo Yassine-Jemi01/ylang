@@ -1421,7 +1421,7 @@ grep -q 'E1022' build/imports/missing-file.out
 python3 - <<'PY'
 from pathlib import Path
 Path('build/imports/embedded-nul-module.yl').write_bytes(
-    b'fn imported_value() -> int { return 7; }\\0fn hidden() -> int { return 9; }\\n'
+    b'fn imported_value() -> int { return 7; }\0fn hidden() -> int { return 9; }\n'
 )
 PY
 cat > build/imports/import-embedded-nul.yl <<'EOF'
