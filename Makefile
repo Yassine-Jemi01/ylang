@@ -19,7 +19,7 @@ else
 GAME2D_OUTPUT ?= build/dodge
 endif
 
-.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui voice install-voice check-sdl2 check-voice check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
+.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui voice voice-example install-voice check-sdl2 check-voice check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
 
 all: $(BIN)
 
@@ -103,6 +103,10 @@ check-voice:
 	@pkg-config --exists SDL2_mixer || { echo 'SDL2_mixer development files and pkg-config are required (Fedora: SDL2_mixer-devel; Debian/Ubuntu: libsdl2-mixer-dev; macOS: brew install sdl2_mixer).' >&2; exit 1; }
 
 voice: check-voice build/libylang_voice.a
+
+voice-example: check-voice $(BIN)
+	@mkdir -p build
+	./build/ylang build examples/voice.yl -o build/voice-example
 
 build/ylang_voice.o: stdlib/voice/voice.c include/ylang/voice.h
 	@mkdir -p build
