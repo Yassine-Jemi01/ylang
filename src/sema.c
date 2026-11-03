@@ -307,6 +307,7 @@ static const BinaryBuiltin binary_builtins[] = {
     {"io.stream_open_read", 1, TYPE_INT, {TYPE_STRING}},
     {"io.stream_open_write", 1, TYPE_INT, {TYPE_STRING}},
     {"io.stream_close", 1, TYPE_BOOL, {TYPE_INT}},
+    {"io.buffer_slice", 3, TYPE_INT, {TYPE_INT, TYPE_INT, TYPE_INT}},
     {"io.buffer_new", 1, TYPE_INT, {TYPE_INT}},
     {"io.buffer_length", 1, TYPE_INT, {TYPE_INT}},
     {"io.buffer_capacity", 1, TYPE_INT, {TYPE_INT}},
