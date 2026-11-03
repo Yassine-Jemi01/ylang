@@ -1562,4 +1562,15 @@ if ./build/ylang check tests/binary-io-type-error.yl > build/binary-io-type-erro
 fi
 grep -q 'E2133' build/binary-io-type-error.out
 
+# Native std.json parser, validation, object/array access, escaping and errors.
+./build/ylang check tests/json.yl >/dev/null
+./build/ylang build tests/json.yl -o build/test-json >/dev/null
+./build/test-json > build/json.stdout
+diff -u tests/expected-json.txt build/json.stdout
+if ./build/ylang check tests/json-type-error.yl > build/json-type-error.out 2>&1; then
+    echo "FAIL: std.json accepted a non-string JSON document" >&2
+    exit 1
+fi
+grep -q 'JSON argument type mismatch' build/json-type-error.out
+
 echo "All YLang tests passed."
