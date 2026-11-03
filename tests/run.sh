@@ -1716,6 +1716,12 @@ if ./build/ylang check tests/tui-arity-error.yl > build/tui-arity-error.out 2>&1
 fi
 grep -q 'E2135' build/tui-arity-error.out
 
+# The YTilawa terminal player shell must type-check and generate C.
+./build/ylang check examples/tilawa-player-tui.yl >/dev/null
+./build/ylang emit-c examples/tilawa-player-tui.yl -o build/tilawa-tui-generated.c >/dev/null
+grep -q 'yltui_api_progress_bar' build/tilawa-tui-generated.c
+grep -q 'yltui_api_read_key' build/tilawa-tui-generated.c
+
 # Game2D input/timing wrappers compile through the imported optional GUI API.
 YLANG_PATH=stdlib ./build/ylang check examples/game2d.yl >/dev/null
 YLANG_PATH=stdlib ./build/ylang emit-c examples/game2d.yl -o build/game2d-generated.c >/dev/null
