@@ -20,6 +20,7 @@ typedef struct {
     unsigned char *pending;
     size_t pending_length;
     size_t pending_capacity;
+    uint64_t position;
 } YLVoiceStreamSource;
 
 static void voice_set_error(const char *message)
@@ -48,9 +49,14 @@ static Sint64 SDLCALL voice_stream_size(SDL_RWops *context)
 
 static Sint64 SDLCALL voice_stream_seek(SDL_RWops *context, Sint64 offset, int whence)
 {
-    (void)context;
-    (void)offset;
-    (void)whence;
+    if (!context) return -1;
+    YLVoiceStreamSource *source =
+        (YLVoiceStreamSource *)context->hidden.unknown.data1;
+    if (!source) return -1;
+    if ((whence == RW_SEEK_CUR && offset == 0) ||
+        (whence == RW_SEEK_SET && offset >= 0 &&
+         (uint64_t)offset == source->position))
+        return (Sint64)source->position;
     return -1;
 }
 
@@ -94,6 +100,7 @@ static size_t SDLCALL voice_stream_read(SDL_RWops *context, void *destination,
 
     size_t complete = total / size;
     size_t consumed = complete * size;
+    source->position += (uint64_t)consumed;
     size_t remainder = total - consumed;
     if (remainder) {
         if (source->pending_capacity < remainder) {
