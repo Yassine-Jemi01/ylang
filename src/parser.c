@@ -228,7 +228,7 @@ static YType parse_type(Parser *p)
     StructDecl *structure = find_struct(p->compiler, token_copy(p->compiler, token));
     if (structure) return structure->type;
     diagnostic(p->compiler, token, "error", "E2002", "Unknown type name.",
-               "Available built-in types are int, float, bool, char, string, and void; user-defined enums and structs must be declared before use.");
+               "Available built-in types are int, float, bool, char, string, http_task, http_stream, and void; user-defined enums and structs must be declared before use.");
     return TYPE_ERROR;
 }
 
