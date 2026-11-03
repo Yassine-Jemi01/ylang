@@ -318,7 +318,8 @@ static const BinaryBuiltin binary_builtins[] = {
     {"io.buffer_clear", 1, TYPE_BOOL, {TYPE_INT}},
     {"io.buffer_free", 1, TYPE_BOOL, {TYPE_INT}},
     {"io.buffer_load", 3, TYPE_INT, {TYPE_STRING, TYPE_INT, TYPE_INT}},
-    {"io.buffer_save", 3, TYPE_INT, {TYPE_STRING, TYPE_INT, TYPE_INT}}
+    {"io.buffer_save", 3, TYPE_INT, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.buffer_append_file", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}}
 };
 
 static const BinaryBuiltin *find_binary_builtin(const char *name)
