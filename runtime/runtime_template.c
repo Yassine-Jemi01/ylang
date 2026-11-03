@@ -726,6 +726,81 @@ static const char *yl_json_stringify(const char *raw) {
     memcpy(copy, raw, length + 1U);
     return (const char *)yl_track(copy, strlen(copy) + 1U);
 }
+
+typedef struct { char *data; size_t length; size_t capacity; } YLJsonBuffer;
+static void yl_json_buffer_reserve(YLJsonBuffer *b, size_t extra) {
+    if (extra > SIZE_MAX - b->length - 1U) yl_runtime_error("JSON output is too large");
+    size_t needed = b->length + extra + 1U;
+    if (needed <= b->capacity) return;
+    size_t capacity = b->capacity ? b->capacity : 128U;
+    while (capacity < needed) {
+        if (capacity > SIZE_MAX / 2U) { capacity = needed; break; }
+        capacity *= 2U;
+    }
+    char *next = realloc(b->data, capacity);
+    if (!next) yl_runtime_error("out of memory while formatting JSON");
+    b->data = next; b->capacity = capacity;
+}
+static void yl_json_buffer_char(YLJsonBuffer *b, char c) {
+    yl_json_buffer_reserve(b, 1U);
+    b->data[b->length++] = c;
+    b->data[b->length] = '\0';
+}
+static void yl_json_buffer_indent(YLJsonBuffer *b, unsigned depth) {
+    yl_json_buffer_char(b, '\n');
+    for (unsigned i = 0; i < depth * 2U; i++) yl_json_buffer_char(b, ' ');
+}
+static const char *yl_json_pretty(const char *raw) {
+    YLJson parser; size_t start, end;
+    if (!yl_json_root(raw, &parser, &start, &end)) return "";
+    YLJsonBuffer out = {0};
+    bool in_string = false, escaped = false;
+    unsigned depth = 0U;
+    for (size_t i = 0U; raw[i]; i++) {
+        char c = raw[i];
+        if (in_string) {
+            yl_json_buffer_char(&out, c);
+            if (escaped) escaped = false;
+            else if (c == '\\') escaped = true;
+            else if (c == '"') in_string = false;
+            continue;
+        }
+        if (c == ' ' || c == '\t' || c == '\r' || c == '\n') continue;
+        if (c == '"') {
+            in_string = true;
+            yl_json_buffer_char(&out, c);
+        } else if (c == '{' || c == '[') {
+            yl_json_buffer_char(&out, c);
+            size_t next = i + 1U;
+            while (raw[next] == ' ' || raw[next] == '\t' || raw[next] == '\r' || raw[next] == '\n') next++;
+            if (raw[next] != (c == '{' ? '}' : ']')) {
+                depth++;
+                yl_json_buffer_indent(&out, depth);
+            }
+        } else if (c == '}' || c == ']') {
+            char opening = c == '}' ? '{' : '[';
+            if (out.length && out.data[out.length - 1U] != opening) {
+                if (depth) depth--;
+                yl_json_buffer_indent(&out, depth);
+            }
+            yl_json_buffer_char(&out, c);
+        } else if (c == ',') {
+            yl_json_buffer_char(&out, c);
+            yl_json_buffer_indent(&out, depth);
+        } else if (c == ':') {
+            yl_json_buffer_char(&out, c);
+            yl_json_buffer_char(&out, ' ');
+        } else {
+            yl_json_buffer_char(&out, c);
+        }
+    }
+    if (!out.data) {
+        out.data = malloc(1U);
+        if (!out.data) yl_runtime_error("out of memory while formatting JSON");
+        out.data[0] = '\0';
+    }
+    return (const char *)yl_track(out.data, out.length + 1U);
+}
 static bool yl_json_key_equal(const char *s, size_t a, size_t b, const char *key) {
     size_t k = 0U;
     for (size_t i = a; i < b; i++) {
