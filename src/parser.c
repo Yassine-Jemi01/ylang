@@ -808,7 +808,19 @@ static Stmt *parse_if_after_keyword(Parser *p, Token token)
     stmt->as.if_stmt.then_branch = parse_block_after_open(p, p->previous);
     if (match(p, TOKEN_ELSE)) {
         if (match(p, TOKEN_IF)) {
-            stmt->as.if_stmt.else_branch = parse_if_after_keyword(p, p->previous);
+            if (p->statement_depth >= PARSER_MAX_STATEMENT_DEPTH) {
+                if (!p->statement_depth_reported) {
+                    diagnostic(p->compiler, p->previous, "error", "E1016",
+                               "Maximum statement nesting depth exceeded.",
+                               "Reduce nested blocks and control-flow statements; the limit is 256 levels.");
+                    p->statement_depth_reported = true;
+                }
+                synchronize(p);
+            } else {
+                p->statement_depth++;
+                stmt->as.if_stmt.else_branch = parse_if_after_keyword(p, p->previous);
+                p->statement_depth--;
+            }
         } else {
             consume(p, TOKEN_LEFT_BRACE, "Expected '{' before else body.",
                     "Start the else block with '{'.");
