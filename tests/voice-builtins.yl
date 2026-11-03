@@ -1,8 +1,8 @@
 function main() -> int {
-    let ok: bool = voice.init();
-    let playing: bool = voice.is_playing();
-    let volume_ok: bool = voice.set_volume(65);
-    let played: bool = voice.play("sample.wav");
+    let bool ok = voice.init();
+    let bool playing = voice.is_playing();
+    let bool volume_ok = voice.set_volume(65);
+    let bool played = voice.play("sample.wav");
     voice.pause();
     voice.resume();
     voice.stop();
