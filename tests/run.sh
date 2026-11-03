@@ -1693,6 +1693,29 @@ fi
 grep -q 'NASM backend does not support float values' build/asm-unsupported.out
 test ! -e build/asm-unsupported.asm
 
+# std.tui is a built-in, dependency-free terminal API on the C backend.
+./build/ylang check tests/tui-smoke.yl >/dev/null
+./build/ylang emit-c tests/tui-smoke.yl -o build/tui-generated.c >/dev/null
+grep -q 'yltui_api_draw_box' build/tui-generated.c
+grep -q 'yltui_api_read_key' build/tui-generated.c
+./build/ylang build tests/tui-smoke.yl -o build/test-tui >/dev/null
+./build/test-tui > /dev/null
+if ./build/ylang check tests/tui-type-error.yl > build/tui-type-error.out 2>&1; then
+    echo "FAIL: std.tui accepted a string where an integer coordinate is required" >&2
+    exit 1
+fi
+grep -q 'E2136' build/tui-type-error.out
+if ./build/ylang check tests/tui-unknown.yl > build/tui-unknown.out 2>&1; then
+    echo "FAIL: std.tui accepted an unknown function" >&2
+    exit 1
+fi
+grep -q 'E2134' build/tui-unknown.out
+if ./build/ylang check tests/tui-arity-error.yl > build/tui-arity-error.out 2>&1; then
+    echo "FAIL: std.tui accepted an incorrect argument count" >&2
+    exit 1
+fi
+grep -q 'E2135' build/tui-arity-error.out
+
 # Game2D input/timing wrappers compile through the imported optional GUI API.
 YLANG_PATH=stdlib ./build/ylang check examples/game2d.yl >/dev/null
 YLANG_PATH=stdlib ./build/ylang emit-c examples/game2d.yl -o build/game2d-generated.c >/dev/null
@@ -1736,6 +1759,11 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ]; then
     fi
     grep -Fq 'reference parameters' build/borrow-mut-unsupported.out
     test ! -e build/borrow-mut-unsupported.asm
+    if ./build/ylang build-asm tests/tui-nasm-reject.yl -o build/tui-nasm > build/tui-nasm.out 2>&1; then
+        echo "FAIL: NASM backend accepted unsupported TUI calls" >&2
+        exit 1
+    fi
+    grep -qi "TUI calls" build/tui-nasm.out
     if ./build/ylang build-asm tests/gui-nasm-reject.yl -o build/gui-nasm > build/gui-nasm.out 2>&1; then
         echo "FAIL: NASM backend accepted unsupported GUI calls" >&2
         exit 1
