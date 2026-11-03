@@ -98,7 +98,7 @@ def main():
             "    print(total);\n"
             "    print(http.stream_status(large));\n"
             "    http.stream_close(large);\n"
-            "    return 0;\\n"
+            "    return 0;\n"
             "}\n",
             encoding="utf-8",
         )
@@ -113,7 +113,7 @@ def main():
             capture_output=True,
             timeout=20,
         )
-        expected_stream = "fir\\nst-\\nsec\\nond\\nthir\\nd\\n200\\ntrue\\ntrue\\nnot-found\\n404\\n0\\ntrue\\n200\\n9437184\\n200\\n"
+        expected_stream = "fir\nst-\nsec\nond\nthir\nd\n200\ntrue\ntrue\nnot-found\n404\n0\ntrue\n200\n9437184\n200\n"
         if stream_result.returncode != 0 or stream_result.stdout != expected_stream:
             sys.stderr.write("--- expected stream output ---\\n" + expected_stream)
             sys.stderr.write("--- actual stream output ---\\n" + stream_result.stdout)
