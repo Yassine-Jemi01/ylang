@@ -291,7 +291,22 @@ static const BinaryBuiltin binary_builtins[] = {
     {"io.read_u8", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}},
     {"io.write_u8", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
     {"io.read_binary_hex", 3, TYPE_OWNED_STRING, {TYPE_STRING, TYPE_INT, TYPE_INT}},
-    {"io.write_binary_hex", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_STRING}}
+    {"io.write_binary_hex", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_STRING}},
+    {"io.read_u16_le", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}},
+    {"io.read_u16_be", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}},
+    {"io.read_u32_le", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}},
+    {"io.read_u32_be", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}},
+    {"io.read_u64_le", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}},
+    {"io.read_u64_be", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}},
+    {"io.write_u16_le", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.write_u16_be", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.write_u32_le", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.write_u32_be", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.write_u64_le", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.write_u64_be", 3, TYPE_BOOL, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.stream_open_read", 1, TYPE_INT, {TYPE_STRING}},
+    {"io.stream_open_write", 1, TYPE_INT, {TYPE_STRING}},
+    {"io.stream_close", 1, TYPE_BOOL, {TYPE_INT}}
 };
 
 static const BinaryBuiltin *find_binary_builtin(const char *name)
@@ -1085,6 +1100,60 @@ static YType check_expr(Checker *checker, Expr *expr)
                     }
                 }
                 expr->type = TYPE_BOOL;
+                return expr->type;
+            }
+            if (strcmp(expr->as.call.name, "byte") == 0) {
+                if (expr->as.call.count != 1U) {
+                    diagnostic(c, expr->token, "error", "E2134",
+                               "byte() expects exactly one integer argument.",
+                               "Use byte(value) to perform a checked conversion from 0 through 255.");
+                }
+                YType input = expr->as.call.count ? check_expr(checker, expr->as.call.args[0]) : TYPE_ERROR;
+                for (size_t i = 1; i < expr->as.call.count; i++) (void)check_expr(checker, expr->as.call.args[i]);
+                if (input != TYPE_INT && input != TYPE_ERROR)
+                    diagnostic(c, expr->token, "error", "E2134",
+                               "byte() expects an int argument.",
+                               "Convert the integer explicitly before constructing a byte.");
+                expr->type = TYPE_BYTE;
+                return expr->type;
+            }
+            if (strcmp(expr->as.call.name, "io.read_bytes") == 0 ||
+                strcmp(expr->as.call.name, "io.write_bytes") == 0 ||
+                strcmp(expr->as.call.name, "io.stream_read") == 0 ||
+                strcmp(expr->as.call.name, "io.stream_write") == 0) {
+                bool stream = strncmp(expr->as.call.name, "io.stream_", 10U) == 0;
+                bool read = strcmp(expr->as.call.name, "io.read_bytes") == 0 ||
+                            strcmp(expr->as.call.name, "io.stream_read") == 0;
+                size_t expected = stream ? 2U : 3U;
+                if (expr->as.call.count != expected)
+                    diagnostic(c, expr->token, "error", "E2088",
+                               "Binary buffer function received the wrong number of arguments.",
+                               stream ? "Use io.stream_read(handle, bytes) or io.stream_write(handle, bytes)." :
+                                        "Use io.read_bytes(path, offset, bytes) or io.write_bytes(path, offset, bytes).");
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    Expr *arg = expr->as.call.args[i];
+                    if (i == (stream ? 1U : 2U)) {
+                        bool previous = checker->allow_array_name;
+                        checker->allow_array_name = true;
+                        (void)check_expr(checker, arg);
+                        checker->allow_array_name = previous;
+                        VarDecl *array = arg->kind == EXPR_NAME ? arg->as.name.variable : NULL;
+                        if (!array || !array->is_array || array->type != TYPE_BYTE)
+                            diagnostic(c, arg->token, "error", "E2135",
+                                       "Binary buffer operations require a byte array variable.",
+                                       "Declare a buffer such as let byte data[] = [byte(0), byte(255)];");
+                    } else {
+                        YType actual = check_expr(checker, arg);
+                        YType wanted = (i == 0U) ? (stream ? TYPE_INT : TYPE_STRING) : TYPE_INT;
+                        if (actual != wanted && actual != TYPE_ERROR &&
+                            !(wanted == TYPE_STRING && is_string_type(actual)))
+                            diagnostic(c, arg->token, "error", "E2133",
+                                       "Binary buffer argument type mismatch.",
+                                       stream ? "The stream handle must be int." : "Pass a path string and integer byte offset.");
+                    }
+                }
+                expr->type = TYPE_INT;
+                (void)read;
                 return expr->type;
             }
             const BinaryBuiltin *binary_builtin = find_binary_builtin(expr->as.call.name);
