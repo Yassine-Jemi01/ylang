@@ -33,7 +33,8 @@ static const char *c_base_type(Compiler *compiler, YType type)
         case TYPE_STRING:
         case TYPE_BORROWED_STRING:
         case TYPE_OWNED_STRING: return "const char *";
-        case TYPE_HTTP_TASK: return "int64_t";
+        case TYPE_HTTP_TASK:
+        case TYPE_HTTP_STREAM: return "int64_t";
         case TYPE_VOID: return "void";
         case TYPE_ERROR: return "int";
         default: return "int64_t";
@@ -87,7 +88,8 @@ static const char *format_for_type(YType type)
         case TYPE_STRING:
         case TYPE_BORROWED_STRING:
         case TYPE_OWNED_STRING: return "%s";
-        case TYPE_HTTP_TASK: return "%lld";
+        case TYPE_HTTP_TASK:
+        case TYPE_HTTP_STREAM: return "%lld";
         case TYPE_VOID: case TYPE_ERROR: return "%s";
     }
     return "%s";
@@ -642,6 +644,13 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "http.post_with_headers") == 0) return "yl_http_post_with_headers";
     if (strcmp(name, "http.request") == 0) return "yl_http_request";
     if (strcmp(name, "http.request_async") == 0) return "yl_http_request_async";
+    if (strcmp(name, "http.stream_open") == 0) return "yl_http_stream_open";
+    if (strcmp(name, "http.stream_read") == 0) return "yl_http_stream_read";
+    if (strcmp(name, "http.stream_done") == 0) return "yl_http_stream_done";
+    if (strcmp(name, "http.stream_status") == 0) return "yl_http_stream_status";
+    if (strcmp(name, "http.stream_headers") == 0) return "yl_http_stream_headers";
+    if (strcmp(name, "http.stream_error") == 0) return "yl_http_stream_error";
+    if (strcmp(name, "http.stream_close") == 0) return "yl_http_stream_close";
     if (strcmp(name, "http.cancel") == 0) return "yl_http_cancel";
     if (strcmp(name, "http.status") == 0) return "yl_http_status";
     if (strcmp(name, "http.response_headers") == 0) return "yl_http_response_headers";
