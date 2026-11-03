@@ -1,0 +1,4 @@
+function main() -> int {
+    tui.not_a_function();
+    return 0;
+}
