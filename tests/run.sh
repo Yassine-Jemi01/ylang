@@ -1416,6 +1416,24 @@ if ./build/ylang check build/imports/missing-file.yl > build/imports/missing-fil
 fi
 grep -q 'E1022' build/imports/missing-file.out
 
+
+# Imported source with an embedded NUL must be rejected instead of truncated.
+python3 - <<'PY'
+from pathlib import Path
+Path('build/imports/embedded-nul-module.yl').write_bytes(
+    b'fn imported_value() -> int { return 7; }\\0fn hidden() -> int { return 9; }\\n'
+)
+PY
+cat > build/imports/import-embedded-nul.yl <<'EOF'
+from "./embedded-nul-module.yl" import imported_value;
+fn main() -> int { return imported_value(); }
+EOF
+if ./build/ylang check build/imports/import-embedded-nul.yl > build/imports/embedded-nul.out 2>&1; then
+    echo "FAIL: compiler accepted an imported module containing an embedded NUL" >&2
+    exit 1
+fi
+grep -q 'E1022' build/imports/embedded-nul.out
+
 cat > build/imports/contains-main.yl <<'EOF'
 fn main() -> int { return 0; }
 fn helper() -> int { return 1; }
