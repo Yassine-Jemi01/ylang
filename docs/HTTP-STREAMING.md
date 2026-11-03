@@ -32,7 +32,8 @@ function main() -> int {
 | Function | Result | Contract |
 |---|---|---|
 | `http.stream_open(method, url, body, headers)` | `http_stream` | Start a bounded pull-based request |
-| `http.stream_read(stream, max_bytes)` | `owned_string` | Return up to the requested number of response bytes as a NUL-terminated string |
+| `http.stream_read(stream, max_bytes)` | `owned_string` | Return up to the requested number of bytes as a NUL-terminated text string |
+| `http.stream_read_buffer(stream, buffer, max_bytes)` | `int` | Overwrite a root `io.buffer` with the next raw bytes; return the byte count, or `-1` on error |
 | `http.stream_done(stream)` | `bool` | True after transfer completion and buffer drain |
 | `http.stream_status(stream)` | `int` | HTTP response status |
 | `http.stream_headers(stream)` | `string` | Final response headers |
@@ -49,7 +50,9 @@ function main() -> int {
 - HTTP 4xx/5xx statuses are responses, not transport errors; inspect the status and read the body.
 - Redirects and TLS verification follow the existing HTTP runtime policy.
 
-**Important binary-safety limitation:** `http.stream_read` currently returns a NUL-terminated `owned_string`. It is therefore only suitable for text payloads. It is not safe for MP3, arbitrary binary files, or data containing embedded NUL bytes. Do not pass its result to the audio decoder as if it were a byte buffer. A length-carrying byte-buffer API and an audio streaming bridge are still required before YTilawa can play network MP3 progressively.
+**Binary-safe path:** use `http.stream_read_buffer(stream, buffer, max_bytes)` with a root buffer created by `io.buffer_new(0)`. Each call overwrites that buffer with the next raw bytes and returns the exact byte count. Embedded NUL bytes and values from 0 through 255 are preserved. The caller owns the buffer and must call `io.buffer_free` when finished. Slices are rejected as destinations.
+
+`http.stream_read` remains a text convenience API and is not safe for arbitrary binary payloads. The binary buffer path is now available, but the Voice runtime is not yet connected to an HTTP stream; progressive network MP3 playback is still a separate integration task.
 
 ## Verification
 
