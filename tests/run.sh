@@ -1258,6 +1258,31 @@ if ./build/ylang check build/module-depth/too-deep/root.yl > build/module-depth/
 fi
 grep -q "Maximum module import depth exceeded" build/module-depth/too-deep.out
 
+# Wide import graphs must also respect the module-count cap.
+mkdir -p build/module-count
+"$PYTHON" - <<'PY'
+from pathlib import Path
+
+root = Path("build/module-count")
+imports = []
+for index in range(1024):
+    name = f"wide{index}"
+    (root / f"{name}.yl").write_text(
+        f"fn {name}() -> int {{ return {index}; }}\n",
+        encoding="utf-8",
+    )
+    imports.append(f'from "./{name}.yl" import {name};')
+(root / "root.yl").write_text(
+    "\n".join(imports) + "\nfn main() -> int { return 0; }\n",
+    encoding="utf-8",
+)
+PY
+if ./build/ylang check build/module-count/root.yl > build/module-count/out 2>&1; then
+    echo "FAIL: compiler accepted more than 1024 source modules" >&2
+    exit 1
+fi
+grep -q "Maximum module count exceeded" build/module-count/out
+
 # Multi-file imports resolve relative to the importing source file.
 mkdir -p build/imports
 cat > build/imports/suffix.yl <<'EOF'
