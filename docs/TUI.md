@@ -45,6 +45,9 @@ A keyboard-driven player shell is available at `examples/tilawa-player-tui.yl`. 
 | tui.clear() | void | Clear the screen and move the cursor to the top-left. |
 | tui.width(), tui.height() | int | Current terminal dimensions; fallback is 80×24 if unavailable. |
 | tui.move_to(x, y) | void | Move to a 1-based column and row. |
+| tui.write_at(x, y, text) | void | Move to a 1-based position and write text. |
+| tui.clear_line() | void | Clear the entire current terminal row without moving the cursor. |
+| tui.fill_rect(x, y, width, height, character) | bool | Fill a rectangle using one printable ASCII character (32–126). Dimensions are bounded to 10,000. |
 | tui.write(text) | void | Write text without a newline. |
 | tui.println(text) | void | Write text followed by a newline. |
 | tui.key_available() | bool | Check whether a key can be read without blocking. |
@@ -59,7 +62,7 @@ A keyboard-driven player shell is available at `examples/tilawa-player-tui.yl`. 
 
 ### Keyboard values
 
-tui.read_key() returns ASCII values for ordinary keys. Enter is 13, Escape is 27, and -1 means no key is ready. On Windows, arrow keys map to 1001 (up), 1002 (down), 1003 (left), and 1004 (right). POSIX terminals currently return the first byte of an escape sequence, so full arrow-key event decoding is not yet available there.
+tui.read_key() returns ASCII values for ordinary keys. Enter is 13, Escape is 27, and -1 means no key is ready. Arrow keys map to 1001 (up), 1002 (down), 1003 (left), and 1004 (right) on both Windows and POSIX. Home, End, Page Up, Page Down, Delete, and Insert map to 1005–1010. Modified CSI arrow sequences are accepted where the terminal emits the standard form.
 
 ## Backend and platform notes
 
@@ -73,4 +76,4 @@ tui.read_key() returns ASCII values for ordinary keys. Enter is 13, Escape is 27
 
 ## Current limits
 
-This is a terminal rendering and input foundation, not yet a retained widget framework. Applications can implement menus, playback controls, status panels, progress indicators, and keyboard navigation using the primitives above. Automatic layout containers, built-in focus management, mouse events, Unicode-aware cell-width measurement, and a managed text-input widget are not included yet. For text entry, use read_line(prompt, maximum). It supports Backspace, Enter, and Escape; the returned string uses an internal reusable buffer and must be copied if it needs to outlive the next read_line() call. UTF-8 input bytes are preserved (including Arabic text); cursor movement inside the line and grapheme-aware deletion are not implemented yet. The library currently treats strings as terminal output: sanitize untrusted text before passing it to tui.write(), tui.println(), or draw_box() because embedded terminal escape sequences can affect terminal state.
+This is a terminal rendering and input foundation, not yet a retained widget framework. Applications can implement menus, playback controls, status panels, progress indicators, and keyboard navigation using the primitives above. Automatic layout containers, built-in focus management, mouse events, Unicode-aware terminal cell-width measurement, and a managed text-input widget are not included yet. `fill_rect` deliberately accepts printable ASCII only; use it for backgrounds and separators, not Arabic or other multibyte glyphs. For text entry, use read_line(prompt, maximum). It supports Backspace, Enter, and Escape; the returned string uses an internal reusable buffer and must be copied if it needs to outlive the next read_line() call. UTF-8 input bytes are preserved (including Arabic text); cursor movement inside the line and grapheme-aware deletion are not implemented yet. The library currently treats strings as terminal output: sanitize untrusted text before passing it to tui.write(), tui.println(), or draw_box() because embedded terminal escape sequences can affect terminal state.
