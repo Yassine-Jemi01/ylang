@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#define YLANG_MAX_TOTAL_SOURCE_BYTES (64U * 1024U * 1024U)
+
 typedef struct ArenaBlock {
     struct ArenaBlock *next;
     size_t used;

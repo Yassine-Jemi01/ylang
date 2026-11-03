@@ -8,7 +8,7 @@ Import paths may resolve to absolute paths or files outside the importing direct
 
 ## Compiler input limits and diagnostics
 
-The compiler rejects statement nesting deeper than 256 levels. Imported source graphs are bounded to 256 active import levels, 4096 distinct modules, 8 MiB per imported file, and 64 MiB total source per compilation. These limits prevent untrusted source trees from exhausting the compiler stack or consuming unbounded memory.
+The compiler rejects statement nesting deeper than 256 levels. Imported source graphs are bounded to 256 active import levels, 4096 distinct modules, 8 MiB per imported file, and 64 MiB total source per compilation. The root source file is also rejected above 64 MiB before its contents are allocated. These limits prevent untrusted source trees from exhausting the compiler stack or consuming unbounded memory.
 
 The compiler emits at most 100 diagnostics per compilation. Source excerpts are limited to a 160-byte window, and control bytes or invalid UTF-8 in source excerpts, messages, suggestions, and displayed paths are rendered as visible escapes rather than being sent raw to terminals or log consumers.
 

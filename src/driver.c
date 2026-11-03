@@ -159,6 +159,11 @@ static char *read_source_file(const char *path, size_t *length)
     if (fseek(file, 0, SEEK_END) != 0) { fclose(file); return NULL; }
     long size = ftell(file);
     if (size < 0 || fseek(file, 0, SEEK_SET) != 0) { fclose(file); return NULL; }
+    if ((uintmax_t)size > (uintmax_t)YLANG_MAX_TOTAL_SOURCE_BYTES) {
+        errno = EFBIG;
+        fclose(file);
+        return NULL;
+    }
     char *data = malloc((size_t)size + 1);
     if (!data) { fclose(file); return NULL; }
     size_t got = fread(data, 1, (size_t)size, file);

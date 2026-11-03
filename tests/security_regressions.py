@@ -82,6 +82,31 @@ def main() -> None:
             + deep_import_result.stderr.decode("utf-8", "replace")
         )
 
+    # Imported files are rejected from their metadata before an 8 MiB+ allocation.
+    large_import_root = BUILD / "security-imports-large" / "root.yl"
+    large_import_root.parent.mkdir(parents=True, exist_ok=True)
+    (large_import_root.parent / "large.yl").write_bytes(b"")
+    with (large_import_root.parent / "large.yl").open("r+b") as large_file:
+        large_file.truncate(8 * 1024 * 1024 + 1)
+    large_import_root.write_text(
+        'from "./large.yl" import ignored;\\n'
+        "function main() -> int { return 0; }\\n",
+        encoding="utf-8",
+    )
+    large_import_result = run_check(large_import_root)
+    if large_import_result.returncode != 1 or b"E1027" not in large_import_result.stderr:
+        raise SystemExit("oversized imported source was not rejected with E1027")
+
+    # The root file is capped before malloc/read, not after the source is resident.
+    large_root = BUILD / "security-root-over-limit.yl"
+    with large_root.open("wb") as large_file:
+        large_file.truncate(64 * 1024 * 1024 + 1)
+    root_limit_result = run_check(large_root)
+    if root_limit_result.returncode != 66:
+        raise SystemExit(
+            f"oversized root source should fail during bounded file loading (exit={root_limit_result.returncode})"
+        )
+
     noisy = BUILD / "security-diagnostic-amplification.yl"
     noisy.write_bytes(
         b"function main() -> int {\n    " + b"\x01" * 5000 +

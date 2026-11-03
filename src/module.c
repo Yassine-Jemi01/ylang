@@ -12,7 +12,6 @@
 #define YLANG_MAX_MODULE_DEPTH 256U
 #define YLANG_MAX_MODULE_COUNT 4096U
 #define YLANG_MAX_MODULE_SOURCE_BYTES (8U * 1024U * 1024U)
-#define YLANG_MAX_TOTAL_SOURCE_BYTES (64U * 1024U * 1024U)
 
 static void set_module_context(Compiler *compiler, Module *module)
 {
