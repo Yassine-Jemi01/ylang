@@ -221,13 +221,14 @@ static YType parse_type(Parser *p)
     if (token_is(&token, "borrowed_string")) return TYPE_BORROWED_STRING;
     if (token_is(&token, "owned_string")) return TYPE_OWNED_STRING;
     if (token_is(&token, "http_task")) return TYPE_HTTP_TASK;
+    if (token_is(&token, "http_stream")) return TYPE_HTTP_STREAM;
     if (token_is(&token, "void")) return TYPE_VOID;
     EnumDecl *enumeration = find_enum(p->compiler, token_copy(p->compiler, token));
     if (enumeration) return enumeration->type;
     StructDecl *structure = find_struct(p->compiler, token_copy(p->compiler, token));
     if (structure) return structure->type;
     diagnostic(p->compiler, token, "error", "E2002", "Unknown type name.",
-               "Available built-in types are int, float, bool, char, string, and void; user-defined enums and structs must be declared before use.");
+               "Available built-in types are int, float, bool, char, string, http_task, http_stream, and void; user-defined enums and structs must be declared before use.");
     return TYPE_ERROR;
 }
 
@@ -245,6 +246,7 @@ const char *type_name(YType type)
         case TYPE_OWNED_STRING: return "owned_string";
         case TYPE_VOID: return "void";
         case TYPE_HTTP_TASK: return "http_task";
+        case TYPE_HTTP_STREAM: return "http_stream";
         case TYPE_ERROR: return "<error>";
     }
     return "<unknown>";
