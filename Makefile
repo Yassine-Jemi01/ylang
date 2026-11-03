@@ -19,7 +19,7 @@ else
 GAME2D_OUTPUT ?= build/dodge
 endif
 
-.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui voice voice-example install-voice check-sdl2 check-voice check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
+.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui voice voice-example voice-test install-voice check-sdl2 check-voice check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
 
 all: $(BIN)
 
@@ -107,6 +107,13 @@ voice: check-voice build/libylang_voice.a
 voice-example: check-voice $(BIN)
 	@mkdir -p build
 	./build/ylang build examples/voice.yl -o build/voice-example
+
+build/voice-runtime-test: tests/voice_runtime.c stdlib/voice/voice.c include/ylang/voice.h
+	@mkdir -p build
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(VOICE_CFLAGS) tests/voice_runtime.c stdlib/voice/voice.c $(VOICE_LIBS) -o $@
+
+voice-test: check-voice build/voice-runtime-test
+	SDL_AUDIODRIVER=dummy ./build/voice-runtime-test
 
 build/ylang_voice.o: stdlib/voice/voice.c include/ylang/voice.h
 	@mkdir -p build
