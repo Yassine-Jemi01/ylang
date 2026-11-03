@@ -30,7 +30,7 @@ void diagnostic(Compiler *c, Token token, const char *level,
     if (c->quiet_diagnostics) return;
     if (c->error_count > YLANG_MAX_DIAGNOSTICS) {
         if (c->error_count == YLANG_MAX_DIAGNOSTICS + 1U) {
-            fputs("error: too many errors; stopping after 100 diagnostics.\\n\\n", stderr);
+            fputs("error: too many errors; stopping after 100 diagnostics.\n\n", stderr);
         }
         return;
     }
@@ -53,20 +53,20 @@ void diagnostic(Compiler *c, Token token, const char *level,
         }
     }
 
-    fprintf(stderr, "%s[%s]: %s\\n", level, code, message);
+    fprintf(stderr, "%s[%s]: %s\n", level, code, message);
     fputs("  --> ", stderr);
     if (shown_filename) print_sanitized(stderr, shown_filename, strlen(shown_filename));
-    fprintf(stderr, ":%zu:%zu\\n", line, column);
+    fprintf(stderr, ":%zu:%zu\n", line, column);
 
     const char *line_start = shown_source;
     size_t current_line = 1;
     while (shown_source && current_line < line &&
            line_start < shown_source + shown_source_length) {
-        if (*line_start++ == '\\n') current_line++;
+        if (*line_start++ == '\n') current_line++;
     }
     const char *line_end = line_start;
     while (shown_source && line_end < shown_source + shown_source_length &&
-           *line_end && *line_end != '\\n' && *line_end != '\\r') line_end++;
+           *line_end && *line_end != '\n' && *line_end != '\\r') line_end++;
     if (shown_source && line_start < shown_source + shown_source_length &&
         *line_start && current_line == line) {
         size_t source_line_length = (size_t)(line_end - line_start);
@@ -78,12 +78,12 @@ void diagnostic(Compiler *c, Token token, const char *level,
         if (window_end - window_start > YLANG_DIAGNOSTIC_LINE_WINDOW)
             window_end = window_start + YLANG_DIAGNOSTIC_LINE_WINDOW;
 
-        fputs("   |\\n", stderr);
+        fputs("   |\n", stderr);
         fprintf(stderr, "%3zu | ", line);
         if (window_start > 0U) fputs("...", stderr);
         print_sanitized(stderr, line_start + window_start, window_end - window_start);
         if (window_end < source_line_length) fputs("...", stderr);
-        fputs("\\n   | ", stderr);
+        fputs("\n   | ", stderr);
 
         size_t caret_column = caret_offset >= window_start
                                   ? caret_offset - window_start : 0U;
@@ -99,10 +99,10 @@ void diagnostic(Compiler *c, Token token, const char *level,
             width > visible_width - (caret_offset - window_start))
             width = visible_width - (caret_offset - window_start);
         for (size_t i = 0; i < width; i++) fputc('^', stderr);
-        fputc('\\n', stderr);
+        fputc('\n', stderr);
     }
     if (suggestion && *suggestion) {
-        fprintf(stderr, "   = help: %s\\n", suggestion);
+        fprintf(stderr, "   = help: %s\n", suggestion);
     }
-    fputc('\\n', stderr);
+    fputc('\n', stderr);
 }
