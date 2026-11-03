@@ -311,14 +311,19 @@ const char *yltui_api_read_line(const char *prompt, int64_t maximum) {
         }
         if (key == 8 || key == 127) {
             if (length > 0) {
+                /* Remove one complete UTF-8 code point, not just its final byte. */
                 length--;
+                while (length > 0 &&
+                       (((unsigned char)buffer[length] & 0xc0U) == 0x80U))
+                    length--;
                 buffer[length] = '\0';
                 (void)fputs("\b \b", stdout);
                 (void)fflush(stdout);
             }
             continue;
         }
-        if (key >= 32 && key <= 126 && length < (size_t)maximum) {
+        /* Preserve UTF-8 input bytes so Arabic and other scripts can be searched. */
+        if (key >= 32 && key != 127 && length < (size_t)maximum) {
             buffer[length++] = (char)key;
             buffer[length] = '\0';
             (void)fputc((int)key, stdout);
