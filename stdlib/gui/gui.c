@@ -39,7 +39,7 @@ bool ylgui_init(void)
 {
     if (gui_initialized) return true;
     gui_error[0] = '\0';
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+    if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
         set_sdl_error("SDL video initialization failed");
         return false;
     }
@@ -187,7 +187,7 @@ void ylgui_shutdown(void)
     while (gui_windows != NULL) {
         ylgui_window_destroy(gui_windows);
     }
-    SDL_Quit();
+    SDL_QuitSubSystem(SDL_INIT_VIDEO);
     gui_initialized = false;
     gui_error[0] = '\0';
 }
