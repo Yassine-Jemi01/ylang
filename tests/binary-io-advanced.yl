@@ -1,9 +1,13 @@
+function write_buffer(string path, byte data[]) -> int {
+    return io.write_bytes(path, 0, data);
+}
+
 function main() -> int {
     let string path = "build/binary-buffer-test.bin";
     let byte data[] = [byte(0x41), byte(0x00), byte(0xff), byte(0x34)];
     let byte readback[] = [byte(0), byte(0), byte(0), byte(0)];
 
-    print(io.write_bytes(path, 0, data));
+    print(write_buffer(path, data));
     print(io.read_bytes(path, 0, readback));
     print(readback[0]);
     print(readback[1]);
