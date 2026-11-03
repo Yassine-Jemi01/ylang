@@ -14,7 +14,9 @@ The compiler recognizes these builtins directly; no import is required:
 | `voice.play(path)` | `bool` | Play one file, replacing the current track |
 | `voice.pause()` / `voice.resume()` | `void` | Pause or resume playback |
 | `voice.stop()` | `void` | Stop and release the current track |
-| `voice.is_playing()` | `bool` | Check playback state |
+| `voice.is_playing()` | `bool` | Check whether music is actively playing |
+| `voice.is_paused()` | `bool` | Check whether the current track is paused |
+| `voice.is_finished()` | `bool` | Detect natural end-of-track and release the finished music object |
 | `voice.set_volume(0..100)` | `bool` | Set music volume |
 | `voice.last_error()` | `string` | Read the latest audio error |
 | `voice.shutdown()` | `void` | Release audio resources |
@@ -26,15 +28,19 @@ See [`examples/voice.yl`](../../examples/voice.yl) for a complete compiler-level
 - `ylvoice_init()` — initialize the audio device.
 - `ylvoice_play(path)` — load and play one audio file, replacing the previous track.
 - `ylvoice_pause()`, `ylvoice_resume()`, `ylvoice_stop()`.
-- `ylvoice_is_playing()` — report whether playback is active.
+- `ylvoice_is_playing()` — report whether playback is active and reap a naturally completed track.
+- `ylvoice_is_paused()` — report whether the current track is paused.
+- `ylvoice_is_finished()` — report natural completion and release the finished mixer object.
 - `ylvoice_set_volume(percent)` — set music volume from 0 to 100.
 - `ylvoice_last_error()` — retrieve the latest error.
 - `ylvoice_shutdown()` — release the track and audio device.
 
 The runtime uses SDL2_mixer codecs available in the installed build (commonly WAV,
 Ogg Vorbis, FLAC, and MP3). Codec support depends on how SDL2_mixer was packaged.
-It currently supports one music stream at a time. Text-to-speech, multiple simultaneous
-voices, seeking, playlists, recording, and streaming are not implemented yet.
+It currently supports one local music track at a time. Natural completion is observable
+through `voice.is_finished()`; polling either state query releases the completed mixer
+object. Text-to-speech, multiple simultaneous voices, seeking, playlists, recording,
+and network streaming are not implemented yet.
 
 ## Build
 
