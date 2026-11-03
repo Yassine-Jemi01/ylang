@@ -1226,8 +1226,8 @@ static int64_t yl_terminal_read_int(const char *prompt) {
     char *end = NULL;
     errno = 0;
     long long value = strtoll(line, &end, 10);
-    while (end && (*end == ' ' || *end == '\\t' || *end == '\\r')) end++;
-    if (errno == ERANGE || end == line || !end || *end != '\\0')
+    while (end && (*end == ' ' || *end == '\t' || *end == '\r')) end++;
+    if (errno == ERANGE || end == line || !end || *end != '\0')
         yl_runtime_error("terminal input is not a valid signed integer");
     return (int64_t)value;
 }
@@ -1236,8 +1236,8 @@ static double yl_terminal_read_float(const char *prompt) {
     char *end = NULL;
     errno = 0;
     double value = strtod(line, &end);
-    while (end && (*end == ' ' || *end == '\\t' || *end == '\\r')) end++;
-    if (errno == ERANGE || end == line || !end || *end != '\\0' || !isfinite(value))
+    while (end && (*end == ' ' || *end == '\t' || *end == '\r')) end++;
+    if (errno == ERANGE || end == line || !end || *end != '\0' || !isfinite(value))
         yl_runtime_error("terminal input is not a valid finite float");
     return value;
 }
@@ -1254,11 +1254,11 @@ static bool yl_terminal_write(const char *text) {
     return text && fputs(text, stdout) != EOF && fflush(stdout) == 0;
 }
 static bool yl_terminal_write_line(const char *text) {
-    return text && fputs(text, stdout) != EOF && fputc('\\n', stdout) != EOF &&
+    return text && fputs(text, stdout) != EOF && fputc('\n', stdout) != EOF &&
            fflush(stdout) == 0;
 }
 static bool yl_terminal_clear(void) {
-    return fputs("\\033[2J\\033[H", stdout) != EOF && fflush(stdout) == 0;
+    return fputs("\033[2J\033[H", stdout) != EOF && fflush(stdout) == 0;
 }
 static bool yl_terminal_is_interactive(void) {
 #ifdef _WIN32
