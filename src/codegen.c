@@ -706,6 +706,7 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "http.last_error") == 0) return "yl_http_last_error";
     if (strcmp(name, "voice.init") == 0) return "ylvoice_init";
     if (strcmp(name, "voice.play") == 0) return "ylvoice_play";
+    if (strcmp(name, "voice.play_stream") == 0) return "yl_voice_play_stream";
     if (strcmp(name, "voice.pause") == 0) return "ylvoice_pause";
     if (strcmp(name, "voice.resume") == 0) return "ylvoice_resume";
     if (strcmp(name, "voice.stop") == 0) return "ylvoice_stop";
