@@ -338,7 +338,7 @@ This is currently a raw-document API, not a mutable JSON DOM: it does not build 
 
 ## Binary file I/O (experimental)
 
-The optional `byte` scalar type is an unsigned 8-bit integer. `byte(value)` checks that an `int` is in the range 0..255 and returns a byte; an out-of-range conversion terminates with a runtime error. Fixed arrays can be declared as `let byte data[] = [byte(0), byte(255)];`.
+The optional `byte` scalar type is an unsigned 8-bit integer. `byte(value)` checks that an `int` is in the range 0..255 and returns a byte; an out-of-range conversion terminates with a runtime error. Fixed arrays can be declared as `let byte data[] = [byte(0), byte(255)];`; byte-array parameters also work with the block and stream APIs.
 
 The binary file API includes `io.binary_size`, `io.read_u8`, `io.write_u8`, `io.read_bytes`, `io.write_bytes`, `io.read_binary_hex`, and `io.write_binary_hex`. Buffer functions accept a named byte array and return a byte count, or `-1` on error. Hex helpers remain limited to 16 MiB per call.
 
