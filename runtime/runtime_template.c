@@ -31,6 +31,8 @@ bool ylgui_api_init(void);
 #ifdef YLANG_USE_VOICE
 bool ylvoice_init(void);
 bool ylvoice_play(const char *);
+bool ylvoice_play_stream(int64_t, int64_t (*)(int64_t, void *, size_t),
+                         const char *(*)(int64_t), void (*)(int64_t));
 void ylvoice_pause(void);
 void ylvoice_resume(void);
 void ylvoice_stop(void);
@@ -883,6 +885,26 @@ static void yl_http_stream_close(int64_t id) {
     YLHttpStream *stream = yl_http_stream_find(id);
     if (stream) yl_http_stream_release(stream);
 }
+static int64_t yl_http_stream_read_raw(int64_t id, void *destination, size_t max_bytes) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    if (!stream || !destination || max_bytes == 0U) return -1;
+    size_t count = yl_http_stream_take(stream, destination, max_bytes);
+    if (count == 0U && stream->done && stream->error[0]) return -1;
+    return (int64_t)count;
+}
+static const char *yl_http_stream_error_raw(int64_t id) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    return stream ? stream->error : "Invalid or closed HTTP stream handle";
+}
+static void yl_http_stream_close_raw(int64_t id) {
+    yl_http_stream_close(id);
+}
+#if defined(YLANG_USE_VOICE)
+static bool yl_voice_play_stream(int64_t id) {
+    return ylvoice_play_stream(id, yl_http_stream_read_raw,
+                               yl_http_stream_error_raw, yl_http_stream_close_raw);
+}
+#endif
 
 
 #endif
