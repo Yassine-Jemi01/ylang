@@ -30,7 +30,7 @@ write_nested("build/nesting-too-deep.yl", 257)
 chain = ["fn main() -> int {", "if (true) {}"]
 chain.extend("else if (true) {}" for _ in range(257))
 chain.extend(["else { return 0; }", "return 0;", "}"])
-Path("build/nesting-else-if-too-deep.yl").write_text("\\n".join(chain) + "\\n", encoding="utf-8")
+Path("build/nesting-else-if-too-deep.yl").write_text("\n".join(chain) + "\n", encoding="utf-8")
 PY
 ./build/ylang build build/nesting-valid.yl -o build/nesting-valid >/dev/null
 ./build/nesting-valid >/dev/null
