@@ -46,7 +46,8 @@ See [the std.tui reference](../../../stdlib/tui/README.md) for all functions and
 | `tui.poll_key()` | `int` | Read a key if available, otherwise return `-1` |
 | `tui.width()` / `tui.height()` | `int` | Read current terminal dimensions |
 | `tui.clear()` | `bool` | Clear and home |
-| `tui.write(text)` | `bool` | Write text or ANSI escape sequences |
+| `tui.write(text)` | `bool` | Buffer text or ANSI escape sequences |
+| `tui.flush()` | `bool` | Flush buffered terminal output immediately |
 | `tui.set_cursor(column, row)` | `bool` | Move cursor (1-based) |
 | `tui.hide_cursor()` / `tui.show_cursor()` | `bool` | Set cursor visibility |
 | `tui.sleep_ms(ms)` | `bool` | Sleep without busy-waiting |
