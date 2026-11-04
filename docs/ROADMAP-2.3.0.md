@@ -23,7 +23,7 @@ Make YLang 2.3 a dependable, polished minor release: improve the existing compil
 - Voice and GUI remain optional integrations with explicit native dependencies and platform limits.
 
 ### 3. Developer experience and design
-- CLI: consistent command help, version output, concise success messages, readable diagnostics, and predictable exit codes. The `help`/`version` subcommands and their option aliases are integrated, with a dedicated command reference and regression coverage; validation is still pending.
+- CLI: consistent command help, version output, concise success messages, readable diagnostics, and predictable exit codes. The `help`/`version` subcommands and their option aliases are integrated, with a dedicated command reference, portable version fallback, and regression coverage; validation is still pending.
 - TUI examples: intentional hierarchy, restrained YLang teal/rust palette, clear focus state, keyboard hints, narrow-terminal fallback, and a `make tui-example` build target.
 - Official homepage: polished responsive layout, live-looking but truthful code/build preview, clear stable-version/install path, and consistent official logo assets.
 - Book: preserve its current visual identity; only fix navigation, broken links, examples, and factual inaccuracies.
@@ -32,7 +32,7 @@ Make YLang 2.3 a dependable, polished minor release: improve the existing compil
 ### 4. Documentation and release engineering
 - Align README, changelog, website, book, API references, platform guides, and package metadata.
 - Document dependencies and feature/backend/platform support.
-- Maintain a release checklist and reproducible benchmark baselines.
+- Maintain version-specific pre- and post-publication checklists, enforce release-note/version consistency in the publishing workflow, and record reproducible benchmark baselines.
 - Ensure clean-checkout builds and package install/remove smoke tests.
 
 ## Explicitly out of scope for 2.3
