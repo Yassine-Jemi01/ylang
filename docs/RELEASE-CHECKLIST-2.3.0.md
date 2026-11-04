@@ -54,7 +54,7 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 
 ## Final publication authorization
 
-- [ ] All required GitHub Actions and CircleCI jobs are green on the exact final candidate SHA.
+- [ ] Confirm the stable publishing workflow includes a CircleCI status gate that waits for every `ci/circleci:` status on the exact release-authorization SHA and rejects failures or missing results.
 - [ ] All open blocker/high-priority security findings are fixed or explicitly documented and accepted.
 - [ ] Changelog, compatibility notes, upgrade notes, README, homepage, book, and package contents have been reviewed for consistency.
 - [ ] Convert the 2.3 development changelog into final release notes; remove development-only wording and preserve known limitations.
