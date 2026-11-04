@@ -1776,7 +1776,7 @@ static int64_t yl_tui_read_key_internal(bool blocking) {
     unsigned char second = 0U, third = 0U;
     if (!yl_tui_read_byte_timeout(&second, 35)) return 27;
     if (second != '[' && second != 'O') return 27;
-    if (!yl_tui_read_byte_timeout(&third, blocking ? 35 : 2)) return 27;
+    if (!yl_tui_read_byte_timeout(&third, 35)) return 27;
     if (second == 'O') {
         if (third == 'H') return 1005;
         if (third == 'F') return 1006;
@@ -1793,7 +1793,7 @@ static int64_t yl_tui_read_key_internal(bool blocking) {
         case '5':
         case '6': {
             unsigned char terminator = 0U;
-            if (!yl_tui_read_byte_timeout(&terminator, blocking ? 35 : 2) || terminator != '~') return 27;
+            if (!yl_tui_read_byte_timeout(&terminator, 35) || terminator != '~') return 27;
             return third == '3' ? 1007 : (third == '5' ? 1008 : 1009);
         }
         default: return 27;
