@@ -67,7 +67,7 @@ function main() -> int {
 
 Calling `voice.play_stream(stream)` transfers ownership of the stream to Voice, even if playback setup fails. Do not call `http.stream_read`, `http.stream_read_buffer`, `http.stream_done`, or `http.stream_close` on that handle after handoff. Voice closes the HTTP stream when playback is stopped, fails, or reaches EOF. Pause, resume, stop, and volume continue to use the regular `voice.*` functions.
 
-The audio reader is forward-only; seeking is not implemented. Actual MP3 support depends on the installed SDL2_mixer codec build. The callback-backed reader and HTTP bridge require runtime tests before being treated as production-ready.
+The Voice bridge presents a seekable SDL_RWops to SDL2_mixer by caching received bytes in a temporary disk file. Backward seeks within cached data are immediate; forward seeks pull more HTTP bytes, and end-relative seeks drain the response first. This avoids asking an HTTP connection to seek backwards while retaining progressive reads when the decoder does not require the complete file up front. Actual MP3 support depends on the installed SDL2_mixer codec build. The callback-backed reader and HTTP bridge require runtime tests before being treated as production-ready.
 
 ## Current implementation limits
 
