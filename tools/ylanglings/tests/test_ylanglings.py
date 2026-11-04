@@ -143,7 +143,7 @@ class CliStateTests(unittest.TestCase):
 
     def test_edit_uses_configured_editor_without_a_shell(self):
         completed = type("Result", (), {"returncode": 0})()
-        with mock.patch.dict(os.environ, {"EDITOR": "nano -w"}), mock.patch.object(
+        with mock.patch.dict(os.environ, {"EDITOR": "nano -w", "VISUAL": ""}), mock.patch.object(
             ylanglings.subprocess, "run", return_value=completed
         ) as run:
             self.assertEqual(ylanglings.command_edit(1, self.manifest), 0)
