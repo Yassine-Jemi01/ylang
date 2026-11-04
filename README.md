@@ -207,7 +207,7 @@ The built-in `terminal.*` namespace provides synchronous command-line input and 
 
 ## JSON standard library
 
-The built-in `json.*` namespace provides a bounded native JSON parser and accessors. It validates JSON syntax, supports nested objects and arrays, JSON escapes and Unicode escape decoding, and limits input to 16 MiB and nesting to 128 levels. Parsed documents are represented as `owned_string` JSON text; `json.get` and `json.at` return owned raw JSON fragments. `json.pretty` formats an existing JSON value with two-space indentation. See [the JSON guide](docs/JSON.md) for the API and current limitations.
+The built-in `json.*` namespace provides a bounded native JSON parser, accessors, formatting, and immutable raw-text builders. It validates JSON syntax, supports nested objects and arrays, JSON escapes and Unicode escape decoding, and limits input and generated output to 16 MiB and nesting to 128 levels. Parsed documents and extracted fragments are represented as `owned_string` JSON text. `json.object` and `json.array` create empty containers; `json.set`, `json.remove`, and `json.push` return new JSON strings without mutating their inputs. Values inserted by the builders must already be valid JSON fragments (use `json.escape` for string values); this is not a typed JSON value tree. See [the JSON guide](docs/JSON.md) for the API and current limitations.
 
 ## Multi-file imports (experimental)
 
