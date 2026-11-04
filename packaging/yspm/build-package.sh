@@ -64,6 +64,8 @@ doc_files=(
     docs/DEBUGGER.md
     docs/DEBUGGER-SPEC.md
     docs/ROADMAP-2.2.0.md
+    docs/RELEASE-CHECKLIST-2.3.0.md
+    docs/POST-RELEASE-CHECKLIST-2.3.0.md
 )
 
 # Keep the current version's changelog from the dynamic entry above, and ship
