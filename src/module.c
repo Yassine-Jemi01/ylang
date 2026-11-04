@@ -9,6 +9,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define YLANG_MAX_MODULE_DEPTH 256U
+#define YLANG_MAX_MODULE_COUNT 1024U
+#define YLANG_MAX_MODULE_SOURCE_BYTES (64U * 1024U * 1024U)
+
 static void set_module_context(Compiler *compiler, Module *module)
 {
     compiler->filename = module->path;
@@ -58,6 +62,7 @@ static Module *new_module(Compiler *compiler, const char *path,
         compiler->modules, compiler->module_count,
         sizeof(*compiler->modules), &module);
     compiler->module_count++;
+    compiler->module_total_source_bytes += source_length;
     if (is_root) compiler->root_module = module;
     return module;
 }
@@ -191,6 +196,12 @@ static char *read_module_source(Compiler *compiler, const char *path,
         fclose(file); errno = EFBIG; return NULL;
     }
     size_t size = (size_t)file_size;
+    if (compiler->module_total_source_bytes > YLANG_MAX_MODULE_SOURCE_BYTES ||
+        size > YLANG_MAX_MODULE_SOURCE_BYTES - compiler->module_total_source_bytes) {
+        fclose(file);
+        errno = EFBIG;
+        return NULL;
+    }
     char *temporary = malloc(size + 1U);
     if (!temporary) { fclose(file); errno = ENOMEM; return NULL; }
     size_t got = fread(temporary, 1, size, file);
@@ -304,6 +315,7 @@ static bool bind_imports(Compiler *compiler, Module *module)
 
 static bool load_module(Compiler *compiler, Module *module)
 {
+    compiler->module_load_depth++;
     module->loading = true;
     set_module_context(compiler, module);
     unsigned errors_before = compiler->error_count;
@@ -326,6 +338,7 @@ static bool load_module(Compiler *compiler, Module *module)
             if (needed < 0) {
                 fputs("ylang: failed to create a module function name\n", stderr);
                 module->loading = false;
+                compiler->module_load_depth--;
                 return false;
             }
             function->c_name = arena_alloc(&compiler->arena,
@@ -339,6 +352,7 @@ static bool load_module(Compiler *compiler, Module *module)
 
     if (compiler->error_count != errors_before) {
         module->loading = false;
+        compiler->module_load_depth--;
         return false;
     }
 
@@ -368,9 +382,30 @@ static bool load_module(Compiler *compiler, Module *module)
             continue;
         }
         if (!target) {
+            if (compiler->module_load_depth >= YLANG_MAX_MODULE_DEPTH) {
+                diagnostic(compiler, import->token, "error", "E1027",
+                           "Maximum module import depth exceeded.",
+                           "Keep import chains at or below 256 modules; split the dependency graph into shallower modules.");
+                okay = false;
+                continue;
+            }
+            if (compiler->module_count >= YLANG_MAX_MODULE_COUNT) {
+                diagnostic(compiler, import->token, "error", "E1028",
+                           "Maximum module count exceeded.",
+                           "A YLang program may load at most 1024 source modules.");
+                okay = false;
+                continue;
+            }
             size_t source_length = 0;
             char *source = read_module_source(compiler, canonical, &source_length);
             if (!source) {
+                if (errno == EFBIG) {
+                    diagnostic(compiler, import->token, "error", "E1029",
+                               "Total imported source exceeds the 64 MiB limit.",
+                               "Split the project into smaller source modules.");
+                    okay = false;
+                    continue;
+                }
                 char suggestion[256];
                 (void)snprintf(suggestion, sizeof(suggestion),
                                "Could not read '%s': %s", canonical,
@@ -393,6 +428,7 @@ static bool load_module(Compiler *compiler, Module *module)
     module->loading = false;
     module->loaded = okay;
     set_module_context(compiler, module);
+    compiler->module_load_depth--;
     return okay;
 }
 
@@ -421,6 +457,16 @@ static void append_program_items(Compiler *compiler, Program *merged,
 
 bool load_program_modules(Compiler *compiler, const char *input_path)
 {
+    if (compiler->source_length > YLANG_MAX_MODULE_SOURCE_BYTES) {
+        Token root_token = {0};
+        root_token.start = compiler->source;
+        root_token.line = 1U;
+        root_token.column = 1U;
+        diagnostic(compiler, root_token, "error", "E1029",
+                   "Total imported source exceeds the 64 MiB limit.",
+                   "Split the project into smaller source modules.");
+        return false;
+    }
     char *canonical = canonical_path(compiler, input_path);
     if (!canonical) canonical = arena_strndup(&compiler->arena, input_path,
                                                strlen(input_path));

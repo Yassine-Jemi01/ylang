@@ -1687,4 +1687,31 @@ grep -q 'JSON argument type mismatch' build/json-type-error.out
 printf 'Ada\\n42\\n1.5\\nyes\\n' | ./build/test-terminal-input > build/terminal-input.stdout
 diff -u tests/expected-terminal-input.txt build/terminal-input.stdout
 
+# Module loading must stop at the documented recursion-depth limit.
+mkdir -p build/import-depth
+i=0
+while [ "$i" -lt 256 ]; do
+    next=$((i + 1))
+    if [ "$i" -lt 255 ]; then
+        cat > "build/import-depth/module-$i.yl" <<EOF
+from "./module-$next.yl" import chain_$next;
+function chain_$i() -> int { return chain_$next(); }
+EOF
+    else
+        cat > "build/import-depth/module-$i.yl" <<EOF
+function chain_$i() -> int { return 1; }
+EOF
+    fi
+    i=$next
+done
+cat > build/import-depth/main.yl <<'EOF'
+from "./module-0.yl" import chain_0;
+function main() -> int { return chain_0(); }
+EOF
+if ./build/ylang check build/import-depth/main.yl > build/import-depth/depth.out 2>&1; then
+    echo "FAIL: an import chain beyond the module-depth limit was accepted" >&2
+    exit 1
+fi
+grep -q 'E1027' build/import-depth/depth.out
+
 echo "All YLang tests passed."
