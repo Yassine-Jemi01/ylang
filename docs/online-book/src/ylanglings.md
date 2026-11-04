@@ -22,9 +22,10 @@ Then use it from any directory:
 ylanglings list
 ylanglings next
 ylanglings run 01
+ylanglings edit 01
 ```
 
-Edit the displayed source file, then verify it:
+Edit the displayed source file, then open it with `ylanglings edit 01` if desired and verify it:
 
 ```sh
 ylanglings verify 01
@@ -38,7 +39,7 @@ ylanglings --compiler ./build/ylang verify 01
 
 Use `ylanglings hint NUMBER` for a hint and `ylanglings reset NUMBER` to
 restore an exercise's original broken starter. The `list` command shows
-progress, while `next` opens the first incomplete core exercise.
+progress, while `next` shows the first incomplete core exercise. Use `edit NUMBER` to open it in your configured editor.
 
 ## Learning path
 
