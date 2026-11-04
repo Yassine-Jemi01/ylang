@@ -262,8 +262,11 @@ jobs:
           tar -tzf "$package_path" | grep -Fxq "root/usr/share/doc/ylang/CHANGELOG-2.3.0.md"
           tar -tzf "$package_path" | grep -Fxq "root/usr/share/doc/ylang/ROADMAP-2.3.0.md"
           tar -tzf "$package_path" | grep -Fxq "root/usr/share/doc/ylang/RELEASE-CHECKLIST-2.3.0.md"
+          tar -tzf "$package_path" | grep -Fxq "root/usr/share/doc/ylang/POST-RELEASE-CHECKLIST-2.3.0.md"
           tar -tzf "$package_path" | grep -Fxq "root/usr/share/doc/ylang/JSON.md"
+          tar -tzf "$package_path" | grep -Fxq "root/usr/share/doc/ylang/HTTP-STREAMING.md"
           tar -tzf "$package_path" | grep -Fxq "root/usr/share/doc/ylang/CLI.md"
+          tar -tzf "$package_path" | grep -Fxq "root/usr/share/doc/ylang/error-codes.md"
           YSPM_BIN="$GITHUB_WORKSPACE/tools/yspm-source/build/yspm" \
             bash packaging/yspm/smoke-install.sh "$package_path"
       - name: Upload YSPM package
