@@ -195,8 +195,8 @@ static char *read_module_source(Compiler *compiler, const char *path,
         fclose(file); errno = EFBIG; return NULL;
     }
     size_t size = (size_t)file_size;
-    if (compiler->module_total_source_bytes > YLANG_MAX_MODULE_SOURCE_BYTES ||
-        size > YLANG_MAX_MODULE_SOURCE_BYTES - compiler->module_total_source_bytes) {
+    if (compiler->module_total_source_bytes > YLANG_MAX_PROJECT_SOURCE_BYTES ||
+        size > YLANG_MAX_PROJECT_SOURCE_BYTES - compiler->module_total_source_bytes) {
         fclose(file);
         errno = EFBIG;
         return NULL;
@@ -456,7 +456,7 @@ static void append_program_items(Compiler *compiler, Program *merged,
 
 bool load_program_modules(Compiler *compiler, const char *input_path)
 {
-    if (compiler->source_length > YLANG_MAX_MODULE_SOURCE_BYTES) {
+    if (compiler->source_length > YLANG_MAX_PROJECT_SOURCE_BYTES) {
         Token root_token = {0};
         root_token.start = compiler->source;
         root_token.line = 1U;
