@@ -1,6 +1,6 @@
 # YTilawa Extended
 
-YTilawa is a YLang terminal Quran player. It loads the 114-surah and reciter catalogues from the official MP3Quran.net API v3, then derives each audio URL from the API-provided recording server and coverage list.
+YTilawa is a YLang terminal Quran player. It loads the 114-surah and reciter catalogues from the official MP3Quran.net API v3, displays surah names as lowercase Latin slugs (for example, `fatiha`, `baqara`, and `aal-imran`), and derives each audio URL from the API-provided recording server and coverage list. Surah search accepts both Latin slugs and Arabic names.
 
 ## Build
 
@@ -51,7 +51,7 @@ Files are written in the current working directory:
 - `ytilawa-favorites.txt`
 - `ytilawa-history.txt`
 - `ytilawa-playlist-default.txt`
-- `ytilawa-NNN.mp3` downloads
+- `ytilawa-SURAH.mp3` downloads (for example, `ytilawa-baqara.mp3`)
 
 Downloads use `http.stream_read_buffer` and `io.buffer_append_file`, so MP3 data is written incrementally rather than accumulated in one in-memory string.
 
