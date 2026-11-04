@@ -281,10 +281,48 @@ jobs:
           path: build/ylang-yspm/*.yspkg
           if-no-files-found: error
 
+  circleci-status:
+    if: github.ref == 'refs/heads/main'
+    name: Require CircleCI success on the release commit
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: read
+    steps:
+      - name: Wait for CircleCI statuses on this exact commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          expected_prefix="ci/circleci:"
+          for attempt in $(seq 1 60); do
+            response="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status")"
+            matching="$(jq -c --arg prefix "$expected_prefix" '[.statuses[] | select(.context | startswith($prefix))]' <<< "$response")"
+            count="$(jq 'length' <<< "$matching")"
+            if [[ "$count" -eq 0 ]]; then
+              echo "Waiting for CircleCI to report a status on ${GITHUB_SHA} (attempt $attempt/60)."
+              sleep 15
+              continue
+            fi
+            failed="$(jq '[.[] | select(.state == "failure" or .state == "error")] | length' <<< "$matching")"
+            if [[ "$failed" -gt 0 ]]; then
+              jq -r '.[] | select(.state == "failure" or .state == "error") | "FAILED: " + .context + " — " + (.description // "no description")' <<< "$matching"
+              exit 1
+            fi
+            pending="$(jq '[.[] | select(.state != "success")] | length' <<< "$matching")"
+            if [[ "$pending" -eq 0 ]]; then
+              jq -r '.[] | "PASS: " + .context' <<< "$matching"
+              exit 0
+            fi
+            echo "CircleCI is still running on ${GITHUB_SHA}; waiting (attempt $attempt/60)."
+            sleep 15
+          done
+          echo "Release blocked: CircleCI did not report successful statuses for ${GITHUB_SHA}." >&2
+          exit 1
+
   publish:
     if: github.ref == 'refs/heads/main'
     name: Publish stable GitHub release with YSPM Linux package
-    needs: [build-and-test, windows-native-smoke, build-yspm-package, editor-diagnostics, website-integrity]
+    needs: [build-and-test, windows-native-smoke, build-yspm-package, editor-diagnostics, website-integrity, circleci-status]
     runs-on: ubuntu-latest
     permissions:
       contents: write
