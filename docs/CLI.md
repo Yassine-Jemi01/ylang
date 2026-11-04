@@ -1,6 +1,6 @@
 # YLang command-line reference
 
-The compiler uses explicit subcommands. Run `ylang help` or `ylang --help` to print the concise command list, and `ylang version` or `ylang --version` to print the compiler version. Each pair is an alias and produces the same output.
+The compiler uses explicit subcommands. Run `ylang help`, `ylang --help`, or `ylang -h` to print the concise command list; run `ylang version`, `ylang --version`, or `ylang -V` to print the compiler version. Each form is an alias and produces the same output.
 
 ## Commands
 
@@ -34,7 +34,11 @@ Detailed diagnostics are written to standard error. Successful `check`, C genera
 
 ```sh
 ylang help
+ylang --help
+ylang -h
 ylang version
+ylang --version
+ylang -V
 ylang check hello.yl
 ylang build hello.yl -o hello
 ylang build hello.yl -o hello --cc clang
