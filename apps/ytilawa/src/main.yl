@@ -3,7 +3,7 @@ from "./storage.yl" import storage_read, storage_add_favorite, storage_add_histo
 from "./player.yl" import player_play_remote, player_play_local, player_download;
 from "./ui.yl" import ui_draw_main, ui_prompt, ui_wait;
 
-function choose_surah(string document, int current) -> int {
+function choose_surah(borrowed_string document, int current) -> int {
     let int count = surah_count(document);
     if (count <= 0) {
         return current;
@@ -61,7 +61,7 @@ function choose_surah(string document, int current) -> int {
     return selected + 1;
 }
 
-function choose_reciter(string document, int current) -> int {
+function choose_reciter(borrowed_string document, int current) -> int {
     let int count = reciter_count(document);
     if (count <= 0) {
         return current;
@@ -119,12 +119,13 @@ function choose_reciter(string document, int current) -> int {
     return selected;
 }
 
-function find_surah(string document, string query) -> int {
-    let owned_string needle = string.lower(query);
+function find_surah(borrowed_string document, borrowed_string query) -> int {
+    let owned_string needle = owned_string.lower(query);
     let int count = surah_count(document);
     let int index = 0;
     while (index < count) {
-        let owned_string name = string.lower(surah_name(document, index));
+        let owned_string candidate = surah_name(document, index);
+        let owned_string name = owned_string.lower(candidate);
         if (string.contains(name, needle)) {
             return index + 1;
         }
@@ -133,12 +134,13 @@ function find_surah(string document, string query) -> int {
     return 0;
 }
 
-function find_reciter(string document, string query) -> int {
-    let owned_string needle = string.lower(query);
+function find_reciter(borrowed_string document, borrowed_string query) -> int {
+    let owned_string needle = owned_string.lower(query);
     let int count = reciter_count(document);
     let int index = 0;
     while (index < count) {
-        let owned_string name = string.lower(reciter_name(document, index));
+        let owned_string candidate = reciter_name(document, index);
+        let owned_string name = owned_string.lower(candidate);
         if (string.contains(name, needle)) {
             return index;
         }
@@ -147,7 +149,7 @@ function find_reciter(string document, string query) -> int {
     return -1;
 }
 
-function start_current(string reciters, int surah_id, int reciter_index, int volume) -> bool {
+function start_current(borrowed_string reciters, int surah_id, int reciter_index, int volume) -> bool {
     let owned_string url = reciter_audio_url(reciters, reciter_index, surah_id);
     if (string.length(url) == 0) {
         return false;
@@ -155,24 +157,25 @@ function start_current(string reciters, int surah_id, int reciter_index, int vol
     if (!player_play_remote(url, volume)) {
         return false;
     }
-    storage_add_history(surah_id, reciter_name(reciters, reciter_index));
+    let owned_string reader = reciter_name(reciters, reciter_index);
+    storage_add_history(surah_id, reader);
     return true;
 }
 
-function download_current(string reciters, int surah_id, int reciter_index) -> int {
+function download_current(borrowed_string reciters, int surah_id, int reciter_index) -> int {
     let owned_string url = reciter_audio_url(reciters, reciter_index, surah_id);
     if (string.length(url) == 0) {
         return -1;
     }
-    let owned_string number = to_string(surah_id);
+    let owned_string number = string.own(to_string(surah_id));
     if (surah_id < 10) {
-        number = string.concat("00", number);
+        number = owned_string.concat("00", number);
     }
     else if (surah_id < 100) {
-        number = string.concat("0", number);
+        number = owned_string.concat("0", number);
     }
-    let owned_string filename = string.concat("ytilawa-", number);
-    filename = string.concat(filename, ".mp3");
+    let owned_string filename = owned_string.concat("ytilawa-", number);
+    filename = owned_string.concat(filename, ".mp3");
     return player_download(url, filename);
 }
 
@@ -219,7 +222,7 @@ function ytilawa_main() -> int {
     let bool playing = false;
     let bool paused = false;
     let bool running = true;
-    let owned_string message = "Ready. Catalog: MP3Quran.net.";
+    let string message = "Ready. Catalog: MP3Quran.net.";
 
     while (running) {
         if (playing and voice.is_finished()) {
@@ -228,9 +231,11 @@ function ytilawa_main() -> int {
             message = "Playback finished.";
         }
 
+        let owned_string current_surah_label = surah_name(surahs, current_surah - 1);
+        let owned_string current_reciter_label = reciter_name(reciters, current_reciter);
         ui_draw_main(
-            surah_name(surahs, current_surah - 1),
-            reciter_name(reciters, current_reciter),
+            current_surah_label,
+            current_reciter_label,
             current_surah, volume, playing, paused, message
         );
 
@@ -337,7 +342,8 @@ function ytilawa_main() -> int {
                 message = "Could not update favorites.";
             }
         } else if (key == 97 or key == 65) {
-            if (storage_add_playlist(current_surah, reciter_name(reciters, current_reciter))) {
+            let owned_string selected_reader = reciter_name(reciters, current_reciter);
+            if (storage_add_playlist(current_surah, selected_reader)) {
                 message = "Added to the default playlist.";
             }
             else {
