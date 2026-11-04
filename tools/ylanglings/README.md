@@ -18,7 +18,7 @@ It is a companion tool rather than a compiler dependency.
 Install it for the current user:
 
 ```sh
-make -C tools/ylanglings install
+make install-ylanglings
 ```
 
 Ensure `~/.local/bin` is on PATH and that the YLang compiler is available. Then:
@@ -55,7 +55,7 @@ Other commands:
 To uninstall:
 
 ```sh
-make -C tools/ylanglings uninstall
+make uninstall-ylanglings
 ```
 
 Progress is stored locally in `$XDG_CONFIG_HOME/ylanglings/progress.json`
