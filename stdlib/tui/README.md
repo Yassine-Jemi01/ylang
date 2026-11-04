@@ -32,6 +32,6 @@ Unknown escape sequences return Escape (27). The current implementation does not
 
 Call `tui.init()` before entering the UI loop and always call `tui.shutdown()` before normal exit. The runtime also registers a process-exit restoration handler, so a normal process exit restores the saved terminal mode. Applications should still use a cleanup path for errors and user-requested exits.
 
-The API is synchronous. `tui.read_key()` blocks until input arrives; `tui.poll_key()` is nonblocking and returns `-1` when idle. Use `tui.sleep_ms()` between event-loop polls to avoid busy loops.
+The API is synchronous. `tui.read_key()` blocks until input arrives; `tui.poll_key()` is nonblocking and returns `-1` when idle. Escape-prefixed navigation sequences are given a short completion window so split terminal writes are not misread as ordinary characters. On POSIX, `std.tui` temporarily disables terminal signal handling so Ctrl+C is delivered as key code 3; the application can then shut down the UI and restore terminal state cleanly. Use `tui.sleep_ms()` between event-loop polls to avoid busy loops.
 
 The C backend is supported. The experimental NASM backend rejects raw TUI calls. POSIX raw-key behavior has a pseudo-terminal integration test; Windows console input is implemented but still requires a dedicated interactive Windows test before claiming parity.
