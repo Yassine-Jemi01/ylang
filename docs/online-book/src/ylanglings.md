@@ -60,6 +60,8 @@ compares its output with the expected result. Progress is saved locally using
 an atomic file replacement. The tool does not need an internet connection,
 does not install third-party Python packages, and sends no telemetry.
 
+Compiler check/build subprocesses have a 60-second timeout. Exercise programs are native executables and run with the current user's permissions; YLanglings is not a sandbox, so review source before running it.
+
 Some native API exercises are intentionally marked compile-only. They verify
 that the compiler accepts the documented API signatures; they do not pretend
 to exercise a native audio, GUI, or terminal device. Runtime behavior for
