@@ -1807,6 +1807,14 @@ static bool yl_terminal_is_interactive(void) {
 #endif
 }
 
+static bool yl_tui_terminal_ready(void) {
+#ifdef _WIN32
+    return _isatty(_fileno(stdin)) != 0 && _isatty(_fileno(stdout)) != 0;
+#else
+    return isatty(STDIN_FILENO) != 0 && isatty(STDOUT_FILENO) != 0;
+#endif
+}
+
 /* std.tui: raw key input and portable terminal control. */
 static bool yl_tui_active;
 static bool yl_tui_restore_registered;
@@ -1888,8 +1896,8 @@ static void yl_tui_restore(void) {
 
 static bool yl_tui_init(void) {
     if (yl_tui_active) return true;
-    if (!yl_terminal_is_interactive()) {
-        yl_tui_set_error("std.tui requires an interactive terminal");
+    if (!yl_tui_terminal_ready()) {
+        yl_tui_set_error("std.tui requires interactive stdin and stdout terminals");
         return false;
     }
 #ifdef _WIN32
