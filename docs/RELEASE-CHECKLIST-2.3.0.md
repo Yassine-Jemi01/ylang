@@ -1,0 +1,64 @@
+# YLang 2.3.0 — Stable Release Checklist
+
+**Status: blocked / development.** YLang 2.2.0 remains the latest stable release. This checklist is the mandatory pre-publication gate for the exact commit that will become `v2.3.0`.
+
+Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag, or publish assets until every required item below has evidence attached to the candidate commit.
+
+## Candidate integrity
+
+- [ ] Freeze the candidate commit and record its full Git SHA.
+- [ ] Confirm the source tree is clean and the tested SHA is the exact commit selected for release.
+- [ ] Confirm `VERSION`, README, website, online book, package metadata, changelog, and install instructions agree on the intended release version.
+- [ ] Confirm the stable compatibility boundary remains explicit: C backend is primary; NASM, HTTP/streaming, TUI, Voice, GUI/Game2D, named imports, and Windows limitations are accurately described.
+- [ ] Confirm no YTilawa application, app-specific fixture, or YTilawa-only build dependency remains; shared TUI, Voice, HTTP streaming, and Binary I/O remain.
+
+## Compiler builds and regression tests
+
+- [ ] Clean build with GCC on Linux from a fresh checkout.
+- [ ] Clean build with Clang on Linux from a fresh checkout.
+- [ ] Clean build with Clang on macOS from a fresh checkout.
+- [ ] Full compiler regression suite passes on the exact candidate commit.
+- [ ] Frontend lexer/parser unit tests pass.
+- [ ] Module loader limits pass: 256-level import depth, 1,024-module total, and 64 MiB aggregate root/imported source limit.
+- [ ] Root and imported files containing embedded NUL bytes are rejected with the documented diagnostic behavior.
+- [ ] Diagnostic output is capped at 100 entries and control/non-ASCII bytes are escaped safely.
+- [ ] Braced and unbraced parser-depth recovery tests pass; code generation fails closed if an emission diagnostic occurs.
+- [ ] CLI `help`, `--help`, `-h`, `version`, `--version`, and `-V` aliases produce identical outputs within each group.
+
+## Runtime and standard-library verification
+
+- [ ] AddressSanitizer and UndefinedBehaviorSanitizer suites pass.
+- [ ] Frontend fuzz smoke test completes without crash, hang, or sanitizer finding.
+- [ ] HTTP synchronous/task/streaming integration tests pass, including oversized response-header rejection at the 16 KiB boundary.
+- [ ] Binary file and streaming integration tests pass, including end-of-file, truncation, and buffer-boundary cases.
+- [ ] Voice-to-HTTP-stream integration passes where SDL2_mixer and a supported decoder are available; unavailable optional dependencies are reported as explicit skips.
+- [ ] TUI pseudo-terminal integration passes; interactive input, cursor restoration, and terminal resize behavior are reviewed.
+- [ ] JSON parser/accessor tests pass for malformed numbers, invalid escapes, Unicode/surrogates, UTF-8 validation, U+0000, and lookup failures.
+- [ ] JSON builder tests pass for object/array construction, escaping, duplicate keys, immutability, invalid fragments/container types, and `json.last_error()`.
+- [ ] JSON nesting accepts 128 containers and rejects 129, including when builders combine individually valid values.
+- [ ] JSON output accepts exactly 16 MiB and rejects larger generated output without returning truncated JSON.
+
+## Platforms, editor support, docs, and packaging
+
+- [ ] Native Windows MinGW-w64 smoke workflow passes; documentation does not imply full Windows parity.
+- [ ] VS Code diagnostic parser and extension checks pass.
+- [ ] Neovim diagnostic parser, syntax highlighting, and headless checks pass.
+- [ ] Zed documentation clearly labels current LSP limitations.
+- [ ] Online book builds; every Summary entry, internal anchor, reference page, and example link is checked.
+- [ ] Official website production build succeeds; navigation, mobile layout, stable release labels, 2.3 development links, and local assets pass integrity checks.
+- [ ] YSPM package builds from the candidate commit, contains one copy of each versioned changelog, and includes the required source-level library and documentation files.
+- [ ] YSPM package install and removal smoke tests pass in an isolated root.
+- [ ] Package metadata version and architecture match the release candidate.
+- [ ] Benchmarks are run with recorded OS, CPU, compiler, flags, and baseline; only reproducible measurements are published.
+
+## Final publication authorization
+
+- [ ] All required GitHub Actions and CircleCI jobs are green on the exact final candidate SHA.
+- [ ] All open blocker/high-priority security findings are fixed or explicitly documented and accepted.
+- [ ] Changelog, compatibility notes, upgrade notes, README, homepage, book, and package contents have been reviewed for consistency.
+- [ ] Convert the 2.3 development changelog into final release notes; remove development-only wording and preserve known limitations.
+- [ ] Change `VERSION` to exactly `2.3.0` and `.github/PUBLISH_STABLE` to exactly `2.3.0` together in the reviewed release-authorization commit.
+- [ ] Confirm `docs/RELEASE-CHECKLIST-2.3.0.md` contains no unchecked required gate before the stable publishing workflow is allowed to run.
+- [ ] Verify the publishing workflow tests and publishes the exact authorization commit; do not create the tag manually or reuse an existing tag.
+
+When every gate is complete, the stable release workflow may create `v2.3.0`. Follow [the post-release checklist](POST-RELEASE-CHECKLIST-2.3.0.md) afterward.
