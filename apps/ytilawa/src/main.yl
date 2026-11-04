@@ -442,6 +442,9 @@ function ytilawa_main() -> int {
         print(tui.last_error());
         return 1;
     }
+    // Clear startup and compiler/network output once; redraws use cursor-home only.
+    tui.write("\x1b[2J\x1b[H");
+    tui.flush();
     voice.init();
     let int current_surah = 1;
     let int current_reciter = reciter_display_index(reciters, 0);
