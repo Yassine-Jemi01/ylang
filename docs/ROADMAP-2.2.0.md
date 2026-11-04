@@ -1,6 +1,6 @@
 # YLang 2.2.0 Release Scope and Follow-up Roadmap
 
-**Status: YLang 2.2.0 is released. This document records the shipped scope and follow-up work; incomplete goals below are not claims that those features shipped in 2.2.0.**
+**Status: YLang 2.2.0 is released. This document records the shipped scope and follow-up work; incomplete goals below are not claims that those features shipped in 2.2.0. The JSON parser/accessor/formatter follow-up was completed for 2.2.0; immutable raw-text builders are a separate 2.3 development addition.**
 
 YLang 2.2.0 expands the toolchain with an initial HTTP/async-task API, environment-variable access, source-aware command-line debugging, and developer-tooling improvements. The documented core language and default C-backend workflow remain the compatibility foundation; the new APIs and integrations retain their stated experimental limits.
 
@@ -30,7 +30,7 @@ Provide a standard, typed way to call HTTP APIs from YLang. A first useful miles
 - Documented redirect behavior.
 - Examples that read credentials from environment/configuration rather than hard-coding secrets.
 
-YLang 2.2.0 implementation status: the C backend has synchronous HTTP helpers and a generic method API; `http.request_async`, `await http_task`, and `http.cancel` use libcurl's multi interface. Response bodies remain strings and there is no built-in JSON parser/serializer. The NASM backend does not support HTTP; the native Windows HTTP path is covered by CI, but interactive debugging is not implemented there. Never embed API credentials in the compiler or examples.
+YLang 2.2.0 implementation status: the C backend has synchronous HTTP helpers and a generic method API; `http.request_async`, `await http_task`, and `http.cancel` use libcurl's multi interface. The native `json.*` API provides bounded JSON parsing, validation, typed getters, escaping, and pretty-printing; documents and extracted values remain owned JSON strings rather than a dynamic typed value tree. Immutable raw-text object/array builders were added later in the unreleased 2.3 development line. The NASM backend does not support HTTP; the native Windows HTTP path is covered by CI, but interactive debugging is not implemented there. Never embed API credentials in the compiler or examples.
 
 ### 3. YLang Debugger
 
@@ -85,7 +85,7 @@ Website acceptance goals:
 ## Follow-up priorities
 
 1. Design and implement general-purpose async functions, scheduler behavior, and cancellation/error propagation.
-2. Add a documented JSON parser/serializer and improve HTTP API ergonomics.
+2. **Completed in 2.2.0:** add a documented raw-text JSON parser/accessor/formatter API and improve HTTP API ergonomics. A typed JSON value tree remains out of scope; immutable raw-text builders are being added in 2.3.
 3. Evaluate a dedicated VS Code Debug Adapter Protocol integration, local-variable inspection, and expanded platform support.
 4. Continue performance and security testing with reproducible baselines and explicit compatibility checks.
 5. Complete Marketplace publication and future editor-discovery work separately from the compiler release.
