@@ -297,6 +297,19 @@ jobs:
         run: |
           EXPECTED_VERSION="$(tr -d '\r\n' < .github/PUBLISH_STABLE)"
           test "$(tr -d '\r\n' < VERSION)" = "$EXPECTED_VERSION"
+      - name: Verify release notes are final stable notes
+        run: |
+          EXPECTED_VERSION="$(tr -d '\\r\\n' < .github/PUBLISH_STABLE)"
+          RELEASE_NOTES="docs/CHANGELOG-${EXPECTED_VERSION}.md"
+          test -s "$RELEASE_NOTES"
+          if ! grep -Fq "# YLang ${EXPECTED_VERSION} — Stable Release" "$RELEASE_NOTES"; then
+            echo "Release blocked: $RELEASE_NOTES does not have the stable-release heading." >&2
+            exit 1
+          fi
+          if grep -Eiq 'unreleased development|not released|under active development' "$RELEASE_NOTES"; then
+            echo "Release blocked: $RELEASE_NOTES still contains development-only status text." >&2
+            exit 1
+          fi
       - name: Ensure version-specific release checklist has no open gates
         run: |
           EXPECTED_VERSION="$(tr -d '\r\n' < .github/PUBLISH_STABLE)"
