@@ -1714,6 +1714,31 @@ if ./build/ylang check build/import-depth/main.yl > build/import-depth/depth.out
 fi
 grep -q 'E1027' build/import-depth/depth.out
 
+# The module-count limit includes the root source file.
+mkdir -p build/module-count
+: > build/module-count/main.yl
+i=0
+while [ "$i" -lt 1024 ]; do
+    printf 'function module_%s() -> int { return %s; }\n' "$i" "$i" > "build/module-count/module-$i.yl"
+    printf 'from "./module-%s.yl" import module_%s;\n' "$i" "$i" >> build/module-count/main.yl
+    i=$((i + 1))
+done
+if ./build/ylang check build/module-count/main.yl > build/module-count/count.out 2>&1; then
+    echo "FAIL: a program importing more than 1,024 source modules was accepted" >&2
+    exit 1
+fi
+grep -q 'E1028' build/module-count/count.out
+
+# The aggregate root + imported source size is bounded before large reads.
+mkdir -p build/module-size
+printf 'from "./large.yl" import large_value;\nfunction main() -> int { return 0; }\n' > build/module-size/main.yl
+truncate -s 67108864 build/module-size/large.yl
+if ./build/ylang check build/module-size/main.yl > build/module-size/size.out 2>&1; then
+    echo "FAIL: imported source exceeding the 64 MiB aggregate limit was accepted" >&2
+    exit 1
+fi
+grep -q 'E1029' build/module-size/size.out
+
 # Deeply nested statements must fail with a bounded diagnostic, not exhaust the C stack.
 mkdir -p build/statement-depth
 {
@@ -1752,6 +1777,31 @@ if ./build/ylang check build/statement-depth/unbraced.yl > build/statement-depth
     exit 1
 fi
 grep -q 'E1018' build/statement-depth/unbraced.out
+
+# Diagnostic output is capped while the compiler still returns a failure.
+{
+    i=0
+    while [ "$i" -lt 110 ]; do
+        printf 'print(missing_value);\n'
+        i=$((i + 1))
+    done
+} > build/statement-depth/diagnostic-flood.yl
+if ./build/ylang check build/statement-depth/diagnostic-flood.yl > build/statement-depth/diagnostic-flood.out 2>&1; then
+    echo "FAIL: a program with 110 unresolved names was accepted" >&2
+    exit 1
+fi
+diagnostic_count=$(grep -c 'error\[E2020\]' build/statement-depth/diagnostic-flood.out || true)
+test "$diagnostic_count" -eq 100
+grep -q 'too many errors' build/statement-depth/diagnostic-flood.out
+
+# Terminal control bytes in source excerpts and filenames must be escaped.
+control_file="$(printf 'build/statement-depth/diagnostic-\001-name.yl')"
+printf 'function main() -> int { print(missing_value); return 0; }\n' > "$control_file"
+if ./build/ylang check "$control_file" > build/statement-depth/diagnostic-control.out 2>&1; then
+    echo "FAIL: a source with an unresolved name was accepted" >&2
+    exit 1
+fi
+grep -Fq '\x01' build/statement-depth/diagnostic-control.out
 
 # Global help/version subcommands must match their option aliases.
 ./build/ylang help > build/cli-help.out
