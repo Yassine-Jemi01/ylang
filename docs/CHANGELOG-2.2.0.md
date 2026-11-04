@@ -9,6 +9,7 @@ YLang 2.2.0 expands the developer toolchain with experimental HTTP/API requests,
 - **HTTP and API requests:** synchronous helpers and `http.request(method, url, body, headers)` for GET, POST, PUT, PATCH, DELETE, and HEAD through optional libcurl support.
 - **Asynchronous HTTP tasks:** `http.request_async(...)` returns an `http_task`; `await task` consumes it and returns the response body; `http.cancel(task)` requests cancellation. The libcurl multi interface lets multiple transfers progress while tasks are awaited.
 - **Response and error inspection:** `http.status()`, `http.response_headers()`, and `http.last_error()` expose the latest response status, headers, and transport/configuration error.
+- **JSON text helpers:** the standard library includes JSON parsing, validation, typed getters, escaping, and formatting. It represents documents and extracted values as owned JSON strings rather than a dynamic typed value tree. Immutable object/array builders are part of the 2.3 development work.
 - **Environment access:** `env.get(name)` reads process environment variables without invoking a shell, allowing programs to obtain credentials without hard-coding them.
 - **Security defaults:** request-method and header validation, a 16 KiB header limit, an 8 MiB response-body limit, connect and overall timeouts, HTTPS certificate/hostname verification, and restricted redirect behavior for requests carrying custom headers.
 - **Source-aware debugger:** `ylang debug` builds with `-O0` and debug symbols, then launches GDB on Linux or LLDB on macOS. Generated C source mappings let supported breakpoints refer to original `.yl` locations.
@@ -18,7 +19,7 @@ YLang 2.2.0 expands the developer toolchain with experimental HTTP/API requests,
 ## Known limitations
 
 - Async/await applies only to HTTP task handles. General async functions, a background scheduler, and GUI/event-loop integration are not implemented.
-- HTTP response bodies are strings; a built-in JSON parser/serializer is not included.
+- HTTP response bodies are strings. JSON helpers operate on raw JSON text; they are not a typed DOM, and callers must validate provider-specific fields and malformed responses.
 - Programs that use `http.*` require libcurl development files and `pkg-config` when linking. Ordinary programs do not require libcurl.
 - HTTP method names are case-sensitive and must be uppercase. HTTP status codes such as 404 are not transport failures; callers must inspect `http.status()`.
 - Debugging is an initial CLI workflow, not a complete Debug Adapter Protocol implementation. Local-variable names and some scopes may reflect generated C. Interactive debugging is supported on Linux with GDB and macOS with LLDB; Windows and the NASM backend do not have a source-level debugger contract.
