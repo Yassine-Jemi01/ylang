@@ -397,7 +397,8 @@ function reciter_letter(borrowed_string document, int index) -> owned_string {
 /* Curated discovery order: widely followed and frequently requested reciters first.
    The source API does not publish popularity metrics, so this is an editorial shortlist. */
 function reciter_popularity_rank(borrowed_string document, int index) -> int {
-    let owned_string name = owned_string.lower(reciter_name(document, index));
+    let owned_string original_name = reciter_name(document, index);
+    let owned_string name = owned_string.lower(original_name);
     if (string.contains(name, "mishary") or string.contains(name, "mishari")) {
         return 1;
     }
