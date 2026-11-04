@@ -36,6 +36,8 @@ Edit the displayed `.yl` file directly, or use `ylanglings edit 01` to open it i
 
 ```sh
 ylanglings verify 01
+# Verify the complete curriculum against the current compiler:
+ylanglings --compiler ./build/ylang verify-all
 ```
 
 If YLang is not on PATH:
@@ -46,6 +48,7 @@ ylanglings --compiler ./build/ylang verify 01
 
 Other commands:
 
+- `verify-all` — check/build/run all 16 core exercises and 10 optional challenges, collecting failures instead of stopping at the first one.
 - `hint NUMBER` — show a hint without revealing the solution.
 - `reset NUMBER` — restore the original broken starter.
 - `list` — show core and optional exercise progress.
