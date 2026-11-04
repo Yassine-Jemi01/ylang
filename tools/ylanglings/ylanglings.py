@@ -87,9 +87,21 @@ def load_progress():
 
 def save_progress(progress):
     CONFIG.mkdir(parents=True, exist_ok=True)
-    temporary = PROGRESS.with_name(PROGRESS.name + ".tmp")
-    temporary.write_text(json.dumps(progress, indent=2) + "\n", encoding="utf-8")
-    temporary.replace(PROGRESS)
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=CONFIG,
+            prefix=".progress-", suffix=".tmp", delete=False,
+        ) as temporary:
+            temporary_path = Path(temporary.name)
+            json.dump(progress, temporary, indent=2)
+            temporary.write("\n")
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        os.replace(temporary_path, PROGRESS)
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
 
 
 def completed_exercises(progress, manifest):
@@ -282,7 +294,8 @@ def main():
     verify.add_argument("number", type=int)
     reset = sub.add_parser("reset", help="Restore the original broken exercise")
     reset.add_argument("number", type=int)
-    sub.add_parser("next", help="Open the first incomplete exercise")
+    next_parser = sub.add_parser("next", help="Show the first incomplete exercise")
+    next_parser.add_argument("--optional", action="store_true", help="Choose from optional challenges")
 
     args = parser.parse_args()
     manifest = load_manifest()
@@ -301,9 +314,15 @@ def main():
         raise SystemExit(command_verify(args.number, manifest, compiler_path(args.compiler)))
     elif args.action == "next":
         completed = completed_exercises(progress, manifest)
-        number = next((i for i, item in enumerate(manifest, 1) if i not in completed and not item.get("optional", False)), None)
-        if number is None:
-            print("All core exercises completed. Try optional challenges with: ylanglings list")
+        want_optional = args.optional
+        number = next((
+            i for i, item in enumerate(manifest, 1)
+            if i not in completed and bool(item.get("optional", False)) == want_optional
+        ), None)
+        if number is None and want_optional:
+            print("All optional challenges completed.")
+        elif number is None:
+            print("All core exercises completed. Continue with: ylanglings next --optional")
         else:
             command_run(number, manifest)
 
