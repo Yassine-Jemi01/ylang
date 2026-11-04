@@ -1,0 +1,6 @@
+function main() -> int {
+    let string raw = io.read_file("build/json-output-limit/value.json");
+    let owned_string result = json.set("{}", "x", raw);
+    print(string.length(result) == 16777216);
+    return 0;
+}
