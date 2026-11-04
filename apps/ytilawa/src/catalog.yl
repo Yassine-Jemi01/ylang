@@ -393,6 +393,65 @@ function reciter_letter(borrowed_string document, int index) -> owned_string {
     return json.get_string(item, "letter");
 }
 
+
+/* Curated discovery order: widely followed and frequently requested reciters first.
+   The source API does not publish popularity metrics, so this is an editorial shortlist. */
+function reciter_popularity_rank(borrowed_string document, int index) -> int {
+    let owned_string name = owned_string.lower(reciter_name(document, index));
+    if (string.contains(name, "mishary") or string.contains(name, "mishari")) return 1;
+    if (string.contains(name, "abdul basit") or string.contains(name, "abd al-basit")) return 2;
+    if (string.contains(name, "maher al muaiqly") or string.contains(name, "maher al-muaiqly")) return 3;
+    if (string.contains(name, "yasser al-dosari") or string.contains(name, "yasser al dosari")) return 4;
+    if (string.contains(name, "abdul rahman al-sudais") or string.contains(name, "abdurrahman al-sudais")) return 5;
+    if (string.contains(name, "saad al-ghamdi") or string.contains(name, "saad al ghamdi")) return 6;
+    if (string.contains(name, "mahmoud khalil al-husary") or string.contains(name, "mahmoud khalil al-husari")) return 7;
+    if (string.contains(name, "muhammad siddiq al-minshawi") or string.contains(name, "mohamed siddiq al-minshawi")) return 8;
+    if (string.contains(name, "ahmed al-ajmi") or string.contains(name, "ahmad al-ajmi")) return 9;
+    if (string.contains(name, "fahd al-kandari") or string.contains(name, "fahad al-kandari")) return 10;
+    if (string.contains(name, "hazza al-balushi") or string.contains(name, "hazza al balushi")) return 11;
+    if (string.contains(name, "islam sobhi")) return 12;
+    if (string.contains(name, "nasser al-qatami") or string.contains(name, "nasser al qatami")) return 13;
+    if (string.contains(name, "abdullah awad al-juhany") or string.contains(name, "abdullah al-juhany")) return 14;
+    if (string.contains(name, "fares abbad") or string.contains(name, "faris abbad")) return 15;
+    return 0;
+}
+
+function reciter_display_index(borrowed_string document, int display_index) -> int {
+    let int count = reciter_count(document);
+    let int visible = 0;
+    let int priority = 1;
+    while (priority <= 15) {
+        let int scan = 0;
+        while (scan < count) {
+            if (reciter_popularity_rank(document, scan) == priority) {
+                if (visible == display_index) return scan;
+                visible = visible + 1;
+            }
+            scan = scan + 1;
+        }
+        priority = priority + 1;
+    }
+    let int scan = 0;
+    while (scan < count) {
+        if (reciter_popularity_rank(document, scan) == 0) {
+            if (visible == display_index) return scan;
+            visible = visible + 1;
+        }
+        scan = scan + 1;
+    }
+    return 0;
+}
+
+function reciter_display_position(borrowed_string document, int source_index) -> int {
+    let int count = reciter_count(document);
+    let int display = 0;
+    while (display < count) {
+        if (reciter_display_index(document, display) == source_index) return display;
+        display = display + 1;
+    }
+    return 0;
+}
+
 function reciter_audio_url(borrowed_string document, int reciter_index, int surah_id) -> owned_string {
     let owned_string reciters = json.get(document, "reciters");
     let owned_string reciter = json.at(reciters, reciter_index);
