@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#1d3b56">
-  <meta name="description" content="YLang 2.2.0 release notes, stable core documentation, compiler guide, and experimental extension references.">
+  <meta name="description" content="YLang 2.2.0 stable documentation, experimental references, and the unreleased 2.3.0 development roadmap.">
   <meta property="og:title" content="YLang Documentation">
-  <meta property="og:description" content="Find the stable core language guide, compiler instructions, and clearly marked experimental extension references.">
+  <meta property="og:description" content="Find the stable core language guide, compiler instructions, and clearly marked experimental and 2.3 development references.">
   <title>YLang Documentation</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
@@ -38,7 +38,7 @@
       <div class="container">
         <p class="eyebrow">DOCUMENTATION</p>
         <h1>Find the right <span>reference.</span></h1>
-        <p class="docs-lede">Start with the YLang 2.2.0 online book, then use the technical references to explore the language, compiler, and experimental extensions.</p>
+        <p class="docs-lede">Start with the YLang 2.2.0 online book, then use the technical references for the stable language, experimental extensions, and 2.3 development work.</p>
         <div class="docs-version-row">
           <span><i class="version-mark" aria-hidden="true"></i> Current release <strong>2.2.0</strong></span>
           <a href="https://github.com/Yassine-Jemi01/ylang/releases/tag/v2.2.0">2.2.0 release notes ↗</a>
@@ -62,6 +62,42 @@
             <span class="docs-card-kicker">LANGUAGE REFERENCE</span><h3>Language specification</h3>
             <p>Supported syntax, types, expressions, and the exact limits of the stable language.</p>
             <span class="docs-card-link">Read the specification ↗</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="docs-section docs-section-alt" id="development-23">
+      <div class="container">
+        <div class="docs-section-head">
+          <div><p class="eyebrow">03 / IN DEVELOPMENT</p><h2>Follow YLang 2.3.0</h2></div>
+          <p>YLang 2.2.0 remains the latest stable release. These documents describe unreleased 2.3 work; validation and release gates are still pending.</p>
+        </div>
+        <div class="docs-resource-grid">
+          <a class="docs-card docs-card-featured" href="learn/reference/ROADMAP-2.3.0.html">
+            <span class="docs-card-kicker">RELEASE SCOPE</span><h3>YLang 2.3.0 roadmap</h3>
+            <p>See the accepted scope, explicit exclusions, and the checklist required before a stable release.</p>
+            <span class="docs-card-link">Read the roadmap ↗</span>
+          </a>
+          <a class="docs-card" href="learn/reference/CHANGELOG-2.3.0.html">
+            <span class="docs-card-kicker">DEVELOPMENT NOTES</span><h3>YLang 2.3.0 changes</h3>
+            <p>Review the compiler hardening, JSON builders, CLI updates, and design work integrated so far.</p>
+            <span class="docs-card-link">Read development notes ↗</span>
+          </a>
+          <a class="docs-card" href="learn/reference/JSON.html">
+            <span class="docs-card-kicker">2.2 API / 2.3 BUILDERS</span><h3>JSON standard library</h3>
+            <p>Use the stable parser and accessors, then explore the unreleased immutable raw-text builders and their limits.</p>
+            <span class="docs-card-link">Read JSON reference ↗</span>
+          </a>
+          <a class="docs-card" href="learn/reference/CLI.html">
+            <span class="docs-card-kicker">COMMAND LINE</span><h3>Compiler command reference</h3>
+            <p>Find command syntax, help/version aliases, defaults, output paths, and exit behavior.</p>
+            <span class="docs-card-link">Read CLI reference ↗</span>
+          </a>
+          <a class="docs-card" href="learn/reference/HTTP-STREAMING.html">
+            <span class="docs-card-kicker">EXPERIMENTAL STREAMING</span><h3>HTTP streaming</h3>
+            <p>Read about bounded response chunks, binary-safe buffers, stream lifetimes, and validation requirements.</p>
+            <span class="docs-card-link">Read streaming guide ↗</span>
           </a>
         </div>
       </div>
