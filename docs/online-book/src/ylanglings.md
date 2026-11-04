@@ -27,7 +27,7 @@ ylanglings run 01
 ylanglings edit 01
 ```
 
-Edit the displayed source file, then open it with `ylanglings edit 01` if desired and verify it:
+Edit the displayed source file directly, or use `ylanglings edit 01` to open it in your configured editor; then verify it:
 
 ```sh
 ylanglings verify 01
