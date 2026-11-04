@@ -453,7 +453,9 @@ function reciter_display_index(borrowed_string document, int display_index) -> i
         let int scan = 0;
         while (scan < count) {
             if (reciter_popularity_rank(document, scan) == priority) {
-                if (visible == display_index) return scan;
+                if (visible == display_index) {
+                    return scan;
+                }
                 visible = visible + 1;
             }
             scan = scan + 1;
@@ -463,7 +465,9 @@ function reciter_display_index(borrowed_string document, int display_index) -> i
     let int scan = 0;
     while (scan < count) {
         if (reciter_popularity_rank(document, scan) == 0) {
-            if (visible == display_index) return scan;
+            if (visible == display_index) {
+                return scan;
+            }
             visible = visible + 1;
         }
         scan = scan + 1;
