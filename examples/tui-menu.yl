@@ -13,6 +13,7 @@ function main() -> int {
 
     tui.hide_cursor();
     while (running) {
+        width = tui.width();
         tui.clear();
         tui.write("\x1b[38;2;147;212;200mYLANG  /  TERMINAL UI\x1b[0m\n");
         tui.write("\x1b[38;2;116;141;135mA small, native terminal interface\x1b[0m\n\n");
