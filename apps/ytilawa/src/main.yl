@@ -260,7 +260,10 @@ function choose_reciter(borrowed_string document, int current) -> int {
         tui.write(to_string(count));
         tui.write("   |   Selected: ");
         tui.write(to_string(selected + 1));
-        tui.write("\n  Up/Down Move  PgUp/PgDn Page  Home/End Jump  Enter Select  Esc Back\x1b[0m\n");
+        tui.write("\n  Up/Down Move  PgUp/PgDn Page  Home/End Jump  / Search  Enter Select  Esc Back\x1b[0m\n");
+        tui.write("  ");
+        tui.write(notice);
+        tui.write("\n");
         }
 
         let int previous_selected = selected;
