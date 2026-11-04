@@ -57,6 +57,10 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] All open blocker/high-priority security findings are fixed or explicitly documented and accepted.
 - [ ] Changelog, compatibility notes, upgrade notes, README, homepage, book, and package contents have been reviewed for consistency.
 - [ ] Convert the 2.3 development changelog into final release notes; remove development-only wording and preserve known limitations.
+- [ ] Change the release-note heading to `# YLang 2.3.0 — Stable Release` and remove every unreleased/development status notice from the versioned release notes.
+- [ ] Update README and the official homepage/documents so 2.3.0 is the latest stable release, the stable feature cards are accurate, and development labels move to the next milestone.
+- [ ] Update the online-book introduction and documentation landing page to show 2.3.0 as stable without changing the book's established visual styling.
+- [ ] Update the top-level `CHANGELOG.md` history so 2.3.0 is recorded as stable and the next development section is clearly identified.
 - [ ] Change `VERSION` to exactly `2.3.0` and `.github/PUBLISH_STABLE` to exactly `2.3.0` together in the reviewed release-authorization commit.
 - [ ] Confirm `docs/RELEASE-CHECKLIST-2.3.0.md` contains no unchecked required gate before the stable publishing workflow is allowed to run.
 - [ ] Verify the publishing workflow tests and publishes the exact authorization commit; do not create the tag manually or reuse an existing tag.
