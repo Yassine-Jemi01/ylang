@@ -3,7 +3,7 @@
 
 function fetch_surahs() -> owned_string {
     let owned_string response = http.get("https://www.mp3quran.net/api/v3/suwar?language=ar");
-    if (http.status() != 200 || string.length(http.last_error()) > 0) {
+    if (http.status() != 200 or string.length(http.last_error()) > 0) {
         return "";
     }
     return json.parse(response);
@@ -11,7 +11,7 @@ function fetch_surahs() -> owned_string {
 
 function fetch_reciters() -> owned_string {
     let owned_string response = http.get("https://www.mp3quran.net/api/v3/reciters?language=ar");
-    if (http.status() != 200 || string.length(http.last_error()) > 0) {
+    if (http.status() != 200 or string.length(http.last_error()) > 0) {
         return "";
     }
     return json.parse(response);
