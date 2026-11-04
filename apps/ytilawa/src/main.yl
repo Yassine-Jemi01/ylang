@@ -30,8 +30,8 @@ function choose_surah(string document, int current) -> int {
         }
         let int index = start;
         while (index < end) {
-            if (index == selected) tui.write("> ") {
-                ;
+            if (index == selected) {
+                tui.write("> ");
             }
             else {
                 tui.write("  ");
@@ -88,8 +88,8 @@ function choose_reciter(string document, int current) -> int {
         }
         let int index = start;
         while (index < end) {
-            if (index == selected) tui.write("> ") {
-                ;
+            if (index == selected) {
+                tui.write("> ");
             }
             else {
                 tui.write("  ");
@@ -165,11 +165,11 @@ function download_current(string reciters, int surah_id, int reciter_index) -> i
         return -1;
     }
     let owned_string number = to_string(surah_id);
-    if (surah_id < 10) number = string.concat("00", number) {
-        ;
+    if (surah_id < 10) {
+        number = string.concat("00", number);
     }
-    else if (surah_id < 100) number = string.concat("0", number) {
-        ;
+    else if (surah_id < 100) {
+        number = string.concat("0", number);
     }
     let owned_string filename = string.concat("ytilawa-", number);
     filename = string.concat(filename, ".mp3");
@@ -181,8 +181,8 @@ function show_saved(string title, string path) -> int {
     tui.clear();
     tui.write(title);
     tui.write("\n------------------------------\n");
-    if (string.length(contents) == 0) tui.write("No entries yet.\n") {
-        ;
+    if (string.length(contents) == 0) {
+        tui.write("No entries yet.\n");
     }
     else {
         tui.write(contents);
@@ -337,9 +337,8 @@ function ytilawa_main() -> int {
                 message = "Could not update favorites.";
             }
         } else if (key == 97 or key == 65) {
-            if (storage_add_playlist(current_surah, reciter_name(reciters, current_reciter))) {
+            if (storage_add_playlist(current_surah, reciter_name(reciters, current_reciter)))
                 message = "Added to the default playlist.";
-            }
             else {
                 message = "Could not update playlist.";
             }
