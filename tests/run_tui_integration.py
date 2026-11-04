@@ -133,7 +133,30 @@ def main():
         finally:
             os.close(signal_master)
             os.close(signal_slave)
-        print("YLang TUI raw-key and signal-restoration integration tests passed.")
+        # TUI must refuse a tty on stdin when stdout is redirected.
+        redirected_master, redirected_slave = pty.openpty()
+        try:
+            redirected_original = termios.tcgetattr(redirected_slave)
+            redirected_process = subprocess.run(
+                [str(ROOT / executable)],
+                cwd=ROOT,
+                stdin=redirected_slave,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=3,
+            )
+            if redirected_process.returncode != 1 or b"interactive stdin and stdout" not in redirected_process.stdout:
+                raise SystemExit(
+                    "TUI did not reject redirected stdout: "
+                    f"status={redirected_process.returncode}, output={redirected_process.stdout!r}"
+                )
+            redirected_after = termios.tcgetattr(redirected_slave)
+            if redirected_after != redirected_original:
+                raise SystemExit("TUI changed terminal mode despite redirected stdout")
+        finally:
+            os.close(redirected_master)
+            os.close(redirected_slave)
+        print("YLang TUI raw-key, signal-restoration, and redirected-output tests passed.")
     finally:
         os.close(master)
         os.close(slave)
