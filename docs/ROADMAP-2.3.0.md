@@ -29,7 +29,14 @@ Make YLang 2.3 a dependable, polished minor release: improve the existing compil
 - Book: preserve its current visual identity; only fix navigation, broken links, examples, and factual inaccuracies.
 - Editor support: verify installation instructions, language ID, diagnostics, and version metadata.
 
-### 4. Documentation and release engineering
+### 4. Learning experience — YLanglings
+- Treat YLanglings as an in-scope 2.3 developer-experience deliverable, not an optional afterthought.
+- Keep the 16-exercise core track and 10 optional challenges aligned with the actual 2.3 compiler syntax and APIs.
+- Validate manifest integrity, starter/reset pairs, ordered listing, hints, progress persistence, retry/reset behavior, compiler selection, and clear CLI errors.
+- Verify the tool installs and uninstalls cleanly for a user, works offline, and documents the distinction between runnable exercises and compile-only native API checks.
+- Include manifest/CLI regression tests in CI; compiler-backed exercise verification remains a release gate on the final candidate.
+
+### 5. Documentation and release engineering
 - Align README, changelog, website, book, API references, platform guides, and package metadata.
 - Document dependencies and feature/backend/platform support.
 - Maintain version-specific pre- and post-publication checklists, enforce release-note/version consistency in the publishing workflow, and record reproducible benchmark baselines.
@@ -59,6 +66,8 @@ A release candidate is not ready until all applicable gates below pass on the ex
 - [ ] HTTP streaming, binary streaming, HTTP task, Voice (where SDL2_mixer is available), and TUI integration tests pass.
 - [ ] `make tui-example` builds the responsive terminal-menu sample from a clean checkout and the example remains documented in both std.tui references.
 - [ ] JSON parser and builder edge cases pass, including malformed input, escaping, duplicate keys, limits, and error behavior.
+- [ ] YLanglings manifest and CLI contract tests pass; all 16 core and 10 optional exercises are checked against the final compiler, with native API checks clearly identified.
+- [ ] YLanglings user install/uninstall smoke test passes and offline operation is confirmed.
 - [ ] Website production build and asset/link integrity checks pass.
 - [ ] Online book builds and all referenced pages/examples are checked.
 - [ ] Editor diagnostics and extension packaging checks pass.
@@ -76,6 +85,7 @@ A release candidate is not ready until all applicable gates below pass on the ex
 - The shared TUI, Voice, HTTP streaming, and binary I/O libraries remain in scope; only the YTilawa application and its dedicated tests/build steps were removed.
 - The book build pipeline now copies the JSON, HTTP Streaming, CLI, 2.3 notes, and roadmap references; the homepage resources menu links to the development roadmap.
 - The stable-release candidate workflow and CircleCI now build the responsive TUI example and compile/test the optional Voice runtime, including the dummy-audio runtime test; SDL2_mixer is installed explicitly on Linux/macOS release runners.
+- YLanglings is in the 2.3 acceptance scope: its current CLI/manifest and exercise coverage need regression tests and a final compiler-backed pass; no such pass is claimed yet.
 - Automated checks have intentionally been deferred until the implementation work is complete; no passing result is claimed yet.
 
 - 2.3 implementation is integrated directly into `main`; each workstream is recorded in commit history and this checklist.
