@@ -2,7 +2,7 @@
 
 function ui_draw_main(borrowed_string surah, borrowed_string reciter, int surah_id,
                       int volume, bool playing, bool paused, borrowed_string message) -> int {
-    tui.clear();
+    tui.write("\x1b[?2026h\x1b[H");
 
     tui.write("\x1b[1;36m");
     tui.write("  YTILAWA EXTENDED\n");
@@ -39,17 +39,20 @@ function ui_draw_main(borrowed_string surah, borrowed_string reciter, int surah_
     tui.write("\x1b[0;37m");
     tui.write("  B  Browse surahs       R  Browse readers\n");
     tui.write("  /  Search surah        G  Search reader\n");
-    tui.write("  Space  Play / Pause    N  Next     P  Previous\n");
-    tui.write("  S  Stop                F  Favorite  A  Add playlist\n");
+    tui.write("  Space  Play / Pause\n");
+    tui.write("  N  Next surah          P  Previous surah\n");
+    tui.write("  S  Stop                F  Favorite\n");
+    tui.write("  A  Add to playlist     C  Open playlist\n");
     tui.write("  D  Download            L  Local MP3\n");
-    tui.write("  H  History             V  Favorites  C  Playlist\n");
-    tui.write("  + / -  Volume          Q  Quit\n");
+    tui.write("  H  History             V  Favorites\n");
+    tui.write("  + / -  Volume          Q / Ctrl+C  Quit\n");
     tui.write("\x1b[0m\n");
 
     tui.write("\x1b[0;90m  ------------------------------------------------------------\n");
     tui.write("\x1b[1;36m  ");
     tui.write(message);
     tui.write("\x1b[0m\n");
+    tui.write("\x1b[J\x1b[?2026l");
     return 0;
 }
 
