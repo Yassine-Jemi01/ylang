@@ -23,6 +23,7 @@ function choose_surah(borrowed_string document, int current) -> int {
         page_size = 18;
     }
     let bool redraw = true;
+    let string notice = "Use / to jump to a surah by name.";
     let bool done = false;
 
     while (!done) {
@@ -86,7 +87,10 @@ function choose_surah(borrowed_string document, int current) -> int {
         tui.write(to_string(count));
         tui.write("   |   Selected: ");
         tui.write(to_string(selected + 1));
-        tui.write("\n  Up/Down Move  PgUp/PgDn Page  Home/End Jump  Enter Select  Esc Back\x1b[0m\n");
+        tui.write("\n  Up/Down Move  PgUp/PgDn Page  Home/End Jump  / Search  Enter Select  Esc Back\x1b[0m\n");
+        tui.write("  ");
+        tui.write(notice);
+        tui.write("\n");
         }
 
         let int previous_selected = selected;
@@ -114,6 +118,33 @@ function choose_surah(borrowed_string document, int current) -> int {
         }
         else if (key == 1006) {
             selected = count - 1;
+        }
+        else if (key == 47) {
+            let owned_string query = ui_prompt("Find reader (English name): ");
+            if (string.length(query) == 0) {
+                notice = "Search cancelled.";
+            }
+            else {
+                let owned_string needle = owned_string.lower(query);
+                let int scan = 0;
+                let bool found = false;
+                while (scan < count and !found) {
+                    let owned_string candidate = reciter_name(document, scan);
+                    let owned_string lowered = owned_string.lower(candidate);
+                    if (string.contains(lowered, needle)) {
+                        selected = scan;
+                        found = true;
+                    }
+                    scan = scan + 1;
+                }
+                if (found) {
+                    notice = "Match found. Press Enter to confirm.";
+                }
+                else {
+                    notice = "No matching reader was found.";
+                }
+            }
+            redraw = true;
         }
         else if (key == 13) {
             done = true;
