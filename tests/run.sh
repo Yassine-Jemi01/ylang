@@ -11,6 +11,11 @@ grep -q 'ylang check' build/help.out
 grep -q 'ylang debug' build/help.out
 grep -Fq "YLang v${EXPECTED_VERSION} — compiled language toolchain" build/help.out
 ./build/ylang check examples/type-conversions.yl >/dev/null
+if ./build/ylang check examples/type-conversions.yl --cc clang > build/check-cc.out 2>&1; then
+    echo "FAIL: check silently accepted an unused --cc option" >&2
+    exit 1
+fi
+grep -Fq -- "--cc is only supported by build and debug" build/check-cc.out
 ./build/ylang build examples/type-conversions.yl -o build/test-type-conversions >/dev/null
 ./build/test-type-conversions > build/type-conversions.out
 diff -u tests/expected-type-conversions.txt build/type-conversions.out
