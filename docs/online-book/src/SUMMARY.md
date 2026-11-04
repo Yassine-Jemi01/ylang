@@ -64,5 +64,7 @@
 - [YLang 2.2.0 Release Notes](reference/CHANGELOG-2.2.0.md)
 - [2.2.0 Acceptance Procedure](reference/ACCEPTANCE-2.2.0.md)
 - [Stable Release Checklist](reference/STABLE-RELEASE-CHECKLIST.md)
+- [YLang 2.3.0 Pre-release Checklist](reference/RELEASE-CHECKLIST-2.3.0.md)
+- [YLang 2.3.0 Post-release Checklist](reference/POST-RELEASE-CHECKLIST-2.3.0.md)
 - [Previous Beta Notes](reference/CHANGELOG-2.0-BETA.md)
 - [Beta Release Checklist (historical)](reference/BETA-RELEASE-CHECKLIST.md)
