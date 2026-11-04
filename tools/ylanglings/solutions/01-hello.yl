@@ -1,0 +1,4 @@
+function main() -> int {
+    print("Hello, YLang!");
+    return 0;
+}
