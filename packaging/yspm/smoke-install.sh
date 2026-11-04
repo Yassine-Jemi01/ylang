@@ -46,18 +46,21 @@ if [[ ! -x "$INSTALLED_COMPILER" ]]; then
 fi
 
 INSTALLED_DOCS="$INSTALL_ROOT/usr/share/doc/ylang"
-for required_doc in \
-    CHANGELOG.md \
-    "CHANGELOG-$VERSION.md" \
-    CHANGELOG-2.3.0.md \
-    ROADMAP-2.3.0.md \
-    RELEASE-CHECKLIST-2.3.0.md \
-    POST-RELEASE-CHECKLIST-2.3.0.md \
-    JSON.md \
-    HTTP-STREAMING.md \
-    CLI.md \
+required_docs=(
+    CHANGELOG.md
+    "CHANGELOG-$VERSION.md"
+    ROADMAP-2.3.0.md
+    RELEASE-CHECKLIST-2.3.0.md
+    POST-RELEASE-CHECKLIST-2.3.0.md
+    JSON.md
+    HTTP-STREAMING.md
+    CLI.md
     error-codes.md
-do
+)
+if [[ "$VERSION" != "2.3.0" ]]; then
+    required_docs+=(CHANGELOG-2.3.0.md)
+fi
+for required_doc in "${required_docs[@]}"; do
     if [[ ! -s "$INSTALLED_DOCS/$required_doc" ]]; then
         echo "smoke-install: installed package is missing documentation file $required_doc" >&2
         exit 1
