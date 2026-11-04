@@ -115,8 +115,17 @@ def main() -> int:
         native_cc_version = run([args.cc, "--version"], cwd=ROOT).stdout.splitlines()[0]
         print(f"YLang version: {version_output}")
         print(f"Host: {platform.platform()}")
+        print(f"Host architecture: {platform.machine() or 'unknown'}")
+        print(f"Host CPU: {platform.processor() or 'unknown'}")
         print(f"Native C compiler: {native_cc_version}")
-        print(f"YLANG_OPT_LEVEL: {os.environ.get('YLANG_OPT_LEVEL', 'default')}")
+        requested_opt = os.environ.get("YLANG_OPT_LEVEL", "").strip()
+        optimization = {
+            "0": "-O0", "1": "-O1", "2": "-O2",
+            "3": "-O3", "s": "-Os",
+        }.get(requested_opt, "-O2")
+        print(f"YLANG_OPT_LEVEL: {requested_opt or 'default'}")
+        print(f"Native optimization flag: {optimization}")
+        print("YLang native build flags: -std=c17 -g -fstack-protector-strong")
         print(f"Source: {source}")
         print(f"Measured runs: {args.runs}; warm-ups: {args.warmup}")
         print(f"Compile median: {median_ms(compile_samples):.3f} ms")
