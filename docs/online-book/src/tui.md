@@ -13,7 +13,7 @@ function main() -> int {
 
     tui.hide_cursor();
     tui.clear();
-    tui.write("YTilawa\n");
+    tui.write("Terminal dashboard\n");
     tui.write("Use the arrow keys; press Enter to exit.\n");
 
     let bool running = true;
