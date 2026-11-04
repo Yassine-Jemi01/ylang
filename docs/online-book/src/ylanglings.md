@@ -31,6 +31,8 @@ Edit the displayed source file directly, or use `ylanglings edit 01` to open it 
 
 ```sh
 ylanglings verify 01
+# Verify the complete curriculum against the current compiler:
+ylanglings --compiler ./build/ylang verify-all
 ```
 
 If the compiler is not on PATH, pass its location:
