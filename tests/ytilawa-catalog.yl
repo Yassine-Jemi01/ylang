@@ -1,4 +1,4 @@
-from "../apps/ytilawa/src/catalog.yl" import reciter_audio_url;
+from "../apps/ytilawa/src/catalog.yl" import reciter_audio_url, surah_name;
 
 function main() -> int {
     let owned_string document = json.parse("{\"reciters\":[{\"name\":\"Fixture Reader\",\"moshaf\":[{\"server\":\"https://audio.example/\",\"surah_list\":\"1,2,10,114\"}]}]}");
@@ -7,5 +7,9 @@ function main() -> int {
     print(reciter_audio_url(document, 0, 10));
     print(reciter_audio_url(document, 0, 114));
     print(string.length(reciter_audio_url(document, 0, 5)));
+    print(surah_name(0));
+    print(surah_name(1));
+    print(surah_name(2));
+    print(surah_name(113));
     return 0;
 }
