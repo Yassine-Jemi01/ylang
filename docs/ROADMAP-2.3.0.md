@@ -23,7 +23,7 @@ Make YLang 2.3 a dependable, polished minor release: improve the existing compil
 - Voice and GUI remain optional integrations with explicit native dependencies and platform limits.
 
 ### 3. Developer experience and design
-- CLI: consistent command help, version output, concise success messages, readable diagnostics, and predictable exit codes.
+- CLI: consistent command help, version output, concise success messages, readable diagnostics, and predictable exit codes. The `help`/`version` subcommands and their option aliases are integrated, with a dedicated command reference; validation is still pending.
 - TUI examples: intentional hierarchy, restrained YLang teal/rust palette, clear focus state, keyboard hints, and narrow-terminal fallback.
 - Official homepage: polished responsive layout, live-looking but truthful code/build preview, clear stable-version/install path, and consistent official logo assets.
 - Book: preserve its current visual identity; only fix navigation, broken links, examples, and factual inaccuracies.
@@ -62,7 +62,7 @@ A release candidate is not ready until all applicable gates below pass on the ex
 - [ ] Editor diagnostics and extension packaging checks pass.
 - [ ] YSPM package build, archive inspection, install, and removal smoke tests pass.
 - [ ] Benchmarks are run on a recorded machine/toolchain and compared with the 2.2 baseline; publish only measured results.
-- [ ] No YTilawa app or YTilawa-specific test/build dependency remains.
+- [x] No YTilawa app or YTilawa-specific test/build dependency remains.
 - [ ] Changelog, version metadata, install instructions, and release notes agree.
 - [ ] Version is changed to 2.3.0 only after the gates above pass; tag and GitHub release are created from that verified commit.
 
