@@ -53,7 +53,7 @@ A release candidate is not ready until all applicable gates below pass on the ex
 - [ ] Clean build with Clang on macOS.
 - [ ] Native Windows smoke workflow passes; support claims remain limited to what is covered.
 - [ ] Full compiler regression suite passes, including frontend unit tests and integration tests.
-- [ ] Focused regression cases pass for the 1,024-module and 64 MiB total-project-source limits (including root-file pre-allocation rejection), the 100-diagnostic cap, control-byte escaping, deep braced/unbraced parser nesting, JSON builder argument typing, invalid fragments, duplicate keys, and the exact 16 KiB HTTP-header boundary.
+- [ ] Focused regression cases pass for the 1,024-module and 64 MiB total-project-source limits (including root-file pre-allocation rejection), the 100-diagnostic cap, root/imported embedded-NUL rejection, control-byte escaping, deep braced/unbraced parser nesting, JSON builder argument typing, invalid fragments, duplicate keys, and the exact 16 KiB HTTP-header boundary.
 - [ ] AddressSanitizer and UndefinedBehaviorSanitizer suites pass.
 - [ ] Frontend fuzz smoke test completes without crash or sanitizer finding.
 - [ ] HTTP streaming, binary streaming, HTTP task, Voice (where SDL2_mixer is available), and TUI integration tests pass.
@@ -69,7 +69,7 @@ A release candidate is not ready until all applicable gates below pass on the ex
 
 ## Current workstream notes
 
-- Integrated on `main`: YTilawa app removal, homepage/TUI design refresh, bounded diagnostics and module loading with root-file size rejection before allocation, HTTP header underflow guard with an exact-boundary loopback fixture, immutable JSON builders with duplicate-key replacement, parser recovery for braced and unbraced nesting, fail-closed C generation diagnostics, and CLI help/version subcommands.
+- Integrated on `main`: YTilawa app removal, homepage/TUI design refresh, bounded diagnostics and module loading with root-file size rejection before allocation and imported-source NUL rejection, HTTP header underflow guard with an exact-boundary loopback fixture, immutable JSON builders with duplicate-key replacement, parser recovery for braced and unbraced nesting, fail-closed C generation diagnostics, and CLI help/version subcommands.
 - The shared TUI, Voice, HTTP streaming, and binary I/O libraries remain in scope; only the YTilawa application and its dedicated tests/build steps were removed.
 - The book build pipeline now copies the JSON, HTTP Streaming, CLI, 2.3 notes, and roadmap references; the homepage resources menu links to the development roadmap.
 - Automated checks have intentionally been deferred until the implementation work is complete; no passing result is claimed yet.
