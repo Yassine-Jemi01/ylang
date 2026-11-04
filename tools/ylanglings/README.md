@@ -15,10 +15,10 @@ It is a companion tool rather than a compiler dependency.
 
 ## Start
 
-Install it for the current user:
+Install it for the current user (the default path is `$HOME/.local`):
 
 ```sh
-make install-ylanglings
+make install-ylanglings PREFIX="$HOME/.local"
 ```
 
 Ensure `~/.local/bin` is on PATH and that the YLang compiler is available. Then:
@@ -55,7 +55,7 @@ Other commands:
 To uninstall:
 
 ```sh
-make uninstall-ylanglings
+make uninstall-ylanglings PREFIX="$HOME/.local"
 ```
 
 Progress is stored locally in `$XDG_CONFIG_HOME/ylanglings/progress.json`
