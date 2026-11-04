@@ -149,7 +149,7 @@ function HeroPreview() {
 <span className="preview-line"><span className="preview-ln">5</span><span>    <b>return</b> 0;</span></span>
 <span className="preview-line"><span className="preview-ln">6</span><span>{'}'}</span></span></code></pre>
         <div className="preview-terminal">
-          <div className="preview-terminal-heading"><span><i /> TERMINAL</span><span>BUILD SUCCEEDED</span></div>
+          <div className="preview-terminal-heading"><span><i /> TERMINAL</span><span>EXAMPLE OUTPUT</span></div>
           <pre><code><span className="preview-prompt">$</span> ylang build hello.yl -o hello
 <span className="preview-success">✓</span> Compiled to native executable
 <span className="preview-prompt">$</span> ./hello
