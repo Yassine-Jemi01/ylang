@@ -2,7 +2,7 @@
 
 function ui_draw_main(borrowed_string surah, borrowed_string reciter, int surah_id,
                       int volume, bool playing, bool paused, borrowed_string message) -> int {
-    tui.write("\x1b[H\x1b[J");
+    tui.write("\x1b[H");
 
     tui.write("\x1b[1;36m");
     tui.write("  YTILAWA EXTENDED\n");
