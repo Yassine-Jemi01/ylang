@@ -40,6 +40,9 @@ def load_manifest():
         missing = [field for field in required if not isinstance(item.get(field), str) or not item[field].strip()]
         if missing:
             raise SystemExit(f"Invalid manifest entry {number}: missing {', '.join(missing)}.")
+        for field in required:
+            if any(ord(character) < 32 or ord(character) == 127 for character in item[field]):
+                raise SystemExit(f"Invalid manifest entry {number}: {field} contains control characters.")
         mode = item.get("mode", "run")
         if not isinstance(mode, str) or mode not in {"run", "check"}:
             raise SystemExit(f"Invalid mode in manifest entry {number}: {mode!r}.")
@@ -50,10 +53,17 @@ def load_manifest():
             raise SystemExit(f"Runnable exercise {number} needs expected_output.")
         resolved_paths = {}
         for field in ("file", "starter"):
-            candidate = (root / item[field]).resolve()
-            if not candidate.is_relative_to(root):
+            if "\\0" in item[field]:
                 raise SystemExit(f"Manifest entry {number} has an unsafe {field} path.")
-            if not candidate.is_file():
+            try:
+                candidate = (root / item[field]).resolve()
+                contained = candidate.is_relative_to(root)
+                exists = candidate.is_file()
+            except (OSError, RuntimeError, ValueError) as error:
+                raise SystemExit(f"Invalid {field} path in manifest entry {number}: {error}") from error
+            if not contained:
+                raise SystemExit(f"Manifest entry {number} has an unsafe {field} path.")
+            if not exists:
                 raise SystemExit(f"Manifest entry {number} references missing {field}: {item[field]}")
             resolved_paths[field] = candidate
         exercise_path_resolved = str(resolved_paths["file"])
