@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import shutil
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -20,8 +21,50 @@ PROGRESS = CONFIG / "progress.json"
 
 
 def load_manifest():
-    with MANIFEST.open(encoding="utf-8") as handle:
-        return json.load(handle)
+    try:
+        with MANIFEST.open(encoding="utf-8") as handle:
+            manifest = json.load(handle)
+    except (OSError, json.JSONDecodeError) as error:
+        raise SystemExit(f"Could not read YLanglings manifest: {error}") from error
+    if not isinstance(manifest, list) or not manifest:
+        raise SystemExit("Invalid YLanglings manifest: expected a non-empty exercise list.")
+    seen_files = set()
+    core_count = optional_count = 0
+    root = EXERCISES.resolve()
+    for number, item in enumerate(manifest, 1):
+        if not isinstance(item, dict):
+            raise SystemExit(f"Invalid manifest entry {number}: expected an object.")
+        required = ("title", "category", "file", "starter", "description", "hint")
+        missing = [field for field in required if not isinstance(item.get(field), str) or not item[field].strip()]
+        if missing:
+            raise SystemExit(f"Invalid manifest entry {number}: missing {', '.join(missing)}.")
+        mode = item.get("mode", "run")
+        if mode not in {"run", "check"}:
+            raise SystemExit(f"Invalid mode in manifest entry {number}: {mode!r}.")
+        optional = item.get("optional", False)
+        if not isinstance(optional, bool):
+            raise SystemExit(f"Invalid optional flag in manifest entry {number}.")
+        if mode == "run" and not isinstance(item.get("expected_output"), str):
+            raise SystemExit(f"Runnable exercise {number} needs expected_output.")
+        for field in ("file", "starter"):
+            candidate = (root / item[field]).resolve()
+            if not candidate.is_relative_to(root):
+                raise SystemExit(f"Manifest entry {number} has an unsafe {field} path.")
+            if not candidate.is_file():
+                raise SystemExit(f"Manifest entry {number} references missing {field}: {item[field]}")
+        if item["file"] in seen_files:
+            raise SystemExit(f"Duplicate exercise file in manifest entry {number}: {item['file']}")
+        seen_files.add(item["file"])
+        if optional:
+            optional_count += 1
+        else:
+            core_count += 1
+    if core_count != 16 or optional_count != 10:
+        raise SystemExit(
+            f"Invalid 2.3 exercise tracks: expected 16 core and 10 optional, "
+            f"found {core_count} core and {optional_count} optional."
+        )
+    return manifest
 
 
 def load_progress():
@@ -81,16 +124,42 @@ def print_exercise(number, item):
 
 def command_list(manifest, progress):
     completed = completed_exercises(progress, manifest)
-    for number, item in enumerate(manifest, 1):
+    core = [(number, item) for number, item in enumerate(manifest, 1) if not item.get("optional", False)]
+    optional = [(number, item) for number, item in enumerate(manifest, 1) if item.get("optional", False)]
+    print("CORE TRACK")
+    for number, item in core:
         mark = "✓" if number in completed else " "
         print(f"[{mark}] {number:02d}  {item['title']:<27} {item['category']}")
-    print(f"\n{len(completed)}/{len(manifest)} completed")
+    core_done = sum(number in completed for number, _ in core)
+    print(f"\nCore progress: {core_done}/{len(core)}")
+    print("\nOPTIONAL CHALLENGES")
+    for number, item in optional:
+        mark = "✓" if number in completed else " "
+        print(f"[{mark}] {number:02d}  {item['title']:<27} {item['category']}")
+    optional_done = sum(number in completed for number, _ in optional)
+    print(f"Optional progress: {optional_done}/{len(optional)}")
 
 
 def command_run(number, manifest):
     if number < 1 or number > len(manifest):
         raise SystemExit("Unknown exercise number. Run 'ylanglings list'.")
     print_exercise(number, manifest[number - 1])
+
+
+def command_edit(number, manifest):
+    if number < 1 or number > len(manifest):
+        raise SystemExit("Unknown exercise number. Run 'ylanglings list'.")
+    editor = os.environ.get("VISUAL") or os.environ.get("EDITOR")
+    if not editor:
+        raise SystemExit("No editor configured. Set EDITOR (for example: export EDITOR=nano).")
+    command = shlex.split(editor)
+    if not command:
+        raise SystemExit("EDITOR is empty. Set EDITOR to an editor command.")
+    target = exercise_path(manifest[number - 1])
+    try:
+        return subprocess.run([*command, str(target)], check=False).returncode
+    except OSError as error:
+        raise SystemExit(f"Could not launch editor {command[0]!r}: {error}") from error
 
 
 def command_hint(number, manifest):
@@ -204,6 +273,8 @@ def main():
     sub.add_parser("list", help="List all exercises")
     run = sub.add_parser("run", help="Show an exercise and its source path")
     run.add_argument("number", type=int)
+    edit = sub.add_parser("edit", help="Open an exercise in $VISUAL or $EDITOR")
+    edit.add_argument("number", type=int)
     hint = sub.add_parser("hint", help="Show a hint without revealing a solution")
     hint.add_argument("number", type=int)
     verify = sub.add_parser("verify", help="Compile and run your solution")
@@ -219,6 +290,8 @@ def main():
         command_list(manifest, progress)
     elif args.action == "run":
         command_run(args.number, manifest)
+    elif args.action == "edit":
+        raise SystemExit(command_edit(args.number, manifest))
     elif args.action == "hint":
         command_hint(args.number, manifest)
     elif args.action == "reset":
