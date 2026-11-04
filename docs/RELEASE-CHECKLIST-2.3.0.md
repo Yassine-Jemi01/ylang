@@ -44,7 +44,7 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] Manifest validation passes: all exercise/starter paths exist, exercise IDs/files are unique, and every entry has valid metadata.
 - [ ] All 16 core exercises pass against the exact candidate compiler; runnable exercises build/run with expected output and compile-only API checks are explicitly identified.
 - [ ] All 10 optional challenges pass their documented verification mode against the exact candidate compiler.
-- [ ] CLI list/next/run/hint/verify/reset behavior, progress persistence/recovery, invalid exercise handling, and custom compiler selection pass regression tests.
+- [ ] CLI list/next/next --optional/run/edit/hint/verify/reset behavior, progress persistence/recovery, invalid exercise handling, safe manifest path validation, and custom compiler selection pass regression tests.
 - [ ] User install/uninstall smoke test passes; the installed tool works offline and does not require third-party Python packages.
 
 ## Platforms, editor support, docs, and packaging
