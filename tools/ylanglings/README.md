@@ -48,7 +48,7 @@ ylanglings --compiler ./build/ylang verify 01
 
 Other commands:
 
-- `verify-all` — check/build/run all 16 core exercises and 10 optional challenges, collecting failures instead of stopping at the first one.
+- `verify-all` — check/build/run all 16 core exercises and 10 optional challenges, collecting failures instead of stopping at the first one. It uses temporary progress state and does not change your learner progress.
 - `hint NUMBER` — show a hint without revealing the solution.
 - `reset NUMBER` — restore the original broken starter.
 - `list` — show core and optional exercise progress.
