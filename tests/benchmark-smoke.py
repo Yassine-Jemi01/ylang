@@ -18,7 +18,7 @@ if result.returncode != 0:
     sys.stderr.write(result.stdout)
     sys.stderr.write(result.stderr)
     raise SystemExit(result.returncode)
-for label in ("Compile median:", "Run median:", "Binary size:"):
+for label in ("Host architecture:", "Host CPU:", "Native C compiler:", "Native optimization flag:", "Compile median:", "Run median:", "Binary size:"):
     if label not in result.stdout:
         raise SystemExit(f"benchmark output missing {label!r}:\n{result.stdout}")
 print("YLang native benchmark smoke test passed.")
