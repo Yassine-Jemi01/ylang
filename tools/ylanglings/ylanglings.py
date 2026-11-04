@@ -16,7 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 EXERCISES = ROOT / "exercises"
 MANIFEST = ROOT / "manifest.json"
-CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "ylanglings"
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or (Path.home() / ".config")) / "ylanglings"
 PROGRESS = CONFIG / "progress.json"
 
 
