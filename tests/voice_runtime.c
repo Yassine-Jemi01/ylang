@@ -122,8 +122,10 @@ int main(void)
 
     ylvoice_pause();
     if (!ylvoice_is_paused()) return fail("pause state was not reported");
+    if (ylvoice_is_playing()) return fail("paused music was reported as actively playing");
     ylvoice_resume();
     if (ylvoice_is_paused()) return fail("resume did not clear the paused state");
+    if (!ylvoice_is_playing()) return fail("resumed music was not reported as actively playing");
     SDL_Delay(400U);
     if (!ylvoice_is_finished()) return fail("natural playback completion was not reported");
     if (ylvoice_is_playing()) return fail("completed music still reports as playing");
@@ -149,8 +151,10 @@ int main(void)
         return fail("second callback-backed stream playback failed");
     ylvoice_pause();
     if (!ylvoice_is_paused()) return fail("stream pause state was not reported");
+    if (ylvoice_is_playing()) return fail("paused stream was reported as actively playing");
     ylvoice_resume();
     if (ylvoice_is_paused()) return fail("stream resume did not clear the paused state");
+    if (!ylvoice_is_playing()) return fail("resumed stream was not reported as actively playing");
     SDL_Delay(20U);
     ylvoice_stop();
     if (ylvoice_is_playing()) return fail("stopped stream still reports as playing");
