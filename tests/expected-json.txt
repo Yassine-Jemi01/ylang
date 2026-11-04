@@ -11,7 +11,7 @@ false
 hello
 world
 {"name":"YLang","\u03bb":42,"version":23,"price":2.5,"unicode":"\uD83D\uDE00","enabled":true,"items":[1,2,3],"message":"hello\nworld"}
-{"title":"Tilawa","count":3,"line\nkey":false}
+{"title":"YLang","count":3,"line\nkey":false}
 false
 Invalid JSON syntax
 
@@ -20,13 +20,13 @@ JSON string contains U+0000, which YLang strings cannot represent
   "text": "a, b: c",
   "n": 1
 }
-{"title":"Tilawa","count":3}
-Tilawa
+{"title":"YLang","count":3}
+YLang
 3
-{"title":"Tilawa","count":4}
+{"title":"YLang","count":4}
 [1,true]
 2
-{"title":"Tilawa"}
+{"title":"YLang"}
 {"count":9,"other":true}
 {"other":true}
-{"title":"Tilawa","count":3,"line\\nkey":false}
+{"title":"YLang","count":3,"line\\nkey":false}
