@@ -285,6 +285,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     name: Require CircleCI success on the release commit
     runs-on: ubuntu-latest
+    timeout-minutes: 18
     permissions:
       statuses: read
     steps:
