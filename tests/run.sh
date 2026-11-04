@@ -1718,6 +1718,29 @@ PY
 ./build/test-json-depth > build/json-depth.stdout
 diff -u tests/expected-json-depth.txt build/json-depth.stdout
 
+# JSON output may reach 16 MiB, but builders must reject a result above it.
+mkdir -p build/json-output-limit
+./build/ylang check tests/json-output-limit.yl >/dev/null
+./build/ylang build tests/json-output-limit.yl -o build/test-json-output-limit >/dev/null
+python3 - <<'PY'
+from pathlib import Path
+limit = 16 * 1024 * 1024
+# json.set adds exactly six bytes around the raw value: {"x": ... }.
+Path("build/json-output-limit/value.json").write_bytes(b'"' + b'a' * (limit - 8) + b'"')
+PY
+./build/test-json-output-limit > build/json-output-limit/exact.out
+grep -Fxq 'true' build/json-output-limit/exact.out
+python3 - <<'PY'
+from pathlib import Path
+limit = 16 * 1024 * 1024
+Path("build/json-output-limit/value.json").write_bytes(b'"' + b'a' * (limit - 3) + b'"')
+PY
+if ./build/test-json-output-limit > build/json-output-limit/overflow.out 2>&1; then
+    echo "FAIL: JSON builder accepted output larger than 16 MiB" >&2
+    exit 1
+fi
+grep -q 'JSON output exceeds the 16 MiB limit' build/json-output-limit/overflow.out
+
 # std.terminal line input, typed parsing, flushing, and redirected stdin detection.
 ./build/ylang check tests/terminal-input.yl >/dev/null
 ./build/ylang build tests/terminal-input.yl -o build/test-terminal-input >/dev/null
