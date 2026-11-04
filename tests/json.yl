@@ -39,5 +39,8 @@ function main() -> int {
     print(json.set(duplicate_doc, "count", "9"));
     print(json.remove(duplicate_doc, "count"));
     print(json.set(obj3, "line\nkey", "false"));
+    let owned_string invalid_fragment = json.set(obj3, "broken", "not-json");
+    print(string.length(invalid_fragment) == 0);
+    print(string.length(json.last_error()) > 0);
     return 0;
 }
