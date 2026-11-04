@@ -15,11 +15,13 @@ jobs:
               build-essential clang gdb make nasm pkg-config \
               python3 libcurl4-openssl-dev libsdl2-dev libsdl2-mixer-dev
       - run:
-          name: Build YLang
-          command: make -j2
-      - run:
           name: Verify generated runtime template
           command: make check-runtime-template
+      - run:
+          name: Build YLang and optional terminal/audio examples
+          command: |
+            make -j2
+            make tui-example voice voice-example voice-test
       - run:
           name: Run unit and integration tests
           command: make test
