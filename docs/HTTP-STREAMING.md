@@ -35,8 +35,8 @@ function main() -> int {
 | `http.stream_read(stream, max_bytes)` | `owned_string` | Return up to the requested number of bytes as a NUL-terminated text string |
 | `http.stream_read_buffer(stream, buffer, max_bytes)` | `int` | Overwrite a root `io.buffer` with the next raw bytes; return the byte count, or `-1` on error |
 | `http.stream_done(stream)` | `bool` | True after transfer completion and buffer drain |
-| `http.stream_status(stream)` | `int` | HTTP response status |
-| `http.stream_headers(stream)` | `string` | Final response headers |
+| `http.stream_status(stream)` | `int` | Wait for and return the final HTTP response status |
+| `http.stream_headers(stream)` | `string` | Wait for and return the final response headers |
 | `http.stream_error(stream)` | `string` | Per-stream transport/configuration error |
 | `http.stream_close(stream)` | `void` | Cancel and release the stream |
 
