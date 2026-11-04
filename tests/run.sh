@@ -95,6 +95,7 @@ grep -q 'E2132' build/voice-invalid.out
 
 ./build/ylang check tests/tui-builtins.yl >/dev/null
 ./build/ylang check examples/tui-menu.yl >/dev/null
+./build/ylang build examples/tui-menu.yl -o build/tui-menu-smoke >/dev/null
 python3 tests/run_tui_integration.py
 python3 tests/run_http_integration.py
 python3 tests/benchmark-smoke.py
