@@ -52,7 +52,8 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] Native Windows MinGW-w64 smoke workflow passes; documentation does not imply full Windows parity.
 - [ ] VS Code diagnostic parser and extension checks pass.
 - [ ] Neovim diagnostic parser, syntax highlighting, and headless checks pass.
-- [ ] Zed documentation clearly labels current LSP limitations.
+- [ ] VS Code extension packages successfully as a `.vsix` from the release candidate.
+- [ ] Zed Tree-sitter grammar generation and corpus tests pass; documentation clearly labels current LSP limitations.
 - [ ] Online book builds; every Summary entry, internal anchor, reference page, and example link is checked.
 - [ ] Official website production build succeeds; navigation, mobile layout, stable release labels, 2.3 development links, and local assets pass integrity checks.
 - [ ] YSPM package builds from the candidate commit, contains one copy of each versioned changelog, and includes the required source-level library and documentation files.
