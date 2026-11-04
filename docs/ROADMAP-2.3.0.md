@@ -23,7 +23,7 @@ Make YLang 2.3 a dependable, polished minor release: improve the existing compil
 - Voice and GUI remain optional integrations with explicit native dependencies and platform limits.
 
 ### 3. Developer experience and design
-- CLI: consistent command help, version output, concise success messages, readable diagnostics, and predictable exit codes. The `help`/`version` subcommands and their option aliases are integrated, with a dedicated command reference; validation is still pending.
+- CLI: consistent command help, version output, concise success messages, readable diagnostics, and predictable exit codes. The `help`/`version` subcommands and their option aliases are integrated, with a dedicated command reference and regression coverage; validation is still pending.
 - TUI examples: intentional hierarchy, restrained YLang teal/rust palette, clear focus state, keyboard hints, and narrow-terminal fallback.
 - Official homepage: polished responsive layout, live-looking but truthful code/build preview, clear stable-version/install path, and consistent official logo assets.
 - Book: preserve its current visual identity; only fix navigation, broken links, examples, and factual inaccuracies.
@@ -53,6 +53,7 @@ A release candidate is not ready until all applicable gates below pass on the ex
 - [ ] Clean build with Clang on macOS.
 - [ ] Native Windows smoke workflow passes; support claims remain limited to what is covered.
 - [ ] Full compiler regression suite passes, including frontend unit tests and integration tests.
+- [ ] Focused regression cases pass for the 1,024-module and 64 MiB loader limits, the 100-diagnostic cap, control-byte escaping, deep braced/unbraced parser nesting, JSON builder argument typing/duplicate keys, and the exact 16 KiB HTTP-header boundary.
 - [ ] AddressSanitizer and UndefinedBehaviorSanitizer suites pass.
 - [ ] Frontend fuzz smoke test completes without crash or sanitizer finding.
 - [ ] HTTP streaming, binary streaming, HTTP task, Voice (where SDL2_mixer is available), and TUI integration tests pass.
@@ -68,8 +69,9 @@ A release candidate is not ready until all applicable gates below pass on the ex
 
 ## Current workstream notes
 
-- Integrated on `main`: YTilawa app removal, homepage/TUI design refresh, bounded diagnostics and module loading, HTTP header underflow guard, immutable JSON builders, and parser/code-generation recursion guards.
+- Integrated on `main`: YTilawa app removal, homepage/TUI design refresh, bounded diagnostics and module loading, HTTP header underflow guard with an exact-boundary loopback fixture, immutable JSON builders with duplicate-key replacement, parser recovery for braced and unbraced nesting, fail-closed C generation diagnostics, and CLI help/version subcommands.
 - The shared TUI, Voice, HTTP streaming, and binary I/O libraries remain in scope; only the YTilawa application and its dedicated tests/build steps were removed.
+- The book build pipeline now copies the JSON, HTTP Streaming, CLI, 2.3 notes, and roadmap references; the homepage resources menu links to the development roadmap.
 - Automated checks have intentionally been deferred until the implementation work is complete; no passing result is claimed yet.
 
 - 2.3 implementation is integrated directly into `main`; each workstream is recorded in commit history and this checklist.
