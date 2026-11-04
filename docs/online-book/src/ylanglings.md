@@ -18,7 +18,7 @@ python3 tools/ylanglings/ylanglings.py verify 01
 If the compiler is not on PATH, pass its location:
 
 ```sh
-python3 tools/ylanglings/ylanglings.py --compiler ./build/ylang verify 01
+ylanglings --compiler ./build/ylang verify 01
 ```
 
 ## Learning path
