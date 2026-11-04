@@ -18,6 +18,9 @@ YLang diagnostics include stable codes to help users search documentation and re
 | E1024 | Imported function or global does not exist. | Check the target module declarations and spelling. |
 | E1025 | Imported name is duplicated, ambiguous, or conflicts with a local declaration. | Import each name once and avoid local name conflicts. |
 | E1026 | An imported module defines or imports the program entry point. | Keep `main()` in the root program file. |
+| E1027 | Maximum module import depth exceeded. | Keep import chains at or below 256 modules. |
+| E1028 | Maximum module count exceeded. | Keep a program at or below 1,024 loaded source modules. |
+| E1029 | Total root and imported source exceeds 64 MiB. | Split the project into smaller source modules. |
 
 ## Types, names, and expressions
 
