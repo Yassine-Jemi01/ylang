@@ -16,7 +16,7 @@ The compiler uses explicit subcommands. Run `ylang help`, `ylang --help`, or `yl
 
 The `--cc` option is accepted only by `build` and `debug`; it selects GCC or Clang for the generated C program. Commands such as `check`, `emit-c`, `emit-asm`, `build-asm`, and `fix` reject it instead of silently ignoring it. It does not select the compiler used to build YLang itself. The C backend remains the default; NASM is limited to Linux x86-64 and its documented supported subset.
 
-The `fix` command never overwrites the input implicitly. The current automatic-fix set is intentionally narrow; after it writes a file, run `ylang check` on that output.
+The CLI rejects empty or repeated `-o` options and repeated `--cc` options rather than silently choosing one. The `fix` command never overwrites the input implicitly. The current automatic-fix set is intentionally narrow; after it writes a file, run `ylang check` on that output.
 
 ## Exit behavior
 
