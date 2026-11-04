@@ -54,8 +54,11 @@ function main() -> int {
             tui.write("\\x1b[38;2;147;212;200mESC\\x1b[0m Exit\\n");
         }
 
-        let int key = tui.read_key();
-        if (key == 1001) {
+        let int key = tui.poll_key();
+        if (key == -1) {
+            // Repaint periodically so terminal resizes are noticed without input.
+            tui.sleep_ms(80);
+        } else if (key == 1001) {
             selected = selected - 1;
             if (selected < 0) selected = 3;
         } else if (key == 1002) {
