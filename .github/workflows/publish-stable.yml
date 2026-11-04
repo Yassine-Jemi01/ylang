@@ -90,6 +90,8 @@ jobs:
         run: ${{ steps.compiler.outputs.make }} voice voice-example voice-test CC="${{ steps.compiler.outputs.cc }}"
       - name: Run regression tests
         run: ${{ steps.compiler.outputs.make }} test CC="${{ steps.compiler.outputs.cc }}"
+      - name: Verify every YLanglings exercise against the release compiler
+        run: python3 tools/ylanglings/ylanglings.py --compiler ./build/ylang verify-all
       - name: Fuzz lexer/parser smoke test
         if: runner.os == 'Linux' && matrix.compiler == 'clang'
         run: make fuzz-smoke FUZZ_CC=clang
@@ -129,6 +131,8 @@ jobs:
         run: make gui gui-example CC=gcc
       - name: Verify YLanglings offline CLI and install lifecycle
         run: python -m unittest discover -s tools/ylanglings/tests -v
+      - name: Verify all YLanglings exercises with native Windows compiler
+        run: python tools/ylanglings/ylanglings.py --compiler ./build/ylang.exe verify-all
       - name: Check, compile, and run a native Windows program
         run: |
           mkdir -p build/windows-smoke
