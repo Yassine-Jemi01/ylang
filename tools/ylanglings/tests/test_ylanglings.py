@@ -189,15 +189,16 @@ class CliStateTests(unittest.TestCase):
             config = Path(directory) / "config"
             environment = {**os.environ, "XDG_CONFIG_HOME": str(config)}
             subprocess.run(
-                ["make", "-C", str(TOOL_DIR.parents[1]), "install-ylanglings", f"PREFIX={prefix}"],
+                ["make", "-C", str(TOOL_DIR.parents[1]), "install-ylanglings", f"PREFIX={prefix}", f"PYTHON={sys.executable}"],
                 check=True, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT, text=True,
             )
             executable = prefix / "bin" / "ylanglings"
             self.assertTrue(executable.is_file())
+            command = ["bash", str(executable), "list"] if os.name == "nt" else [str(executable), "list"]
             listing = subprocess.run(
-                [str(executable), "list"], check=True, capture_output=True,
-                text=True, env=environment,
+                command, check=True, capture_output=True,
+                text=True, encoding="utf-8", env=environment,
             )
             self.assertIn("26", listing.stdout)
             subprocess.run(
