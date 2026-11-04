@@ -1149,6 +1149,124 @@ static void yl_json_buffer_indent(YLJsonBuffer *b, unsigned depth) {
     yl_json_buffer_char(b, '\n');
     for (unsigned i = 0; i < depth * 2U; i++) yl_json_buffer_char(b, ' ');
 }
+static bool yl_json_key_equal(const char *s, size_t a, size_t b, const char *key);
+static const char *yl_json_escape(const char *value);
+static void yl_json_buffer_text(YLJsonBuffer *b, const char *s, size_t n) {
+    yl_json_buffer_reserve(b, n);
+    memcpy(b->data + b->length, s, n);
+    b->length += n;
+    b->data[b->length] = '\0';
+}
+static const char *yl_json_buffer_finish(YLJsonBuffer *b) {
+    if (!b->data) {
+        b->data = malloc(1U);
+        if (!b->data) yl_runtime_error("out of memory");
+        b->data[0] = '\0';
+    }
+    return (const char *)yl_track(b->data, b->length + 1U);
+}
+static const char *yl_json_object(void) { char *p = malloc(3U); if (!p) yl_runtime_error("out of memory"); memcpy(p, "{}", 3U); return (const char *)yl_track(p, 3U); }
+static const char *yl_json_array(void) { char *p = malloc(3U); if (!p) yl_runtime_error("out of memory"); memcpy(p, "[]", 3U); return (const char *)yl_track(p, 3U); }
+static const char *yl_json_set(const char *raw, const char *key, const char *value) {
+    YLJson vp; size_t va, vb;
+    if (!yl_json_root(value, &vp, &va, &vb)) return "";
+    YLJson p; size_t a, b;
+    if (!yl_json_root(raw, &p, &a, &b)) return "";
+    p.i = a;
+    if (p.s[p.i++] != '{') { yl_json_error("json.set requires an object"); return ""; }
+    const char *encoded = yl_json_escape(key ? key : "");
+    YLJsonBuffer out = {0}; yl_json_buffer_char(&out, '{');
+    bool first = true, replaced = false;
+    yl_json_ws(&p);
+    while (p.i < p.n && p.s[p.i] != '}') {
+        size_t ks, ke, vs, ve;
+        if (!yl_json_string_end(&p, &ks, &ke)) { free(out.data); return ""; }
+        yl_json_ws(&p);
+        if (p.i >= p.n || p.s[p.i++] != ':') { free(out.data); yl_json_error("Invalid JSON object"); return ""; }
+        if (!yl_json_value(&p, &vs, &ve)) { free(out.data); return ""; }
+        bool match = yl_json_key_equal(p.s, ks, ke, key ? key : "");
+        if (!first) yl_json_buffer_char(&out, ',');
+        first = false;
+        if (match) {
+            if (!replaced) {
+                yl_json_buffer_text(&out, encoded, strlen(encoded));
+                yl_json_buffer_char(&out, ':');
+                yl_json_buffer_text(&out, value + va, vb - va);
+                replaced = true;
+            } else {
+                yl_json_buffer_text(&out, p.s + ks - 1U, ke - ks + 2U);
+                yl_json_buffer_char(&out, ':');
+                yl_json_buffer_text(&out, p.s + vs, ve - vs);
+            }
+        } else {
+            yl_json_buffer_text(&out, p.s + ks - 1U, ke - ks + 2U);
+            yl_json_buffer_char(&out, ':');
+            yl_json_buffer_text(&out, p.s + vs, ve - vs);
+        }
+        yl_json_ws(&p);
+        if (p.i < p.n && p.s[p.i] == ',') { p.i++; yl_json_ws(&p); }
+        else break;
+    }
+    if (!replaced) {
+        if (!first) yl_json_buffer_char(&out, ',');
+        yl_json_buffer_text(&out, encoded, strlen(encoded));
+        yl_json_buffer_char(&out, ':');
+        yl_json_buffer_text(&out, value + va, vb - va);
+    }
+    yl_json_buffer_char(&out, '}');
+    return yl_json_buffer_finish(&out);
+}
+static const char *yl_json_remove(const char *raw, const char *key) {
+    YLJson p; size_t a, b;
+    if (!yl_json_root(raw, &p, &a, &b)) return "";
+    p.i = a;
+    if (p.s[p.i++] != '{') { yl_json_error("json.remove requires an object"); return ""; }
+    YLJsonBuffer out = {0}; yl_json_buffer_char(&out, '{');
+    bool first = true;
+    yl_json_ws(&p);
+    while (p.i < p.n && p.s[p.i] != '}') {
+        size_t ks, ke, vs, ve;
+        if (!yl_json_string_end(&p, &ks, &ke)) { free(out.data); return ""; }
+        yl_json_ws(&p);
+        if (p.i >= p.n || p.s[p.i++] != ':' || !yl_json_value(&p, &vs, &ve)) { free(out.data); return ""; }
+        if (!yl_json_key_equal(p.s, ks, ke, key ? key : "")) {
+            if (!first) yl_json_buffer_char(&out, ',');
+            first = false;
+            yl_json_buffer_text(&out, p.s + ks - 1U, ke - ks + 2U);
+            yl_json_buffer_char(&out, ':');
+            yl_json_buffer_text(&out, p.s + vs, ve - vs);
+        }
+        yl_json_ws(&p);
+        if (p.i < p.n && p.s[p.i] == ',') { p.i++; yl_json_ws(&p); }
+        else break;
+    }
+    yl_json_buffer_char(&out, '}');
+    return yl_json_buffer_finish(&out);
+}
+static const char *yl_json_push(const char *raw, const char *value) {
+    YLJson vp; size_t va, vb;
+    if (!yl_json_root(value, &vp, &va, &vb)) return "";
+    YLJson p; size_t a, b;
+    if (!yl_json_root(raw, &p, &a, &b)) return "";
+    p.i = a;
+    if (p.s[p.i++] != '[') { yl_json_error("json.push requires an array"); return ""; }
+    YLJsonBuffer out = {0}; yl_json_buffer_char(&out, '[');
+    yl_json_ws(&p); bool first = true;
+    while (p.i < p.n && p.s[p.i] != ']') {
+        size_t vs, ve;
+        if (!yl_json_value(&p, &vs, &ve)) { free(out.data); return ""; }
+        if (!first) yl_json_buffer_char(&out, ',');
+        first = false;
+        yl_json_buffer_text(&out, p.s + vs, ve - vs);
+        yl_json_ws(&p);
+        if (p.i < p.n && p.s[p.i] == ',') { p.i++; yl_json_ws(&p); }
+        else break;
+    }
+    if (!first) yl_json_buffer_char(&out, ',');
+    yl_json_buffer_text(&out, value + va, vb - va);
+    yl_json_buffer_char(&out, ']');
+    return yl_json_buffer_finish(&out);
+}
 static const char *yl_json_pretty(const char *raw) {
     YLJson parser; size_t start, end;
     if (!yl_json_root(raw, &parser, &start, &end)) return "";
