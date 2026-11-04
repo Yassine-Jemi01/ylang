@@ -72,6 +72,8 @@ that the compiler accepts the documented API signatures; they do not pretend
 to exercise a native audio, GUI, or terminal device. Runtime behavior for
 those integrations belongs to the compiler's dedicated integration tests.
 
+`ylanglings verify-all` checks all 26 exercises and collects failures; it deliberately does not write learner progress. The repository's `make test` target runs both the CLI contract tests and this full curriculum verification.
+
 YLanglings is a learning aid, not a replacement for the compiler regression
 suite, security review, or sanitizer tests. It verifies only the behavior
 specified by each exercise.
