@@ -13,7 +13,7 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y --no-install-recommends \
               build-essential clang gdb make nasm pkg-config \
-              python3 libcurl4-openssl-dev
+              python3 libcurl4-openssl-dev libsdl2-dev libsdl2-mixer-dev
       - run:
           name: Build YLang
           command: make -j2
@@ -36,7 +36,7 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y --no-install-recommends \
               build-essential clang gdb make nasm pkg-config \
-              python3 libcurl4-openssl-dev
+              python3 libcurl4-openssl-dev libsdl2-dev libsdl2-mixer-dev
       - run:
           name: Run AddressSanitizer and UndefinedBehaviorSanitizer suite
           command: make sanitize
