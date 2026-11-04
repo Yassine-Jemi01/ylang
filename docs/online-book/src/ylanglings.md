@@ -7,12 +7,18 @@ your fix with the real YLang compiler.
 
 ## Start locally
 
-From the YLang repository root:
+From the YLang repository root, install the local command:
 
 ```sh
-python3 tools/ylanglings/ylanglings.py list
-python3 tools/ylanglings/ylanglings.py next
-python3 tools/ylanglings/ylanglings.py verify 01
+make -C tools/ylanglings install
+```
+
+Then use it from any directory:
+
+```sh
+ylanglings list
+ylanglings next
+ylanglings verify 01
 ```
 
 If the compiler is not on PATH, pass its location:
