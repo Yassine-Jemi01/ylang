@@ -88,7 +88,7 @@ h1, h2, h3, p { margin: 0; }
 .preview-code em { color: #93d4c8; font-style: normal; }
 .preview-code i { color: #b8d9a9; font-style: normal; }
 .preview-code strong { color: #e8c987; font-weight: 600; }
-.preview-code q { color: #c6dcae; quotes: '\\"' '\\"'; }
+.preview-code q { color: #c6dcae; quotes: '“' '”'; }
 .preview-terminal { border-top: 1px solid #29413f; background: #0b1516; }
 .preview-terminal-heading { display: flex; justify-content: space-between; gap: 12px; padding: 10px 17px; border-bottom: 1px solid #203532; color: #748d87; font: 700 .59rem/1.4 var(--mono); letter-spacing: .1em; }
 .preview-terminal-heading > span:first-child { display: inline-flex; align-items: center; gap: 8px; }
