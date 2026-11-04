@@ -102,6 +102,11 @@ python3 tests/run_tui_integration.py
 # byte-buffer downloads, Voice, and std.tui APIs.
 ./build/ylang check apps/ytilawa/main.yl >/dev/null
 ./build/ylang build apps/ytilawa/main.yl -o build/ytilawa >/dev/null
+./build/ylang check tests/ytilawa-catalog.yl >/dev/null
+./build/ylang build tests/ytilawa-catalog.yl -o build/test-ytilawa-catalog >/dev/null
+./build/test-ytilawa-catalog > build/ytilawa-catalog.stdout
+diff -u tests/expected-ytilawa-catalog.txt build/ytilawa-catalog.stdout
+
 
 python3 tests/run_http_integration.py
 python3 tests/benchmark-smoke.py
