@@ -1,6 +1,7 @@
 function main() -> int {
     let string path = "sample.bin";
     io.write_u16_be(path, 0, 258);
-    print(io.read_u32_le(path, 0));
+    let int value = io.read_u32_le(path, "zero");
+    print(value);
     return 0;
 }
