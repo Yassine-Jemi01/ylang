@@ -1,0 +1,131 @@
+[
+  {
+    "title": "Hello, YLang",
+    "category": "basics",
+    "file": "01-hello.yl",
+    "starter": "starter/01-hello.yl",
+    "description": "Say hello and return the correct exit type.",
+    "hint": "The entry point must return an integer status.",
+    "expected_output": "Hello, YLang!\n"
+  },
+  {
+    "title": "Variables and types",
+    "category": "types",
+    "file": "02-variables.yl",
+    "starter": "starter/02-variables.yl",
+    "description": "Give the variable the declared integer type.",
+    "hint": "The initializer and declared type must agree.",
+    "expected_output": "3\n"
+  },
+  {
+    "title": "Mutable values",
+    "category": "mutability",
+    "file": "03-mutability.yl",
+    "starter": "starter/03-mutability.yl",
+    "description": "Update the score and print the new value.",
+    "hint": "A value that is reassigned must be declared mutable using the syntax supported by this compiler.",
+    "expected_output": "15\n"
+  },
+  {
+    "title": "Conditions",
+    "category": "control flow",
+    "file": "04-conditions.yl",
+    "starter": "starter/04-conditions.yl",
+    "description": "Compare the temperature with an integer threshold.",
+    "hint": "Both sides of the comparison should have compatible types.",
+    "expected_output": "warm\n"
+  },
+  {
+    "title": "Loops",
+    "category": "control flow",
+    "file": "05-loops.yl",
+    "starter": "starter/05-loops.yl",
+    "description": "Accumulate the loop counter values.",
+    "hint": "The accumulator is an integer; add the counter, not a boolean.",
+    "expected_output": "10\n"
+  },
+  {
+    "title": "Functions",
+    "category": "functions",
+    "file": "06-functions.yl",
+    "starter": "starter/06-functions.yl",
+    "description": "Pass an integer to the function and return twice its value.",
+    "hint": "Check the parameter type at the call site.",
+    "expected_output": "42\n"
+  },
+  {
+    "title": "Arrays",
+    "category": "collections",
+    "file": "07-arrays.yl",
+    "starter": "starter/07-arrays.yl",
+    "description": "Read the last valid element in the array.",
+    "hint": "Array indexes start at zero.",
+    "expected_output": "12\n"
+  },
+  {
+    "title": "Structs",
+    "category": "types",
+    "file": "08-structs.yl",
+    "starter": "starter/08-structs.yl",
+    "description": "Use the fields declared by Point.",
+    "hint": "The struct declares x and y only.",
+    "expected_output": "7\n"
+  },
+  {
+    "title": "Enums",
+    "category": "types",
+    "file": "09-enums.yl",
+    "starter": "starter/09-enums.yl",
+    "description": "Select a variant that exists in Direction.",
+    "hint": "Use one of the four declared Direction variants.",
+    "expected_output": "north\n"
+  },
+  {
+    "title": "Strings",
+    "category": "strings",
+    "file": "10-strings.yl",
+    "starter": "starter/10-strings.yl",
+    "description": "Print the number of characters in the language name.",
+    "hint": "Use the standard string length helper with the string value.",
+    "expected_output": "5\n"
+  },
+  {
+    "title": "Modules",
+    "category": "modules",
+    "file": "11-modules.yl",
+    "starter": "starter/11-modules.yl",
+    "description": "Import the helper and return its greeting.",
+    "hint": "The imported function must exist in the neighboring module file.",
+    "expected_output": "hello from a module\n"
+  },
+  {
+    "title": "Optional: nested loops",
+    "category": "optional · control flow",
+    "optional": true,
+    "file": "optional-01-nested-loops.yl",
+    "starter": "starter/optional-01-nested-loops.yl",
+    "description": "Repair the nested loop and calculate the 3 × 3 grid total.",
+    "hint": "The inner loop should count from 1 through 3 and add its counter to total.",
+    "expected_output": "18\n"
+  },
+  {
+    "title": "Optional: enum logic",
+    "category": "optional · types",
+    "optional": true,
+    "file": "optional-02-enum-logic.yl",
+    "starter": "starter/optional-02-enum-logic.yl",
+    "description": "Fix the enum variant and make the direction check work.",
+    "hint": "Use an existing enum member and compare values of the same enum type.",
+    "expected_output": "east\n"
+  },
+  {
+    "title": "Optional: struct function",
+    "category": "optional · functions",
+    "optional": true,
+    "file": "optional-03-struct-function.yl",
+    "starter": "starter/optional-03-struct-function.yl",
+    "description": "Repair the function that computes a rectangle's perimeter.",
+    "hint": "The function returns an integer; combine width and height.",
+    "expected_output": "26\n"
+  }
+]
