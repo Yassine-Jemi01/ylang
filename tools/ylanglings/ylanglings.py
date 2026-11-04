@@ -218,6 +218,8 @@ def run_compiler(compiler, *arguments):
         return subprocess.run(
             [compiler, *arguments],
             text=True,
+            encoding="utf-8",
+            errors="replace",
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             timeout=60,
@@ -265,8 +267,11 @@ def command_verify(number, manifest, compiler):
             print("\nThe source passed check but failed to build.")
             return 1
         try:
-            result = subprocess.run([str(binary)], cwd=directory, text=True, stdout=subprocess.PIPE,
-                                    stderr=subprocess.STDOUT, timeout=10)
+            result = subprocess.run(
+                [str(binary)], cwd=directory, text=True, encoding="utf-8",
+                errors="replace", stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, timeout=10,
+            )
         except subprocess.TimeoutExpired:
             print("The program exceeded the 10-second exercise limit.")
             return 1
