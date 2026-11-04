@@ -183,7 +183,13 @@ def command_edit(number, manifest):
     editor = os.environ.get("VISUAL") or os.environ.get("EDITOR")
     if not editor:
         raise SystemExit("No editor configured. Set EDITOR (for example: export EDITOR=nano).")
-    command = shlex.split(editor)
+    command = shlex.split(editor, posix=(os.name != "nt"))
+    if os.name == "nt":
+        command = [
+            token[1:-1] if len(token) >= 2 and token[0] == token[-1] and token[0] in {"'", '"'}
+            else token
+            for token in command
+        ]
     if not command:
         raise SystemExit("EDITOR is empty. Set EDITOR to an editor command.")
     target = exercise_path(manifest[number - 1])
