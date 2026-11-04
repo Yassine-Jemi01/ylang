@@ -308,6 +308,20 @@ def command_verify(number, manifest, compiler):
     return 0
 
 
+def command_verify_all(manifest, compiler):
+    failures = []
+    for number, item in enumerate(manifest, 1):
+        print(f"\n=== {number:02d}/{len(manifest):02d}: {item['title']} ===")
+        if command_verify(number, manifest, compiler) != 0:
+            failures.append(number)
+    if failures:
+        failed = ", ".join(f"{number:02d}" for number in failures)
+        print(f"\nYLanglings verification failed for exercise(s): {failed}")
+        return 1
+    print(f"\nAll {len(manifest)} YLanglings exercises passed.")
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="ylanglings",
@@ -322,8 +336,9 @@ def main():
     edit.add_argument("number", type=int)
     hint = sub.add_parser("hint", help="Show a hint without revealing a solution")
     hint.add_argument("number", type=int)
-    verify = sub.add_parser("verify", help="Compile and run your solution")
+    verify = sub.add_parser("verify", help="Compile and run one solution")
     verify.add_argument("number", type=int)
+    sub.add_parser("verify-all", help="Verify every core exercise and optional challenge")
     reset = sub.add_parser("reset", help="Restore the original broken exercise")
     reset.add_argument("number", type=int)
     next_parser = sub.add_parser("next", help="Show the first incomplete exercise")
@@ -344,6 +359,8 @@ def main():
         command_reset(args.number, manifest)
     elif args.action == "verify":
         raise SystemExit(command_verify(args.number, manifest, compiler_path(args.compiler)))
+    elif args.action == "verify-all":
+        raise SystemExit(command_verify_all(manifest, compiler_path(args.compiler)))
     elif args.action == "next":
         completed = completed_exercises(progress, manifest)
         want_optional = args.optional
