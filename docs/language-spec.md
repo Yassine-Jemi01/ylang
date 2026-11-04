@@ -338,7 +338,7 @@ The native `json.*` namespace parses and validates JSON without a third-party de
 - `json.stringify(raw)` validates and copies an already-serialized JSON value. `json.pretty(raw)` formats one with two-space indentation.
 - `json.escape(text)` encodes a YLang string as a JSON string literal; `json.last_error()` returns the latest diagnostic.
 
-This is currently a raw-document API, not a mutable JSON DOM: it does not build objects or arrays from YLang values. See [the JSON guide](JSON.md) for details.
+This remains a raw-document API, not a mutable JSON DOM: it does not construct typed objects or arrays from YLang values. The unreleased 2.3 development line adds immutable raw-text builders (`json.object`, `json.array`, `json.set`, `json.remove`, and `json.push`); they accept validated JSON fragments and return new JSON strings, not a dynamic value tree. See [the JSON guide](JSON.md) for the current API and release boundary.
 
 ## Binary file I/O (experimental)
 
