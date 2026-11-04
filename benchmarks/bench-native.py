@@ -125,7 +125,7 @@ def main() -> int:
         }.get(requested_opt, "-O2")
         print(f"YLANG_OPT_LEVEL: {requested_opt or 'default'}")
         print(f"Native optimization flag: {optimization}")
-        print("YLang native build flags: -std=c17 -g -fstack-protector-strong")
+        print("Core YLang C flags: -std=c17 -g -fstack-protector-strong (platform hardening flags may also apply)")
         print(f"Source: {source}")
         print(f"Measured runs: {args.runs}; warm-ups: {args.warmup}")
         print(f"Compile median: {median_ms(compile_samples):.3f} ms")
