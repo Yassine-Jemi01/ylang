@@ -27,9 +27,10 @@ Always check the relevant reference chapter before depending on an experimental 
 2. [Install YLang](getting-started.md) and verify that the compiler and C toolchain work.
 3. Write, check, build, and run [your first program](hello-world.md).
 4. Learn the [compiler workflow](compiler-workflow.md) so you can distinguish source checking, code generation, and native compilation.
+5. Practice by repairing small programs with [YLanglings](ylanglings.md), the offline compiler-backed exercise track.
 5. Study [program structure](language-basics.md), [types and conversions](types.md), and [functions and modules](modules.md).
-6. Explore the [standard library](standard-library.md), then use the reference chapters when you need exact details.
-7. Try [GUI and Game2D](gui-game2d.md) only after the command-line workflow is working.
+7. Explore the [standard library](standard-library.md), then use the reference chapters when you need exact details.
+8. Try [GUI and Game2D](gui-game2d.md) only after the command-line workflow is working.
 
 ## How to use this book
 
