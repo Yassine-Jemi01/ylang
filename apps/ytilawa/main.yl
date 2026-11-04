@@ -150,7 +150,11 @@ function main() -> int {
         print(tui.last_error());
         return 1;
     }
-    voice.init();
+    if (!voice.init()) {
+        print(voice.last_error());
+        tui.shutdown();
+        return 1;
+    }
     let int current_surah = 1;
     let int current_reciter = 0;
     let int volume = 80;
