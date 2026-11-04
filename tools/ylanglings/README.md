@@ -26,6 +26,8 @@ Ensure `~/.local/bin` is on PATH and that the YLang compiler is available. Then:
 ```sh
 ylanglings list
 ylanglings next
+# After finishing the core track:
+ylanglings next --optional
 ylanglings run 01
 ylanglings edit 01
 ```
@@ -47,7 +49,7 @@ Other commands:
 - `hint NUMBER` — show a hint without revealing the solution.
 - `reset NUMBER` — restore the original broken starter.
 - `list` — show core and optional exercise progress.
-- `next` — show the first incomplete core exercise.
+- `next` — show the first incomplete core exercise; use `next --optional` for the optional track.
 - `edit NUMBER` — open an exercise in the editor selected by `VISUAL` or `EDITOR`.
 
 To uninstall:
