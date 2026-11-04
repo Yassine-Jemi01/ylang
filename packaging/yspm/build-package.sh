@@ -53,7 +53,6 @@ for file in \
     docs/HTTP-STREAMING.md \
     docs/error-codes.md \
     docs/CLI.md \
-    docs/CLI.md \
     docs/ACCEPTANCE-2.2.0.md \
     docs/CHANGELOG-2.1.0.md \
     docs/CHANGELOG-2.0.0.md \
