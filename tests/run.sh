@@ -1737,4 +1737,14 @@ if ./build/ylang check build/statement-depth/deep.yl > build/statement-depth/dee
 fi
 grep -q 'E1018' build/statement-depth/deep.out
 
+# Global help/version subcommands must match their option aliases.
+./build/ylang help > build/cli-help.out
+grep -q "Usage:" build/cli-help.out
+./build/ylang --help > build/cli-help-option.out
+diff -u build/cli-help.out build/cli-help-option.out
+./build/ylang version > build/cli-version.out
+./build/ylang --version > build/cli-version-option.out
+diff -u build/cli-version.out build/cli-version-option.out
+grep -Fq "$(tr -d \\r\\n < VERSION)" build/cli-version.out
+
 echo "All YLang tests passed."
