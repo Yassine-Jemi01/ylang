@@ -100,7 +100,7 @@ class CliStateTests(unittest.TestCase):
                     encoding="utf-8",
                 )
                 self.assertEqual(ylanglings.load_progress(), {"completed": [1, 4]})
-                progress_path.write_bytes(b"\\xff\\xfe")
+                progress_path.write_bytes(b"\xff\xfe")
                 self.assertEqual(ylanglings.load_progress(), {"completed": []})
                 progress_path.write_bytes(b" " * (1024 * 1024 + 1))
                 self.assertEqual(ylanglings.load_progress(), {"completed": []})
