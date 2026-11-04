@@ -5,6 +5,7 @@ import os
 import re
 import pty
 import select
+import signal
 import struct
 import subprocess
 import sys
@@ -97,7 +98,42 @@ def main():
         mask = termios.ICANON | termios.ECHO
         if (restored[3] & mask) != (original[3] & mask):
             raise SystemExit("TUI did not restore terminal canonical/echo settings")
-        print("YLang TUI raw-key integration test passed.")
+
+        signal_master, signal_slave = pty.openpty()
+        try:
+            fcntl.ioctl(signal_slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))
+            signal_original = termios.tcgetattr(signal_slave)
+            signal_process = subprocess.Popen(
+                [str(ROOT / executable)],
+                cwd=ROOT,
+                stdin=signal_slave,
+                stdout=signal_slave,
+                stderr=signal_slave,
+                close_fds=True,
+            )
+            deadline = time.monotonic() + 3.0
+            signal_raw_enabled = False
+            while time.monotonic() < deadline and signal_process.poll() is None:
+                current = termios.tcgetattr(signal_slave)
+                if not (current[3] & termios.ICANON) and not (current[3] & termios.ECHO):
+                    signal_raw_enabled = True
+                    break
+                time.sleep(0.01)
+            if not signal_raw_enabled:
+                signal_process.kill()
+                signal_process.wait(timeout=2)
+                raise SystemExit("TUI did not enable raw mode before signal test")
+            signal_process.send_signal(signal.SIGINT)
+            signal_process.wait(timeout=3)
+            if signal_process.returncode != 128 + signal.SIGINT:
+                raise SystemExit(f"TUI SIGINT exit status mismatch: {signal_process.returncode}")
+            signal_restored = termios.tcgetattr(signal_slave)
+            if (signal_restored[3] & mask) != (signal_original[3] & mask):
+                raise SystemExit("TUI did not restore terminal settings on SIGINT")
+        finally:
+            os.close(signal_master)
+            os.close(signal_slave)
+        print("YLang TUI raw-key and signal-restoration integration tests passed.")
     finally:
         os.close(master)
         os.close(slave)
