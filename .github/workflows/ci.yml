@@ -212,6 +212,12 @@ jobs:
               exit 1
             fi
           done
+          for changelog in \
+            "root/usr/share/doc/ylang/CHANGELOG-2.2.0.md" \
+            "root/usr/share/doc/ylang/CHANGELOG-2.3.0.md"; do
+            count="$(grep -Fc "$changelog" build/ylang-yspm/package-files.txt)"
+            test "$count" -eq 1
+          done
           tar -xzOf "$package_path" metadata.json | python3 -c 'import json,sys; p=json.load(sys.stdin); assert p["name"] == "ylang"; assert p["architecture"] == "x86_64"; assert p["abi"] == "yspm-abi-1"'
           # Compare the archived payload with the built compiler byte-for-byte.
           # The following YSPM install/remove smoke test separately exercises package extraction and permissions.
