@@ -746,6 +746,20 @@ static bool yl_http_stream_pump(YLHttpStream *stream) {
     }
     return true;
 }
+static void yl_http_stream_poll(YLHttpStream *stream) {
+    if (!stream || !stream->multi || stream->done) return;
+    int descriptors = 0;
+    CURLMcode code = curl_multi_poll(stream->multi, NULL, 0U, 1000, &descriptors);
+    (void)descriptors;
+    if (code != CURLM_OK) {
+        yl_http_stream_error_set(stream, curl_multi_strerror(code));
+        stream->done = true;
+        if (stream->attached) {
+            (void)curl_multi_remove_handle(stream->multi, stream->easy);
+            stream->attached = false;
+        }
+    }
+}
 static int64_t yl_http_stream_open(const char *method, const char *url,
                                    const char *body, const char *raw_headers) {
     yl_http_set_error("");
@@ -850,8 +864,7 @@ static size_t yl_http_stream_take(YLHttpStream *stream, void *destination, size_
     while (stream->length == 0U && !stream->done) {
         (void)yl_http_stream_pump(stream);
         if (stream->length == 0U && !stream->done) {
-            int descriptors = 0;
-            (void)curl_multi_poll(stream->multi, NULL, 0U, 1000, &descriptors);
+            yl_http_stream_poll(stream);
         }
     }
     size_t take = stream->length;
@@ -902,8 +915,7 @@ static bool yl_http_stream_wait_headers(int64_t id) {
         while (!stream->headers_complete && !stream->done) {
             (void)yl_http_stream_pump(stream);
             if (!stream->headers_complete && !stream->done) {
-                int descriptors = 0;
-                (void)curl_multi_poll(stream->multi, NULL, 0U, 1000, &descriptors);
+                yl_http_stream_poll(stream);
             }
         }
         if (!stream->headers_complete) break;
