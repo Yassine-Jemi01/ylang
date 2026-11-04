@@ -7,6 +7,8 @@ cd "$ROOT"
 EXPECTED_VERSION=$(cat VERSION)
 ./build/ylang --version | grep -Fq "$EXPECTED_VERSION"
 ./build/ylang --help > build/help.out
+./build/ylang check --help > build/check-help.out
+grep -q 'ylang check' build/check-help.out
 grep -q 'ylang check' build/help.out
 grep -q 'ylang debug' build/help.out
 grep -Fq "YLang v${EXPECTED_VERSION} — compiled language toolchain" build/help.out
