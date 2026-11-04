@@ -127,6 +127,38 @@ function Header() {
   );
 }
 
+function HeroPreview() {
+  return (
+    <div className="hero-preview-wrap" aria-label="YLang code and compiler output">
+      <div className="hero-preview-glow" aria-hidden="true" />
+      <section className="hero-preview">
+        <div className="preview-window-bar">
+          <div className="preview-window-title">
+            <span className="preview-window-dots" aria-hidden="true"><i /><i /><i /></span>
+            <span>hello.yl</span>
+          </div>
+          <span className="preview-window-tag">YLANG SOURCE</span>
+        </div>
+        <pre className="preview-code"><code><span className="preview-line"><span className="preview-ln">1</span><span><b>function</b> <em>main</em>() -&gt; <i>int</i> {'{'}</span></span>
+<span className="preview-line"><span className="preview-ln">2</span><span>    <b>let</b> <i>int</i> answer = <strong>40</strong> + <strong>2</strong>;</span></span>
+<span className="preview-line"><span className="preview-ln">3</span><span>    <em>print</em>(<q>Hello, YLang</q>);</span></span>
+<span className="preview-line"><span className="preview-ln">4</span><span>    <em>print</em>(answer);</span></span>
+<span className="preview-line"><span className="preview-ln">5</span><span>    <b>return</b> 0;</span></span>
+<span className="preview-line"><span className="preview-ln">6</span><span>{'}'}</span></span></code></pre>
+        <div className="preview-terminal">
+          <div className="preview-terminal-heading"><span><i /> TERMINAL</span><span>BUILD SUCCEEDED</span></div>
+          <pre><code><span className="preview-prompt">$</span> ylang build hello.yl -o hello
+<span className="preview-success">✓</span> Compiled to native executable
+<span className="preview-prompt">$</span> ./hello
+Hello, YLang
+42</code></pre>
+        </div>
+        <div className="preview-window-foot"><span><i /> C BACKEND</span><span>GCC / CLANG</span><span>NATIVE OUTPUT</span></div>
+      </section>
+    </div>
+  );
+}
+
 function Hero() {
   return (
     <section className="hero" id="top">
@@ -143,6 +175,7 @@ function Hero() {
           </div>
           <p className="hero-footnote"><FiCode aria-hidden="true" /> Small language. Real compiler. Open source.</p>
         </div>
+        <HeroPreview />
       </div>
       <div className="hero-bottom-line" aria-hidden="true" />
     </section>
