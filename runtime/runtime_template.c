@@ -911,7 +911,8 @@ static bool yl_http_stream_wait_headers(int64_t id) {
             stream->headers_complete = false;
             continue;
         }
-        bool redirect = stream->status >= 300 && stream->status < 400 &&
+        bool redirect = yl_http_redirects_allowed(stream->headers) &&
+            stream->status >= 300 && stream->status < 400 &&
             (strstr(stream->response_headers, "Location:") ||
              strstr(stream->response_headers, "location:"));
         if (!redirect) return true;
@@ -921,11 +922,17 @@ static bool yl_http_stream_wait_headers(int64_t id) {
 }
 static int64_t yl_http_stream_status(int64_t id) {
     YLHttpStream *stream = yl_http_stream_find(id);
-    return stream ? stream->status : 0;
+    if (!stream) return 0;
+    if (!stream->headers_complete && !stream->done)
+        (void)yl_http_stream_wait_headers(id);
+    return stream->status;
 }
 static const char *yl_http_stream_headers(int64_t id) {
     YLHttpStream *stream = yl_http_stream_find(id);
-    return stream ? stream->response_headers : "";
+    if (!stream) return "";
+    if (!stream->headers_complete && !stream->done)
+        (void)yl_http_stream_wait_headers(id);
+    return stream->response_headers;
 }
 static const char *yl_http_stream_error(int64_t id) {
     YLHttpStream *stream = yl_http_stream_find(id);
