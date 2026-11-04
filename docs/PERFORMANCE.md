@@ -14,7 +14,7 @@ python3 benchmarks/bench-native.py benchmarks/native-loop.yl \
 
 Use `--cc clang` for the Clang path. The optional `--compiler /path/to/ylang` chooses the compiler executable. Add `--keep-dir build/benchmark-artifacts` to preserve the final generated executable for inspection.
 
-The report shows the YLang version, host platform, selected native C compiler, compile-time median and P95, execution-time median and P95, and executable byte size. The expected-output check ensures that the benchmark is still measuring a program with known behavior rather than a broken output path.
+The report shows the YLang version, host platform and architecture, reported CPU model, selected native C compiler version, requested and effective optimization level, core C build flags, compile-time median and P95, execution-time median and P95, and executable byte size. The expected-output check ensures that the benchmark is still measuring a program with known behavior rather than a broken output path.
 
 ## What is measured
 
