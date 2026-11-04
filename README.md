@@ -232,10 +232,10 @@ Imports can be nested, and repeated references to the same canonical file reuse 
 
 ## YLanglings — interactive exercises
 
-YLanglings is an offline, Rustlings-inspired learning tool included in the 2.3 development scope. It provides 16 core exercises and 10 optional challenges; edit each starter program and verify it with the real compiler. Install and use it with:
+YLanglings is an offline, Rustlings-inspired learning tool included in the 2.3 development scope. It provides 16 core exercises and 10 optional challenges; edit each starter program and verify it with the real compiler. Install and use it with (the prefix keeps the tool in your home directory):
 
 ```sh
-make install-ylanglings
+make install-ylanglings PREFIX="$HOME/.local"
 ylanglings list
 ylanglings next
 ylanglings verify 01
