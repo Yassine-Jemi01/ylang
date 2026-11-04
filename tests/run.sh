@@ -1831,9 +1831,13 @@ grep -Fq '\x01' build/statement-depth/diagnostic-control.out
 grep -q "Usage:" build/cli-help.out
 ./build/ylang --help > build/cli-help-option.out
 diff -u build/cli-help.out build/cli-help-option.out
+./build/ylang -h > build/cli-help-short.out
+diff -u build/cli-help.out build/cli-help-short.out
 ./build/ylang version > build/cli-version.out
 ./build/ylang --version > build/cli-version-option.out
 diff -u build/cli-version.out build/cli-version-option.out
-grep -Fq "$(tr -d \\r\\n < VERSION)" build/cli-version.out
+./build/ylang -V > build/cli-version-short.out
+diff -u build/cli-version.out build/cli-version-short.out
+grep -Fq "$(cat VERSION)" build/cli-version.out
 
 echo "All YLang tests passed."
