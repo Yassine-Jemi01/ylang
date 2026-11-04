@@ -158,7 +158,12 @@ static char *read_source_file(const char *path, size_t *length)
     if (fseek(file, 0, SEEK_END) != 0) { fclose(file); return NULL; }
     long size = ftell(file);
     if (size < 0 || fseek(file, 0, SEEK_SET) != 0) { fclose(file); return NULL; }
-    char *data = malloc((size_t)size + 1);
+    if ((uintmax_t)size > (uintmax_t)YLANG_MAX_MODULE_SOURCE_BYTES) {
+        (void)fclose(file);
+        errno = EFBIG;
+        return NULL;
+    }
+    char *data = malloc((size_t)size + 1U);
     if (!data) { fclose(file); return NULL; }
     size_t got = fread(data, 1, (size_t)size, file);
     if (got != (size_t)size || ferror(file)) {
@@ -571,6 +576,10 @@ int ylang_run(const char *command, const char *input_path,
     size_t source_length = 0;
     char *source = read_source_file(input_path, &source_length);
     if (!source) {
+        if (errno == EFBIG) {
+            fputs("ylang[E1029]: root source exceeds the 64 MiB total source limit.\n", stderr);
+            return 1;
+        }
         fprintf(stderr, "ylang: cannot read '%s': %s\n", input_path, strerror(errno));
         return 66;
     }
