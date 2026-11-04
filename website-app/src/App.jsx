@@ -37,7 +37,7 @@ const ecosystem = [
   { node: <SiApple />, title: 'macOS', hoverColor: '#e6eeeb' },
   { node: <FiMonitor />, title: 'Windows · experimental', hoverColor: '#77aee5' },
   { node: <FiCpu />, title: 'GCC / Clang', hoverColor: '#9ecf9a' },
-  { node: <FiTerminal />, title: 'Clang', hoverColor: '#f3a77d' },
+  { node: <FiTerminal />, title: 'Terminal UI', hoverColor: '#f3a77d' },
   { node: <FiGithub />, title: 'Open source', href: REPO, hoverColor: '#e7ece9' }
 ];
 
