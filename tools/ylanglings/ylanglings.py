@@ -178,9 +178,9 @@ def main():
         raise SystemExit(command_verify(args.number, manifest, compiler_path(args.compiler)))
     elif args.action == "next":
         completed = set(progress.get("completed", []))
-        number = next((i for i in range(1, len(manifest) + 1) if i not in completed), None)
+        number = next((i for i, item in enumerate(manifest, 1) if i not in completed and not item.get("optional", False)), None)
         if number is None:
-            print("All core exercises completed. Try the optional challenges in the book.")
+            print("All core exercises completed. Try optional challenges with: ylanglings list")
         else:
             command_run(number, manifest)
 
