@@ -367,7 +367,8 @@ static void voice_release_if_finished(void)
 bool ylvoice_is_playing(void)
 {
     voice_release_if_finished();
-    return voice_initialized && voice_music != NULL && Mix_PlayingMusic() != 0;
+    return voice_initialized && voice_music != NULL &&
+           Mix_PlayingMusic() != 0 && Mix_PausedMusic() == 0;
 }
 
 bool ylvoice_is_paused(void)
