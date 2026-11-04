@@ -8,7 +8,7 @@ The compiler bounds several input-driven resources to keep malformed or unexpect
 
 - At most 100 diagnostics are printed for one compilation; source-line excerpts are limited to 160 bytes and non-printable/non-ASCII bytes are escaped in diagnostic output.
 - A program may load at most 1,024 source modules.
-- The root source and all imported source files together are limited to 64 MiB. The root file is size-checked before allocating its contents; imported files are size-checked before each allocation.
+- The root source and all imported source files together are limited to 64 MiB. The root file is size-checked before allocating its contents; imported files are size-checked before each allocation. Embedded NUL bytes are rejected in both root and imported source files rather than being treated as end-of-file.
 - Module import recursion is limited to 256 levels.
 - Parser statement nesting is limited to 256 levels, and code generation has a defensive 512-level statement-depth guard.
 - JSON input and generated JSON output are each limited to 16 MiB; JSON nesting is limited to 128 levels.
