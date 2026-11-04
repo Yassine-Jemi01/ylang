@@ -1128,6 +1128,8 @@ static const char *yl_json_stringify(const char *raw) {
 
 typedef struct { char *data; size_t length; size_t capacity; } YLJsonBuffer;
 static void yl_json_buffer_reserve(YLJsonBuffer *b, size_t extra) {
+    if (b->length > YL_JSON_MAX_INPUT || extra > YL_JSON_MAX_INPUT - b->length)
+        yl_runtime_error("JSON output exceeds the 16 MiB limit");
     if (extra > SIZE_MAX - b->length - 1U) yl_runtime_error("JSON output is too large");
     size_t needed = b->length + extra + 1U;
     if (needed <= b->capacity) return;
