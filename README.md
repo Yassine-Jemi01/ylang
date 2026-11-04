@@ -447,6 +447,7 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [Language specification](docs/language-spec.md)
 - [Architecture](docs/architecture.md)
 - [YLang 2.0 design roadmap](docs/YLANG-2.0-DESIGN.md)
+- [YLang 2.3.0 development roadmap](docs/ROADMAP-2.3.0.md) and [pre-release checklist](docs/RELEASE-CHECKLIST-2.3.0.md)
 - [YLang 2.0.0 release notes and compatibility policy](docs/CHANGELOG-2.0.0.md)
 - [VS Code YLang 2.0 syntax highlighting, compiler diagnostics, and Code Runner setup](editors/vscode/README.md)
 - [Neovim YLang 2.0 syntax highlighting and native diagnostics integration](editors/nvim/README.md)
