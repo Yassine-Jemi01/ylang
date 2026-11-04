@@ -34,7 +34,7 @@ Unknown escape sequences return Escape (27). The current implementation does not
 
 ## Resource safety
 
-Call `tui.init()` before entering the UI loop and always call `tui.shutdown()` before normal exit. The runtime also registers a process-exit restoration handler, so a normal process exit restores the saved terminal mode. On POSIX, SIGINT, SIGTERM, SIGHUP, and SIGQUIT also restore the saved terminal mode and cursor before the process exits. On POSIX, SIGINT, SIGTERM, SIGHUP, and SIGQUIT also restore the saved terminal mode and cursor before the process exits. Applications should still use a cleanup path for errors and user-requested exits.
+Call `tui.init()` before entering the UI loop and always call `tui.shutdown()` before normal exit. The runtime also registers a process-exit restoration handler, so a normal process exit restores the saved terminal mode. On POSIX, SIGINT, SIGTERM, SIGHUP, and SIGQUIT also restore the saved terminal mode and cursor before the process exits. Applications should still use a cleanup path for errors and user-requested exits.
 
 The API is synchronous. `tui.read_key()` blocks until input arrives; `tui.poll_key()` is nonblocking and returns `-1` when idle. Use `tui.sleep_ms()` between event-loop polls to avoid busy loops.
 
