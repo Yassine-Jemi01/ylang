@@ -11,6 +11,8 @@
 - Added immutable raw-JSON builders: `json.object()`, `json.array()`, `json.set()`, `json.remove()`, and `json.push()`. `json.set` escapes keys and collapses duplicate copies of the replaced key; getters use the first matching value and `json.remove` removes all copies. Added the runnable `examples/json-builders.yl` walkthrough and 128/129-container boundary coverage.
 - Refreshed the official homepage hero with a truthful code/native-build preview and improved the responsive terminal-menu example.
 - Added `ylang help` and `ylang version` subcommands with matching option aliases and a full CLI reference.
+- Aligned the no-build-macro CLI version fallback with the latest stable 2.2.0 version.
+- Added dedicated 2.3 pre-publication and post-publication checklists, integrated them into the online book, documentation website, YSPM package payload, and stable release preflight.
 - Added the `make tui-example` target and build-smoke coverage for the responsive terminal menu.
 - Expanded regression fixtures for module count/size limits, diagnostic output caps/control-byte escaping, deep unbraced parser nesting, JSON builder argument typing and duplicate keys, and exact-boundary oversized HTTP headers.
 - Updated the online book build manifest, YSPM documentation payload, security/HTTP/JSON/CLI/error-code guides, and homepage navigation.
