@@ -1,0 +1,6 @@
+from "./12-module-helper.yl" import greeting;
+
+function main() -> int {
+    print(greeting());
+    return 0;
+}
