@@ -159,7 +159,7 @@ class CliStateTests(unittest.TestCase):
             config = Path(directory) / "config"
             environment = {**os.environ, "XDG_CONFIG_HOME": str(config)}
             subprocess.run(
-                ["make", "-C", str(TOOL_DIR), "install", f"PREFIX={prefix}"],
+                ["make", "-C", str(TOOL_DIR.parents[1]), "install-ylanglings", f"PREFIX={prefix}"],
                 check=True, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT, text=True,
             )
@@ -171,7 +171,7 @@ class CliStateTests(unittest.TestCase):
             )
             self.assertIn("26", listing.stdout)
             subprocess.run(
-                ["make", "-C", str(TOOL_DIR), "uninstall", f"PREFIX={prefix}"],
+                ["make", "-C", str(TOOL_DIR.parents[1]), "uninstall-ylanglings", f"PREFIX={prefix}"],
                 check=True, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT, text=True,
             )
