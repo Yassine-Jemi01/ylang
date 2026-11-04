@@ -38,7 +38,7 @@ function choose_surah(borrowed_string document, int current) -> int {
             }
             tui.write(to_string(index + 1));
             tui.write("  ");
-            let owned_string entry_name = surah_name(document, index);
+            let owned_string entry_name = surah_name(index);
             tui.write(entry_name);
             tui.write("\n");
             index = index + 1;
@@ -126,9 +126,13 @@ function find_surah(borrowed_string document, borrowed_string query) -> int {
     let int count = surah_count(document);
     let int index = 0;
     while (index < count) {
-        let owned_string candidate = surah_name(document, index);
+        let owned_string candidate = surah_name(index);
         let owned_string name = owned_string.lower(candidate);
         if (string.contains(name, needle)) {
+            return index + 1;
+        }
+        let owned_string arabic_name = surah_arabic_name(document, index);
+        if (string.contains(arabic_name, query)) {
             return index + 1;
         }
         index = index + 1;
@@ -169,14 +173,8 @@ function download_current(borrowed_string reciters, int surah_id, int reciter_in
     if (string.length(url) == 0) {
         return -1;
     }
-    let owned_string number = string.own(to_string(surah_id));
-    if (surah_id < 10) {
-        number = owned_string.concat("00", number);
-    }
-    else if (surah_id < 100) {
-        number = owned_string.concat("0", number);
-    }
-    let owned_string filename = owned_string.concat("ytilawa-", number);
+    let owned_string slug = surah_name(surah_id - 1);
+    let owned_string filename = owned_string.concat("ytilawa-", slug);
     filename = owned_string.concat(filename, ".mp3");
     return player_download(url, filename);
 }
@@ -233,7 +231,7 @@ function ytilawa_main() -> int {
             message = "Playback finished.";
         }
 
-        let owned_string current_surah_label = surah_name(surahs, current_surah - 1);
+        let owned_string current_surah_label = surah_name(current_surah - 1);
         let owned_string current_reciter_label = reciter_name(reciters, current_reciter);
         ui_draw_main(
             current_surah_label,
