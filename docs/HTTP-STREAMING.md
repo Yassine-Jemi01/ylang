@@ -1,6 +1,6 @@
 # HTTP Streaming
 
-**Status: development branch only.** The current pull-based implementation is not part of a published YLang release.
+**Status: experimental in the current YLang 2.3 development tree.** The implementation is present in `main`, but is not yet part of a published stable YLang release.
 
 ## API
 
