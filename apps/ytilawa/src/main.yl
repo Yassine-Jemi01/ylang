@@ -444,7 +444,7 @@ function ytilawa_main() -> int {
     }
     voice.init();
     let int current_surah = 1;
-    let int current_reciter = 0;
+    let int current_reciter = reciter_display_index(reciters, 0);
     let int volume = 80;
     let bool playing = false;
     let bool paused = false;
