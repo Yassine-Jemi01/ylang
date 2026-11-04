@@ -1,3 +1,7 @@
+from "./catalog.yl" import fetch_surahs, fetch_reciters, surah_count, surah_name, surah_arabic_name, reciter_count, reciter_name, reciter_letter, reciter_audio_url;
+from "./storage.yl" import storage_read, storage_add_favorite, storage_add_history, storage_add_playlist;
+from "./player.yl" import player_play_remote, player_play_local, player_download;
+from "./ui.yl" import ui_draw_main, ui_prompt, ui_wait;
 function choose_surah(borrowed_string document, int current) -> int {
     let int count = surah_count(document);
     if (count <= 0) {
