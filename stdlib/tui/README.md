@@ -10,7 +10,7 @@ From the repository root, run `make tui-example` to build the keyboard-driven, r
 
 | Function | Return | Purpose |
 |---|---|---|
-| `tui.init()` | `bool` | Enable raw input and disable terminal echo |
+| `tui.init()` | `bool` | Require interactive stdin/stdout, enable raw input, and disable terminal echo |
 | `tui.shutdown()` | `void` | Restore the terminal's saved input mode |
 | `tui.read_key()` | `int` | Block until a key or supported escape sequence is read |
 | `tui.poll_key()` | `int` | Return a key immediately, or `-1` when no key is available |
