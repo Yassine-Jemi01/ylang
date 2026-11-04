@@ -32,9 +32,12 @@ function main() -> int {
     print(json.get_int(obj3, "count"));
     let owned_string obj4 = json.set(obj3, "count", "4");
     print(obj4);
+    print(obj3); // The prior value remains unchanged.
     print(arr3);
+    print(arr2); // Appending creates a new array.
     print(json.array_length(arr3));
     print(json.remove(obj3, "count"));
+    print(obj3); // Removing a property also leaves the original untouched.
     let owned_string duplicate_doc = json.parse("{\"count\":1,\"count\":2,\"other\":true}");
     print(json.get_int(duplicate_doc, "count"));
     print(json.set(duplicate_doc, "count", "9"));
@@ -43,5 +46,14 @@ function main() -> int {
     let owned_string invalid_fragment = json.set(obj3, "broken", "not-json");
     print(string.length(invalid_fragment) == 0);
     print(string.length(json.last_error()) > 0);
+    let owned_string wrong_set_target = json.set("[]", "x", "1");
+    print(string.length(wrong_set_target) == 0);
+    print(string.contains(json.last_error(), "requires an object"));
+    let owned_string wrong_remove_target = json.remove("[]", "x");
+    print(string.length(wrong_remove_target) == 0);
+    print(string.contains(json.last_error(), "requires an object"));
+    let owned_string wrong_push_target = json.push("{}", "1");
+    print(string.length(wrong_push_target) == 0);
+    print(string.contains(json.last_error(), "requires an array"));
     return 0;
 }
