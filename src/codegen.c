@@ -686,6 +686,7 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "tui.height") == 0) return "yl_tui_height";
     if (strcmp(name, "tui.clear") == 0) return "yl_tui_clear";
     if (strcmp(name, "tui.write") == 0) return "yl_tui_write";
+    if (strcmp(name, "tui.flush") == 0) return "yl_tui_flush";
     if (strcmp(name, "tui.set_cursor") == 0) return "yl_tui_set_cursor";
     if (strcmp(name, "tui.hide_cursor") == 0) return "yl_tui_hide_cursor";
     if (strcmp(name, "tui.show_cursor") == 0) return "yl_tui_show_cursor";
