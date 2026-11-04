@@ -30,3 +30,5 @@ YLang
 {"count":9,"other":true}
 {"other":true}
 {"title":"YLang","count":3,"line\\nkey":false}
+true
+true
