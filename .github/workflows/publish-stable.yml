@@ -213,6 +213,12 @@ jobs:
           cp -a docs/online-book/book/. website/learn/
           test -s website/learn/index.html
           test -s website/learn/reference/CHANGELOG-2.0.0.html
+          test -s website/learn/reference/CHANGELOG-2.3.0.html
+          test -s website/learn/reference/ROADMAP-2.3.0.html
+          test -s website/learn/reference/JSON.html
+          test -s website/learn/reference/CLI.html
+          test -s website/learn/reference/RELEASE-CHECKLIST-2.3.0.html
+          test -s website/learn/reference/POST-RELEASE-CHECKLIST-2.3.0.html
           test -s website/learn/reference/STABLE-RELEASE-CHECKLIST.html
           python3 tools/check_website.py
 
@@ -253,6 +259,11 @@ jobs:
           tar -tzf "$package_path" | grep -Fxq "metadata.json"
           tar -tzf "$package_path" | grep -Fxq "root/usr/bin/ylang"
           tar -tzf "$package_path" | grep -Fxq "root/usr/share/ylang/stdlib/game2d.yl"
+          tar -tzf "$package_path" | grep -Fxq "root/usr/share/doc/ylang/CHANGELOG-2.3.0.md"
+          tar -tzf "$package_path" | grep -Fxq "root/usr/share/doc/ylang/ROADMAP-2.3.0.md"
+          tar -tzf "$package_path" | grep -Fxq "root/usr/share/doc/ylang/RELEASE-CHECKLIST-2.3.0.md"
+          tar -tzf "$package_path" | grep -Fxq "root/usr/share/doc/ylang/JSON.md"
+          tar -tzf "$package_path" | grep -Fxq "root/usr/share/doc/ylang/CLI.md"
           YSPM_BIN="$GITHUB_WORKSPACE/tools/yspm-source/build/yspm" \
             bash packaging/yspm/smoke-install.sh "$package_path"
       - name: Upload YSPM package
