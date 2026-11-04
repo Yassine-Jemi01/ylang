@@ -7,6 +7,8 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -114,12 +116,11 @@ class CliStateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             prefix = Path(directory) / "prefix"
             config = Path(directory) / "config"
-            environment = {**__import__("os").environ, "XDG_CONFIG_HOME": str(config)}
-            subprocess_run = __import__("subprocess").run
-            subprocess_run(
+            environment = {**os.environ, "XDG_CONFIG_HOME": str(config)}
+            subprocess.run(
                 ["make", "-C", str(TOOL_DIR), "install", f"PREFIX={prefix}"],
-                check=True, stdout=__import__("subprocess").PIPE,
-                stderr=__import__("subprocess").STDOUT, text=True,
+                check=True, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, text=True,
             )
             executable = prefix / "bin" / "ylanglings"
             self.assertTrue(executable.is_file())
