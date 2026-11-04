@@ -107,6 +107,16 @@ def command_verify(number, manifest, compiler):
         print("\nNot quite. Fix the compiler errors, then run verify again.")
         return 1
 
+    if item.get("mode") == "check":
+        progress = load_progress()
+        completed = set(progress.get("completed", []))
+        completed.add(number)
+        progress["completed"] = sorted(completed)
+        save_progress(progress)
+        print(f"Exercise {number:02d} passed compiler checking: {item['title']}")
+        print("This API exercise is check-only; runtime integration is covered separately.")
+        return 0
+
     with tempfile.TemporaryDirectory(prefix="ylanglings-") as directory:
         binary = Path(directory) / ("exercise.exe" if os.name == "nt" else "exercise")
         build = subprocess.run([compiler, "build", str(source), "-o", str(binary)],
