@@ -1754,13 +1754,13 @@ grep -q 'E1029' build/module-size/root-size.out
 
 # Imported source files with embedded NUL bytes must not be parsed as prefixes.
 mkdir -p build/import-nul
-printf 'from "./nul.yl" import imported;\\nfunction main() -> int { return imported(); }\\n' > build/import-nul/main.yl
-python3 -c 'from pathlib import Path; Path("build/import-nul/nul.yl").write_bytes(b"\\x00function imported() -> int { return 42; }\\n")'
+printf 'from "./nul.yl" import imported;\nfunction main() -> int { return imported(); }\n' > build/import-nul/main.yl
+python3 -c 'from pathlib import Path; Path("build/import-nul/nul.yl").write_bytes(b"\x00function imported() -> int { return 42; }\n")'
 if ./build/ylang check build/import-nul/main.yl > build/import-nul/nul.out 2>&1; then
     echo "FAIL: an imported source with an embedded NUL byte was accepted" >&2
     exit 1
 fi
-grep -q 'error\\[E1022\\]' build/import-nul/nul.out
+grep -q 'error\[E1022\]' build/import-nul/nul.out
 
 # Deeply nested statements must fail with a bounded diagnostic, not exhaust the C stack.
 mkdir -p build/statement-depth
