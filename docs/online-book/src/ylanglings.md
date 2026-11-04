@@ -25,8 +25,11 @@ python3 tools/ylanglings/ylanglings.py --compiler ./build/ylang verify 01
 
 The core path starts with program structure, types, constants and mutable
 variables, then moves through conditions, loops, functions, arrays, structs,
-enums, strings, and modules. The exercise collection is designed to grow with
-the language and its standard library.
+enums and exhaustive matching, strings and f-strings, explicit conversions,
+modules, and text file I/O. The optional track introduces JSON builders,
+Binary I/O, HTTP Streaming, terminal UI, Voice, GUI, and owned-string APIs.
+The exercise collection is designed to grow with the language and its
+standard library.
 
 Optional challenges are separate from the core path. They can require combining
 several concepts or solving a problem with less guidance. They are never needed
