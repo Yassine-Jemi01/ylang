@@ -1675,6 +1675,10 @@ diff -u build/binary-buffer-append.expected build/binary-buffer-append.stdout
 ./build/ylang build tests/json.yl -o build/test-json >/dev/null
 ./build/test-json > build/json.stdout
 diff -u tests/expected-json.txt build/json.stdout
+./build/ylang check examples/json-builders.yl >/dev/null
+./build/ylang build examples/json-builders.yl -o build/test-json-builders >/dev/null
+./build/test-json-builders > build/json-builders.stdout
+diff -u tests/expected-json-builders.txt build/json-builders.stdout
 if ./build/ylang check tests/json-type-error.yl > build/json-type-error.out 2>&1; then
     echo "FAIL: std.json accepted a non-string JSON document" >&2
     exit 1
