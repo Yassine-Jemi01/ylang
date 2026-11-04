@@ -1,4 +1,4 @@
-from "./catalog.yl" import fetch_surahs, fetch_reciters, surah_count, surah_name, reciter_count, reciter_name, reciter_audio_url;
+from "./catalog.yl" import fetch_surahs, fetch_reciters, surah_count, surah_name, surah_arabic_name, reciter_count, reciter_name, reciter_audio_url;
 from "./storage.yl" import storage_read, storage_add_favorite, storage_add_history, storage_add_playlist;
 from "./player.yl" import player_play_remote, player_play_local, player_download;
 from "./ui.yl" import ui_draw_main, ui_prompt, ui_wait;
@@ -285,12 +285,14 @@ function ytilawa_main() -> int {
                 message = "No matching reader was found.";
             }
         } else if (key == 32) {
-            if (voice.is_paused()) {
+            // Use the application's playback state as the toggle source.
+            // SDL_mixer reports paused music as "playing" at the C API level.
+            if (paused) {
                 voice.resume();
                 paused = false;
                 playing = true;
                 message = "Resumed.";
-            } else if (voice.is_playing()) {
+            } else if (playing) {
                 voice.pause();
                 paused = true;
                 message = "Paused.";
