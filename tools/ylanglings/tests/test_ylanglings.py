@@ -137,6 +137,7 @@ class CliStateTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertEqual(verify.call_count, 26)
         self.assertIn("02", output.getvalue())
+        self.assertIn("YLanglings verification failed", output.getvalue())
         self.assertNotIn("All 26", output.getvalue())
         self.assertEqual(ylanglings.CONFIG, original_config)
         self.assertEqual(ylanglings.PROGRESS, original_progress)
