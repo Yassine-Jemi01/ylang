@@ -1,7 +1,9 @@
 // Audio and download operations. This module owns HTTP-to-Voice handoff.
 
 function player_play_remote(string url, int volume) -> bool {
-    if (string.length(url) == 0) return false;
+    if (string.length(url) == 0) {
+        return false;
+    }
     let http_stream stream = http.stream_open("GET", url, "", "");
     if (!voice.set_volume(volume)) {
         http.stream_close(stream);
@@ -12,14 +14,22 @@ function player_play_remote(string url, int volume) -> bool {
 }
 
 function player_play_local(string path, int volume) -> bool {
-    if (string.length(path) == 0) return false;
-    if (!voice.set_volume(volume)) return false;
+    if (string.length(path) == 0) {
+        return false;
+    }
+    if (!voice.set_volume(volume)) {
+        return false;
+    }
     return voice.play(path);
 }
 
 function player_download(string url, string path) -> int {
-    if (string.length(url) == 0 || string.length(path) == 0) return -1;
-    if (!io.write_file(path, "")) return -1;
+    if (string.length(url) == 0 or string.length(path) == 0) {
+        return -1;
+    }
+    if (!io.write_file(path, "")) {
+        return -1;
+    }
 
     let http_stream stream = http.stream_open("GET", url, "", "");
     let int buffer = io.buffer_new(0);
@@ -30,7 +40,7 @@ function player_download(string url, string path) -> int {
 
     let int total = 0;
     let bool okay = true;
-    while (!http.stream_done(stream) && okay) {
+    while (!http.stream_done(stream) and okay) {
         let int count = http.stream_read_buffer(stream, buffer, 65536);
         if (count < 0) {
             okay = false;
@@ -49,7 +59,9 @@ function player_download(string url, string path) -> int {
     http.stream_close(stream);
     io.buffer_free(buffer);
 
-    if (!okay || status != 200 || string.length(error) > 0) return -1;
+    if (!okay or status != 200 or string.length(error) > 0) {
+        return -1;
+    }
     return total;
 }
 
