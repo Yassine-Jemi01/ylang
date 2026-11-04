@@ -74,6 +74,7 @@ A release candidate is not ready until all applicable gates below pass on the ex
 - Integrated on `main`: YTilawa app removal, homepage/TUI design refresh, bounded diagnostics and module loading with root-file size rejection before allocation and imported-source NUL rejection, HTTP header underflow guard with an exact-boundary loopback fixture, immutable JSON builders with duplicate-key replacement, parser recovery for braced and unbraced nesting, fail-closed C generation diagnostics, and CLI help/version subcommands.
 - The shared TUI, Voice, HTTP streaming, and binary I/O libraries remain in scope; only the YTilawa application and its dedicated tests/build steps were removed.
 - The book build pipeline now copies the JSON, HTTP Streaming, CLI, 2.3 notes, and roadmap references; the homepage resources menu links to the development roadmap.
+- The stable-release candidate workflow and CircleCI now build the responsive TUI example and compile/test the optional Voice runtime, including the dummy-audio runtime test; SDL2_mixer is installed explicitly on Linux/macOS release runners.
 - Automated checks have intentionally been deferred until the implementation work is complete; no passing result is claimed yet.
 
 - 2.3 implementation is integrated directly into `main`; each workstream is recorded in commit history and this checklist.
