@@ -493,9 +493,13 @@ static int64_t yl_http_request_async(const char *method, const char *url, const 
     YLHttpTask *task = NULL;
     for (size_t i = 0; i < YL_HTTP_MAX_TASKS; i++) if (!yl_http_tasks[i].active) { task = &yl_http_tasks[i]; break; }
     if (!task) { yl_http_set_error("Too many in-flight HTTP tasks (limit 32)"); return 0; }
+    if (yl_http_next_task_id <= 0 || yl_http_next_task_id == INT64_MAX) {
+        yl_http_set_error("HTTP task handle identifier space exhausted");
+        return 0;
+    }
     memset(task, 0, sizeof(*task));
-    task->active = true; task->id = yl_http_next_task_id++;
-    if (yl_http_next_task_id <= 0) yl_http_next_task_id = 1;
+    task->active = true;
+    task->id = yl_http_next_task_id++;
     size_t url_length = strlen(url), body_length = strlen(body ? body : "");
     task->url = malloc(url_length + 1U);
     task->body_text = malloc(body_length + 1U);
@@ -781,6 +785,10 @@ static int64_t yl_http_stream_open(const char *method, const char *url,
     for (size_t i = 0; i < YL_HTTP_MAX_STREAMS; i++)
         if (!yl_http_streams[i].active) { stream = &yl_http_streams[i]; break; }
     if (!stream) { yl_http_set_error("Too many active HTTP streams (limit 16)"); return 0; }
+    if (yl_http_next_stream_id <= 0 || yl_http_next_stream_id == INT64_MAX) {
+        yl_http_set_error("HTTP stream handle identifier space exhausted");
+        return 0;
+    }
     memset(stream, 0, sizeof(*stream));
     stream->active = true;
     if (!yl_http_stream_shutdown_registered) {
@@ -788,7 +796,6 @@ static int64_t yl_http_stream_open(const char *method, const char *url,
         yl_http_stream_shutdown_registered = true;
     }
     stream->id = yl_http_next_stream_id++;
-    if (yl_http_next_stream_id <= 0) yl_http_next_stream_id = 1;
     size_t url_length = strlen(url), body_length = strlen(body ? body : "");
     stream->url = malloc(url_length + 1U);
     stream->body_text = malloc(body_length + 1U);
