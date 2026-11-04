@@ -1686,6 +1686,34 @@ if ./build/ylang check tests/json-builder-type-error.yl > build/json-builder-typ
 fi
 grep -q 'Argument 3 of json.set expects string' build/json-builder-type-error.out
 
+# JSON parser and builders enforce a 128-container nesting limit, including
+# the combined result produced by adding a nested value to a container.
+python3 - <<'PY'
+from pathlib import Path
+
+nested_128 = "[" * 128 + "0" + "]" * 128
+nested_129 = "[" * 129 + "0" + "]" * 129
+source = "\n".join([
+    "function main() -> int {",
+    f'    let owned_string valid = json.parse("{nested_128}");',
+    "    print(string.length(valid) > 0);",
+    f'    let owned_string invalid = json.parse("{nested_129}");',
+    "    print(string.length(invalid) == 0);",
+    '    print(string.contains(json.last_error(), "128-level"));',
+    '    let owned_string overflow = json.push("[]", valid);',
+    "    print(string.length(overflow) == 0);",
+    '    print(string.contains(json.last_error(), "128-level"));',
+    "    return 0;",
+    "}",
+    "",
+])
+Path("build/json-depth.yl").write_text(source, encoding="utf-8")
+PY
+./build/ylang check build/json-depth.yl >/dev/null
+./build/ylang build build/json-depth.yl -o build/test-json-depth >/dev/null
+./build/test-json-depth > build/json-depth.stdout
+diff -u tests/expected-json-depth.txt build/json-depth.stdout
+
 # std.terminal line input, typed parsing, flushing, and redirected stdin detection.
 ./build/ylang check tests/terminal-input.yl >/dev/null
 ./build/ylang build tests/terminal-input.yl -o build/test-terminal-input >/dev/null
