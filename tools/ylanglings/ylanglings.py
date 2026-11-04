@@ -113,6 +113,22 @@ def command_reset(number, manifest):
     print(f"Restored starter: {target}")
 
 
+def run_compiler(compiler, *arguments):
+    try:
+        return subprocess.run(
+            [compiler, *arguments],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=60,
+        )
+    except subprocess.TimeoutExpired:
+        print("The YLang compiler exceeded the 60-second command limit.")
+        return None
+    except OSError as error:
+        raise SystemExit(f"Could not run YLang compiler: {error}") from error
+
+
 def command_verify(number, manifest, compiler):
     if number < 1 or number > len(manifest):
         raise SystemExit("Unknown exercise number. Run 'ylanglings list'.")
@@ -121,8 +137,9 @@ def command_verify(number, manifest, compiler):
     if not source.is_file():
         raise SystemExit(f"Exercise file is missing: {source}")
 
-    check = subprocess.run([compiler, "check", str(source)], text=True,
-                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    check = run_compiler(compiler, "check", str(source))
+    if check is None:
+        return 1
     if check.returncode:
         print(check.stdout, end="")
         print("\nNot quite. Fix the compiler errors, then run verify again.")
@@ -140,8 +157,9 @@ def command_verify(number, manifest, compiler):
 
     with tempfile.TemporaryDirectory(prefix="ylanglings-") as directory:
         binary = Path(directory) / ("exercise.exe" if os.name == "nt" else "exercise")
-        build = subprocess.run([compiler, "build", str(source), "-o", str(binary)],
-                               text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        build = run_compiler(compiler, "build", str(source), "-o", str(binary))
+        if build is None:
+            return 1
         if build.returncode:
             print(build.stdout, end="")
             print("\nThe source passed check but failed to build.")
