@@ -1714,4 +1714,27 @@ if ./build/ylang check build/import-depth/main.yl > build/import-depth/depth.out
 fi
 grep -q 'E1027' build/import-depth/depth.out
 
+# Deeply nested statements must fail with a bounded diagnostic, not exhaust the C stack.
+mkdir -p build/statement-depth
+{
+    printf 'function main() -> int {\n'
+    i=0
+    while [ "$i" -lt 260 ]; do
+        printf 'if (true) {\n'
+        i=$((i + 1))
+    done
+    printf 'print(1);\n'
+    i=0
+    while [ "$i" -lt 260 ]; do
+        printf '}\n'
+        i=$((i + 1))
+    done
+    printf 'return 0;\n}\n'
+} > build/statement-depth/deep.yl
+if ./build/ylang check build/statement-depth/deep.yl > build/statement-depth/deep.out 2>&1; then
+    echo "FAIL: deeply nested statements were accepted" >&2
+    exit 1
+fi
+grep -q 'E1018' build/statement-depth/deep.out
+
 echo "All YLang tests passed."
