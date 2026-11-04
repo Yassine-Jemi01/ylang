@@ -17,6 +17,17 @@ YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable r
 All build, regression, sanitizer, fuzz, cross-platform, website/book, packaging, and benchmark gates remain pending until the validation phase. Do not change `VERSION` or publish `v2.3.0` before the acceptance checklist is complete.
 
 See [the 2.3 development notes](docs/CHANGELOG-2.3.0.md) and [release roadmap](docs/ROADMAP-2.3.0.md).
+## [2.2.0] — stable release
+
+- Added synchronous HTTP/API requests and the first asynchronous HTTP-task API, including request cancellation and response inspection.
+- Added process environment access through `env.get`.
+- Added source-aware command-line debugging with GDB on Linux and LLDB on macOS.
+- Added the bounded JSON parser, validation, typed getters, escaping, and pretty-printing API; JSON documents remain raw text rather than a typed value tree.
+- Expanded editor integration, benchmark tooling, documentation, and the official website.
+- Kept general-purpose async functions, a full Debug Adapter Protocol implementation, complete ownership/borrowing analysis, LLVM, and full Windows parity outside the release.
+
+See [the full 2.2.0 release notes](docs/CHANGELOG-2.2.0.md).
+
 ## [2.1.0] — release candidate (not yet published)
 
 This candidate promotes the experimental ownership work for evaluation; it does not claim a complete Rust-like memory model.
