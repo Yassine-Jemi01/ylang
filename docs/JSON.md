@@ -48,7 +48,8 @@ json.stringify currently validates and copies an already-serialized JSON value. 
 ## Safety limits
 
 - Maximum input and generated output size: 16 MiB.
-- Maximum nesting depth: 128.
+- Maximum nesting depth: 128 containers (objects/arrays). Scalar values at the deepest level are valid; a 129th nested container is rejected.
+- Builder results are parsed again before being returned, so combining individually valid values cannot create a result deeper than the limit.
 - Invalid JSON is rejected, including malformed numbers, escapes, control characters, trailing data, and unpaired UTF-16 surrogate escapes.
 - Unicode \\uXXXX escapes are decoded by json.get_string; surrogate pairs are combined into UTF-8.
 - Literal UTF-8 in JSON strings is validated; malformed, overlong, and surrogate UTF-8 sequences are rejected.
