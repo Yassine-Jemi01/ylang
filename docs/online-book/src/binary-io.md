@@ -44,7 +44,8 @@ Use the opaque integer handle API when the amount of data is not known in advanc
 | `io.buffer_clear(handle)` | `bool` | Set length to zero while retaining capacity. |
 | `io.buffer_free(handle)` | `bool` | Release the buffer and invalidate its handle. |
 | `io.buffer_load(path, offset, length)` | `int` | Load up to length bytes into a new buffer; returns its handle or `-1`. |
-| `io.buffer_save(path, offset, handle)` | `int` | Write buffer contents and return bytes written, or `-1`. |
+| `io.buffer_save(path, offset, handle)` | `int` | Write buffer contents at a file offset and return bytes written, or `-1`. |
+| `io.buffer_append_file(path, handle)` | `int` | Append raw buffer bytes to a file and return bytes written, or `-1`. |
 
 Example:
 
@@ -114,7 +115,7 @@ function main() -> int {
 
 ## Limitations
 
-- Byte arrays are fixed-size; dynamic byte buffers and slices are not yet available.
+- Byte arrays are fixed-size. Use the dynamic `io.buffer_*` API when a growable byte buffer or a non-owning slice is required.
 - Streaming is synchronous and does not yet expose seek, flush, append, or async operations.
 - Runtime file offsets use portable C stdio seek operations and must fit the platform's `long` range.
 - Binary I/O is experimental and currently supported by the C backend. The NASM backend reports a clear unsupported-type/API diagnostic.

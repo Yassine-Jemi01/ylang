@@ -14,9 +14,11 @@ The current documentation covers namespaces such as:
 - \`path\` for path-related checks.
 - \`image\` for supported image-related operations.
 - \`env.get(name)\` for reading a process environment variable without launching a shell.
-- \`http\` for optional synchronous GET/POST requests through libcurl; see [HTTP and API Requests](reference/HTTP.md) for dependency requirements and security defaults.
+- \`http\` for optional synchronous requests and bounded pull-based streaming through libcurl; see [HTTP and API Requests](reference/HTTP.md) and [HTTP Streaming](reference/HTTP-STREAMING.md).
+- \`terminal\` for line-oriented console input/output, and \`tui\` for raw-key terminal applications; see [Terminal UI](tui.md).
+- \`voice\` for local audio playback and callback-backed HTTP stream playback through SDL2_mixer; see [Voice and Audio Playback](voice-audio.md).
 
-The namespaces do not all have the same maturity. Basic language operations and experimental additions should be evaluated separately. HTTP, environment, and Voice/audio helpers are optional experimental additions and are outside the stable-core compatibility guarantee.
+The namespaces do not all have the same maturity. Basic language operations and experimental additions should be evaluated separately. HTTP streaming, environment access, Voice/audio, and raw-key TUI are optional additions and are outside the stable-core compatibility guarantee.
 
 ## Strings and parsing
 
@@ -32,7 +34,7 @@ Use the documented \`io\` and \`path\` operations for file-related work instead 
 
 The \`env.get(name)\` helper reads a process environment variable without launching a shell. Environment variables may contain missing, empty, or unexpected values; check the documented return behavior and validate the value before depending on it. Avoid storing secrets in source code or printing sensitive environment values to logs.
 
-See [Binary I/O](binary-io.md) for byte-oriented file access and its current limits.
+See [Binary I/O](binary-io.md) for byte-oriented file access and its current limits. HTTP streaming can copy raw response chunks into reusable byte buffers with `http.stream_read_buffer`; do not use the text-only `http.stream_read` API for binary payloads.
 
 ## HTTP requests
 

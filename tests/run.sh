@@ -93,6 +93,19 @@ fi
 grep -q 'E2130' build/voice-invalid.out
 grep -q 'E2132' build/voice-invalid.out
 
+./build/ylang check tests/tui-builtins.yl >/dev/null
+./build/ylang check examples/tui-menu.yl >/dev/null
+python3 tests/run_tui_integration.py
+# Build the full YTilawa application against the live catalog, HTTP streaming,
+# byte-buffer downloads, Voice, and std.tui APIs.
+./build/ylang check apps/ytilawa/main.yl >/dev/null
+./build/ylang build apps/ytilawa/main.yl -o build/ytilawa >/dev/null
+./build/ylang check tests/ytilawa-catalog.yl >/dev/null
+./build/ylang build tests/ytilawa-catalog.yl -o build/test-ytilawa-catalog >/dev/null
+./build/test-ytilawa-catalog > build/ytilawa-catalog.stdout
+diff -u tests/expected-ytilawa-catalog.txt build/ytilawa-catalog.stdout
+
+
 python3 tests/run_http_integration.py
 python3 tests/benchmark-smoke.py
 if ./build/ylang > build/no-args.out 2>&1; then
@@ -1658,6 +1671,14 @@ true
 true
 EOF
 diff -u build/binary-buffer-dynamic.expected build/binary-buffer-dynamic.stdout
+# Binary buffer append supports chunked streaming downloads without text conversion.
+rm -f build/buffer-append.bin
+./build/ylang check tests/binary-buffer-append.yl >/dev/null
+./build/ylang build tests/binary-buffer-append.yl -o build/test-binary-buffer-append >/dev/null
+./build/test-binary-buffer-append > build/binary-buffer-append.stdout
+printf '2\\n2\\n4\\n' > build/binary-buffer-append.expected
+diff -u build/binary-buffer-append.expected build/binary-buffer-append.stdout
+
 
 # Native std.json parser, validation, object/array access, escaping and errors.
 ./build/ylang check tests/json.yl >/dev/null

@@ -1,6 +1,6 @@
 # YLang Voice and Audio API (experimental)
 
-YLang's optional Voice runtime plays local audio files through SDL2_mixer. It is intended for narration, recitation playback, and game audio. It is **not** a text-to-speech engine and does not synthesize speech from text.
+YLang's optional Voice runtime plays local audio files and progressive HTTP audio streams through SDL2_mixer. It is intended for narration, recitation playback, and game audio. It is **not** a text-to-speech engine and does not synthesize speech from text.
 
 ## Requirements
 
@@ -26,11 +26,14 @@ The compiler automatically links the optional runtime when a program calls a `vo
 | Function | Return type | Behavior |
 |---|---|---|
 | `voice.init()` | `bool` | Initialize SDL audio and the mixer |
-| `voice.play(path)` | `bool` | Load and play one audio file, replacing the current track |
+| `voice.play(path)` | `bool` | Load and play one local audio file, replacing the current track |
+| `voice.play_stream(stream)` | `bool` | Consume an `http_stream` progressively through a custom SDL_RWops reader |
 | `voice.pause()` | `void` | Pause music playback |
 | `voice.resume()` | `void` | Resume paused playback |
 | `voice.stop()` | `void` | Stop playback and release the loaded track |
-| `voice.is_playing()` | `bool` | Return whether the mixer reports active music playback |
+| `voice.is_playing()` | `bool` | Return whether music is actively playing; reaps a completed track |
+| `voice.is_paused()` | `bool` | Return whether the current music track is paused |
+| `voice.is_finished()` | `bool` | Detect natural end-of-track and release its mixer resource |
 | `voice.set_volume(percent)` | `bool` | Set music volume from 0 through 100 |
 | `voice.last_error()` | `string` | Return the latest runtime error, or `No error` |
 | `voice.shutdown()` | `void` | Stop playback and release audio resources |
@@ -73,6 +76,6 @@ A runnable source example is available at [examples/voice.yl](../../examples/voi
 
 SDL2_mixer supports formats according to the codecs enabled in the installed build. Commonly available formats include WAV, Ogg Vorbis, FLAC, and MP3; do not assume every format is enabled on every platform.
 
-This initial runtime manages one music stream. It does not yet provide text-to-speech, audio recording, multiple simultaneous music streams, per-sound channels, playlists, seeking, playback-rate changes, or streaming from network URLs. These are separate future features, not implied by the current API.
+This runtime manages one music track. `voice.play_stream(http_stream)` transfers ownership of the HTTP stream to the Voice runtime and reads it incrementally through SDL_RWops; the handle must not be used again by the caller. If stream setup fails, the runtime still closes the transferred handle. The custom source is forward-only and does not support seeking. `voice.is_finished()` reports natural end-of-track; polling either playback-state query releases the completed mixer object. Codec support for MP3 and other formats still depends on the installed SDL2_mixer build. It does not yet provide text-to-speech, audio recording, multiple simultaneous music streams, per-sound channels, playlists, or playback-rate changes.
 
 The C backend is the supported backend for this optional runtime. The experimental NASM backend does not implement `voice.*`.

@@ -34,6 +34,7 @@ typedef enum {
     TYPE_OWNED_STRING,
     TYPE_VOID,
     TYPE_HTTP_TASK,
+    TYPE_HTTP_STREAM,
     TYPE_BYTE
 } YType;
 

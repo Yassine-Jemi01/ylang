@@ -34,7 +34,8 @@ static const char *c_base_type(Compiler *compiler, YType type)
         case TYPE_STRING:
         case TYPE_BORROWED_STRING:
         case TYPE_OWNED_STRING: return "const char *";
-        case TYPE_HTTP_TASK: return "int64_t";
+        case TYPE_HTTP_TASK:
+        case TYPE_HTTP_STREAM: return "int64_t";
         case TYPE_VOID: return "void";
         case TYPE_ERROR: return "int";
         default: return "int64_t";
@@ -89,7 +90,8 @@ static const char *format_for_type(YType type)
         case TYPE_STRING:
         case TYPE_BORROWED_STRING:
         case TYPE_OWNED_STRING: return "%s";
-        case TYPE_HTTP_TASK: return "%lld";
+        case TYPE_HTTP_TASK:
+        case TYPE_HTTP_STREAM: return "%lld";
         case TYPE_VOID: case TYPE_ERROR: return "%s";
     }
     return "%s";
@@ -665,6 +667,7 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "io.buffer_free") == 0) return "yl_binary_buffer_free";
     if (strcmp(name, "io.buffer_load") == 0) return "yl_binary_buffer_load";
     if (strcmp(name, "io.buffer_save") == 0) return "yl_binary_buffer_save";
+    if (strcmp(name, "io.buffer_append_file") == 0) return "yl_binary_buffer_append_file";
 
 
     if (strcmp(name, "terminal.read_line") == 0) return "yl_terminal_read_line";
@@ -675,6 +678,19 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "terminal.write_line") == 0) return "yl_terminal_write_line";
     if (strcmp(name, "terminal.clear") == 0) return "yl_terminal_clear";
     if (strcmp(name, "terminal.is_interactive") == 0) return "yl_terminal_is_interactive";
+    if (strcmp(name, "tui.init") == 0) return "yl_tui_init";
+    if (strcmp(name, "tui.shutdown") == 0) return "yl_tui_shutdown";
+    if (strcmp(name, "tui.read_key") == 0) return "yl_tui_read_key";
+    if (strcmp(name, "tui.poll_key") == 0) return "yl_tui_poll_key";
+    if (strcmp(name, "tui.width") == 0) return "yl_tui_width";
+    if (strcmp(name, "tui.height") == 0) return "yl_tui_height";
+    if (strcmp(name, "tui.clear") == 0) return "yl_tui_clear";
+    if (strcmp(name, "tui.write") == 0) return "yl_tui_write";
+    if (strcmp(name, "tui.set_cursor") == 0) return "yl_tui_set_cursor";
+    if (strcmp(name, "tui.hide_cursor") == 0) return "yl_tui_hide_cursor";
+    if (strcmp(name, "tui.show_cursor") == 0) return "yl_tui_show_cursor";
+    if (strcmp(name, "tui.sleep_ms") == 0) return "yl_tui_sleep_ms";
+    if (strcmp(name, "tui.last_error") == 0) return "yl_tui_last_error";
     if (strcmp(name, "io.read_line") == 0) return "yl_read_line";
     if (strcmp(name, "io.read_file") == 0) return "yl_read_file";
     if (strcmp(name, "io.write_file") == 0) return "yl_write_file";
@@ -690,16 +706,27 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "http.post_with_headers") == 0) return "yl_http_post_with_headers";
     if (strcmp(name, "http.request") == 0) return "yl_http_request";
     if (strcmp(name, "http.request_async") == 0) return "yl_http_request_async";
+    if (strcmp(name, "http.stream_open") == 0) return "yl_http_stream_open";
+    if (strcmp(name, "http.stream_read") == 0) return "yl_http_stream_read";
+    if (strcmp(name, "http.stream_read_buffer") == 0) return "yl_http_stream_read_buffer";
+    if (strcmp(name, "http.stream_done") == 0) return "yl_http_stream_done";
+    if (strcmp(name, "http.stream_status") == 0) return "yl_http_stream_status";
+    if (strcmp(name, "http.stream_headers") == 0) return "yl_http_stream_headers";
+    if (strcmp(name, "http.stream_error") == 0) return "yl_http_stream_error";
+    if (strcmp(name, "http.stream_close") == 0) return "yl_http_stream_close";
     if (strcmp(name, "http.cancel") == 0) return "yl_http_cancel";
     if (strcmp(name, "http.status") == 0) return "yl_http_status";
     if (strcmp(name, "http.response_headers") == 0) return "yl_http_response_headers";
     if (strcmp(name, "http.last_error") == 0) return "yl_http_last_error";
     if (strcmp(name, "voice.init") == 0) return "ylvoice_init";
     if (strcmp(name, "voice.play") == 0) return "ylvoice_play";
+    if (strcmp(name, "voice.play_stream") == 0) return "yl_voice_play_stream";
     if (strcmp(name, "voice.pause") == 0) return "ylvoice_pause";
     if (strcmp(name, "voice.resume") == 0) return "ylvoice_resume";
     if (strcmp(name, "voice.stop") == 0) return "ylvoice_stop";
     if (strcmp(name, "voice.is_playing") == 0) return "ylvoice_is_playing";
+    if (strcmp(name, "voice.is_paused") == 0) return "ylvoice_is_paused";
+    if (strcmp(name, "voice.is_finished") == 0) return "ylvoice_is_finished";
     if (strcmp(name, "voice.set_volume") == 0) return "ylvoice_set_volume";
     if (strcmp(name, "voice.last_error") == 0) return "ylvoice_last_error";
     if (strcmp(name, "voice.shutdown") == 0) return "ylvoice_shutdown";

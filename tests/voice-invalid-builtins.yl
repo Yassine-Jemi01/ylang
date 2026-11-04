@@ -1,5 +1,6 @@
 function main() -> int {
     voice.play(42);
+    voice.play_stream(42);
     voice.set_volume("loud");
     voice.unknown();
     return 0;

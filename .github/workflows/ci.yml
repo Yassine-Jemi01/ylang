@@ -137,6 +137,12 @@ jobs:
         run: |
           export YLANG_TEST_API_KEY=test-token
           python tests/run_http_integration.py
+      - name: Compile TUI builtins and YTilawa for native Windows
+        run: |
+          ./build/ylang check tests/tui-builtins.yl
+          ./build/ylang build tests/tui-builtins.yl -o build/windows-smoke/tui-builtins.exe
+          ./build/ylang check apps/ytilawa/main.yl
+          ./build/ylang build apps/ytilawa/main.yl -o build/windows-smoke/ytilawa.exe
       - name: Reject unsupported Windows interactive debugger cleanly
         run: |
           if ./build/ylang.exe debug tests/debug-source-map.yl -o build/windows-smoke/debug-unsupported.exe > build/windows-smoke/debug.out 2>&1; then

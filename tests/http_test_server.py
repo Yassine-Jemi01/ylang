@@ -2,7 +2,20 @@
 """Deterministic localhost HTTP fixture for YLang standard-library tests."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import io
 import sys
+import wave
+
+
+
+def make_test_wav():
+    output = io.BytesIO()
+    with wave.open(output, "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(44100)
+        wav_file.writeframes(b"\\x00\\x00" * (44100 // 4))
+    return output.getvalue()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -36,6 +49,73 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
         elif self.path == "/redirect-target":
             self.send_bytes(200, "redirect-target-reached")
+        elif self.path == "/stream":
+            # Chunked transfer with delays: clients must be able to consume each
+            # piece before the complete response has been sent.
+            import time
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Transfer-Encoding", "chunked")
+            self.send_connection_close()
+            self.end_headers()
+            try:
+                for chunk in (b"first-", b"second-", b"third"):
+                    self.wfile.write(("%X\r\n" % len(chunk)).encode("ascii"))
+                    self.wfile.write(chunk + b"\r\n")
+                    self.wfile.flush()
+                    time.sleep(0.15)
+                self.wfile.write(b"0\r\n\r\n")
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+        elif self.path == "/stream-large":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Transfer-Encoding", "chunked")
+            self.send_connection_close()
+            self.end_headers()
+            chunk = b"x" * 65536
+            try:
+                for _ in range(144):  # 9 MiB: larger than the buffered HTTP API limit.
+                    self.wfile.write(("%X\r\n" % len(chunk)).encode("ascii"))
+                    self.wfile.write(chunk + b"\r\n")
+                    self.wfile.flush()
+                self.wfile.write(b"0\r\n\r\n")
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+        elif self.path == "/stream-wav":
+            payload = make_test_wav()
+            self.send_response(200)
+            self.send_header("Content-Type", "audio/wav")
+            self.send_header("Transfer-Encoding", "chunked")
+            self.send_connection_close()
+            self.end_headers()
+            try:
+                for offset in range(0, len(payload), 2048):
+                    chunk = payload[offset:offset + 2048]
+                    self.wfile.write(("%X\\r\\n" % len(chunk)).encode("ascii"))
+                    self.wfile.write(chunk + b"\\r\\n")
+                    self.wfile.flush()
+                self.wfile.write(b"0\\r\\n\\r\\n")
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+        elif self.path == "/stream-binary":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Length", "8")
+            self.end_headers()
+            self.wfile.write(bytes((0x00, 0x01, 0xff, 0x41, 0x42, 0x43, 0x00, 0xfe)))
+        elif self.path == "/stream-empty":
+            self.send_response(200)
+            self.send_header("Transfer-Encoding", "chunked")
+            self.send_connection_close()
+            self.end_headers()
+            try:
+                self.wfile.write(b"0\r\n\r\n")
+            except (BrokenPipeError, ConnectionResetError):
+                pass
         elif self.path == "/slow":
             import time
             time.sleep(0.2)

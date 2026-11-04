@@ -1,0 +1,46 @@
+// Minimal raw-key menu demonstrating std.tui.
+// Build with: ylang build examples/tui-menu.yl -o tui-menu
+
+function main() -> int {
+    if (!tui.init()) {
+        print(tui.last_error());
+        return 1;
+    }
+
+    let int selected = 0;
+    let bool running = true;
+    while (running) {
+        tui.clear();
+        tui.write("YLang TUI example\n");
+        tui.write("Use Up/Down, Enter to select, Escape to quit.\n\n");
+
+        if (selected == 0) tui.write("> Play\n");
+        else tui.write("  Play\n");
+        if (selected == 1) tui.write("> Favorites\n");
+        else tui.write("  Favorites\n");
+        if (selected == 2) tui.write("> History\n");
+        else tui.write("  History\n");
+
+        let int key = tui.read_key();
+        if (key == 1001) {
+            selected = selected - 1;
+            if (selected < 0) selected = 2;
+        } else if (key == 1002) {
+            selected = selected + 1;
+            if (selected > 2) selected = 0;
+        } else if (key == 13) {
+            running = false;
+        } else if (key == 27) {
+            running = false;
+        }
+    }
+
+    tui.clear();
+    tui.write("Selected item: ");
+    if (selected == 0) tui.write("Play\n");
+    else if (selected == 1) tui.write("Favorites\n");
+    else tui.write("History\n");
+    tui.show_cursor();
+    tui.shutdown();
+    return 0;
+}

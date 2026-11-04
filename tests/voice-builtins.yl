@@ -1,8 +1,12 @@
 function main() -> int {
     let bool ok = voice.init();
     let bool playing = voice.is_playing();
+    let bool paused = voice.is_paused();
+    let bool finished = voice.is_finished();
     let bool volume_ok = voice.set_volume(65);
     let bool played = voice.play("sample.wav");
+    let http_stream stream = http.stream_open("GET", "", "", "");
+    let bool streamed = voice.play_stream(stream);
     voice.pause();
     voice.resume();
     voice.stop();

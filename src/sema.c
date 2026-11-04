@@ -318,7 +318,8 @@ static const BinaryBuiltin binary_builtins[] = {
     {"io.buffer_clear", 1, TYPE_BOOL, {TYPE_INT}},
     {"io.buffer_free", 1, TYPE_BOOL, {TYPE_INT}},
     {"io.buffer_load", 3, TYPE_INT, {TYPE_STRING, TYPE_INT, TYPE_INT}},
-    {"io.buffer_save", 3, TYPE_INT, {TYPE_STRING, TYPE_INT, TYPE_INT}}
+    {"io.buffer_save", 3, TYPE_INT, {TYPE_STRING, TYPE_INT, TYPE_INT}},
+    {"io.buffer_append_file", 2, TYPE_INT, {TYPE_STRING, TYPE_INT}}
 };
 
 static const BinaryBuiltin *find_binary_builtin(const char *name)
@@ -423,10 +424,13 @@ typedef GuiBuiltin VoiceBuiltin;
 static const VoiceBuiltin voice_builtins[] = {
     {"voice.init", 0, TYPE_BOOL, {TYPE_VOID}},
     {"voice.play", 1, TYPE_BOOL, {TYPE_STRING}},
+    {"voice.play_stream", 1, TYPE_BOOL, {TYPE_HTTP_STREAM}},
     {"voice.pause", 0, TYPE_VOID, {TYPE_VOID}},
     {"voice.resume", 0, TYPE_VOID, {TYPE_VOID}},
     {"voice.stop", 0, TYPE_VOID, {TYPE_VOID}},
     {"voice.is_playing", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"voice.is_paused", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"voice.is_finished", 0, TYPE_BOOL, {TYPE_VOID}},
     {"voice.set_volume", 1, TYPE_BOOL, {TYPE_INT}},
     {"voice.last_error", 0, TYPE_STRING, {TYPE_VOID}},
     {"voice.shutdown", 0, TYPE_VOID, {TYPE_VOID}}
@@ -436,6 +440,30 @@ static const VoiceBuiltin *find_voice_builtin(const char *name)
 {
     for (size_t i = 0; i < sizeof(voice_builtins) / sizeof(voice_builtins[0]); i++)
         if (strcmp(name, voice_builtins[i].name) == 0) return &voice_builtins[i];
+    return NULL;
+}
+
+typedef GuiBuiltin TuiBuiltin;
+static const TuiBuiltin tui_builtins[] = {
+    {"tui.init", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"tui.shutdown", 0, TYPE_VOID, {TYPE_VOID}},
+    {"tui.read_key", 0, TYPE_INT, {TYPE_VOID}},
+    {"tui.poll_key", 0, TYPE_INT, {TYPE_VOID}},
+    {"tui.width", 0, TYPE_INT, {TYPE_VOID}},
+    {"tui.height", 0, TYPE_INT, {TYPE_VOID}},
+    {"tui.clear", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"tui.write", 1, TYPE_BOOL, {TYPE_STRING}},
+    {"tui.set_cursor", 2, TYPE_BOOL, {TYPE_INT, TYPE_INT}},
+    {"tui.hide_cursor", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"tui.show_cursor", 0, TYPE_BOOL, {TYPE_VOID}},
+    {"tui.sleep_ms", 1, TYPE_BOOL, {TYPE_INT}},
+    {"tui.last_error", 0, TYPE_STRING, {TYPE_VOID}}
+};
+
+static const TuiBuiltin *find_tui_builtin(const char *name)
+{
+    for (size_t i = 0; i < sizeof(tui_builtins) / sizeof(tui_builtins[0]); i++)
+        if (strcmp(name, tui_builtins[i].name) == 0) return &tui_builtins[i];
     return NULL;
 }
 
@@ -962,11 +990,12 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             if (strncmp(expr->as.call.name, "voice.", 6) == 0) {
                 c->uses_voice = true;
+                if (strcmp(expr->as.call.name, "voice.play_stream") == 0) c->uses_http = true;
                 const VoiceBuiltin *builtin = find_voice_builtin(expr->as.call.name);
                 if (!builtin) {
                     diagnostic(c, expr->token, "error", "E2130",
                                "Unknown Voice function.",
-                               "Use voice.init(), voice.play(...), voice.pause(), voice.resume(), voice.stop(), voice.is_playing(), voice.set_volume(...), voice.last_error(), or voice.shutdown().");
+                               "Use voice.init(), voice.play(...), voice.play_stream(...), voice.pause(), voice.resume(), voice.stop(), voice.is_playing(), voice.is_paused(), voice.is_finished(), voice.set_volume(...), voice.last_error(), or voice.shutdown().");
                     for (size_t i = 0; i < expr->as.call.count; i++)
                         (void)check_expr(checker, expr->as.call.args[i]);
                     expr->type = TYPE_ERROR;
@@ -997,6 +1026,47 @@ static YType check_expr(Checker *checker, Expr *expr)
                             semantic_type_name(c, actual));
                         diagnostic(c, expr->as.call.args[i]->token, "error", "E2132",
                                    "Voice argument type mismatch.", suggestion);
+                    }
+                }
+                expr->type = builtin->result;
+                return expr->type;
+            }
+            if (strncmp(expr->as.call.name, "tui.", 4) == 0) {
+                const TuiBuiltin *builtin = find_tui_builtin(expr->as.call.name);
+                if (!builtin) {
+                    diagnostic(c, expr->token, "error", "E2152",
+                               "Unknown TUI function.",
+                               "Use tui.init, tui.read_key, tui.poll_key, tui.width, tui.height, tui.clear, tui.write, tui.set_cursor, tui.hide_cursor, tui.show_cursor, tui.sleep_ms, tui.last_error, or tui.shutdown.");
+                    for (size_t i = 0; i < expr->as.call.count; i++)
+                        (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (expr->as.call.count != builtin->arity) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion, sizeof(suggestion),
+                        "%s expects %zu argument(s), but received %zu.",
+                        builtin->name, builtin->arity, expr->as.call.count);
+                    diagnostic(c, expr->token, "error", "E2153",
+                               "Incorrect number of TUI arguments.", suggestion);
+                }
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    YType actual = check_expr(checker, expr->as.call.args[i]);
+                    if (actual == TYPE_OWNED_STRING &&
+                        is_owned_temporary_expression(expr->as.call.args[i]) &&
+                        i < builtin->arity && builtin->args[i] == TYPE_STRING) {
+                        diagnose_lost_owned_temporary(c, expr->as.call.args[i]);
+                    }
+                    if (i < builtin->arity && actual != TYPE_ERROR &&
+                        actual != builtin->args[i] &&
+                        !(builtin->args[i] == TYPE_STRING && is_string_type(actual))) {
+                        char suggestion[256];
+                        (void)snprintf(suggestion, sizeof(suggestion),
+                            "Argument %zu of %s expects %s, but received %s.",
+                            i + 1, builtin->name, semantic_type_name(c, builtin->args[i]),
+                            semantic_type_name(c, actual));
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2154",
+                                   "TUI argument type mismatch.", suggestion);
                     }
                 }
                 expr->type = builtin->result;
@@ -1103,6 +1173,56 @@ static YType check_expr(Checker *checker, Expr *expr)
                 } else {
                     expr->type = TYPE_INT;
                 }
+                return expr->type;
+            }
+            if (strncmp(expr->as.call.name, "http.stream_", 12U) == 0) {
+                c->uses_http = true;
+                const char *name = expr->as.call.name;
+                size_t expected = 0U;
+                YType result_type = TYPE_ERROR;
+                if (strcmp(name, "http.stream_open") == 0) { expected = 4U; result_type = TYPE_HTTP_STREAM; }
+                else if (strcmp(name, "http.stream_read") == 0) { expected = 2U; result_type = TYPE_OWNED_STRING; }
+                else if (strcmp(name, "http.stream_read_buffer") == 0) { expected = 3U; result_type = TYPE_INT; }
+                else if (strcmp(name, "http.stream_wait_headers") == 0) { expected = 1U; result_type = TYPE_BOOL; }
+                else if (strcmp(name, "http.stream_done") == 0) { expected = 1U; result_type = TYPE_BOOL; }
+                else if (strcmp(name, "http.stream_status") == 0) { expected = 1U; result_type = TYPE_INT; }
+                else if (strcmp(name, "http.stream_headers") == 0 || strcmp(name, "http.stream_error") == 0) { expected = 1U; result_type = TYPE_STRING; }
+                else if (strcmp(name, "http.stream_close") == 0) { expected = 1U; result_type = TYPE_VOID; }
+                else {
+                    diagnostic(c, expr->token, "error", "E2150",
+                               "Unknown HTTP streaming function.",
+                               "Use stream_open, stream_read, stream_read_buffer, stream_wait_headers, stream_done, stream_status, stream_headers, stream_error, or stream_close.");
+                    for (size_t i = 0; i < expr->as.call.count; i++) (void)check_expr(checker, expr->as.call.args[i]);
+                    expr->type = TYPE_ERROR;
+                    return expr->type;
+                }
+                if (expr->as.call.count != expected) {
+                    char suggestion[256];
+                    (void)snprintf(suggestion, sizeof(suggestion), "%s expects %zu argument(s), but received %zu.", name, expected, expr->as.call.count);
+                    diagnostic(c, expr->token, "error", "E2088", "Incorrect number of HTTP streaming arguments.", suggestion);
+                }
+                for (size_t i = 0; i < expr->as.call.count; i++) {
+                    YType arg_type = check_expr(checker, expr->as.call.args[i]);
+                    bool valid = arg_type == TYPE_ERROR;
+                    if (strcmp(name, "http.stream_open") == 0) valid = valid || is_string_type(arg_type);
+                    else if (strcmp(name, "http.stream_read") == 0)
+                        valid = valid || (i == 0U ? arg_type == TYPE_HTTP_STREAM : arg_type == TYPE_INT);
+                    else if (strcmp(name, "http.stream_read_buffer") == 0)
+                        valid = valid || (i == 0U ? arg_type == TYPE_HTTP_STREAM : arg_type == TYPE_INT);
+                    else valid = valid || arg_type == TYPE_HTTP_STREAM;
+                    if (!valid) {
+                        diagnostic(c, expr->as.call.args[i]->token, "error", "E2151",
+                                   "Invalid argument type for HTTP streaming function.",
+                                   strcmp(name, "http.stream_open") == 0
+                                     ? "stream_open expects string arguments."
+                                     : (strcmp(name, "http.stream_read") == 0
+                                         ? "stream_read expects an http_stream and an int byte limit."
+                                         : (strcmp(name, "http.stream_read_buffer") == 0
+                                             ? "stream_read_buffer expects an http_stream, a byte-buffer handle, and an int byte limit."
+                                             : "This function expects an http_stream handle.")));
+                    }
+                }
+                expr->type = result_type;
                 return expr->type;
             }
             if (strcmp(expr->as.call.name, "http.cancel") == 0) {

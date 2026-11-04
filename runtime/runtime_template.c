@@ -21,9 +21,14 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <io.h>
+#include <conio.h>
 #else
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/ioctl.h>
+#include <sys/select.h>
+#include <termios.h>
+#include <time.h>
 #include <unistd.h>
 #endif
 
@@ -31,10 +36,14 @@ bool ylgui_api_init(void);
 #ifdef YLANG_USE_VOICE
 bool ylvoice_init(void);
 bool ylvoice_play(const char *);
+bool ylvoice_play_stream(int64_t, int64_t (*)(int64_t, void *, size_t),
+                         const char *(*)(int64_t), void (*)(int64_t));
 void ylvoice_pause(void);
 void ylvoice_resume(void);
 void ylvoice_stop(void);
 bool ylvoice_is_playing(void);
+bool ylvoice_is_paused(void);
+bool ylvoice_is_finished(void);
 bool ylvoice_set_volume(int64_t);
 const char *ylvoice_last_error(void);
 void ylvoice_shutdown(void);
@@ -360,6 +369,7 @@ typedef struct {
     int64_t id;
     bool active;
     bool done;
+    bool headers_complete;
     bool attached;
     CURL *easy;
     struct curl_slist *headers;
@@ -393,11 +403,16 @@ static void yl_http_task_release(YLHttpTask *task) {
     free(task->body.data);
     memset(task, 0, sizeof(*task));
 }
+static void yl_http_stream_shutdown(void);
 static void yl_http_async_shutdown(void) {
     for (size_t i = 0; i < YL_HTTP_MAX_TASKS; i++)
         if (yl_http_tasks[i].active) yl_http_task_release(&yl_http_tasks[i]);
+    yl_http_stream_shutdown();
     if (yl_http_multi) { curl_multi_cleanup(yl_http_multi); yl_http_multi = NULL; }
-    curl_global_cleanup();
+    if (yl_http_initialized) {
+        curl_global_cleanup();
+        yl_http_initialized = false;
+    }
 }
 static YLHttpTask *yl_http_task_find(int64_t id) {
     for (size_t i = 0; i < YL_HTTP_MAX_TASKS; i++)
@@ -569,6 +584,7 @@ static const char *yl_http_await(int64_t id) {
     yl_http_task_release(task);
     return (const char *)yl_track(result, result_length + 1U);
 }
+
 static bool yl_http_cancel(int64_t id) {
     YLHttpTask *task = yl_http_task_find(id);
     if (!task) { yl_http_set_error("Invalid, cancelled, or already awaited HTTP task handle"); return false; }
@@ -577,6 +593,362 @@ static bool yl_http_cancel(int64_t id) {
     yl_http_task_release(task);
     return true;
 }
+
+/* Pull-based HTTP streams. Each stream owns a CURLM handle and a fixed-size
+   queue, so a slow consumer applies backpressure instead of growing memory. */
+#define YL_HTTP_STREAM_BUFFER (64U * 1024U)
+#define YL_HTTP_MAX_STREAMS 16U
+typedef struct {
+    int64_t id;
+    bool active;
+    bool done;
+    bool attached;
+    bool paused;
+    CURL *easy;
+    CURLM *multi;
+    struct curl_slist *headers;
+    char *url;
+    char *body_text;
+    char error_buffer[CURL_ERROR_SIZE];
+    char error[256];
+    int64_t status;
+    char buffer[YL_HTTP_STREAM_BUFFER];
+    size_t length;
+    char response_headers[YL_HTTP_MAX_HEADERS + 1U];
+    size_t response_header_length;
+    bool response_headers_too_large;
+} YLHttpStream;
+static YLHttpStream yl_http_streams[YL_HTTP_MAX_STREAMS];
+static int64_t yl_http_next_stream_id = 1;
+static bool yl_http_stream_shutdown_registered;
+
+static void yl_http_stream_error_set(YLHttpStream *stream, const char *message) {
+    if (stream) (void)snprintf(stream->error, sizeof(stream->error), "%s",
+                              message ? message : "unknown HTTP streaming error");
+}
+static YLHttpStream *yl_http_stream_find(int64_t id) {
+    for (size_t i = 0; i < YL_HTTP_MAX_STREAMS; i++)
+        if (yl_http_streams[i].active && yl_http_streams[i].id == id)
+            return &yl_http_streams[i];
+    return NULL;
+}
+static void yl_http_stream_release(YLHttpStream *stream) {
+    if (!stream) return;
+    if (stream->easy) {
+        if (stream->attached && stream->multi)
+            (void)curl_multi_remove_handle(stream->multi, stream->easy);
+        curl_easy_cleanup(stream->easy);
+    }
+    if (stream->multi) curl_multi_cleanup(stream->multi);
+    curl_slist_free_all(stream->headers);
+    free(stream->url);
+    free(stream->body_text);
+    memset(stream, 0, sizeof(*stream));
+}
+static void yl_http_stream_shutdown(void) {
+    for (size_t i = 0; i < YL_HTTP_MAX_STREAMS; i++)
+        if (yl_http_streams[i].active) yl_http_stream_release(&yl_http_streams[i]);
+    /* If the async task subsystem is active, its shutdown owns global cleanup. */
+    if (!yl_http_multi && yl_http_initialized) {
+        curl_global_cleanup();
+        yl_http_initialized = false;
+    }
+}
+static size_t yl_http_stream_write(char *data, size_t size, size_t count, void *userdata) {
+    YLHttpStream *stream = (YLHttpStream *)userdata;
+    if (!stream || (size && count > SIZE_MAX / size)) return 0U;
+    size_t bytes = size * count;
+    if (bytes > YL_HTTP_STREAM_BUFFER) {
+        yl_http_stream_error_set(stream, "A libcurl response chunk exceeded the stream buffer");
+        return 0U;
+    }
+    if (bytes > YL_HTTP_STREAM_BUFFER - stream->length) {
+        stream->paused = true;
+        return CURL_WRITEFUNC_PAUSE;
+    }
+    memcpy(stream->buffer + stream->length, data, bytes);
+    stream->length += bytes;
+    return bytes;
+}
+static size_t yl_http_stream_header_callback(char *data, size_t size, size_t count, void *userdata) {
+    YLHttpStream *stream = (YLHttpStream *)userdata;
+    if (!stream || (size && count > SIZE_MAX / size)) return 0U;
+    size_t bytes = size * count;
+    if (bytes >= 5U && memcmp(data, "HTTP/", 5U) == 0) {
+        stream->response_header_length = 0U;
+        stream->response_headers[0] = '\0';
+        stream->response_headers_too_large = false;
+        stream->headers_complete = false;
+        const char *space = memchr(data, ' ', bytes);
+        if (space && (size_t)(data + bytes - space) >= 4U &&
+            space[1] >= '0' && space[1] <= '9' &&
+            space[2] >= '0' && space[2] <= '9' &&
+            space[3] >= '0' && space[3] <= '9') {
+            stream->status = (int64_t)((space[1] - '0') * 100 +
+                                       (space[2] - '0') * 10 +
+                                       (space[3] - '0'));
+        }
+        return bytes;
+    }
+    size_t length = bytes;
+    while (length && (data[length - 1U] == '\r' || data[length - 1U] == '\n')) length--;
+    if (!length) {
+        stream->headers_complete = true;
+        return bytes;
+    }
+    if (stream->response_header_length >= YL_HTTP_MAX_HEADERS ||
+        length > YL_HTTP_MAX_HEADERS - stream->response_header_length - 1U) {
+        stream->response_headers_too_large = true;
+        return 0U;
+    }
+    memcpy(stream->response_headers + stream->response_header_length, data, length);
+    stream->response_header_length += length;
+    stream->response_headers[stream->response_header_length++] = '\n';
+    stream->response_headers[stream->response_header_length] = '\0';
+    return bytes;
+}
+static bool yl_http_stream_pump(YLHttpStream *stream) {
+    if (!stream || stream->done || !stream->multi) return false;
+    int running = 0;
+    CURLMcode code = curl_multi_perform(stream->multi, &running);
+    (void)running;
+    if (code != CURLM_OK) {
+        yl_http_stream_error_set(stream, curl_multi_strerror(code));
+        stream->done = true;
+        if (stream->attached) {
+            (void)curl_multi_remove_handle(stream->multi, stream->easy);
+            stream->attached = false;
+        }
+        return false;
+    }
+    int remaining = 0;
+    CURLMsg *message = NULL;
+    while ((message = curl_multi_info_read(stream->multi, &remaining)) != NULL) {
+        if (message->msg != CURLMSG_DONE || message->easy_handle != stream->easy) continue;
+        long response_code = 0;
+        (void)curl_easy_getinfo(stream->easy, CURLINFO_RESPONSE_CODE, &response_code);
+        stream->status = (int64_t)response_code;
+        if (stream->attached) {
+            (void)curl_multi_remove_handle(stream->multi, stream->easy);
+            stream->attached = false;
+        }
+        if (message->data.result != CURLE_OK) {
+            if (stream->response_headers_too_large)
+                yl_http_stream_error_set(stream, "HTTP response headers exceeded the 16 KiB limit");
+            else if (stream->error_buffer[0])
+                yl_http_stream_error_set(stream, stream->error_buffer);
+            else
+                yl_http_stream_error_set(stream, curl_easy_strerror(message->data.result));
+        }
+        stream->done = true;
+        return true;
+    }
+    return true;
+}
+static int64_t yl_http_stream_open(const char *method, const char *url,
+                                   const char *body, const char *raw_headers) {
+    yl_http_set_error("");
+    bool allowed = method &&
+        (strcmp(method, "GET") == 0 || strcmp(method, "POST") == 0 ||
+         strcmp(method, "PUT") == 0 || strcmp(method, "PATCH") == 0 ||
+         strcmp(method, "DELETE") == 0 || strcmp(method, "HEAD") == 0);
+    if (!allowed) { yl_http_set_error("Unsupported HTTP method; use GET, POST, PUT, PATCH, DELETE, or HEAD"); return 0; }
+    if (!url || (strncmp(url, "http://", 7U) != 0 && strncmp(url, "https://", 8U) != 0)) {
+        yl_http_set_error("URL must begin with http:// or https://"); return 0;
+    }
+    if (!yl_http_initialized) {
+        if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) {
+            yl_http_set_error("Could not initialize HTTP runtime"); return 0;
+        }
+        yl_http_initialized = true;
+    }
+    YLHttpStream *stream = NULL;
+    for (size_t i = 0; i < YL_HTTP_MAX_STREAMS; i++)
+        if (!yl_http_streams[i].active) { stream = &yl_http_streams[i]; break; }
+    if (!stream) { yl_http_set_error("Too many active HTTP streams (limit 16)"); return 0; }
+    memset(stream, 0, sizeof(*stream));
+    stream->active = true;
+    if (!yl_http_stream_shutdown_registered) {
+        (void)atexit(yl_http_stream_shutdown);
+        yl_http_stream_shutdown_registered = true;
+    }
+    stream->id = yl_http_next_stream_id++;
+    if (yl_http_next_stream_id <= 0) yl_http_next_stream_id = 1;
+    size_t url_length = strlen(url), body_length = strlen(body ? body : "");
+    stream->url = malloc(url_length + 1U);
+    stream->body_text = malloc(body_length + 1U);
+    if (!stream->url || !stream->body_text) {
+        yl_http_stream_error_set(stream, "Out of memory preparing HTTP stream");
+        stream->done = true;
+        return stream->id;
+    }
+    memcpy(stream->url, url, url_length + 1U);
+    memcpy(stream->body_text, body ? body : "", body_length + 1U);
+    if (!yl_http_headers(raw_headers, &stream->headers)) {
+        yl_http_stream_error_set(stream, yl_http_error);
+        stream->done = true;
+        return stream->id;
+    }
+    stream->easy = curl_easy_init();
+    stream->multi = curl_multi_init();
+    if (!stream->easy || !stream->multi) {
+        yl_http_stream_error_set(stream, "Could not initialize HTTP stream handles");
+        stream->done = true;
+        return stream->id;
+    }
+#define YL_HTTP_STREAM_OPTION(option, value) do { if (code == CURLE_OK) code = curl_easy_setopt(stream->easy, option, value); } while (0)
+    CURLcode code = CURLE_OK;
+    YL_HTTP_STREAM_OPTION(CURLOPT_URL, stream->url);
+    YL_HTTP_STREAM_OPTION(CURLOPT_PRIVATE, stream);
+    YL_HTTP_STREAM_OPTION(CURLOPT_ERRORBUFFER, stream->error_buffer);
+    YL_HTTP_STREAM_OPTION(CURLOPT_WRITEFUNCTION, yl_http_stream_write);
+    YL_HTTP_STREAM_OPTION(CURLOPT_WRITEDATA, stream);
+    YL_HTTP_STREAM_OPTION(CURLOPT_HEADERFUNCTION, yl_http_stream_header_callback);
+    YL_HTTP_STREAM_OPTION(CURLOPT_HEADERDATA, stream);
+    YL_HTTP_STREAM_OPTION(CURLOPT_NOSIGNAL, 1L);
+    YL_HTTP_STREAM_OPTION(CURLOPT_CONNECTTIMEOUT_MS, 5000L);
+    YL_HTTP_STREAM_OPTION(CURLOPT_TIMEOUT_MS, 0L);
+    YL_HTTP_STREAM_OPTION(CURLOPT_FOLLOWLOCATION, yl_http_redirects_allowed(stream->headers) ? 1L : 0L);
+    YL_HTTP_STREAM_OPTION(CURLOPT_MAXREDIRS, 5L);
+    YL_HTTP_STREAM_OPTION(CURLOPT_SSL_VERIFYPEER, 1L);
+    YL_HTTP_STREAM_OPTION(CURLOPT_SSL_VERIFYHOST, 2L);
+    YL_HTTP_STREAM_OPTION(CURLOPT_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
+    YL_HTTP_STREAM_OPTION(CURLOPT_REDIR_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
+    YL_HTTP_STREAM_OPTION(CURLOPT_USERAGENT, "YLang/2.3");
+    if (stream->headers) YL_HTTP_STREAM_OPTION(CURLOPT_HTTPHEADER, stream->headers);
+    if (strcmp(method, "GET") == 0) YL_HTTP_STREAM_OPTION(CURLOPT_HTTPGET, 1L);
+    else if (strcmp(method, "HEAD") == 0) {
+        YL_HTTP_STREAM_OPTION(CURLOPT_CUSTOMREQUEST, "HEAD");
+        YL_HTTP_STREAM_OPTION(CURLOPT_NOBODY, 1L);
+    } else if (strcmp(method, "POST") == 0) {
+        YL_HTTP_STREAM_OPTION(CURLOPT_POST, 1L);
+        YL_HTTP_STREAM_OPTION(CURLOPT_POSTFIELDS, stream->body_text);
+        YL_HTTP_STREAM_OPTION(CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)body_length);
+    } else {
+        YL_HTTP_STREAM_OPTION(CURLOPT_CUSTOMREQUEST, method);
+        YL_HTTP_STREAM_OPTION(CURLOPT_POSTFIELDS, stream->body_text);
+        YL_HTTP_STREAM_OPTION(CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)body_length);
+    }
+#undef YL_HTTP_STREAM_OPTION
+    if (code != CURLE_OK) {
+        yl_http_stream_error_set(stream, curl_easy_strerror(code));
+        stream->done = true;
+        return stream->id;
+    }
+    CURLMcode multi_code = curl_multi_add_handle(stream->multi, stream->easy);
+    if (multi_code != CURLM_OK) {
+        yl_http_stream_error_set(stream, curl_multi_strerror(multi_code));
+        stream->done = true;
+        return stream->id;
+    }
+    stream->attached = true;
+    return stream->id;
+}
+static size_t yl_http_stream_take(YLHttpStream *stream, void *destination, size_t max_bytes) {
+    if (!stream || max_bytes == 0U) return 0U;
+    while (stream->length == 0U && !stream->done) {
+        (void)yl_http_stream_pump(stream);
+        if (stream->length == 0U && !stream->done) {
+            int descriptors = 0;
+            (void)curl_multi_poll(stream->multi, NULL, 0U, 1000, &descriptors);
+        }
+    }
+    size_t take = stream->length;
+    if (take > max_bytes) take = max_bytes;
+    if (take && destination) memcpy(destination, stream->buffer, take);
+    if (take < stream->length)
+        memmove(stream->buffer, stream->buffer + take, stream->length - take);
+    stream->length -= take;
+    if (stream->paused && !stream->done && stream->easy) {
+        stream->paused = false;
+        CURLcode resume_code = curl_easy_pause(stream->easy, CURLPAUSE_CONT);
+        if (resume_code != CURLE_OK)
+            yl_http_stream_error_set(stream, curl_easy_strerror(resume_code));
+    }
+    return take;
+}
+static const char *yl_http_stream_read(int64_t id, int64_t max_bytes) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    if (!stream) { yl_http_set_error("Invalid or closed HTTP stream handle"); return yl_http_empty(); }
+    if (max_bytes <= 0) {
+        yl_http_stream_error_set(stream, "stream_read max_bytes must be greater than zero");
+        return yl_http_empty();
+    }
+    if ((uint64_t)max_bytes > YL_HTTP_STREAM_BUFFER)
+        max_bytes = (int64_t)YL_HTTP_STREAM_BUFFER;
+    size_t capacity = (size_t)max_bytes;
+    char *result = malloc(capacity + 1U);
+    if (!result) yl_runtime_error("out of memory reading HTTP stream");
+    size_t take = yl_http_stream_take(stream, result, capacity);
+    result[take] = '\0';
+    return (const char *)yl_track(result, take + 1U);
+}
+static bool yl_http_stream_done(int64_t id) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    if (!stream) return true;
+    return stream->done && stream->length == 0U;
+}
+static bool yl_http_stream_wait_headers(int64_t id) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    if (!stream) return false;
+    while (!stream->done) {
+        while (!stream->headers_complete && !stream->done) {
+            (void)yl_http_stream_pump(stream);
+            if (!stream->headers_complete && !stream->done) {
+                int descriptors = 0;
+                (void)curl_multi_poll(stream->multi, NULL, 0U, 1000, &descriptors);
+            }
+        }
+        if (!stream->headers_complete) break;
+        if (stream->status >= 100 && stream->status < 200) {
+            stream->headers_complete = false;
+            continue;
+        }
+        bool redirect = stream->status >= 300 && stream->status < 400 &&
+            (strstr(stream->response_headers, "Location:") ||
+             strstr(stream->response_headers, "location:"));
+        if (!redirect) return true;
+        stream->headers_complete = false;
+    }
+    return stream->headers_complete;
+}
+static int64_t yl_http_stream_status(int64_t id) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    return stream ? stream->status : 0;
+}
+static const char *yl_http_stream_headers(int64_t id) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    return stream ? stream->response_headers : "";
+}
+static const char *yl_http_stream_error(int64_t id) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    return stream ? stream->error : "Invalid or closed HTTP stream handle";
+}
+static void yl_http_stream_close(int64_t id) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    if (stream) yl_http_stream_release(stream);
+}
+static int64_t yl_http_stream_read_raw(int64_t id, void *destination, size_t max_bytes) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    if (!stream || !destination || max_bytes == 0U) return -1;
+    size_t count = yl_http_stream_take(stream, destination, max_bytes);
+    if (count == 0U && stream->done && stream->error[0]) return -1;
+    return (int64_t)count;
+}
+static const char *yl_http_stream_error_raw(int64_t id) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    return stream ? stream->error : "Invalid or closed HTTP stream handle";
+}
+static void yl_http_stream_close_raw(int64_t id) {
+    yl_http_stream_close(id);
+}
+#if defined(YLANG_USE_VOICE)
+static bool yl_voice_play_stream(int64_t id) {
+    return ylvoice_play_stream(id, yl_http_stream_read_raw,
+                               yl_http_stream_error_raw, yl_http_stream_close_raw);
+}
+#endif
+
 
 #endif
 
@@ -1267,6 +1639,255 @@ static bool yl_terminal_is_interactive(void) {
     return isatty(fileno(stdin)) != 0;
 #endif
 }
+
+/* std.tui: raw key input and portable terminal control. */
+static bool yl_tui_active;
+static bool yl_tui_restore_registered;
+static char yl_tui_error_text[192];
+#ifdef _WIN32
+static HANDLE yl_tui_input_handle;
+static DWORD yl_tui_saved_input_mode;
+#else
+static struct termios yl_tui_saved_termios;
+#endif
+
+static void yl_tui_set_error(const char *message) {
+    (void)snprintf(yl_tui_error_text, sizeof(yl_tui_error_text), "%s",
+                   message ? message : "unknown terminal error");
+}
+
+static void yl_tui_restore(void) {
+    if (!yl_tui_active) return;
+#ifdef _WIN32
+    if (yl_tui_input_handle != INVALID_HANDLE_VALUE)
+        (void)SetConsoleMode(yl_tui_input_handle, yl_tui_saved_input_mode);
+#else
+    (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &yl_tui_saved_termios);
+#endif
+    (void)fputs("\033[?25h", stdout);
+    (void)fflush(stdout);
+    yl_tui_active = false;
+}
+
+static bool yl_tui_init(void) {
+    if (yl_tui_active) return true;
+    if (!yl_terminal_is_interactive()) {
+        yl_tui_set_error("std.tui requires an interactive terminal");
+        return false;
+    }
+#ifdef _WIN32
+    yl_tui_input_handle = GetStdHandle(STD_INPUT_HANDLE);
+    if (yl_tui_input_handle == INVALID_HANDLE_VALUE ||
+        !GetConsoleMode(yl_tui_input_handle, &yl_tui_saved_input_mode)) {
+        yl_tui_set_error("could not read Windows console input mode");
+        return false;
+    }
+    DWORD mode = yl_tui_saved_input_mode;
+    mode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+#ifdef ENABLE_VIRTUAL_TERMINAL_INPUT
+    mode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
+#endif
+    if (!SetConsoleMode(yl_tui_input_handle, mode)) {
+        yl_tui_set_error("could not enable raw Windows console input");
+        return false;
+    }
+#else
+    if (tcgetattr(STDIN_FILENO, &yl_tui_saved_termios) != 0) {
+        yl_tui_set_error("could not read terminal attributes");
+        return false;
+    }
+    struct termios raw = yl_tui_saved_termios;
+    raw.c_lflag &= (tcflag_t)~(ICANON | ECHO);
+    raw.c_iflag &= (tcflag_t)~(IXON | ICRNL);
+    raw.c_cc[VMIN] = 1;
+    raw.c_cc[VTIME] = 0;
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) != 0) {
+        yl_tui_set_error("could not enable raw terminal input");
+        return false;
+    }
+#endif
+    yl_tui_active = true;
+    if (!yl_tui_restore_registered) {
+        (void)atexit(yl_tui_restore);
+        yl_tui_restore_registered = true;
+    }
+    yl_tui_error_text[0] = '\0';
+    return true;
+}
+
+#ifndef _WIN32
+static bool yl_tui_read_byte_timeout(unsigned char *value, int timeout_ms) {
+    if (!value) return false;
+    fd_set read_set;
+    FD_ZERO(&read_set);
+    FD_SET(STDIN_FILENO, &read_set);
+    struct timeval timeout;
+    timeout.tv_sec = timeout_ms / 1000;
+    timeout.tv_usec = (timeout_ms % 1000) * 1000;
+    int ready;
+    do { ready = select(STDIN_FILENO + 1, &read_set, NULL, NULL, &timeout); }
+    while (ready < 0 && errno == EINTR);
+    if (ready <= 0) return false;
+    ssize_t count;
+    do { count = read(STDIN_FILENO, value, 1U); }
+    while (count < 0 && errno == EINTR);
+    return count == 1;
+}
+#endif
+
+static int64_t yl_tui_read_key_internal(bool blocking) {
+    if (!yl_tui_active && !yl_tui_init()) return -1;
+#ifdef _WIN32
+    if (!blocking && !_kbhit()) return -1;
+    int key = _getch();
+    if (key == 0 || key == 224) {
+        int scan = _getch();
+        switch (scan) {
+            case 72: return 1001; /* up */
+            case 80: return 1002; /* down */
+            case 77: return 1003; /* right */
+            case 75: return 1004; /* left */
+            case 71: return 1005; /* home */
+            case 79: return 1006; /* end */
+            case 83: return 1007; /* delete */
+            case 73: return 1008; /* page up */
+            case 81: return 1009; /* page down */
+            default: return 1010 + scan;
+        }
+    }
+    return (int64_t)key;
+#else
+    unsigned char first = 0U;
+    ssize_t count = 0;
+    if (blocking) {
+        do { count = read(STDIN_FILENO, &first, 1U); }
+        while (count < 0 && errno == EINTR);
+    } else {
+        count = yl_tui_read_byte_timeout(&first, 0) ? 1 : 0;
+    }
+    if (count != 1) {
+        if (blocking) yl_tui_set_error("failed to read a terminal key");
+        return -1;
+    }
+    if (first != 0x1bU) return (int64_t)first;
+    unsigned char second = 0U, third = 0U;
+    if (!yl_tui_read_byte_timeout(&second, blocking ? 35 : 2)) return 27;
+    if (second != '[' && second != 'O') return 27;
+    if (!yl_tui_read_byte_timeout(&third, blocking ? 35 : 2)) return 27;
+    if (second == 'O') {
+        if (third == 'H') return 1005;
+        if (third == 'F') return 1006;
+        return 27;
+    }
+    switch (third) {
+        case 'A': return 1001;
+        case 'B': return 1002;
+        case 'C': return 1003;
+        case 'D': return 1004;
+        case 'H': return 1005;
+        case 'F': return 1006;
+        case '3':
+        case '5':
+        case '6': {
+            unsigned char terminator = 0U;
+            if (!yl_tui_read_byte_timeout(&terminator, blocking ? 35 : 2) || terminator != '~') return 27;
+            return third == '3' ? 1007 : (third == '5' ? 1008 : 1009);
+        }
+        default: return 27;
+    }
+#endif
+}
+static int64_t yl_tui_read_key(void) { return yl_tui_read_key_internal(true); }
+static int64_t yl_tui_poll_key(void) { return yl_tui_read_key_internal(false); }
+
+static int64_t yl_tui_width(void) {
+#ifdef _WIN32
+    CONSOLE_SCREEN_BUFFER_INFO info;
+    if (!GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info)) return 0;
+    return (int64_t)(info.srWindow.Right - info.srWindow.Left + 1);
+#else
+    struct winsize size;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) != 0) return 0;
+    return (int64_t)size.ws_col;
+#endif
+}
+
+static int64_t yl_tui_height(void) {
+#ifdef _WIN32
+    CONSOLE_SCREEN_BUFFER_INFO info;
+    if (!GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info)) return 0;
+    return (int64_t)(info.srWindow.Bottom - info.srWindow.Top + 1);
+#else
+    struct winsize size;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) != 0) return 0;
+    return (int64_t)size.ws_row;
+#endif
+}
+
+static bool yl_tui_clear(void) {
+    bool okay = fputs("\033[2J\033[H", stdout) != EOF && fflush(stdout) == 0;
+    if (!okay) yl_tui_set_error("could not clear the terminal");
+    return okay;
+}
+
+static bool yl_tui_write(const char *text) {
+    bool okay = text && fputs(text, stdout) != EOF && fflush(stdout) == 0;
+    if (!okay) yl_tui_set_error("could not write terminal output");
+    return okay;
+}
+
+static bool yl_tui_set_cursor(int64_t column, int64_t row) {
+    if (column < 1 || row < 1) {
+        yl_tui_set_error("terminal cursor coordinates are 1-based and must be positive");
+        return false;
+    }
+    bool okay = fprintf(stdout, "\033[%lld;%lldH", (long long)row,
+                        (long long)column) >= 0 && fflush(stdout) == 0;
+    if (!okay) yl_tui_set_error("could not position the terminal cursor");
+    return okay;
+}
+
+static bool yl_tui_hide_cursor(void) {
+    bool okay = fputs("\033[?25l", stdout) != EOF && fflush(stdout) == 0;
+    if (!okay) yl_tui_set_error("could not hide the terminal cursor");
+    return okay;
+}
+
+static bool yl_tui_show_cursor(void) {
+    bool okay = fputs("\033[?25h", stdout) != EOF && fflush(stdout) == 0;
+    if (!okay) yl_tui_set_error("could not show the terminal cursor");
+    return okay;
+}
+
+static bool yl_tui_sleep_ms(int64_t milliseconds) {
+    if (milliseconds < 0 || (uint64_t)milliseconds > (uint64_t)UINT32_MAX) {
+        yl_tui_set_error("sleep duration is outside the supported range");
+        return false;
+    }
+#ifdef _WIN32
+    Sleep((DWORD)milliseconds);
+#else
+    struct timespec request;
+    request.tv_sec = (time_t)(milliseconds / 1000);
+    request.tv_nsec = (long)((milliseconds % 1000) * 1000000);
+    while (nanosleep(&request, &request) != 0) {
+        if (errno != EINTR) {
+            yl_tui_set_error("terminal sleep failed");
+            return false;
+        }
+    }
+#endif
+    return true;
+}
+
+static void yl_tui_shutdown(void) {
+    yl_tui_restore();
+    yl_tui_error_text[0] = '\0';
+}
+
+static const char *yl_tui_last_error(void) {
+    return yl_tui_error_text[0] ? yl_tui_error_text : "No error";
+}
 static const char *yl_read_file(const char *path) {
     FILE *file = fopen(path, "rb");
     if (!file) yl_runtime_error("cannot open file for reading");
@@ -1748,6 +2369,34 @@ static bool yl_binary_buffer_clear(int64_t id) {
     buffer->length = 0U;
     return true;
 }
+
+#ifdef YLANG_USE_HTTP
+/* Copy the next HTTP stream bytes into a reusable binary buffer. This API
+   overwrites the destination buffer and never interprets payload bytes as text. */
+static int64_t yl_http_stream_read_buffer(int64_t stream_id, int64_t buffer_id,
+                                          int64_t max_bytes) {
+    YLHttpStream *stream = yl_http_stream_find(stream_id);
+    YLBinaryBuffer *buffer = yl_binary_buffer_find(buffer_id);
+    if (!stream || !buffer || buffer->parent_id != 0) {
+        if (stream) yl_http_stream_error_set(stream, "stream_read_buffer requires a live root byte buffer");
+        return -1;
+    }
+    if (max_bytes <= 0) {
+        yl_http_stream_error_set(stream, "stream_read_buffer max_bytes must be greater than zero");
+        return -1;
+    }
+    if ((uint64_t)max_bytes > YL_HTTP_STREAM_BUFFER)
+        max_bytes = (int64_t)YL_HTTP_STREAM_BUFFER;
+    size_t capacity = (size_t)max_bytes;
+    if (!yl_binary_buffer_reserve(buffer, capacity)) {
+        yl_http_stream_error_set(stream, "Could not reserve the destination byte buffer");
+        return -1;
+    }
+    size_t count = yl_http_stream_take(stream, buffer->data, capacity);
+    buffer->length = count;
+    return (int64_t)count;
+}
+#endif
 static bool yl_binary_buffer_free(int64_t id) {
     YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
     if (!buffer) return false;
@@ -1783,6 +2432,19 @@ static int64_t yl_binary_buffer_save(const char *path, int64_t offset, int64_t i
     size_t count = positioned && buffer->length ?
         fwrite(root->data + base, 1U, buffer->length, file) : 0U;
     bool failed = !positioned || ferror(file) != 0;
+    if (fclose(file) != 0) failed = true;
+    return failed ? -1 : (int64_t)count;
+}
+static int64_t yl_binary_buffer_append_file(const char *path, int64_t id) {
+    YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
+    size_t base = 0U;
+    YLBinaryBuffer *root = yl_binary_buffer_resolve(buffer, &base);
+    if (!path || !root) return -1;
+    FILE *file = fopen(path, "ab");
+    if (!file) return -1;
+    size_t count = buffer->length
+        ? fwrite(root->data + base, 1U, buffer->length, file) : 0U;
+    bool failed = count != buffer->length || ferror(file) != 0;
     if (fclose(file) != 0) failed = true;
     return failed ? -1 : (int64_t)count;
 }

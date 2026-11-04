@@ -79,6 +79,8 @@ static bool asm_type_supported(AsmContext *ctx, YType type, Token token,
             return asm_reject(ctx, token, "owned strings (use the C backend)");
         case TYPE_HTTP_TASK:
             return asm_reject(ctx, token, "HTTP async tasks (use the C backend)");
+        case TYPE_HTTP_STREAM:
+            return asm_reject(ctx, token, "HTTP streams (use the C backend)");
         case TYPE_VOID:
             if (allow_void) return true;
             return asm_reject(ctx, token, "void values");
@@ -173,6 +175,9 @@ static bool validate_expr(AsmContext *ctx, Expr *expr)
             }
             if (strncmp(expr->as.call.name, "voice.", 6) == 0) {
                 return asm_reject(ctx, expr->token, "Voice/audio calls (use the C backend with SDL2_mixer)");
+            }
+            if (strncmp(expr->as.call.name, "tui.", 4) == 0) {
+                return asm_reject(ctx, expr->token, "raw terminal UI calls (use the C backend)");
             }
             if (strncmp(expr->as.call.name, "gui.", 4) == 0) {
                 return asm_reject(ctx, expr->token, "GUI calls (use the C backend with SDL2)");

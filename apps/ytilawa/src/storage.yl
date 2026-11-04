@@ -1,0 +1,45 @@
+// Local text-file persistence for favorites, history, and playlists.
+
+function storage_read(string path) -> owned_string {
+    if (!io.file_exists(path)) return "";
+    return io.read_file(path);
+}
+
+function storage_append(string path, string record) -> bool {
+    let owned_string existing = storage_read(path);
+    if (string.length(existing) > 0 && !string.ends_with(existing, "\n")) {
+        existing = string.concat(existing, "\n");
+    }
+    let owned_string updated = string.concat(existing, record);
+    updated = string.concat(updated, "\n");
+    return io.write_file(path, updated);
+}
+
+function storage_contains(string path, string record) -> bool {
+    let owned_string existing = storage_read(path);
+    if (string.length(existing) == 0) return false;
+    let owned_string marker = string.concat("\n", record);
+    marker = string.concat(marker, "\n");
+    let owned_string wrapped = string.concat("\n", existing);
+    return string.contains(wrapped, marker);
+}
+
+function storage_add_favorite(int surah_id) -> bool {
+    let owned_string record = to_string(surah_id);
+    if (storage_contains("ytilawa-favorites.txt", record)) return true;
+    return storage_append("ytilawa-favorites.txt", record);
+}
+
+function storage_add_history(int surah_id, string reciter) -> bool {
+    let owned_string record = to_string(surah_id);
+    record = string.concat(record, "|");
+    record = string.concat(record, reciter);
+    return storage_append("ytilawa-history.txt", record);
+}
+
+function storage_add_playlist(int surah_id, string reciter) -> bool {
+    let owned_string record = to_string(surah_id);
+    record = string.concat(record, "|");
+    record = string.concat(record, reciter);
+    return storage_append("ytilawa-playlist-default.txt", record);
+}

@@ -1,0 +1,10 @@
+function main() -> int {
+    let int buffer = io.buffer_new(0);
+    io.buffer_push(buffer, 0);
+    io.buffer_push(buffer, 255);
+    print(io.buffer_append_file("build/buffer-append.bin", buffer));
+    print(io.buffer_append_file("build/buffer-append.bin", buffer));
+    print(io.binary_size("build/buffer-append.bin"));
+    io.buffer_free(buffer);
+    return 0;
+}

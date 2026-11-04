@@ -1,0 +1,47 @@
+// TUI presentation helpers. No network, storage, or audio state lives here.
+
+function ui_draw_main(string surah, string reciter, int surah_id,
+                      int volume, bool playing, bool paused, string message) -> int {
+    tui.clear();
+    tui.write("YTilawa Extended\n");
+    tui.write("MP3Quran.net catalog and recitation servers\n");
+    tui.write("-------------------------------------------\n");
+    tui.write("Surah: ");
+    tui.write(surah);
+    tui.write(" (");
+    tui.write(to_string(surah_id));
+    tui.write(")\nReader: ");
+    tui.write(reciter);
+    tui.write("\nVolume: ");
+    tui.write(to_string(volume));
+    tui.write("%\nState: ");
+    if (paused) tui.write("Paused\n");
+    else if (playing) tui.write("Playing\n");
+    else tui.write("Stopped\n");
+
+    tui.write("\nControls\n");
+    tui.write("  B Browse surahs   R Readers   / Search\n");
+    tui.write("  Space Play/Pause  N Next      P Previous\n");
+    tui.write("  S Stop            F Favorite   A Add playlist\n");
+    tui.write("  D Download        L Local MP3  H History\n");
+    tui.write("  + / - Volume      Q Quit\n\n");
+    tui.write(message);
+    tui.write("\n");
+    return 0;
+}
+
+function ui_prompt(string prompt) -> owned_string {
+    tui.shutdown();
+    let owned_string value = terminal.read_line(prompt);
+    if (!tui.init()) {
+        print(tui.last_error());
+    }
+    return value;
+}
+
+function ui_wait(string message) -> int {
+    tui.write("\n");
+    tui.write(message);
+    tui.write(" — press any key");
+    return tui.read_key();
+}

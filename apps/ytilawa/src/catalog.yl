@@ -1,0 +1,75 @@
+// MP3Quran.net catalog adapter.
+// Data is fetched live; audio URLs are derived only from API-provided server fields.
+
+function fetch_surahs() -> owned_string {
+    let owned_string response = http.get("https://www.mp3quran.net/api/v3/suwar?language=ar");
+    if (http.status() != 200 || string.length(http.last_error()) > 0) {
+        return "";
+    }
+    return json.parse(response);
+}
+
+function fetch_reciters() -> owned_string {
+    let owned_string response = http.get("https://www.mp3quran.net/api/v3/reciters?language=ar");
+    if (http.status() != 200 || string.length(http.last_error()) > 0) {
+        return "";
+    }
+    return json.parse(response);
+}
+
+function surah_count(string document) -> int {
+    let owned_string items = json.get(document, "suwar");
+    return json.array_length(items);
+}
+
+function surah_name(string document, int index) -> owned_string {
+    let owned_string items = json.get(document, "suwar");
+    let owned_string item = json.at(items, index);
+    return json.get_string(item, "name");
+}
+
+function reciter_count(string document) -> int {
+    let owned_string items = json.get(document, "reciters");
+    return json.array_length(items);
+}
+
+function reciter_name(string document, int index) -> owned_string {
+    let owned_string items = json.get(document, "reciters");
+    let owned_string item = json.at(items, index);
+    return json.get_string(item, "name");
+}
+
+function reciter_audio_url(string document, int reciter_index, int surah_id) -> owned_string {
+    let owned_string reciters = json.get(document, "reciters");
+    let owned_string reciter = json.at(reciters, reciter_index);
+    let owned_string moshaf_list = json.get(reciter, "moshaf");
+    let int count = json.array_length(moshaf_list);
+    let int index = 0;
+
+    let owned_string surah_text = to_string(surah_id);
+    if (surah_id < 10) {
+        surah_text = string.concat("00", surah_text);
+    } else if (surah_id < 100) {
+        surah_text = string.concat("0", surah_text);
+    }
+    let owned_string filename = string.concat(surah_text, ".mp3");
+
+    while (index < count) {
+        let owned_string moshaf = json.at(moshaf_list, index);
+        let owned_string available = json.get_string(moshaf, "surah_list");
+        let owned_string delimited = string.concat(",", available);
+        delimited = string.concat(delimited, ",");
+        let owned_string marker = string.concat(",", to_string(surah_id));
+        marker = string.concat(marker, ",");
+
+        if (string.contains(delimited, marker)) {
+            let owned_string server = json.get_string(moshaf, "server");
+            if (!string.ends_with(server, "/")) {
+                server = string.concat(server, "/");
+            }
+            return string.concat(server, filename);
+        }
+        index = index + 1;
+    }
+    return "";
+}
