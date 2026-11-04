@@ -60,6 +60,11 @@ int main(int argc, char **argv)
         usage(stderr);
         return 64;
     }
+    if (argc == 3 && (strcmp(argv[2], "--help") == 0 ||
+                      strcmp(argv[2], "-h") == 0)) {
+        usage(stdout);
+        return 0;
+    }
     const char *input = argv[2];
     const char *output = NULL;
     const char *cc = "gcc";
