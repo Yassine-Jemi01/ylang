@@ -1,4 +1,4 @@
-// Minimal raw-key menu demonstrating std.tui.
+// Styled terminal menu demonstrating the std.tui primitives.
 // Build with: ylang build examples/tui-menu.yl -o tui-menu
 
 function main() -> int {
@@ -9,38 +9,60 @@ function main() -> int {
 
     let int selected = 0;
     let bool running = true;
+    let int width = tui.width();
+
+    tui.hide_cursor();
     while (running) {
         tui.clear();
-        tui.write("YLang TUI example\n");
-        tui.write("Use Up/Down, Enter to select, Escape to quit.\n\n");
+        tui.write("\x1b[38;2;147;212;200mYLANG  /  TERMINAL UI\x1b[0m\n");
+        tui.write("\x1b[38;2;116;141;135mA small, native terminal interface\x1b[0m\n\n");
 
-        if (selected == 0) tui.write("> Play\n");
-        else tui.write("  Play\n");
-        if (selected == 1) tui.write("> Favorites\n");
-        else tui.write("  Favorites\n");
-        if (selected == 2) tui.write("> History\n");
-        else tui.write("  History\n");
+        if (width >= 60) {
+            tui.write("\x1b[38;2;215;154;115m+--------------------------------------------------+\x1b[0m\n");
+            tui.write("\x1b[38;2;215;154;115m|\x1b[0m  WORKSPACE                                         \x1b[38;2;215;154;115m|\x1b[0m\n");
+            tui.write("\x1b[38;2;215;154;115m+--------------------------------------------------+\x1b[0m\n");
+        } else {
+            tui.write("\x1b[38;2;215;154;115m+------------------------------+\x1b[0m\n");
+        }
+
+        if (selected == 0) tui.write("\x1b[48;2;22;125;141m\x1b[97m  >  New project                         \x1b[0m\n");
+        else tui.write("\x1b[38;2;200;220;213m      New project\x1b[0m\n");
+        if (selected == 1) tui.write("\x1b[48;2;22;125;141m\x1b[97m  >  Open workspace                      \x1b[0m\n");
+        else tui.write("\x1b[38;2;200;220;213m      Open workspace\x1b[0m\n");
+        if (selected == 2) tui.write("\x1b[48;2;22;125;141m\x1b[97m  >  Settings                             \x1b[0m\n");
+        else tui.write("\x1b[38;2;200;220;213m      Settings\x1b[0m\n");
+        if (selected == 3) tui.write("\x1b[48;2;22;125;141m\x1b[97m  >  Quit                                 \x1b[0m\n");
+        else tui.write("\x1b[38;2;200;220;213m      Quit\x1b[0m\n");
+
+        if (width >= 60) {
+            tui.write("\x1b[38;2;215;154;115m+--------------------------------------------------+\x1b[0m\n");
+        } else {
+            tui.write("\x1b[38;2;215;154;115m+------------------------------+\x1b[0m\n");
+        }
+        tui.write("\n\x1b[38;2;147;212;200mUP / DOWN\x1b[0m  Navigate    \x1b[38;2;147;212;200mENTER\x1b[0m  Select    \x1b[38;2;147;212;200mESC\x1b[0m  Exit\n");
 
         let int key = tui.read_key();
         if (key == 1001) {
             selected = selected - 1;
-            if (selected < 0) selected = 2;
+            if (selected < 0) selected = 3;
         } else if (key == 1002) {
             selected = selected + 1;
-            if (selected > 2) selected = 0;
+            if (selected > 3) selected = 0;
         } else if (key == 13) {
             running = false;
         } else if (key == 27) {
+            selected = 3;
             running = false;
         }
     }
 
     tui.clear();
-    tui.write("Selected item: ");
-    if (selected == 0) tui.write("Play\n");
-    else if (selected == 1) tui.write("Favorites\n");
-    else tui.write("History\n");
     tui.show_cursor();
+    tui.write("\x1b[38;2;147;212;200mYLANG\x1b[0m  ");
+    if (selected == 0) tui.write("New project selected.\n");
+    else if (selected == 1) tui.write("Open workspace selected.\n");
+    else if (selected == 2) tui.write("Settings selected.\n");
+    else tui.write("Goodbye.\n");
     tui.shutdown();
     return 0;
 }
