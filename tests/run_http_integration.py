@@ -157,10 +157,49 @@ def main():
         )
         expected_binary = "8\\n0\\n1\\n255\\n65\\n66\\n67\\n0\\n254\\n200\\n"
         if binary_result.returncode != 0 or binary_result.stdout != expected_binary:
-            sys.stderr.write("--- expected binary stream output ---\\n" + expected_binary)
-            sys.stderr.write("--- actual binary stream output ---\\n" + binary_result.stdout)
+            sys.stderr.write("--- expected binary stream output ---\n" + expected_binary)
+            sys.stderr.write("--- actual binary stream output ---\n" + binary_result.stdout)
             sys.stderr.write(binary_result.stderr)
             raise SystemExit("binary HTTP streaming integration test failed")
+
+        # A truncated transfer must deliver any buffered bytes, then report -1
+        # rather than disguising a transport error as normal EOF.
+        error_source = ROOT / "build" / "http-stream-binary-error.yl"
+        error_source.write_text(
+            "function main() -> int {\\n"
+            "    let string port = io.read_line();\\n"
+            '    let string base = string.concat("http://127.0.0.1:", port);\\n'
+            '    let http_stream stream = http.stream_open("GET", string.concat(base, "/stream-truncated"), "", "");\\n'
+            "    let int buffer = io.buffer_new(0);\\n"
+            "    let int first = http.stream_read_buffer(stream, buffer, 32);\\n"
+            "    print(first);\\n"
+            "    let int index = 0;\\n"
+            "    while (index < first) { print(io.buffer_get(buffer, index)); index = index + 1; }\\n"
+            "    print(http.stream_read_buffer(stream, buffer, 32));\\n"
+            "    print(string.length(http.stream_error(stream)) > 0);\\n"
+            "    io.buffer_free(buffer);\\n"
+            "    http.stream_close(stream);\\n"
+            "    return 0;\\n"
+            "}\\n",
+            encoding="utf-8",
+        )
+        error_output = "build/test-http-stream-binary-error.exe" if os.name == "nt" else "build/test-http-stream-binary-error"
+        run_checked([compiler, "check", str(error_source.relative_to(ROOT))])
+        run_checked([compiler, "build", str(error_source.relative_to(ROOT)), "-o", error_output])
+        error_result = subprocess.run(
+            [str(ROOT / error_output)],
+            cwd=ROOT,
+            input=f"{port}\\n",
+            text=True,
+            capture_output=True,
+            timeout=20,
+        )
+        expected_error = "5\\n115\\n104\\n111\\n114\\n116\\n-1\\ntrue\\n"
+        if error_result.returncode != 0 or error_result.stdout != expected_error:
+            sys.stderr.write("--- expected binary stream error output ---\\n" + expected_error)
+            sys.stderr.write("--- actual binary stream error output ---\\n" + error_result.stdout)
+            sys.stderr.write(error_result.stderr)
+            raise SystemExit("binary HTTP stream error reporting integration test failed")
 
         # If SDL2_mixer is installed, verify the compiler can hand an HTTP
         # stream directly to the audio decoder without staging a local file.
