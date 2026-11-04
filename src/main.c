@@ -67,6 +67,7 @@ int main(int argc, char **argv)
     }
     const char *input = argv[2];
     const char *output = NULL;
+    bool output_option_set = false;
     const char *cc = "gcc";
     bool cc_option_set = false;
     for (int i = 3; i < argc; i++) {
@@ -76,9 +77,22 @@ int main(int argc, char **argv)
                 return 64;
             }
             output = argv[++i];
+            if (output[0] == '\0') {
+                fputs("ylang: -o needs a non-empty output path\n", stderr);
+                return 64;
+            }
+            if (output_option_set) {
+                fputs("ylang: -o may be specified only once\n", stderr);
+                return 64;
+            }
+            output_option_set = true;
         } else if (strcmp(argv[i], "--cc") == 0) {
             if (i + 1 >= argc) {
                 fputs("ylang: --cc needs gcc or clang\n", stderr);
+                return 64;
+            }
+            if (cc_option_set) {
+                fputs("ylang: --cc may be specified only once\n", stderr);
                 return 64;
             }
             cc = argv[++i];
