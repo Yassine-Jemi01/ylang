@@ -38,6 +38,10 @@ The \`env.get(name)\` helper reads a process environment variable without launch
 See [Binary I/O](binary-io.md) for byte-oriented file access and its current limits. HTTP streaming can copy raw response chunks into reusable byte buffers with `http.stream_read_buffer`; do not use the text-only `http.stream_read` API for binary payloads.
 
 ## JSON documents
+## Building JSON text in 2.3
+
+YLang 2.3 adds immutable raw-text builders. The [JSON reference](reference/JSON.md) contains a complete example in which `json.object` and `json.array` create containers, `json.escape` encodes user text, and `json.set`, `json.push`, and `json.remove` return new owned strings. The original values are never modified in place. These builder functions are development additions and are not available in the stable 2.2.0 release.
+
 
 The JSON API represents a document and extracted values as JSON text held in owned strings; it does not create a dynamic object tree. Use `json.parse` or `json.valid` before trusting input, check optional keys with `json.has`, and inspect `json.last_error()` after a failed lookup or typed conversion.
 
