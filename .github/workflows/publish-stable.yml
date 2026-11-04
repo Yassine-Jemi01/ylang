@@ -299,7 +299,7 @@ jobs:
           test "$(tr -d '\r\n' < VERSION)" = "$EXPECTED_VERSION"
       - name: Verify release notes are final stable notes
         run: |
-          EXPECTED_VERSION="$(tr -d '\\r\\n' < .github/PUBLISH_STABLE)"
+          EXPECTED_VERSION="$(tr -d '\r\n' < .github/PUBLISH_STABLE)"
           RELEASE_NOTES="docs/CHANGELOG-${EXPECTED_VERSION}.md"
           test -s "$RELEASE_NOTES"
           if ! grep -Fq "# YLang ${EXPECTED_VERSION} — Stable Release" "$RELEASE_NOTES"; then
