@@ -9,8 +9,8 @@ Install libcurl development files, SDL2_mixer with an MP3 decoder enabled, and a
 ```sh
 make
 make voice
-./build/ylang check apps/ytilawa/src/main.yl
-./build/ylang build apps/ytilawa/src/main.yl -o build/ytilawa
+./build/ylang check apps/ytilawa/main.yl
+./build/ylang build apps/ytilawa/main.yl -o build/ytilawa
 ./build/ytilawa
 ```
 
