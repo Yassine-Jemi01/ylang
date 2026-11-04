@@ -99,6 +99,51 @@
     "expected_output": "hello from a module\n"
   },
   {
+    "title": "Exhaustive matching",
+    "category": "control flow",
+    "file": "12-match.yl",
+    "starter": "starter/12-match.yl",
+    "description": "Complete the enum match so every direction is handled.",
+    "hint": "The compiler requires exactly one arm for every declared variant.",
+    "expected_output": "north\n"
+  },
+  {
+    "title": "F-string interpolation",
+    "category": "strings",
+    "file": "13-fstrings.yl",
+    "starter": "starter/13-fstrings.yl",
+    "description": "Interpolate the declared name into the greeting.",
+    "hint": "The expression inside braces must refer to a value in scope.",
+    "expected_output": "Hello from YLang!\n"
+  },
+  {
+    "title": "Explicit conversions",
+    "category": "types",
+    "file": "14-conversions.yl",
+    "starter": "starter/14-conversions.yl",
+    "description": "Convert a floating-point value to an integer explicitly.",
+    "hint": "to_int accepts a float, not a string.",
+    "expected_output": "3\n"
+  },
+  {
+    "title": "Loop control",
+    "category": "control flow",
+    "file": "15-break-continue.yl",
+    "starter": "starter/15-break-continue.yl",
+    "description": "Move the break condition into the loop and stop after three iterations.",
+    "hint": "break and continue must appear inside a loop body.",
+    "expected_output": "3\n"
+  },
+  {
+    "title": "Text file I/O",
+    "category": "standard library",
+    "file": "16-file-io.yl",
+    "starter": "starter/16-file-io.yl",
+    "description": "Write a string to a file and read it back.",
+    "hint": "io.write_file takes a path and text content.",
+    "expected_output": "true\nYLang\n"
+  },
+  {
     "title": "Optional: nested loops",
     "category": "optional · control flow",
     "optional": true,
