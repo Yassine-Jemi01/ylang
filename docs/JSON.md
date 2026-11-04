@@ -68,7 +68,7 @@ Expected output:
 {"name":"Ada Lovelace"}
 ```
 
-The original strings remain unchanged: each builder returns a new `owned_string`. The complete runnable version is [`examples/json-builders.yl`](../examples/json-builders.yl).
+The original strings remain unchanged: each builder returns a new `owned_string`. The complete runnable version is [`examples/json-builders.yl`](https://github.com/Yassine-Jemi01/ylang/blob/main/examples/json-builders.yl).
 
 ## Representation and behavior
 
