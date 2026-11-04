@@ -369,6 +369,7 @@ typedef struct {
     int64_t id;
     bool active;
     bool done;
+    bool headers_complete;
     bool attached;
     CURL *easy;
     struct curl_slist *headers;
@@ -677,11 +678,24 @@ static size_t yl_http_stream_header_callback(char *data, size_t size, size_t cou
         stream->response_header_length = 0U;
         stream->response_headers[0] = '\0';
         stream->response_headers_too_large = false;
+        stream->headers_complete = false;
+        const char *space = memchr(data, ' ', bytes);
+        if (space && (size_t)(data + bytes - space) >= 4U &&
+            space[1] >= '0' && space[1] <= '9' &&
+            space[2] >= '0' && space[2] <= '9' &&
+            space[3] >= '0' && space[3] <= '9') {
+            stream->status = (int64_t)((space[1] - '0') * 100 +
+                                       (space[2] - '0') * 10 +
+                                       (space[3] - '0'));
+        }
         return bytes;
     }
     size_t length = bytes;
     while (length && (data[length - 1U] == '\r' || data[length - 1U] == '\n')) length--;
-    if (!length) return bytes;
+    if (!length) {
+        stream->headers_complete = true;
+        return bytes;
+    }
     if (stream->response_header_length >= YL_HTTP_MAX_HEADERS ||
         length > YL_HTTP_MAX_HEADERS - stream->response_header_length - 1U) {
         stream->response_headers_too_large = true;
@@ -873,6 +887,30 @@ static bool yl_http_stream_done(int64_t id) {
     YLHttpStream *stream = yl_http_stream_find(id);
     if (!stream) return true;
     return stream->done && stream->length == 0U;
+}
+static bool yl_http_stream_wait_headers(int64_t id) {
+    YLHttpStream *stream = yl_http_stream_find(id);
+    if (!stream) return false;
+    while (!stream->done) {
+        while (!stream->headers_complete && !stream->done) {
+            (void)yl_http_stream_pump(stream);
+            if (!stream->headers_complete && !stream->done) {
+                int descriptors = 0;
+                (void)curl_multi_poll(stream->multi, NULL, 0U, 1000, &descriptors);
+            }
+        }
+        if (!stream->headers_complete) break;
+        if (stream->status >= 100 && stream->status < 200) {
+            stream->headers_complete = false;
+            continue;
+        }
+        bool redirect = stream->status >= 300 && stream->status < 400 &&
+            (strstr(stream->response_headers, "Location:") ||
+             strstr(stream->response_headers, "location:"));
+        if (!redirect) return true;
+        stream->headers_complete = false;
+    }
+    return stream->headers_complete;
 }
 static int64_t yl_http_stream_status(int64_t id) {
     YLHttpStream *stream = yl_http_stream_find(id);
