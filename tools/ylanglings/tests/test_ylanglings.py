@@ -100,6 +100,10 @@ class CliStateTests(unittest.TestCase):
                     encoding="utf-8",
                 )
                 self.assertEqual(ylanglings.load_progress(), {"completed": [1, 4]})
+                progress_path.write_bytes(b"\\xff\\xfe")
+                self.assertEqual(ylanglings.load_progress(), {"completed": []})
+                progress_path.write_bytes(b" " * (1024 * 1024 + 1))
+                self.assertEqual(ylanglings.load_progress(), {"completed": []})
 
     def test_progress_is_saved_and_loaded(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -111,6 +115,7 @@ class CliStateTests(unittest.TestCase):
                 ylanglings.save_progress({"completed": [1, 2]})
                 self.assertEqual(ylanglings.load_progress(), {"completed": [1, 2]})
                 self.assertTrue(progress_path.is_file())
+                self.assertEqual(list(config.glob(".progress-*.tmp")), [])
 
     def test_list_shows_core_and_optional_exercises(self):
         output = io.StringIO()
