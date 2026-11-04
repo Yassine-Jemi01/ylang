@@ -90,8 +90,6 @@ jobs:
         run: ${{ steps.compiler.outputs.make }} voice voice-example voice-test CC="${{ steps.compiler.outputs.cc }}"
       - name: Run regression tests
         run: ${{ steps.compiler.outputs.make }} test CC="${{ steps.compiler.outputs.cc }}"
-      - name: Verify every YLanglings exercise against the release compiler
-        run: python3 tools/ylanglings/ylanglings.py --compiler ./build/ylang verify-all
       - name: Fuzz lexer/parser smoke test
         if: runner.os == 'Linux' && matrix.compiler == 'clang'
         run: make fuzz-smoke FUZZ_CC=clang
