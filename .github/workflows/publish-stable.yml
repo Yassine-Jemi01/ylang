@@ -127,10 +127,8 @@ jobs:
         run: make clean all CC=gcc
       - name: Build optional SDL2 GUI runtime
         run: make gui gui-example CC=gcc
-      - name: Verify YLanglings offline CLI and install lifecycle
-        run: python -m unittest discover -s tools/ylanglings/tests -v
-      - name: Verify all YLanglings exercises with native Windows compiler
-        run: python tools/ylanglings/ylanglings.py --compiler ./build/ylang.exe verify-all
+      - name: Verify YLanglings offline CLI, install lifecycle, and full curriculum
+        run: make ylanglings-test ylanglings-verify PYTHON=python
       - name: Check, compile, and run a native Windows program
         run: |
           mkdir -p build/windows-smoke
