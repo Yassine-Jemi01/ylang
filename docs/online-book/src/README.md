@@ -8,7 +8,7 @@ The online edition is the canonical book. It is maintained alongside the compile
 
 ## Which version does this book describe?
 
-This edition documents **YLang 2.2.0**, the current stable release at the time of writing. The project is also developing YLang 2.3.0; its [development notes](reference/CHANGELOG-2.3.0.md) and [release gates](reference/ROADMAP-2.3.0.md) describe unreleased work and do not change the stable version.
+This edition documents **YLang 2.2.0**, the current stable release at the time of writing. The project is also developing YLang 2.3.0; its [development notes](reference/CHANGELOG-2.3.0.md), [release gates](reference/ROADMAP-2.3.0.md), and [pre-release checklist](reference/RELEASE-CHECKLIST-2.3.0.md) describe unreleased work and do not change the stable version.
 
 The stable core uses explicit types and the default C-backend workflow. Some features added around the core are experimental and have narrower support:
 
