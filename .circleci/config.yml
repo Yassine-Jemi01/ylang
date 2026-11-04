@@ -1,0 +1,50 @@
+version: 2.1
+
+jobs:
+  build-and-test:
+    docker:
+      - image: cimg/base:current
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: Install compiler and test dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends \
+              build-essential clang gdb make nasm pkg-config \
+              python3 libcurl4-openssl-dev libsdl2-dev libsdl2-mixer-dev
+      - run:
+          name: Build YLang
+          command: make -j2
+      - run:
+          name: Verify generated runtime template
+          command: make check-runtime-template
+      - run:
+          name: Run unit and integration tests
+          command: make test
+
+  sanitizer-tests:
+    docker:
+      - image: cimg/base:current
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: Install sanitizer build dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends \
+              build-essential clang gdb make nasm pkg-config \
+              python3 libcurl4-openssl-dev libsdl2-dev libsdl2-mixer-dev
+      - run:
+          name: Run AddressSanitizer and UndefinedBehaviorSanitizer suite
+          command: make sanitize
+
+workflows:
+  ylang-ci:
+    jobs:
+      - build-and-test
+      - sanitizer-tests:
+          requires:
+            - build-and-test
