@@ -183,6 +183,11 @@ function Hero() {
             <a className="button button-secondary" href={BOOK}>Read the book <FiBookOpen aria-hidden="true" /></a>
           </div>
           <p className="hero-footnote"><FiCode aria-hidden="true" /> Small language. Real compiler. Open source.</p>
+          <a className="hero-dev-link" href={`${SITE}learn/reference/ROADMAP-2.3.0.html`}>
+            <span className="hero-dev-dot" aria-hidden="true" />
+            YLang 2.3 is in development
+            <FiArrowUpRight aria-hidden="true" />
+          </a>
         </div>
         <HeroPreview />
       </div>
