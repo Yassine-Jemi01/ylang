@@ -24,7 +24,7 @@ Make YLang 2.3 a dependable, polished minor release: improve the existing compil
 
 ### 3. Developer experience and design
 - CLI: consistent command help, version output, concise success messages, readable diagnostics, and predictable exit codes. The `help`/`version` subcommands and their option aliases are integrated, with a dedicated command reference and regression coverage; validation is still pending.
-- TUI examples: intentional hierarchy, restrained YLang teal/rust palette, clear focus state, keyboard hints, and narrow-terminal fallback.
+- TUI examples: intentional hierarchy, restrained YLang teal/rust palette, clear focus state, keyboard hints, narrow-terminal fallback, and a `make tui-example` build target.
 - Official homepage: polished responsive layout, live-looking but truthful code/build preview, clear stable-version/install path, and consistent official logo assets.
 - Book: preserve its current visual identity; only fix navigation, broken links, examples, and factual inaccuracies.
 - Editor support: verify installation instructions, language ID, diagnostics, and version metadata.
