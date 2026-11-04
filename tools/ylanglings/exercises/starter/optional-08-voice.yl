@@ -1,0 +1,8 @@
+function main() -> int {
+    let int initialized = voice.init();
+    if (initialized) {
+        voice.play("sample.mp3");
+    }
+    voice.shutdown();
+    return 0;
+}

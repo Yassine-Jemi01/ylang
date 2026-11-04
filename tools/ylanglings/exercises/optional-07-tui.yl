@@ -1,0 +1,6 @@
+function main() -> int {
+    let bool initialized = tui.init();
+    let bool okay = tui.width();
+    tui.shutdown();
+    return 0;
+}

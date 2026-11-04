@@ -1,0 +1,11 @@
+enum Direction { North, East, South, West }
+
+function main() -> int {
+    let Direction facing = Direction.North;
+    match (facing) {
+        Direction.North -> { print("north"); }
+        Direction.East -> { print("east"); }
+        Direction.South -> { print("south"); }
+    }
+    return 0;
+}

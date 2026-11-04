@@ -1,0 +1,5 @@
+function main() -> int {
+    let int count = "three";
+    print(count);
+    return 0;
+}

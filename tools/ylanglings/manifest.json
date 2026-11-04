@@ -1,0 +1,247 @@
+[
+  {
+    "title": "Hello, YLang",
+    "category": "basics",
+    "file": "01-hello.yl",
+    "starter": "starter/01-hello.yl",
+    "description": "Say hello and return the correct exit type.",
+    "hint": "The entry point must return an integer status.",
+    "expected_output": "Hello, YLang!\n"
+  },
+  {
+    "title": "Variables and types",
+    "category": "types",
+    "file": "02-variables.yl",
+    "starter": "starter/02-variables.yl",
+    "description": "Give the variable the declared integer type.",
+    "hint": "The initializer and declared type must agree.",
+    "expected_output": "3\n"
+  },
+  {
+    "title": "Mutable values",
+    "category": "mutability",
+    "file": "03-mutability.yl",
+    "starter": "starter/03-mutability.yl",
+    "description": "Update the score and print the new value.",
+    "hint": "A value that is reassigned must be declared mutable using the syntax supported by this compiler.",
+    "expected_output": "15\n"
+  },
+  {
+    "title": "Conditions",
+    "category": "control flow",
+    "file": "04-conditions.yl",
+    "starter": "starter/04-conditions.yl",
+    "description": "Compare the temperature with an integer threshold.",
+    "hint": "Both sides of the comparison should have compatible types.",
+    "expected_output": "warm\n"
+  },
+  {
+    "title": "Loops",
+    "category": "control flow",
+    "file": "05-loops.yl",
+    "starter": "starter/05-loops.yl",
+    "description": "Accumulate the loop counter values.",
+    "hint": "The accumulator is an integer; add the counter, not a boolean.",
+    "expected_output": "10\n"
+  },
+  {
+    "title": "Functions",
+    "category": "functions",
+    "file": "06-functions.yl",
+    "starter": "starter/06-functions.yl",
+    "description": "Pass an integer to the function and return twice its value.",
+    "hint": "Check the parameter type at the call site.",
+    "expected_output": "42\n"
+  },
+  {
+    "title": "Arrays",
+    "category": "collections",
+    "file": "07-arrays.yl",
+    "starter": "starter/07-arrays.yl",
+    "description": "Read the last valid element in the array.",
+    "hint": "Array indexes start at zero.",
+    "expected_output": "12\n"
+  },
+  {
+    "title": "Structs",
+    "category": "types",
+    "file": "08-structs.yl",
+    "starter": "starter/08-structs.yl",
+    "description": "Use the fields declared by Point.",
+    "hint": "The struct declares x and y only.",
+    "expected_output": "7\n"
+  },
+  {
+    "title": "Enums",
+    "category": "types",
+    "file": "09-enums.yl",
+    "starter": "starter/09-enums.yl",
+    "description": "Select a variant that exists in Direction.",
+    "hint": "Use one of the four declared Direction variants.",
+    "expected_output": "north\n"
+  },
+  {
+    "title": "Strings",
+    "category": "strings",
+    "file": "10-strings.yl",
+    "starter": "starter/10-strings.yl",
+    "description": "Print the number of characters in the language name.",
+    "hint": "Use the standard string length helper with the string value.",
+    "expected_output": "5\n"
+  },
+  {
+    "title": "Modules",
+    "category": "modules",
+    "file": "11-modules.yl",
+    "starter": "starter/11-modules.yl",
+    "description": "Import the helper and return its greeting.",
+    "hint": "The imported function must exist in the neighboring module file.",
+    "expected_output": "hello from a module\n"
+  },
+  {
+    "title": "Exhaustive matching",
+    "category": "control flow",
+    "file": "12-match.yl",
+    "starter": "starter/12-match.yl",
+    "description": "Complete the enum match so every direction is handled.",
+    "hint": "The compiler requires exactly one arm for every declared variant.",
+    "expected_output": "north\n"
+  },
+  {
+    "title": "F-string interpolation",
+    "category": "strings",
+    "file": "13-fstrings.yl",
+    "starter": "starter/13-fstrings.yl",
+    "description": "Interpolate the declared name into the greeting.",
+    "hint": "The expression inside braces must refer to a value in scope.",
+    "expected_output": "Hello from YLang!\n"
+  },
+  {
+    "title": "Explicit conversions",
+    "category": "types",
+    "file": "14-conversions.yl",
+    "starter": "starter/14-conversions.yl",
+    "description": "Convert a floating-point value to an integer explicitly.",
+    "hint": "to_int accepts a float, not a string.",
+    "expected_output": "3\n"
+  },
+  {
+    "title": "Loop control",
+    "category": "control flow",
+    "file": "15-break-continue.yl",
+    "starter": "starter/15-break-continue.yl",
+    "description": "Move the break condition into the loop and stop after three iterations.",
+    "hint": "break and continue must appear inside a loop body.",
+    "expected_output": "3\n"
+  },
+  {
+    "title": "Text file I/O",
+    "category": "standard library",
+    "file": "16-file-io.yl",
+    "starter": "starter/16-file-io.yl",
+    "description": "Write a string to a file and read it back.",
+    "hint": "io.write_file takes a path and text content.",
+    "expected_output": "true\nYLang\n"
+  },
+  {
+    "title": "Optional: nested loops",
+    "category": "optional · control flow",
+    "optional": true,
+    "file": "optional-01-nested-loops.yl",
+    "starter": "starter/optional-01-nested-loops.yl",
+    "description": "Repair the nested loop and calculate the 3 × 3 grid total.",
+    "hint": "The inner loop should count from 1 through 3 and add its counter to total.",
+    "expected_output": "18\n"
+  },
+  {
+    "title": "Optional: enum logic",
+    "category": "optional · types",
+    "optional": true,
+    "file": "optional-02-enum-logic.yl",
+    "starter": "starter/optional-02-enum-logic.yl",
+    "description": "Fix the enum variant and make the direction check work.",
+    "hint": "Use an existing enum member and compare values of the same enum type.",
+    "expected_output": "east\n"
+  },
+  {
+    "title": "Optional: struct function",
+    "category": "optional · functions",
+    "optional": true,
+    "file": "optional-03-struct-function.yl",
+    "starter": "starter/optional-03-struct-function.yl",
+    "description": "Repair the function that computes a rectangle's perimeter.",
+    "hint": "Perimeter = 2 * (width + height).",
+    "expected_output": "26\n"
+  },
+  {
+    "title": "Optional: JSON parsing",
+    "category": "optional · standard library",
+    "file": "optional-04-json.yl",
+    "starter": "starter/optional-04-json.yl",
+    "description": "Repair the JSON key lookup and read the integer field.",
+    "hint": "Use json.get_int with the existing score key.",
+    "expected_output": "42\n",
+    "mode": "run",
+    "optional": true
+  },
+  {
+    "title": "Optional: Binary I/O",
+    "category": "optional · standard library",
+    "file": "optional-05-binary.yl",
+    "starter": "starter/optional-05-binary.yl",
+    "description": "Use the matching endian-aware binary writer and reader.",
+    "hint": "The write and read helpers must agree on the integer width and byte order.",
+    "mode": "check",
+    "optional": true
+  },
+  {
+    "title": "Optional: HTTP streaming",
+    "category": "optional · networking",
+    "file": "optional-06-http-stream.yl",
+    "starter": "starter/optional-06-http-stream.yl",
+    "description": "Work with a pull-based HTTP stream handle and close it correctly.",
+    "hint": "The stream API uses http_stream, not a regular string or HTTP task.",
+    "mode": "check",
+    "optional": true
+  },
+  {
+    "title": "Optional: Terminal UI",
+    "category": "optional · TUI",
+    "file": "optional-07-tui.yl",
+    "starter": "starter/optional-07-tui.yl",
+    "description": "Use the terminal UI builtins to initialize, query dimensions, and shut down.",
+    "hint": "Check each builtin's return type and remember to shut down the terminal.",
+    "mode": "check",
+    "optional": true
+  },
+  {
+    "title": "Optional: Voice playback",
+    "category": "optional · audio",
+    "file": "optional-08-voice.yl",
+    "starter": "starter/optional-08-voice.yl",
+    "description": "Use the Voice API to initialize playback and handle an audio error.",
+    "hint": "Voice functions are compiler-recognized builtins; this exercise only checks types and signatures.",
+    "mode": "check",
+    "optional": true
+  },
+  {
+    "title": "Optional: GUI lifecycle",
+    "category": "optional · GUI",
+    "file": "optional-09-gui.yl",
+    "starter": "starter/optional-09-gui.yl",
+    "description": "Repair the GUI initialization and shutdown sequence.",
+    "hint": "gui.init() returns bool; gui.shutdown() does not return a value.",
+    "mode": "check",
+    "optional": true
+  },
+  {
+    "title": "Optional: Owned strings",
+    "category": "optional · memory model",
+    "file": "optional-10-owned-strings.yl",
+    "starter": "starter/optional-10-owned-strings.yl",
+    "description": "Practice explicit owned-string creation, concatenation, and moving.",
+    "hint": "Use string.own to create an owned value and move when transferring ownership.",
+    "mode": "check",
+    "optional": true
+  }
+]

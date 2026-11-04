@@ -8,6 +8,7 @@
 - [Install YLang](getting-started.md)
 - [Your First Program](hello-world.md)
 - [The Compiler Workflow](compiler-workflow.md)
+- [YLanglings: Practice by Fixing Code](ylanglings.md)
 
 # Part II — Language Foundations
 

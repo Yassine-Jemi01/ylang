@@ -1,0 +1,5 @@
+function main() -> int {
+    let owned_string document = json.parse("{\"score\":42}");
+    print(json.get_int(document, "missing"));
+    return 0;
+}

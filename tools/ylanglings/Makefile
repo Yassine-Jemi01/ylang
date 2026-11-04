@@ -1,0 +1,17 @@
+PREFIX ?= $(HOME)/.local
+BINDIR ?= $(PREFIX)/bin
+DATADIR ?= $(PREFIX)/share/ylanglings
+
+.PHONY: install uninstall
+
+install:
+	install -d "$(BINDIR)" "$(DATADIR)"
+	cp -R exercises manifest.json README.md ylanglings.py "$(DATADIR)/"
+	printf '#!/bin/sh\nexec python3 "%s/ylanglings.py" "$$@"\n' "$(DATADIR)" > "$(BINDIR)/ylanglings"
+	chmod 755 "$(BINDIR)/ylanglings"
+	@echo "Installed ylanglings to $(BINDIR)/ylanglings"
+	@echo "Make sure $(BINDIR) is in PATH and the ylang compiler is available."
+
+uninstall:
+	rm -f "$(BINDIR)/ylanglings"
+	rm -rf "$(DATADIR)"

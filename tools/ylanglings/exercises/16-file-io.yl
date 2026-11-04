@@ -1,0 +1,7 @@
+function main() -> int {
+    let bool saved = io.write_file("practice.txt", 42);
+    let string content = io.read_file("practice.txt");
+    print(saved);
+    print(content);
+    return 0;
+}
