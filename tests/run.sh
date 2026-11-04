@@ -1680,6 +1680,11 @@ if ./build/ylang check tests/json-type-error.yl > build/json-type-error.out 2>&1
     exit 1
 fi
 grep -q 'JSON argument type mismatch' build/json-type-error.out
+if ./build/ylang check tests/json-builder-type-error.yl > build/json-builder-type-error.out 2>&1; then
+    echo "FAIL: json.set accepted a non-string third argument" >&2
+    exit 1
+fi
+grep -q 'Argument 3 of json.set expects string' build/json-builder-type-error.out
 
 # std.terminal line input, typed parsing, flushing, and redirected stdin detection.
 ./build/ylang check tests/terminal-input.yl >/dev/null
