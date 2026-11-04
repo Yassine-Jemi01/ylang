@@ -44,6 +44,7 @@ REFERENCE_DOCS = (
     "CHANGELOG-2.3.0.md",
     "ROADMAP-2.3.0.md",
     "PERFORMANCE.md",
+    "CLI.md",
     "SECURITY.md",
     "DEBUGGER.md",
     "DEBUGGER-SPEC.md",
