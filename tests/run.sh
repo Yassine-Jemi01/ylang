@@ -98,7 +98,7 @@ grep -q 'E2132' build/voice-invalid.out
 python3 tests/run_tui_integration.py
 # Build the full YTilawa application against the live catalog, HTTP streaming,
 # byte-buffer downloads, Voice, and std.tui APIs.
-./build/ylang check apps/ytilawa/src/main.yl >/dev/null
+./build/ylang check apps/ytilawa/main.yl >/dev/null
 ./build/ylang build apps/ytilawa/main.yl -o build/ytilawa >/dev/null
 ./build/ylang check tests/ytilawa-catalog.yl >/dev/null
 ./build/ylang build tests/ytilawa-catalog.yl -o build/test-ytilawa-catalog >/dev/null
