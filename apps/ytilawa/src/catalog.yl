@@ -22,7 +22,355 @@ function surah_count(borrowed_string document) -> int {
     return json.array_length(items);
 }
 
-function surah_name(borrowed_string document, int index) -> owned_string {
+// Stable lowercase Latin slugs, ordered by Quran surah number.
+function surah_name(int index) -> owned_string {
+    if (index == 0) {
+        return string.own("fatiha");
+    }
+    if (index == 1) {
+        return string.own("baqara");
+    }
+    if (index == 2) {
+        return string.own("aal-imran");
+    }
+    if (index == 3) {
+        return string.own("nisa");
+    }
+    if (index == 4) {
+        return string.own("maidah");
+    }
+    if (index == 5) {
+        return string.own("anam");
+    }
+    if (index == 6) {
+        return string.own("araf");
+    }
+    if (index == 7) {
+        return string.own("anfal");
+    }
+    if (index == 8) {
+        return string.own("tawbah");
+    }
+    if (index == 9) {
+        return string.own("yunus");
+    }
+    if (index == 10) {
+        return string.own("hud");
+    }
+    if (index == 11) {
+        return string.own("yusuf");
+    }
+    if (index == 12) {
+        return string.own("rad");
+    }
+    if (index == 13) {
+        return string.own("ibrahim");
+    }
+    if (index == 14) {
+        return string.own("hijr");
+    }
+    if (index == 15) {
+        return string.own("nahl");
+    }
+    if (index == 16) {
+        return string.own("isra");
+    }
+    if (index == 17) {
+        return string.own("kahf");
+    }
+    if (index == 18) {
+        return string.own("maryam");
+    }
+    if (index == 19) {
+        return string.own("taha");
+    }
+    if (index == 20) {
+        return string.own("anbiya");
+    }
+    if (index == 21) {
+        return string.own("hajj");
+    }
+    if (index == 22) {
+        return string.own("muminun");
+    }
+    if (index == 23) {
+        return string.own("nur");
+    }
+    if (index == 24) {
+        return string.own("furqan");
+    }
+    if (index == 25) {
+        return string.own("shuara");
+    }
+    if (index == 26) {
+        return string.own("naml");
+    }
+    if (index == 27) {
+        return string.own("qasas");
+    }
+    if (index == 28) {
+        return string.own("ankabut");
+    }
+    if (index == 29) {
+        return string.own("rum");
+    }
+    if (index == 30) {
+        return string.own("luqman");
+    }
+    if (index == 31) {
+        return string.own("sajdah");
+    }
+    if (index == 32) {
+        return string.own("ahzab");
+    }
+    if (index == 33) {
+        return string.own("saba");
+    }
+    if (index == 34) {
+        return string.own("fatir");
+    }
+    if (index == 35) {
+        return string.own("yasin");
+    }
+    if (index == 36) {
+        return string.own("saffat");
+    }
+    if (index == 37) {
+        return string.own("sad");
+    }
+    if (index == 38) {
+        return string.own("zumar");
+    }
+    if (index == 39) {
+        return string.own("ghafir");
+    }
+    if (index == 40) {
+        return string.own("fussilat");
+    }
+    if (index == 41) {
+        return string.own("shura");
+    }
+    if (index == 42) {
+        return string.own("zukhruf");
+    }
+    if (index == 43) {
+        return string.own("dukhan");
+    }
+    if (index == 44) {
+        return string.own("jathiyah");
+    }
+    if (index == 45) {
+        return string.own("ahqaf");
+    }
+    if (index == 46) {
+        return string.own("muhammad");
+    }
+    if (index == 47) {
+        return string.own("fath");
+    }
+    if (index == 48) {
+        return string.own("hujurat");
+    }
+    if (index == 49) {
+        return string.own("qaf");
+    }
+    if (index == 50) {
+        return string.own("dhariyat");
+    }
+    if (index == 51) {
+        return string.own("tur");
+    }
+    if (index == 52) {
+        return string.own("najm");
+    }
+    if (index == 53) {
+        return string.own("qamar");
+    }
+    if (index == 54) {
+        return string.own("rahman");
+    }
+    if (index == 55) {
+        return string.own("waqiah");
+    }
+    if (index == 56) {
+        return string.own("hadid");
+    }
+    if (index == 57) {
+        return string.own("mujadila");
+    }
+    if (index == 58) {
+        return string.own("hashr");
+    }
+    if (index == 59) {
+        return string.own("mumtahanah");
+    }
+    if (index == 60) {
+        return string.own("saff");
+    }
+    if (index == 61) {
+        return string.own("jumuah");
+    }
+    if (index == 62) {
+        return string.own("munafiqun");
+    }
+    if (index == 63) {
+        return string.own("taghabun");
+    }
+    if (index == 64) {
+        return string.own("talaq");
+    }
+    if (index == 65) {
+        return string.own("tahrim");
+    }
+    if (index == 66) {
+        return string.own("mulk");
+    }
+    if (index == 67) {
+        return string.own("qalam");
+    }
+    if (index == 68) {
+        return string.own("haqqah");
+    }
+    if (index == 69) {
+        return string.own("maarij");
+    }
+    if (index == 70) {
+        return string.own("nuh");
+    }
+    if (index == 71) {
+        return string.own("jinn");
+    }
+    if (index == 72) {
+        return string.own("muzzammil");
+    }
+    if (index == 73) {
+        return string.own("muddaththir");
+    }
+    if (index == 74) {
+        return string.own("qiyamah");
+    }
+    if (index == 75) {
+        return string.own("insan");
+    }
+    if (index == 76) {
+        return string.own("mursalat");
+    }
+    if (index == 77) {
+        return string.own("naba");
+    }
+    if (index == 78) {
+        return string.own("naziat");
+    }
+    if (index == 79) {
+        return string.own("abasa");
+    }
+    if (index == 80) {
+        return string.own("takwir");
+    }
+    if (index == 81) {
+        return string.own("infitar");
+    }
+    if (index == 82) {
+        return string.own("mutaffifin");
+    }
+    if (index == 83) {
+        return string.own("inshiqaq");
+    }
+    if (index == 84) {
+        return string.own("buruj");
+    }
+    if (index == 85) {
+        return string.own("tariq");
+    }
+    if (index == 86) {
+        return string.own("ala");
+    }
+    if (index == 87) {
+        return string.own("ghashiyah");
+    }
+    if (index == 88) {
+        return string.own("fajr");
+    }
+    if (index == 89) {
+        return string.own("balad");
+    }
+    if (index == 90) {
+        return string.own("shams");
+    }
+    if (index == 91) {
+        return string.own("layl");
+    }
+    if (index == 92) {
+        return string.own("duha");
+    }
+    if (index == 93) {
+        return string.own("sharh");
+    }
+    if (index == 94) {
+        return string.own("tin");
+    }
+    if (index == 95) {
+        return string.own("alaq");
+    }
+    if (index == 96) {
+        return string.own("qadr");
+    }
+    if (index == 97) {
+        return string.own("bayyinah");
+    }
+    if (index == 98) {
+        return string.own("zalzalah");
+    }
+    if (index == 99) {
+        return string.own("adiyat");
+    }
+    if (index == 100) {
+        return string.own("qariah");
+    }
+    if (index == 101) {
+        return string.own("takathur");
+    }
+    if (index == 102) {
+        return string.own("asr");
+    }
+    if (index == 103) {
+        return string.own("humazah");
+    }
+    if (index == 104) {
+        return string.own("fil");
+    }
+    if (index == 105) {
+        return string.own("quraysh");
+    }
+    if (index == 106) {
+        return string.own("maun");
+    }
+    if (index == 107) {
+        return string.own("kawthar");
+    }
+    if (index == 108) {
+        return string.own("kafirun");
+    }
+    if (index == 109) {
+        return string.own("nasr");
+    }
+    if (index == 110) {
+        return string.own("masad");
+    }
+    if (index == 111) {
+        return string.own("ikhlas");
+    }
+    if (index == 112) {
+        return string.own("falaq");
+    }
+    if (index == 113) {
+        return string.own("nas");
+    }
+    return string.own("unknown");
+}
+
+// Keep Arabic-name matching available even though the UI uses Latin slugs.
+function surah_arabic_name(borrowed_string document, int index) -> owned_string {
     let owned_string items = json.get(document, "suwar");
     let owned_string item = json.at(items, index);
     return json.get_string(item, "name");
