@@ -2,6 +2,7 @@
 
 #include <SDL.h>
 #include <SDL_mixer.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,11 +18,82 @@ typedef struct {
     YLVoiceStreamRead read_callback;
     YLVoiceStreamError error_callback;
     YLVoiceStreamClose close_callback;
-    unsigned char *pending;
-    size_t pending_length;
-    size_t pending_capacity;
+    FILE *cache;
+    uint64_t cached_length;
     uint64_t position;
+    bool eof;
 } YLVoiceStreamSource;
+
+#define YL_VOICE_STREAM_CACHE_CHUNK (16U * 1024U)
+
+static bool voice_stream_cache_seek(FILE *file, uint64_t offset)
+{
+    if (!file || offset > (uint64_t)LONG_MAX) return false;
+    return fseek(file, (long)offset, SEEK_SET) == 0;
+}
+
+/* Pull another bounded block from HTTP and append it to the seekable disk
+   cache. MP3 decoders can rewind while probing metadata or starting playback. */
+static bool voice_stream_cache_more(YLVoiceStreamSource *source, size_t limit)
+{
+    unsigned char bytes[YL_VOICE_STREAM_CACHE_CHUNK];
+    if (!source || !source->cache || !source->read_callback || source->eof)
+        return false;
+
+    size_t request = limit;
+    if (request == 0U || request > sizeof(bytes)) request = sizeof(bytes);
+    int64_t received = source->read_callback(source->stream_id, bytes, request);
+    if (received < 0) {
+        const char *detail = source->error_callback
+            ? source->error_callback(source->stream_id) : NULL;
+        voice_set_error(detail && *detail ? detail : "HTTP audio stream read failed");
+        return false;
+    }
+    if (received == 0) {
+        source->eof = true;
+        return false;
+    }
+    if ((uint64_t)received > (uint64_t)request ||
+        source->cached_length > (uint64_t)LONG_MAX ||
+        (uint64_t)received > (uint64_t)LONG_MAX - source->cached_length) {
+        voice_set_error("HTTP audio stream exceeded the seekable cache limit");
+        return false;
+    }
+    if (!voice_stream_cache_seek(source->cache, source->cached_length) ||
+        fwrite(bytes, 1U, (size_t)received, source->cache) != (size_t)received ||
+        fflush(source->cache) != 0) {
+        voice_set_error("could not write the seekable HTTP audio cache");
+        return false;
+    }
+    source->cached_length += (uint64_t)received;
+    return true;
+}
+
+static bool voice_stream_cache_until(YLVoiceStreamSource *source, uint64_t target)
+{
+    while (source && source->cached_length < target && !source->eof) {
+        uint64_t missing = target - source->cached_length;
+        size_t request = missing > (uint64_t)YL_VOICE_STREAM_CACHE_CHUNK
+            ? YL_VOICE_STREAM_CACHE_CHUNK : (size_t)missing;
+        if (!voice_stream_cache_more(source, request)) break;
+    }
+    return source && source->cached_length >= target;
+}
+
+static bool voice_stream_add_offset(uint64_t base, Sint64 offset, uint64_t *target)
+{
+    if (!target) return false;
+    if (offset < 0) {
+        uint64_t magnitude = (uint64_t)(-(offset + 1)) + 1U;
+        if (magnitude > base) return false;
+        *target = base - magnitude;
+        return true;
+    }
+    uint64_t delta = (uint64_t)offset;
+    if (delta > UINT64_MAX - base) return false;
+    *target = base + delta;
+    return true;
+}
 
 static void voice_set_error(const char *message)
 {
@@ -43,8 +115,12 @@ static void voice_release_music(void)
 
 static Sint64 SDLCALL voice_stream_size(SDL_RWops *context)
 {
-    (void)context;
-    return -1;
+    if (!context) return -1;
+    YLVoiceStreamSource *source =
+        (YLVoiceStreamSource *)context->hidden.unknown.data1;
+    if (!source || !source->eof || source->cached_length > (uint64_t)INT64_MAX)
+        return -1;
+    return (Sint64)source->cached_length;
 }
 
 static Sint64 SDLCALL voice_stream_seek(SDL_RWops *context, Sint64 offset, int whence)
@@ -52,12 +128,29 @@ static Sint64 SDLCALL voice_stream_seek(SDL_RWops *context, Sint64 offset, int w
     if (!context) return -1;
     YLVoiceStreamSource *source =
         (YLVoiceStreamSource *)context->hidden.unknown.data1;
-    if (!source) return -1;
-    if ((whence == RW_SEEK_CUR && offset == 0) ||
-        (whence == RW_SEEK_SET && offset >= 0 &&
-         (uint64_t)offset == source->position))
-        return (Sint64)source->position;
-    return -1;
+    if (!source || !source->cache) return -1;
+
+    uint64_t target = 0U;
+    if (whence == RW_SEEK_SET) {
+        if (offset < 0) return -1;
+        target = (uint64_t)offset;
+    } else if (whence == RW_SEEK_CUR) {
+        if (!voice_stream_add_offset(source->position, offset, &target)) return -1;
+    } else if (whence == RW_SEEK_END) {
+        while (!source->eof) {
+            if (!voice_stream_cache_more(source, YL_VOICE_STREAM_CACHE_CHUNK) &&
+                !source->eof) return -1;
+        }
+        if (!voice_stream_add_offset(source->cached_length, offset, &target)) return -1;
+    } else {
+        return -1;
+    }
+
+    if (target > (uint64_t)INT64_MAX || target > (uint64_t)LONG_MAX) return -1;
+    if (target > source->cached_length &&
+        !voice_stream_cache_until(source, target)) return -1;
+    source->position = target;
+    return (Sint64)target;
 }
 
 static size_t SDLCALL voice_stream_read(SDL_RWops *context, void *destination,
@@ -67,75 +160,44 @@ static size_t SDLCALL voice_stream_read(SDL_RWops *context, void *destination,
         maxnum > SIZE_MAX / size) return 0U;
     YLVoiceStreamSource *source =
         (YLVoiceStreamSource *)context->hidden.unknown.data1;
-    if (!source || !source->read_callback) return 0U;
+    if (!source || !source->cache || !source->read_callback) return 0U;
 
     size_t requested = size * maxnum;
     size_t total = 0U;
-    if (source->pending_length) {
-        size_t take = source->pending_length < requested
-            ? source->pending_length : requested;
-        memcpy(destination, source->pending, take);
-        total += take;
-        source->pending_length -= take;
-        if (source->pending_length)
-            memmove(source->pending, source->pending + take, source->pending_length);
-    }
-
-    if (size == 1U) {
-        if (total < requested) {
-            int64_t received = source->read_callback(
-                source->stream_id, (unsigned char *)destination + total, requested - total);
-            if (received < 0) {
-                const char *detail = source->error_callback
-                    ? source->error_callback(source->stream_id) : NULL;
-                voice_set_error(detail && *detail ? detail : "HTTP audio stream read failed");
-            } else if ((uint64_t)received > (uint64_t)(requested - total)) {
-                voice_set_error("HTTP audio stream returned an invalid byte count");
-            } else {
-                total += (size_t)received;
-            }
-        }
-        source->position += (uint64_t)total;
-        return total;
-    }
-
+    uint64_t read_position = source->position;
     while (total < requested) {
-        int64_t received = source->read_callback(
-            source->stream_id, (unsigned char *)destination + total, requested - total);
-        if (received < 0) {
-            const char *detail = source->error_callback
-                ? source->error_callback(source->stream_id) : NULL;
-            voice_set_error(detail && *detail ? detail : "HTTP audio stream read failed");
-            break;
+        if (read_position < source->cached_length) {
+            uint64_t available64 = source->cached_length - read_position;
+            size_t available = available64 > (uint64_t)SIZE_MAX
+                ? SIZE_MAX : (size_t)available64;
+            size_t take = requested - total;
+            if (take > available) take = available;
+            if (!voice_stream_cache_seek(source->cache, read_position)) {
+                voice_set_error("could not seek within the cached HTTP audio stream");
+                break;
+            }
+            size_t got = fread((unsigned char *)destination + total, 1U,
+                               take, source->cache);
+            if (got == 0U) {
+                voice_set_error("could not read the cached HTTP audio stream");
+                break;
+            }
+            total += got;
+            read_position += (uint64_t)got;
+            continue;
         }
-        if (received == 0) break;
-        if ((uint64_t)received > (uint64_t)(requested - total)) {
-            voice_set_error("HTTP audio stream returned an invalid byte count");
-            break;
-        }
-        total += (size_t)received;
+        if (source->eof) break;
+        size_t remaining = requested - total;
+        size_t request = remaining > YL_VOICE_STREAM_CACHE_CHUNK
+            ? YL_VOICE_STREAM_CACHE_CHUNK : remaining;
+        if (!voice_stream_cache_more(source, request)) break;
     }
 
     size_t complete = total / size;
     size_t consumed = complete * size;
     source->position += (uint64_t)consumed;
-    size_t remainder = total - consumed;
-    if (remainder) {
-        if (source->pending_capacity < remainder) {
-            unsigned char *grown = realloc(source->pending, remainder);
-            if (!grown) {
-                voice_set_error("out of memory buffering an audio stream read");
-                return complete;
-            }
-            source->pending = grown;
-            source->pending_capacity = remainder;
-        }
-        memcpy(source->pending, (unsigned char *)destination + consumed, remainder);
-        source->pending_length = remainder;
-    }
     return complete;
 }
-
 static size_t SDLCALL voice_stream_write(SDL_RWops *context, const void *source,
                                          size_t size, size_t num)
 {
@@ -154,7 +216,7 @@ static int SDLCALL voice_stream_close(SDL_RWops *context)
     if (source) {
         if (source->close_callback)
             source->close_callback(source->stream_id);
-        free(source->pending);
+        if (source->cache) (void)fclose(source->cache);
         free(source);
     }
     SDL_FreeRW(context);
@@ -172,9 +234,15 @@ static SDL_RWops *voice_create_stream_rwops(int64_t stream_id,
     source->read_callback = read_callback;
     source->error_callback = error_callback;
     source->close_callback = close_callback;
+    source->cache = tmpfile();
+    if (!source->cache) {
+        free(source);
+        return NULL;
+    }
 
     SDL_RWops *rwops = SDL_AllocRW();
     if (!rwops) {
+        (void)fclose(source->cache);
         free(source);
         return NULL;
     }
