@@ -338,25 +338,25 @@ typedef struct {
 
 typedef struct { const char *name; size_t arity; YType result; YType args[3]; } JsonBuiltin;
 static const JsonBuiltin json_builtins[] = {
-    {"json.parse",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID}},
-    {"json.stringify",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID}},
-    {"json.pretty",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID}},
-    {"json.object",0,TYPE_OWNED_STRING,{TYPE_VOID,TYPE_VOID}},
-    {"json.array",0,TYPE_OWNED_STRING,{TYPE_VOID,TYPE_VOID}},
+    {"json.parse",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID,TYPE_VOID}},
+    {"json.stringify",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID,TYPE_VOID}},
+    {"json.pretty",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID,TYPE_VOID}},
+    {"json.object",0,TYPE_OWNED_STRING,{TYPE_VOID,TYPE_VOID,TYPE_VOID}},
+    {"json.array",0,TYPE_OWNED_STRING,{TYPE_VOID,TYPE_VOID,TYPE_VOID}},
     {"json.set",3,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_STRING,TYPE_STRING}},
-    {"json.remove",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_STRING}},
-    {"json.push",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_STRING}},
-    {"json.valid",1,TYPE_BOOL,{TYPE_STRING,TYPE_VOID}},
-    {"json.get",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_STRING}},
-    {"json.get_string",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_STRING}},
-    {"json.get_int",2,TYPE_INT,{TYPE_STRING,TYPE_STRING}},
-    {"json.get_float",2,TYPE_FLOAT,{TYPE_STRING,TYPE_STRING}},
-    {"json.get_bool",2,TYPE_BOOL,{TYPE_STRING,TYPE_STRING}},
-    {"json.has",2,TYPE_BOOL,{TYPE_STRING,TYPE_STRING}},
-    {"json.array_length",1,TYPE_INT,{TYPE_STRING,TYPE_VOID}},
-    {"json.at",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_INT}},
-    {"json.escape",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID}},
-    {"json.last_error",0,TYPE_STRING,{TYPE_VOID,TYPE_VOID}}
+    {"json.remove",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_STRING,TYPE_VOID}},
+    {"json.push",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_STRING,TYPE_VOID}},
+    {"json.valid",1,TYPE_BOOL,{TYPE_STRING,TYPE_VOID,TYPE_VOID}},
+    {"json.get",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_STRING,TYPE_VOID}},
+    {"json.get_string",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_STRING,TYPE_VOID}},
+    {"json.get_int",2,TYPE_INT,{TYPE_STRING,TYPE_STRING,TYPE_VOID}},
+    {"json.get_float",2,TYPE_FLOAT,{TYPE_STRING,TYPE_STRING,TYPE_VOID}},
+    {"json.get_bool",2,TYPE_BOOL,{TYPE_STRING,TYPE_STRING,TYPE_VOID}},
+    {"json.has",2,TYPE_BOOL,{TYPE_STRING,TYPE_STRING,TYPE_VOID}},
+    {"json.array_length",1,TYPE_INT,{TYPE_STRING,TYPE_VOID,TYPE_VOID}},
+    {"json.at",2,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_INT,TYPE_VOID}},
+    {"json.escape",1,TYPE_OWNED_STRING,{TYPE_STRING,TYPE_VOID,TYPE_VOID}},
+    {"json.last_error",0,TYPE_STRING,{TYPE_VOID,TYPE_VOID,TYPE_VOID}}
 };
 static const JsonBuiltin *find_json_builtin(const char *name) {
     for(size_t i=0;i<sizeof(json_builtins)/sizeof(json_builtins[0]);i++)
