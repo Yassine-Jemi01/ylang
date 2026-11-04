@@ -170,10 +170,8 @@ static size_t SDLCALL voice_stream_read(SDL_RWops *context, void *destination,
     while (total < requested) {
         if (read_position < source->cached_length) {
             uint64_t available64 = source->cached_length - read_position;
-            size_t available = available64 > (uint64_t)SIZE_MAX
-                ? SIZE_MAX : (size_t)available64;
             size_t take = requested - total;
-            if (take > available) take = available;
+            if (available64 < (uint64_t)take) take = (size_t)available64;
             if (!voice_stream_cache_seek(source->cache, read_position)) {
                 voice_set_error("could not seek within the cached HTTP audio stream");
                 break;
