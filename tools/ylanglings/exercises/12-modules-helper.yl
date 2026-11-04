@@ -1,0 +1,3 @@
+function greeting() -> int {
+    return "hello from a module";
+}
