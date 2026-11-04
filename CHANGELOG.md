@@ -2,6 +2,21 @@
 
 All notable changes to YLang are documented here. This project follows semantic versioning for future releases.
 
+## [2.3.0] — development (not released)
+
+YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable release.
+
+- Removed the YTilawa application and its dedicated fixtures/build steps while retaining shared TUI, Voice, HTTP streaming, and binary I/O libraries.
+- Added compiler resource limits for diagnostic count/output, import depth, module count, and aggregate project source size; root files are size-checked before allocation and embedded NUL bytes are rejected in root/imported sources.
+- Fixed an HTTP response-header capacity underflow and added an exact-boundary loopback fixture.
+- Added immutable raw-JSON builders with key escaping and deterministic duplicate-key replacement; invalid raw fragments are rejected.
+- Added parser statement-depth recovery, code-generation recursion guards, and fail-closed C generation on emission diagnostics.
+- Added `ylang help` and `ylang version` subcommands, CLI documentation, and responsive homepage/TUI design updates.
+- Expanded regression fixtures for resource limits, diagnostic sanitization, parser nesting, JSON builders, HTTP headers, and CLI aliases.
+
+All build, regression, sanitizer, fuzz, cross-platform, website/book, packaging, and benchmark gates remain pending until the validation phase. Do not change `VERSION` or publish `v2.3.0` before the acceptance checklist is complete.
+
+See [the 2.3 development notes](docs/CHANGELOG-2.3.0.md) and [release roadmap](docs/ROADMAP-2.3.0.md).
 ## [2.1.0] — release candidate (not yet published)
 
 This candidate promotes the experimental ownership work for evaluation; it does not claim a complete Rust-like memory model.
