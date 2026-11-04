@@ -2,7 +2,7 @@
 
 YTilawa is a YLang terminal Quran player. It loads the 114-surah catalogue from the official MP3Quran.net API v3 and displays surah names as lowercase Latin slugs (for example, \`fatiha\`, \`baqara\`, and \`aal-imran\`). The reciter directory uses the API's English-language names and letter labels. Audio URLs are still derived only from the API-provided recording servers and surah coverage lists.
 
-The terminal interface uses ANSI colors for its headings, playback state, selection highlight, and reader-letter labels. The main screen is redrawn only after input or a playback-state change, avoiding continuous full-screen clears. Surah and reciter browsers also redraw only when the selection changes, adapt their visible page size to the terminal height, and support arrow keys, Page Up/Down, Home, End, and `/` search within the current directory.
+The terminal interface uses restrained ANSI colors and an arrow marker rather than a full-row selection block. Screens are updated in place with synchronized terminal frames instead of repeatedly clearing the display. Surah and reciter browsers redraw only when the selection changes, adapt their visible page size to the terminal height, and support arrow keys, Page Up/Down, Home, End, and `/` search. The reader browser puts a curated set of widely known reciters first; the API does not expose popularity statistics, so this is a maintained featured order rather than a live popularity ranking.
 
 ## Build
 
@@ -39,7 +39,7 @@ The program requires network access for the live catalogue and online recitation
 | \`+\` / \`-\` | Volume |
 | \`Q\` | Quit |
 
-Inside either browser: Up/Down moves one row, Page Up/Down moves one visible page, Home/End jumps to the beginning/end, `/` searches by a surah name (Latin or Arabic) or an English reader name, Enter selects, and Escape returns.
+Inside either browser: Up/Down moves one row, Page Up/Down moves one visible page, Home/End jumps to the beginning/end, `/` searches by a surah name (Latin or Arabic) or an English reader name, Enter selects, Escape returns, and Ctrl+C exits cleanly.
 
 ## Data source and URL validation
 
