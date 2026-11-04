@@ -19,7 +19,7 @@ else
 GAME2D_OUTPUT ?= build/dodge
 endif
 
-.PHONY: all clean test ylanglings-test sanitize install uninstall print-version tui-example gui gui-example game2d-example install-gui voice voice-example voice-test install-voice check-sdl2 check-voice check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
+.PHONY: all clean test ylanglings-test sanitize install uninstall install-ylanglings uninstall-ylanglings print-version tui-example gui gui-example game2d-example install-gui voice voice-example voice-test install-voice check-sdl2 check-voice check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
 
 all: $(BIN)
 
@@ -146,6 +146,12 @@ install-gui: gui
 install: $(BIN)
 	install -d '$(DESTDIR)$(BINDIR)'
 	install -m 755 $(BIN) '$(DESTDIR)$(BINDIR)/ylang'
+
+install-ylanglings:
+	$(MAKE) -C tools/ylanglings install PREFIX="$(PREFIX)" BINDIR="$(BINDIR)" DATADIR="$(PREFIX)/share/ylanglings"
+
+uninstall-ylanglings:
+	$(MAKE) -C tools/ylanglings uninstall PREFIX="$(PREFIX)" BINDIR="$(BINDIR)" DATADIR="$(PREFIX)/share/ylanglings"
 
 uninstall:
 	rm -f '$(DESTDIR)$(BINDIR)/ylang'
