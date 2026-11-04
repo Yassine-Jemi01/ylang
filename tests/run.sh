@@ -1797,7 +1797,7 @@ if ./build/ylang check build/statement-depth/diagnostic-flood.yl > build/stateme
 fi
 diagnostic_count=$(grep -c 'error\[E2020\]' build/statement-depth/diagnostic-flood.out || true)
 test "$diagnostic_count" -eq 100
-grep -q 'too many errors' build/statement-depth/diagnostic-flood.out
+grep -q 'too many diagnostics' build/statement-depth/diagnostic-flood.out
 
 # Terminal control bytes in source excerpts and filenames must be escaped.
 control_file="$(printf 'build/statement-depth/diagnostic-\001-name.yl')"
