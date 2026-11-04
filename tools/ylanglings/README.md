@@ -38,13 +38,13 @@ make -C tools/ylanglings uninstall
 Edit the displayed \`.yl\` file, then verify it:
 
 \`\`\`sh
-python3 tools/ylanglings/ylanglings.py verify 01
+ylanglings verify 01
 \`\`\`
 
 If YLang is not on PATH:
 
 \`\`\`sh
-python3 tools/ylanglings/ylanglings.py --compiler ./build/ylang verify 01
+ylanglings --compiler ./build/ylang verify 01
 \`\`\`
 
 Other commands:
