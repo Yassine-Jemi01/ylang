@@ -1188,10 +1188,13 @@ static const char *yl_json_set(const char *raw, const char *key, const char *val
         if (p.i >= p.n || p.s[p.i++] != ':') { free(out.data); yl_json_error("Invalid JSON object"); return ""; }
         if (!yl_json_value(&p, &vs, &ve)) { free(out.data); return ""; }
         bool match = yl_json_key_equal(p.s, ks, ke, key ? key : "");
-        if (!first) yl_json_buffer_char(&out, ',');
-        first = false;
-        if (match) {
-            if (!replaced) {
+        /* Collapse duplicate copies of the replaced key into one property. */
+        if (match && replaced) {
+            /* Deliberately omit later duplicate entries. */
+        } else {
+            if (!first) yl_json_buffer_char(&out, ',');
+            first = false;
+            if (match) {
                 yl_json_buffer_text(&out, encoded, strlen(encoded));
                 yl_json_buffer_char(&out, ':');
                 yl_json_buffer_text(&out, value + va, vb - va);
@@ -1201,10 +1204,6 @@ static const char *yl_json_set(const char *raw, const char *key, const char *val
                 yl_json_buffer_char(&out, ':');
                 yl_json_buffer_text(&out, p.s + vs, ve - vs);
             }
-        } else {
-            yl_json_buffer_text(&out, p.s + ks - 1U, ke - ks + 2U);
-            yl_json_buffer_char(&out, ':');
-            yl_json_buffer_text(&out, p.s + vs, ve - vs);
         }
         yl_json_ws(&p);
         if (p.i < p.n && p.s[p.i] == ',') { p.i++; yl_json_ws(&p); }
