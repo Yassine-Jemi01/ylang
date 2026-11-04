@@ -28,7 +28,7 @@ See [`examples/voice.yl`](../../examples/voice.yl) for a complete compiler-level
 
 - `ylvoice_init()` — initialize the audio device.
 - `ylvoice_play(path)` — load and play one local audio file, replacing the previous track.
-- `ylvoice_play_stream(stream, read, error, close)` — consume a pull-based stream through a custom SDL_RWops reader.
+- `ylvoice_play_stream(stream, read, error, close)` — consume a pull-based stream through a seekable, disk-cached SDL_RWops reader.
 - `ylvoice_pause()`, `ylvoice_resume()`, `ylvoice_stop()`.
 - `ylvoice_is_playing()` — report whether playback is active and reap a naturally completed track.
 - `ylvoice_is_paused()` — report whether the current track is paused.
