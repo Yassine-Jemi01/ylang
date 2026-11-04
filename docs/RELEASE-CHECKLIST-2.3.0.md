@@ -32,7 +32,8 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] HTTP synchronous/task/streaming integration tests pass, including oversized response-header rejection at the 16 KiB boundary.
 - [ ] Binary file and streaming integration tests pass, including end-of-file, truncation, and buffer-boundary cases.
 - [ ] Voice-to-HTTP-stream integration passes where SDL2_mixer and a supported decoder are available; unavailable optional dependencies are reported as explicit skips.
-- [ ] TUI pseudo-terminal integration passes; interactive input, cursor restoration, and terminal resize behavior are reviewed.
+- [ ] TUI pseudo-terminal integration passes; interactive input and cursor restoration are reviewed.
+- [ ] `make tui-example` builds the responsive terminal-menu sample from a clean checkout; its polling loop, narrow-width layout, and resize refresh are reviewed.
 - [ ] JSON parser/accessor tests pass for malformed numbers, invalid escapes, Unicode/surrogates, UTF-8 validation, U+0000, and lookup failures.
 - [ ] JSON builder tests pass for object/array construction, escaping, duplicate keys, immutability, invalid fragments/container types, and `json.last_error()`.
 - [ ] JSON nesting accepts 128 containers and rejects 129, including when builders combine individually valid values.
