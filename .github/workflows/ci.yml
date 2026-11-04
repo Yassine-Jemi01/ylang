@@ -93,6 +93,8 @@ jobs:
         run: make gui gui-example game2d-example CC=gcc PYTHON=python
       - name: Build optional SDL2_mixer Voice runtime
         run: make voice CC=gcc PYTHON=python
+      - name: Verify YLanglings offline CLI and install lifecycle
+        run: python -m unittest discover -s tools/ylanglings/tests -v
       - name: Check, compile, and run a native Windows program
         run: |
           mkdir -p build/windows-smoke
