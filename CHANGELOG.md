@@ -12,7 +12,8 @@ YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable r
 - Added immutable raw-JSON builders with key escaping and deterministic duplicate-key replacement; invalid fragments and results deeper than 128 containers are rejected, exactly 16 MiB of generated output is accepted, and larger results fail with a runtime error. Added a standalone [builder example](examples/json-builders.yl).
 - Defined duplicate-key behavior: getters return the first value, `json.set` replaces that value and collapses later copies, and `json.remove` drops all copies.
 - Added parser statement-depth recovery, code-generation recursion guards, and fail-closed C generation on emission diagnostics.
-- Added `ylang help` and `ylang version` subcommands, CLI documentation, and responsive homepage/TUI design updates.
+- Added `ylang help` and `ylang version` subcommands, aligned command output, a full CLI reference, and a dependency-free `make tui-example` target with build-smoke coverage.
+- Added 2.3-specific pre-publication and post-publication checklists, exposed them in the book/docs site, shipped them in YSPM packages, and added CI/release-workflow checks for their presence.
 - Expanded regression fixtures for resource limits, diagnostic sanitization, parser nesting, JSON builders, HTTP headers, and CLI aliases.
 
 All build, regression, sanitizer, fuzz, cross-platform, website/book, packaging, and benchmark gates remain pending until the validation phase. Do not change `VERSION` or publish `v2.3.0` before the acceptance checklist is complete.
