@@ -15,6 +15,7 @@ YLang **2.2.0** is the latest stable release. The documented core language and d
 ## Release status
 
 - **Latest stable release: 2.2.0.** The documented core language and default C-backend workflow remain the compatibility foundation; new HTTP, async-task, debugger, and related extensions have explicit experimental boundaries.
+- **Next development line: 2.3.0 (not released).** Compiler hardening, JSON builders, terminal/UI polish, and documentation work are being integrated. Do not treat the development branch as stable; see the [2.3 roadmap](docs/ROADMAP-2.3.0.md) and [development changelog](CHANGELOG.md).
 - HTTP/API requests, the first asynchronous HTTP-task API, environment-variable access, source-aware native debugging, editor tooling, and the refreshed documentation are included in 2.2.0. See the [2.2.0 release notes](docs/CHANGELOG-2.2.0.md), [HTTP guide](docs/HTTP.md), [debugger guide](docs/DEBUGGER.md), [security model](docs/SECURITY.md), [performance benchmark guide](docs/PERFORMANCE.md), and [release roadmap](docs/ROADMAP-2.2.0.md). The acceptance procedure remains documented in [docs/ACCEPTANCE-2.2.0.md](docs/ACCEPTANCE-2.2.0.md) and can be run with `bash tools/test-2.2-candidate.sh`.
 - Async/await currently applies only to HTTP task handles; general async functions, a complete VS Code Debug Adapter Protocol integration, and Windows interactive debugging are not implemented. The 2.1.0 ownership proposal and its limits remain documented in the [2.1.0 candidate notes](docs/CHANGELOG-2.1.0.md) and [memory model](docs/MEMORY-MODEL.md).
 
