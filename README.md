@@ -239,6 +239,8 @@ make install-ylanglings PREFIX="$HOME/.local"
 ylanglings list
 ylanglings next
 ylanglings verify 01
+# Verify the complete curriculum against the current compiler:
+ylanglings --compiler ./build/ylang verify-all
 ```
 
 It requires Python 3.10+ and a built YLang compiler, but no network connection or third-party Python packages. See the [YLanglings guide](tools/ylanglings/README.md) and [book chapter](docs/online-book/src/ylanglings.md).
