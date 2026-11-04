@@ -24,6 +24,8 @@ typedef struct {
     bool eof;
 } YLVoiceStreamSource;
 
+static void voice_set_error(const char *message);
+
 #define YL_VOICE_STREAM_CACHE_CHUNK (16U * 1024U)
 
 static bool voice_stream_cache_seek(FILE *file, uint64_t offset)
