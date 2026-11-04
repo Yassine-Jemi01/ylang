@@ -113,6 +113,11 @@ h1, h2, h3, p { margin: 0; }
 .button-primary:hover { border-color: #2197a5; background: #1b8b9b; }
 .button-secondary { border-color: var(--line-strong); color: var(--text); background: rgb(20 34 35 / 80%); }
 .button-secondary:hover { border-color: var(--teal-soft); background: var(--surface-raised); }
+
+.hero-dev-link { display: inline-flex; align-items: center; gap: 8px; margin-top: 15px; color: var(--muted); font-size: .76rem; font-weight: 650; transition: color .2s ease; }
+.hero-dev-link:hover { color: var(--teal-soft); }
+.hero-dev-link > svg { width: 13px; height: 13px; }
+.hero-dev-dot { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; background: var(--rust-soft); box-shadow: 0 0 0 4px rgb(141 56 22 / 12%); }
 .hero-footnote { display: flex; align-items: center; gap: 8px; margin-top: 23px; color: var(--muted-2); font: 400 .72rem/1.5 var(--mono); }
 .hero-footnote svg { width: 14px; height: 14px; color: var(--teal-soft); }
 .hero-bottom-line { position: absolute; bottom: 0; left: 5%; width: 90%; height: 1px; background: linear-gradient(90deg, transparent, rgb(147 212 200 / 24%), transparent); }
