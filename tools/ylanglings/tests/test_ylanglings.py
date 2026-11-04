@@ -126,6 +126,17 @@ class CliStateTests(unittest.TestCase):
         self.assertIn("Optional: nested loops", rendered)
         self.assertIn("2/26 completed", rendered)
 
+    def test_verify_all_continues_and_reports_every_failure(self):
+        manifest = ylanglings.load_manifest()
+        output = io.StringIO()
+        results = [0, 1] + [0] * (len(manifest) - 2)
+        with mock.patch.object(ylanglings, "command_verify", side_effect=results) as verify, contextlib.redirect_stdout(output):
+            status = ylanglings.command_verify_all(manifest, "ylang")
+        self.assertEqual(status, 1)
+        self.assertEqual(verify.call_count, 26)
+        self.assertIn("02", output.getvalue())
+        self.assertIn("All 26", output.getvalue()) is False
+
     def test_compiler_timeout_is_reported_without_hanging(self):
         output = io.StringIO()
         timeout = ylanglings.subprocess.TimeoutExpired(cmd=["ylang"], timeout=60)
