@@ -21,11 +21,11 @@ function main() -> int {
 | json.valid(text) | bool | Check JSON syntax without retaining a copy |
 | json.stringify(raw) | owned_string | Validate and copy an existing raw JSON value |
 | json.pretty(raw) | owned_string | Format a JSON value with two-space indentation |
-| json.object() | owned_string | Create an empty JSON object |
-| json.array() | owned_string | Create an empty JSON array |
-| json.set(object, key, raw_value) | owned_string | Return an object with a property added or replaced |
-| json.remove(object, key) | owned_string | Return an object without the selected property |
-| json.push(array, raw_value) | owned_string | Return an array with one value appended |
+| json.object() | owned_string | **2.3 development:** create an empty JSON object |
+| json.array() | owned_string | **2.3 development:** create an empty JSON array |
+| json.set(object, key, raw_value) | owned_string | **2.3 development:** return an object with a property added or replaced |
+| json.remove(object, key) | owned_string | **2.3 development:** return an object without the selected property |
+| json.push(array, raw_value) | owned_string | **2.3 development:** return an array with one value appended |
 | json.get(document, key) | owned_string | Get an object's property as raw JSON |
 | json.get_string(document, key) | owned_string | Get and decode a string property |
 | json.get_int(document, key) | int | Get a signed 64-bit integer property |
