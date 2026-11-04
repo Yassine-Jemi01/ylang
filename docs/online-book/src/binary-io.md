@@ -115,7 +115,7 @@ function main() -> int {
 
 ## Limitations
 
-- Byte arrays are fixed-size; dynamic byte buffers and slices are not yet available.
+- Byte arrays are fixed-size. Use the dynamic `io.buffer_*` API when a growable byte buffer or a non-owning slice is required.
 - Streaming is synchronous and does not yet expose seek, flush, append, or async operations.
 - Runtime file offsets use portable C stdio seek operations and must fit the platform's `long` range.
 - Binary I/O is experimental and currently supported by the C backend. The NASM backend reports a clear unsupported-type/API diagnostic.
