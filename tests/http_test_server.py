@@ -120,6 +120,15 @@ class Handler(BaseHTTPRequestHandler):
             import time
             time.sleep(0.2)
             self.send_bytes(200, "slow-response")
+        elif self.path == "/headers-underflow":
+            # Reach the exact 16 KiB accumulated-header boundary, then send
+            # one more header. The client must reject it without underflowing.
+            self.send_response_only(200)
+            self.send_header("X-A", "a" * 8185)  # 8,190 bytes + stored newline
+            self.send_header("X-B", "b" * 8187)  # 8,192 bytes + stored newline
+            self.send_header("Content-Length", "0")
+            self.send_header("Connection", "close")
+            self.end_headers()
         elif self.path == "/hello":
             self.send_bytes(200, "hello")
         elif self.path == "/auth":
