@@ -136,6 +136,7 @@ class CliStateTests(unittest.TestCase):
             status = ylanglings.command_verify_all(manifest, "ylang")
         self.assertEqual(status, 1)
         self.assertEqual(verify.call_count, 26)
+        self.assertTrue(all(call.kwargs.get("persist_progress") is False for call in verify.call_args_list))
         self.assertIn("02", output.getvalue())
         self.assertIn("YLanglings verification failed", output.getvalue())
         self.assertNotIn("All 26", output.getvalue())
@@ -149,6 +150,7 @@ class CliStateTests(unittest.TestCase):
             status = ylanglings.command_verify_all(manifest, "ylang")
         self.assertEqual(status, 0)
         self.assertEqual(verify.call_count, 26)
+        self.assertTrue(all(call.kwargs.get("persist_progress") is False for call in verify.call_args_list))
         self.assertIn("All 26 YLanglings exercises passed.", output.getvalue())
 
     def test_compiler_timeout_is_reported_without_hanging(self):
