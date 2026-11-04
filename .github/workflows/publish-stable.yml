@@ -55,7 +55,7 @@ jobs:
           fi
       - name: Install toolchain (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y build-essential clang libclang-rt-dev nasm libsdl2-dev pkg-config libcurl4-openssl-dev
+        run: sudo apt-get update && sudo apt-get install -y build-essential clang libclang-rt-dev nasm libsdl2-dev libsdl2-mixer-dev pkg-config libcurl4-openssl-dev
       - name: Install toolchain (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -63,6 +63,7 @@ jobs:
           brew list llvm >/dev/null 2>&1 || brew install llvm
           brew list make >/dev/null 2>&1 || brew install make
           brew list sdl2 >/dev/null 2>&1 || brew install sdl2
+          brew list sdl2_mixer >/dev/null 2>&1 || brew install sdl2_mixer
           brew list pkg-config >/dev/null 2>&1 || brew install pkg-config
           brew list curl >/dev/null 2>&1 || brew install curl
           echo "PKG_CONFIG_PATH=$(brew --prefix curl)/lib/pkgconfig:${PKG_CONFIG_PATH:-}" >> "$GITHUB_ENV"
@@ -83,6 +84,10 @@ jobs:
         run: ${{ steps.compiler.outputs.make }} clean all CC="${{ steps.compiler.outputs.cc }}"
       - name: Build optional GUI runtime
         run: ${{ steps.compiler.outputs.make }} gui gui-example game2d-example CC="${{ steps.compiler.outputs.cc }}"
+      - name: Build terminal UI example
+        run: ${{ steps.compiler.outputs.make }} tui-example CC="${{ steps.compiler.outputs.cc }}"
+      - name: Build and test optional Voice runtime
+        run: ${{ steps.compiler.outputs.make }} voice voice-example voice-test CC="${{ steps.compiler.outputs.cc }}"
       - name: Run regression tests
         run: ${{ steps.compiler.outputs.make }} test CC="${{ steps.compiler.outputs.cc }}"
       - name: Fuzz lexer/parser smoke test
