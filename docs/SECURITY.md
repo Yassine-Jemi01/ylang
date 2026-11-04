@@ -2,6 +2,19 @@
 
 **YLang is a compiled toolchain, not a sandbox.** A YLang executable runs with the privileges of the user who starts it. The compiler does not isolate file access, processes, network access, or imported native code.
 
+## Compiler resource limits
+
+The compiler bounds several input-driven resources to keep malformed or unexpectedly large projects from consuming unbounded memory or call-stack depth:
+
+- At most 100 diagnostics are printed for one compilation; source-line excerpts are limited to 160 bytes and non-printable/non-ASCII bytes are escaped in diagnostic output.
+- A program may load at most 1,024 source modules.
+- The root source and all imported source files together are limited to 64 MiB.
+- Module import recursion is limited to 256 levels.
+- Parser statement nesting is limited to 256 levels, and code generation has a defensive 512-level statement-depth guard.
+- JSON input and generated JSON output are each limited to 16 MiB; JSON nesting is limited to 128 levels.
+
+The compiler reports the module limits with E1027, E1028, and E1029, and statement-depth violations with E1018/E1019. These limits are compiler safeguards, not a sandbox; native programs still run with the user's permissions.
+
 ## HTTP/HTTPS client
 
 The experimental C-backend client uses libcurl and applies these defaults:
