@@ -127,6 +127,16 @@ def main():
             signal_process.wait(timeout=3)
             if signal_process.returncode != 128 + signal.SIGINT:
                 raise SystemExit(f"TUI SIGINT exit status mismatch: {signal_process.returncode}")
+            signal_output = bytearray()
+            ready, _, _ = select.select([signal_master], [], [], 0.2)
+            if ready:
+                try:
+                    signal_output.extend(os.read(signal_master, 4096))
+                except OSError as error:
+                    if error.errno != errno.EIO:
+                        raise
+            if b"\\x1b[?25h" not in signal_output:
+                raise SystemExit(f"TUI signal handler did not restore cursor visibility: {signal_output!r}")
             signal_restored = termios.tcgetattr(signal_slave)
             if (signal_restored[3] & mask) != (signal_original[3] & mask):
                 raise SystemExit("TUI did not restore terminal settings on SIGINT")
