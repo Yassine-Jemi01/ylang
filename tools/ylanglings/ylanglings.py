@@ -126,7 +126,7 @@ def command_verify(number, manifest, compiler):
             print("\nThe source passed check but failed to build.")
             return 1
         try:
-            result = subprocess.run([str(binary)], text=True, stdout=subprocess.PIPE,
+            result = subprocess.run([str(binary)], cwd=directory, text=True, stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, timeout=10)
         except subprocess.TimeoutExpired:
             print("The program exceeded the 10-second exercise limit.")
