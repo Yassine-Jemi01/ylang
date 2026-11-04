@@ -863,8 +863,14 @@ static size_t yl_http_stream_take(YLHttpStream *stream, void *destination, size_
     if (stream->paused && !stream->done && stream->easy) {
         stream->paused = false;
         CURLcode resume_code = curl_easy_pause(stream->easy, CURLPAUSE_CONT);
-        if (resume_code != CURLE_OK)
+        if (resume_code != CURLE_OK) {
             yl_http_stream_error_set(stream, curl_easy_strerror(resume_code));
+            stream->done = true;
+            if (stream->attached && stream->multi) {
+                (void)curl_multi_remove_handle(stream->multi, stream->easy);
+                stream->attached = false;
+            }
+        }
     }
     return take;
 }
