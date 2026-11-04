@@ -1,0 +1,5 @@
+function main() -> int {
+    let int number = to_int("3.9");
+    print(number);
+    return 0;
+}
