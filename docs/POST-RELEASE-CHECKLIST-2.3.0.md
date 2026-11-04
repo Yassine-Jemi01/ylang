@@ -1,6 +1,6 @@
 # YLang 2.3.0 — Post-Release Checklist
 
-**Purpose:** Verify the published artifacts and public documentation after the stable publishing workflow completes. These checks must not be used as substitutes for the pre-publication gates in [RELEASE-CHECKLIST-2.3.0.md](RELEASE-CHECKLIST-2.3.0.md).
+**Purpose:** Verify the published artifacts and public documentation after the stable publishing workflow completes. This checklist remains intentionally unchecked during development; do not mark it complete before the release exists. These checks must not be used as substitutes for the pre-publication gates in [RELEASE-CHECKLIST-2.3.0.md](RELEASE-CHECKLIST-2.3.0.md).
 
 - [ ] Confirm GitHub Release `v2.3.0` exists and is marked as the latest stable release.
 - [ ] Confirm the release tag points to the exact commit tested by the stable publishing workflow.
