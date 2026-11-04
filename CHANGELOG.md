@@ -13,6 +13,7 @@ YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable r
 - Defined duplicate-key behavior: getters return the first value, `json.set` replaces that value and collapses later copies, and `json.remove` drops all copies.
 - Added parser statement-depth recovery, code-generation recursion guards, and fail-closed C generation on emission diagnostics.
 - Added `ylang help` and `ylang version` subcommands, aligned command output, a full CLI reference, and a dependency-free `make tui-example` target with build-smoke coverage.
+- Tightened CLI option handling: `--cc` is rejected where it has no effect, and `ylang <command> --help` now prints the command reference without treating `--help` as a source filename.
 - Expanded the native benchmark report with host architecture, CPU identification, effective optimization flag, and core compiler flags so later 2.3 performance comparisons retain more of their machine/toolchain context.
 - Promoted YLanglings into the 2.3 developer-experience scope: documented its 16 core exercises and 10 optional challenges, added manifest/CLI/progress/install contract tests, and wired them into `make test`.
 - Hardened YLanglings manifest loading against missing files and paths outside the exercise tree; added separate core/optional progress, `next --optional`, editor launching through `VISUAL`/`EDITOR`, durable atomic progress writes, and explicit native-execution trust-boundary documentation.
