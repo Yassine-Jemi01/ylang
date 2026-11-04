@@ -15,10 +15,20 @@ function choose_surah(borrowed_string document, int current) -> int {
     if (selected >= count) {
         selected = count - 1;
     }
+    let int page_size = tui.height() - 8;
+    if (page_size < 5) {
+        page_size = 5;
+    }
+    if (page_size > 18) {
+        page_size = 18;
+    }
+    let bool redraw = true;
     let bool done = false;
 
     while (!done) {
-        tui.clear();
+        if (redraw) {
+            redraw = false;
+            tui.clear();
         tui.write("\x1b[1;36m");
         tui.write("  SURAH LIBRARY\n");
         tui.write("\x1b[0;90m");
@@ -26,11 +36,18 @@ function choose_surah(borrowed_string document, int current) -> int {
         tui.write("  ------------------------------------------------------------\n");
         tui.write("\x1b[0m");
 
-        let int start = selected - 4;
+        let int start = selected - (page_size / 2);
         if (start < 0) {
             start = 0;
         }
-        let int end = start + 9;
+        let int max_start = count - page_size;
+        if (max_start < 0) {
+            max_start = 0;
+        }
+        if (start > max_start) {
+            start = max_start;
+        }
+        let int end = start + page_size;
         if (end > count) {
             end = count;
         }
@@ -70,7 +87,9 @@ function choose_surah(borrowed_string document, int current) -> int {
         tui.write("   |   Selected: ");
         tui.write(to_string(selected + 1));
         tui.write("\n  Up/Down Move  PgUp/PgDn Page  Home/End Jump  Enter Select  Esc Back\x1b[0m\n");
+        }
 
+        let int previous_selected = selected;
         let int key = tui.poll_key();
         if (key == 1001 and selected > 0) {
             selected = selected - 1;
@@ -79,13 +98,13 @@ function choose_surah(borrowed_string document, int current) -> int {
             selected = selected + 1;
         }
         else if (key == 1008) {
-            selected = selected - 8;
+            selected = selected - page_size;
             if (selected < 0) {
                 selected = 0;
             }
         }
         else if (key == 1009) {
-            selected = selected + 8;
+            selected = selected + page_size;
             if (selected >= count) {
                 selected = count - 1;
             }
@@ -101,6 +120,9 @@ function choose_surah(borrowed_string document, int current) -> int {
         }
         else if (key == 27) {
             return current;
+        }
+        if (selected != previous_selected) {
+            redraw = true;
         }
         tui.sleep_ms(20);
     }
@@ -119,10 +141,20 @@ function choose_reciter(borrowed_string document, int current) -> int {
     if (selected >= count) {
         selected = count - 1;
     }
+    let int page_size = tui.height() - 8;
+    if (page_size < 5) {
+        page_size = 5;
+    }
+    if (page_size > 18) {
+        page_size = 18;
+    }
+    let bool redraw = true;
     let bool done = false;
 
     while (!done) {
-        tui.clear();
+        if (redraw) {
+            redraw = false;
+            tui.clear();
         tui.write("\x1b[1;36m");
         tui.write("  RECITER DIRECTORY\n");
         tui.write("\x1b[0;90m");
@@ -130,11 +162,18 @@ function choose_reciter(borrowed_string document, int current) -> int {
         tui.write("  ------------------------------------------------------------\n");
         tui.write("\x1b[0m");
 
-        let int start = selected - 4;
+        let int start = selected - (page_size / 2);
         if (start < 0) {
             start = 0;
         }
-        let int end = start + 9;
+        let int max_start = count - page_size;
+        if (max_start < 0) {
+            max_start = 0;
+        }
+        if (start > max_start) {
+            start = max_start;
+        }
+        let int end = start + page_size;
         if (end > count) {
             end = count;
         }
@@ -188,7 +227,9 @@ function choose_reciter(borrowed_string document, int current) -> int {
         tui.write("   |   Selected: ");
         tui.write(to_string(selected + 1));
         tui.write("\n  Up/Down Move  PgUp/PgDn Page  Home/End Jump  Enter Select  Esc Back\x1b[0m\n");
+        }
 
+        let int previous_selected = selected;
         let int key = tui.poll_key();
         if (key == 1001 and selected > 0) {
             selected = selected - 1;
@@ -197,13 +238,13 @@ function choose_reciter(borrowed_string document, int current) -> int {
             selected = selected + 1;
         }
         else if (key == 1008) {
-            selected = selected - 8;
+            selected = selected - page_size;
             if (selected < 0) {
                 selected = 0;
             }
         }
         else if (key == 1009) {
-            selected = selected + 8;
+            selected = selected + page_size;
             if (selected >= count) {
                 selected = count - 1;
             }
@@ -219,6 +260,9 @@ function choose_reciter(borrowed_string document, int current) -> int {
         }
         else if (key == 27) {
             return current;
+        }
+        if (selected != previous_selected) {
+            redraw = true;
         }
         tui.sleep_ms(20);
     }
@@ -328,6 +372,7 @@ function ytilawa_main() -> int {
     let bool playing = false;
     let bool paused = false;
     let bool running = true;
+    let bool screen_dirty = true;
     let string message = "Ready. English reader directory loaded.";
 
     while (running) {
@@ -335,15 +380,19 @@ function ytilawa_main() -> int {
             playing = false;
             paused = false;
             message = "Playback finished.";
+            screen_dirty = true;
         }
 
-        let owned_string current_surah_label = surah_name(current_surah - 1);
-        let owned_string current_reciter_label = reciter_name(reciters, current_reciter);
-        ui_draw_main(
-            current_surah_label,
-            current_reciter_label,
-            current_surah, volume, playing, paused, message
-        );
+        if (screen_dirty) {
+            let owned_string current_surah_label = surah_name(current_surah - 1);
+            let owned_string current_reciter_label = reciter_name(reciters, current_reciter);
+            ui_draw_main(
+                current_surah_label,
+                current_reciter_label,
+                current_surah, volume, playing, paused, message
+            );
+            screen_dirty = false;
+        }
 
         let int key = tui.poll_key();
         if (key == 113 or key == 81) {
@@ -493,6 +542,9 @@ function ytilawa_main() -> int {
             message = "Volume decreased.";
         }
 
+        if (key != -1) {
+            screen_dirty = true;
+        }
         tui.sleep_ms(20);
     }
 
