@@ -15,7 +15,7 @@ YLang **2.2.0** is the latest stable release. The documented core language and d
 ## Release status
 
 - **Latest stable release: 2.2.0.** The documented core language and default C-backend workflow remain the compatibility foundation; new HTTP, async-task, debugger, and related extensions have explicit experimental boundaries.
-- **Next development line: 2.3.0 (not released).** Compiler hardening, JSON builders, terminal/UI polish, and documentation work are being integrated. Do not treat the development branch as stable; see the [2.3 roadmap](docs/ROADMAP-2.3.0.md) and [development changelog](CHANGELOG.md).
+- **Next development line: 2.3.0 (not released).** Compiler hardening, JSON builders, the YLanglings learning track, terminal/UI polish, and documentation work are being integrated. Do not treat the development branch as stable; see the [2.3 roadmap](docs/ROADMAP-2.3.0.md) and [development changelog](CHANGELOG.md).
 - HTTP/API requests, the first asynchronous HTTP-task API, environment-variable access, source-aware native debugging, editor tooling, and the refreshed documentation are included in 2.2.0. See the [2.2.0 release notes](docs/CHANGELOG-2.2.0.md), [HTTP guide](docs/HTTP.md), [debugger guide](docs/DEBUGGER.md), [security model](docs/SECURITY.md), [performance benchmark guide](docs/PERFORMANCE.md), and [release roadmap](docs/ROADMAP-2.2.0.md). The acceptance procedure remains documented in [docs/ACCEPTANCE-2.2.0.md](docs/ACCEPTANCE-2.2.0.md) and can be run with `bash tools/test-2.2-candidate.sh`.
 - Async/await currently applies only to HTTP task handles; general async functions, a complete VS Code Debug Adapter Protocol integration, and Windows interactive debugging are not implemented. The 2.1.0 ownership proposal and its limits remain documented in the [2.1.0 candidate notes](docs/CHANGELOG-2.1.0.md) and [memory model](docs/MEMORY-MODEL.md).
 
@@ -229,6 +229,19 @@ YLANG_PATH="$HOME/ylang-libs" ylang build main.yl -o main
 ```
 
 Imports can be nested, and repeated references to the same canonical file reuse the loaded module. Circular imports, missing files/names, duplicate imports, and imports of `main()` are rejected with diagnostics. The C backend supports the module graph; the experimental NASM backend supports imports only when all imported features are in its supported subset. Import aliases, qualified module namespaces, package manifests, and a package registry are not implemented yet.
+
+## YLanglings — interactive exercises
+
+YLanglings is an offline, Rustlings-inspired learning tool included in the 2.3 development scope. It provides 16 core exercises and 10 optional challenges; edit each starter program and verify it with the real compiler. Install and use it with:
+
+```sh
+make -C tools/ylanglings install
+ylanglings list
+ylanglings next
+ylanglings verify 01
+```
+
+It requires Python 3.10+ and a built YLang compiler, but no network connection or third-party Python packages. See the [YLanglings guide](tools/ylanglings/README.md) and [book chapter](docs/online-book/src/ylanglings.md).
 
 ## Command-line reference
 
