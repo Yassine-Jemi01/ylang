@@ -1831,12 +1831,9 @@ static struct sigaction yl_tui_previous_actions[
 static size_t yl_tui_installed_signal_count;
 
 static void yl_tui_signal_exit(int signal_number) {
-    if (yl_tui_active) {
-        (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &yl_tui_saved_termios);
-        static const char cursor_restore[] = "\033[?25h";
-        (void)write(STDOUT_FILENO, cursor_restore, sizeof(cursor_restore) - 1U);
-        yl_tui_active = false;
-    }
+    (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &yl_tui_saved_termios);
+    static const char cursor_restore[] = "\033[?25h";
+    (void)write(STDOUT_FILENO, cursor_restore, sizeof(cursor_restore) - 1U);
     _exit(128 + signal_number);
 }
 
