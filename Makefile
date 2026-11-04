@@ -19,7 +19,7 @@ else
 GAME2D_OUTPUT ?= build/dodge
 endif
 
-.PHONY: all clean test ylanglings-test sanitize install uninstall install-ylanglings uninstall-ylanglings print-version tui-example gui gui-example game2d-example install-gui voice voice-example voice-test install-voice check-sdl2 check-voice check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
+.PHONY: all clean test ylanglings-test ylanglings-verify sanitize install uninstall install-ylanglings uninstall-ylanglings print-version tui-example gui gui-example game2d-example install-gui voice voice-example voice-test install-voice check-sdl2 check-voice check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
 
 all: $(BIN)
 
@@ -56,7 +56,10 @@ frontend-unit-test: build/frontend-unit
 ylanglings-test:
 	$(PYTHON) -m unittest discover -s tools/ylanglings/tests -v
 
-test: $(BIN) frontend-unit-test ylanglings-test
+ylanglings-verify: $(BIN)
+	$(PYTHON) tools/ylanglings/ylanglings.py --compiler ./$(BIN) verify-all
+
+test: $(BIN) frontend-unit-test ylanglings-test ylanglings-verify
 	sh tests/run.sh
 
 FUZZ_CC ?= clang
