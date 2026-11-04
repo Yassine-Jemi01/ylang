@@ -28,7 +28,7 @@ function choose_surah(borrowed_string document, int current) -> int {
     while (!done) {
         if (redraw) {
             redraw = false;
-            tui.write("\x1b[H\x1b[J");
+            tui.write("\x1b[H");
         tui.write("\x1b[1;36m");
         tui.write("  SURAH LIBRARY\n");
         tui.write("\x1b[0;90m");
@@ -196,7 +196,7 @@ function choose_reciter(borrowed_string document, int current) -> int {
     while (!done) {
         if (redraw) {
             redraw = false;
-            tui.write("\x1b[H\x1b[J");
+            tui.write("\x1b[H");
         tui.write("\x1b[1;36m");
         tui.write("  RECITER DIRECTORY\n");
         tui.write("\x1b[0;90m");
@@ -406,7 +406,7 @@ function download_current(borrowed_string reciters, int surah_id, int reciter_in
 
 function show_saved(string title, string path) -> int {
     let owned_string contents = storage_read(path);
-    tui.write("\x1b[H\x1b[J");
+    tui.write("\x1b[H");
     tui.write("\x1b[1;36m");
     tui.write(title);
     tui.write("\x1b[0;90m\n  ------------------------------------------------------------\n");
