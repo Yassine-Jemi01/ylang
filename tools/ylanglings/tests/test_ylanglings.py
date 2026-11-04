@@ -131,8 +131,8 @@ class CliStateTests(unittest.TestCase):
 
     def test_next_optional_selects_first_optional_challenge(self):
         with mock.patch.object(sys, "argv", ["ylanglings", "next", "--optional"]), mock.patch.object(
-            ylanglings, "command_run"
-        ) as command:
+            ylanglings, "load_progress", return_value={"completed": []}
+        ), mock.patch.object(ylanglings, "command_run") as command:
             ylanglings.main()
         command.assert_called_once_with(17, ylanglings.load_manifest())
 
