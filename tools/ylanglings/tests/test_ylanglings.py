@@ -124,15 +124,15 @@ class CliStateTests(unittest.TestCase):
             )
             executable = prefix / "bin" / "ylanglings"
             self.assertTrue(executable.is_file())
-            listing = subprocess_run(
+            listing = subprocess.run(
                 [str(executable), "list"], check=True, capture_output=True,
                 text=True, env=environment,
             )
             self.assertIn("26", listing.stdout)
-            subprocess_run(
+            subprocess.run(
                 ["make", "-C", str(TOOL_DIR), "uninstall", f"PREFIX={prefix}"],
-                check=True, stdout=__import__("subprocess").PIPE,
-                stderr=__import__("subprocess").STDOUT, text=True,
+                check=True, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, text=True,
             )
             self.assertFalse(executable.exists())
             self.assertFalse((prefix / "share" / "ylanglings").exists())
