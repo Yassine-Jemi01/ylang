@@ -125,7 +125,71 @@
     "file": "optional-03-struct-function.yl",
     "starter": "starter/optional-03-struct-function.yl",
     "description": "Repair the function that computes a rectangle's perimeter.",
-    "hint": "The function returns an integer; combine width and height.",
+    "hint": "Perimeter = 2 * (width + height).",
     "expected_output": "26\n"
+  },
+  {
+    "title": "Optional: JSON parsing",
+    "category": "optional · standard library",
+    "file": "optional-04-json.yl",
+    "starter": "starter/optional-04-json.yl",
+    "description": "Repair the JSON key lookup and read the integer field.",
+    "hint": "The document contains a numeric field named score.",
+    "expected_output": "42\n",
+    "mode": "run"
+  },
+  {
+    "title": "Optional: Binary I/O",
+    "category": "optional · standard library",
+    "file": "optional-05-binary.yl",
+    "starter": "starter/optional-05-binary.yl",
+    "description": "Use the matching endian-aware binary writer and reader.",
+    "hint": "The write and read helpers must agree on the integer width and byte order.",
+    "mode": "check"
+  },
+  {
+    "title": "Optional: HTTP streaming",
+    "category": "optional · networking",
+    "file": "optional-06-http-stream.yl",
+    "starter": "starter/optional-06-http-stream.yl",
+    "description": "Work with a pull-based HTTP stream handle and close it correctly.",
+    "hint": "The stream API uses http_stream, not a regular string or HTTP task.",
+    "mode": "check"
+  },
+  {
+    "title": "Optional: Terminal UI",
+    "category": "optional · TUI",
+    "file": "optional-07-tui.yl",
+    "starter": "starter/optional-07-tui.yl",
+    "description": "Use the terminal UI builtins to initialize, query dimensions, and shut down.",
+    "hint": "Check each builtin's return type and remember to shut down the terminal.",
+    "mode": "check"
+  },
+  {
+    "title": "Optional: Voice playback",
+    "category": "optional · audio",
+    "file": "optional-08-voice.yl",
+    "starter": "starter/optional-08-voice.yl",
+    "description": "Use the Voice API to initialize playback and handle an audio error.",
+    "hint": "Voice functions are compiler-recognized builtins; this exercise only checks types and signatures.",
+    "mode": "check"
+  },
+  {
+    "title": "Optional: GUI lifecycle",
+    "category": "optional · GUI",
+    "file": "optional-09-gui.yl",
+    "starter": "starter/optional-09-gui.yl",
+    "description": "Repair the GUI initialization and shutdown sequence.",
+    "hint": "gui.init() returns bool; gui.shutdown() does not return a value.",
+    "mode": "check"
+  },
+  {
+    "title": "Optional: Owned strings",
+    "category": "optional · memory model",
+    "file": "optional-10-owned-strings.yl",
+    "starter": "starter/optional-10-owned-strings.yl",
+    "description": "Practice explicit owned-string creation, concatenation, and moving.",
+    "hint": "Use string.own to create an owned value and move when transferring ownership.",
+    "mode": "check"
   }
 ]
