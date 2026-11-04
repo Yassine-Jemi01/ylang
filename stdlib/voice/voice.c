@@ -81,6 +81,24 @@ static size_t SDLCALL voice_stream_read(SDL_RWops *context, void *destination,
             memmove(source->pending, source->pending + take, source->pending_length);
     }
 
+    if (size == 1U) {
+        if (total < requested) {
+            int64_t received = source->read_callback(
+                source->stream_id, (unsigned char *)destination + total, requested - total);
+            if (received < 0) {
+                const char *detail = source->error_callback
+                    ? source->error_callback(source->stream_id) : NULL;
+                voice_set_error(detail && *detail ? detail : "HTTP audio stream read failed");
+            } else if ((uint64_t)received > (uint64_t)(requested - total)) {
+                voice_set_error("HTTP audio stream returned an invalid byte count");
+            } else {
+                total += (size_t)received;
+            }
+        }
+        source->position += (uint64_t)total;
+        return total;
+    }
+
     while (total < requested) {
         int64_t received = source->read_callback(
             source->stream_id, (unsigned char *)destination + total, requested - total);
