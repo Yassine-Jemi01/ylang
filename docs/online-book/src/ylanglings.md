@@ -21,6 +21,8 @@ Then use it from any directory:
 ```sh
 ylanglings list
 ylanglings next
+# After finishing the core track:
+ylanglings next --optional
 ylanglings run 01
 ylanglings edit 01
 ```
@@ -39,7 +41,7 @@ ylanglings --compiler ./build/ylang verify 01
 
 Use `ylanglings hint NUMBER` for a hint and `ylanglings reset NUMBER` to
 restore an exercise's original broken starter. The `list` command shows
-progress, while `next` shows the first incomplete core exercise. Use `edit NUMBER` to open it in your configured editor.
+progress, while `next` shows the first incomplete core exercise. Use `next --optional` to move through optional challenges. Use `edit NUMBER` to open it in your configured editor.
 
 ## Learning path
 
