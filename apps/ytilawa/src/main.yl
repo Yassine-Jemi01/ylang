@@ -129,7 +129,7 @@ function show_saved(string title, string path) -> int {
     return 0;
 }
 
-function main() -> int {
+function ytilawa_main() -> int {
     print("YTilawa Extended — loading MP3Quran.net catalog...");
     let owned_string surahs = fetch_surahs();
     let owned_string reciters = fetch_reciters();
