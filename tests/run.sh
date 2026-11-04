@@ -1857,6 +1857,19 @@ if ./build/ylang check "$control_file" > build/statement-depth/diagnostic-contro
     exit 1
 fi
 grep -Fq '\x01' build/statement-depth/diagnostic-control.out
+# Control bytes in the source excerpt itself must be escaped as printable text.
+python3 - <<'PY'
+from pathlib import Path
+Path("build/statement-depth/source-control.yl").write_bytes(
+    b"function main() -> int { \x01print(missing_value); return 0; }\n"
+)
+PY
+if ./build/ylang check build/statement-depth/source-control.yl > build/statement-depth/source-control.out 2>&1; then
+    echo "FAIL: source containing an invalid control byte was accepted" >&2
+    exit 1
+fi
+grep -Fq '\x01' build/statement-depth/source-control.out
+
 
 # Global help/version subcommands must match their option aliases.
 ./build/ylang help > build/cli-help.out
