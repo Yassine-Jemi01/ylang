@@ -138,6 +138,7 @@ def command_list(manifest, progress):
         print(f"[{mark}] {number:02d}  {item['title']:<27} {item['category']}")
     optional_done = sum(number in completed for number, _ in optional)
     print(f"Optional progress: {optional_done}/{len(optional)}")
+    print(f"Total: {len(completed)}/{len(manifest)} completed")
 
 
 def command_run(number, manifest):
