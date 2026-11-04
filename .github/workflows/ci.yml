@@ -192,6 +192,8 @@ jobs:
             "root/usr/share/doc/ylang/CHANGELOG-2.2.0.md" \
             "root/usr/share/doc/ylang/CHANGELOG-2.3.0.md" \
             "root/usr/share/doc/ylang/ROADMAP-2.3.0.md" \
+            "root/usr/share/doc/ylang/RELEASE-CHECKLIST-2.3.0.md" \
+            "root/usr/share/doc/ylang/POST-RELEASE-CHECKLIST-2.3.0.md" \
             "root/usr/share/doc/ylang/JSON.md" \
             "root/usr/share/doc/ylang/HTTP-STREAMING.md" \
             "root/usr/share/doc/ylang/CLI.md" \
@@ -324,6 +326,8 @@ jobs:
           test -s website/learn/reference/CHANGELOG-2.2.0.html
           test -s website/learn/reference/CHANGELOG-2.3.0.html
           test -s website/learn/reference/ROADMAP-2.3.0.html
+          test -s website/learn/reference/RELEASE-CHECKLIST-2.3.0.html
+          test -s website/learn/reference/POST-RELEASE-CHECKLIST-2.3.0.html
           test -s website/learn/reference/JSON.html
           test -s website/learn/reference/HTTP-STREAMING.html
           test -s website/learn/reference/CLI.html
