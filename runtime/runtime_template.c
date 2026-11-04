@@ -1698,7 +1698,7 @@ static bool yl_tui_init(void) {
         return false;
     }
     struct termios raw = yl_tui_saved_termios;
-    raw.c_lflag &= (tcflag_t)~(ICANON | ECHO);
+    raw.c_lflag &= (tcflag_t)~(ICANON | ECHO | ISIG);
     raw.c_iflag &= (tcflag_t)~(IXON | ICRNL);
     raw.c_cc[VMIN] = 1;
     raw.c_cc[VTIME] = 0;
@@ -1708,6 +1708,8 @@ static bool yl_tui_init(void) {
     }
 #endif
     yl_tui_active = true;
+    (void)fputs("\033[?25l", stdout);
+    (void)fflush(stdout);
     if (!yl_tui_restore_registered) {
         (void)atexit(yl_tui_restore);
         yl_tui_restore_registered = true;
@@ -1772,7 +1774,7 @@ static int64_t yl_tui_read_key_internal(bool blocking) {
     }
     if (first != 0x1bU) return (int64_t)first;
     unsigned char second = 0U, third = 0U;
-    if (!yl_tui_read_byte_timeout(&second, blocking ? 35 : 2)) return 27;
+    if (!yl_tui_read_byte_timeout(&second, 35)) return 27;
     if (second != '[' && second != 'O') return 27;
     if (!yl_tui_read_byte_timeout(&third, blocking ? 35 : 2)) return 27;
     if (second == 'O') {
