@@ -35,9 +35,9 @@ function main() -> int {
     print(arr3);
     print(json.array_length(arr3));
     print(json.remove(obj3, "count"));
-    let owned_string duplicate_doc = json.parse("{\\"count\\":1,\\"count\\":2,\\"other\\":true}");
+    let owned_string duplicate_doc = json.parse("{\"count\":1,\"count\":2,\"other\":true}");
     print(json.set(duplicate_doc, "count", "9"));
     print(json.remove(duplicate_doc, "count"));
-    print(json.set(obj3, "line\\nkey", "false"));
+    print(json.set(obj3, "line\nkey", "false"));
     return 0;
 }
