@@ -1,6 +1,6 @@
 # HTTP Streaming
 
-**Status: development branch only.** The current pull-based implementation is not part of a published YLang release.
+**Status: experimental in the YLang 2.3 development tree.** The implementation is present in the current source tree but is not part of a published YLang release. It must pass the HTTP streaming and sanitizer gates in [the 2.3 release checklist](ROADMAP-2.3.0.md) before it is considered release-ready.
 
 ## API
 
