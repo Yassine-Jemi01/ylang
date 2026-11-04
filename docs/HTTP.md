@@ -1,10 +1,10 @@
 # HTTP and API Requests (Experimental)
 
-**Status: experimental development feature for YLang 2.2.** HTTP functions are implemented on the C backend behind an optional libcurl dependency. The API includes synchronous calls plus an initial asynchronous task API built on libcurl's multi interface; async/await is currently restricted to HTTP task handles, not general-purpose YLang functions.
+**Status: experimental feature in the YLang 2.3 development tree; not yet part of a stable 2.3 release.** HTTP functions are implemented on the C backend behind an optional libcurl dependency. The API includes synchronous calls plus an initial asynchronous task API built on libcurl's multi interface; async/await is currently restricted to HTTP task handles, not general-purpose YLang functions.
 
 ## Streaming
 
-Pull-based HTTP Streaming is implemented on the `feat/ytilawa-http-binary-stream` integration branch. It provides a distinct `http_stream` handle, bounded 64 KiB per-stream response buffering, and a binary-safe byte-buffer read path. The Voice runtime can consume a stream through `voice.play_stream`. See [HTTP-STREAMING.md](HTTP-STREAMING.md) for ownership, limits, and verification status; these changes are not part of a published release yet.
+Pull-based HTTP Streaming is present in the current development tree. It provides a distinct `http_stream` handle, bounded 64 KiB per-stream response buffering, and a binary-safe byte-buffer read path. The Voice runtime can consume a stream through `voice.play_stream`. The implementation remains experimental and is not part of a published stable release; see [HTTP-STREAMING.md](HTTP-STREAMING.md) for ownership, limits, and validation gates.
 
 ## Requirements
 
@@ -79,7 +79,7 @@ function main() -> int {
 }
 ```
 
-Replace the illustrative endpoint, model name, request JSON, and authorization scheme with those documented by the chosen provider. API response bodies are returned as strings. A dedicated JSON parser/serializer is not included in this milestone, so applications must currently interpret or construct JSON text themselves.
+Replace the illustrative endpoint, model name, request JSON, and authorization scheme with those documented by the chosen provider. API response bodies are returned as strings. The standard library includes JSON parsing and serialization helpers. See [JSON.md](JSON.md) for the current API; applications should still validate provider-specific response fields and handle malformed responses.
 
 ## Error behavior
 
