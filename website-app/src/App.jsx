@@ -116,6 +116,9 @@ function Header() {
                   <a href={`${SITE}learn/reference/CLI.html`}><FiTerminal /> CLI reference <FiArrowUpRight className="menu-external" /></a>
                 </DropdownMenu.Item>
                 <DropdownMenu.Item className="resource-menu-item" asChild>
+                  <a href={`${BOOK}#ylanglings-practice-by-fixing-code`}><FiCode /> YLanglings exercises <FiArrowUpRight className="menu-external" /></a>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item className="resource-menu-item" asChild>
                   <a href={`${SITE}learn/reference/JSON.html`}><FiCode /> JSON support <FiArrowUpRight className="menu-external" /></a>
                 </DropdownMenu.Item>
                 <DropdownMenu.Item className="resource-menu-item" asChild>
