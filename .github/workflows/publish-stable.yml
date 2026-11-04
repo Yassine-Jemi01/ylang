@@ -196,6 +196,16 @@ jobs:
         run: nvim --headless -u NONE +'luafile editors/nvim/tests/diagnostics.lua'
       - name: Test Neovim syntax highlighting
         run: nvim --headless -u NONE +'luafile editors/nvim/tests/syntax.lua'
+      - name: Package VS Code extension
+        run: |
+          mkdir -p build/editor
+          npx --yes @vscode/vsce package --out build/editor/ylang-language-support.vsix --cwd editors/vscode
+          test -s build/editor/ylang-language-support.vsix
+      - name: Verify Zed Tree-sitter grammar
+        run: |
+          npm install --global tree-sitter-cli
+          tree-sitter generate
+          tree-sitter test
 
   website-integrity:
     permissions:
