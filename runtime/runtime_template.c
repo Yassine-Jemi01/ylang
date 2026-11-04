@@ -2528,6 +2528,7 @@ static int64_t yl_http_stream_read_buffer(int64_t stream_id, int64_t buffer_id,
     }
     size_t count = yl_http_stream_take(stream, buffer->data, capacity);
     buffer->length = count;
+    if (count == 0U && stream->done && stream->error[0] != '\0') return -1;
     return (int64_t)count;
 }
 #endif
