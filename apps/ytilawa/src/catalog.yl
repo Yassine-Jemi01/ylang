@@ -1,5 +1,5 @@
 // MP3Quran.net catalog adapter.
-// Data is fetched live; audio URLs are derived only from API-provided server fields.
+// Reciter names are loaded in English; recording servers and coverage remain API-provided.
 
 function fetch_surahs() -> owned_string {
     let owned_string response = http.get("https://www.mp3quran.net/api/v3/suwar?language=ar");
@@ -10,7 +10,7 @@ function fetch_surahs() -> owned_string {
 }
 
 function fetch_reciters() -> owned_string {
-    let owned_string response = http.get("https://www.mp3quran.net/api/v3/reciters?language=ar");
+    let owned_string response = http.get("https://www.mp3quran.net/api/v3/reciters?language=eng");
     if (http.status() != 200 or string.length(http.last_error()) > 0) {
         return string.own("");
     }
@@ -385,6 +385,12 @@ function reciter_name(borrowed_string document, int index) -> owned_string {
     let owned_string items = json.get(document, "reciters");
     let owned_string item = json.at(items, index);
     return json.get_string(item, "name");
+}
+
+function reciter_letter(borrowed_string document, int index) -> owned_string {
+    let owned_string items = json.get(document, "reciters");
+    let owned_string item = json.at(items, index);
+    return json.get_string(item, "letter");
 }
 
 function reciter_audio_url(borrowed_string document, int reciter_index, int surah_id) -> owned_string {

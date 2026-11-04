@@ -1,18 +1,20 @@
 # YTilawa Extended
 
-YTilawa is a YLang terminal Quran player. It loads the 114-surah and reciter catalogues from the official MP3Quran.net API v3, displays surah names as lowercase Latin slugs (for example, `fatiha`, `baqara`, and `aal-imran`), and derives each audio URL from the API-provided recording server and coverage list. Surah search accepts both Latin slugs and Arabic names.
+YTilawa is a YLang terminal Quran player. It loads the 114-surah catalogue from the official MP3Quran.net API v3 and displays surah names as lowercase Latin slugs (for example, \`fatiha\`, \`baqara\`, and \`aal-imran\`). The reciter directory uses the API's English-language names and letter labels. Audio URLs are still derived only from the API-provided recording servers and surah coverage lists.
+
+The terminal interface uses ANSI colors for its headings, playback state, selection highlight, and reader-letter labels. Surah and reciter browsers show a numbered window around the current selection and support arrow keys, Page Up/Down, Home, and End.
 
 ## Build
 
 Install libcurl development files, SDL2_mixer with an MP3 decoder enabled, and a supported C compiler. From the repository root:
 
-```sh
+\`\`\`sh
 make
 make voice
 ./build/ylang check apps/ytilawa/main.yl
 ./build/ylang build apps/ytilawa/main.yl -o build/ytilawa
 ./build/ytilawa
-```
+\`\`\`
 
 The program requires network access for the live catalogue and online recitations.
 
@@ -20,40 +22,42 @@ The program requires network access for the live catalogue and online recitation
 
 | Key | Action |
 |---|---|
-| `B` | Browse surahs |
-| `R` | Browse reciters |
-| `/` | Search surah names |
-| `G` | Search reciter names |
-| `Space` | Play / pause / resume |
-| `N` / `P` | Next / previous surah |
-| `S` | Stop |
-| `F` | Add current surah to favorites |
-| `A` | Add current surah to the default playlist |
-| `H` | Listening history |
-| `V` | Favorites |
-| `C` | Default playlist |
-| `D` | Download current surah |
-| `L` | Play a local MP3 path |
-| `+` / `-` | Volume |
-| `Q` | Quit |
+| \`B\` | Browse surahs |
+| \`R\` | Browse reciters |
+| \`/\` | Search surah names |
+| \`G\` | Search reader names (English) |
+| \`Space\` | Play / pause / resume |
+| \`N\` / \`P\` | Next / previous surah |
+| \`S\` | Stop |
+| \`F\` | Add current surah to favorites |
+| \`A\` | Add current surah to the default playlist |
+| \`H\` | Listening history |
+| \`V\` | Favorites |
+| \`C\` | Default playlist |
+| \`D\` | Download current surah |
+| \`L\` | Play a local MP3 path |
+| \`+\` / \`-\` | Volume |
+| \`Q\` | Quit |
+
+Inside either browser: Up/Down moves one row, Page Up/Down moves eight rows, Home/End jumps to the beginning/end, Enter selects, and Escape returns.
 
 ## Data source and URL validation
 
-- Surah catalogue: `https://www.mp3quran.net/api/v3/suwar?language=ar`
-- Reciter and recording metadata: `https://www.mp3quran.net/api/v3/reciters?language=ar`
+- Surah catalogue: \`https://www.mp3quran.net/api/v3/suwar?language=ar\`
+- English reciter and recording metadata: \`https://www.mp3quran.net/api/v3/reciters?language=eng\`
 
-YTilawa reads each reciter's `moshaf[].server` and `moshaf[].surah_list` values. It checks that the selected surah is present before constructing the documented three-digit filename (for example, `001.mp3`). No reciter or audio-host URL is hard-coded. See the [official MP3Quran API documentation](https://www.mp3quran.net/eng/api/).
+The English-language API response retains the \`reciters[].moshaf[].server\` and \`surah_list\` fields used by playback. YTilawa checks that the selected surah is present before constructing the documented three-digit filename (for example, \`001.mp3\`). No reciter or audio-host URL is hard-coded. See the [official MP3Quran API documentation](https://www.mp3quran.net/eng/api/).
 
 ## Storage
 
 Files are written in the current working directory:
 
-- `ytilawa-favorites.txt`
-- `ytilawa-history.txt`
-- `ytilawa-playlist-default.txt`
-- `ytilawa-SURAH.mp3` downloads (for example, `ytilawa-baqara.mp3`)
+- \`ytilawa-favorites.txt\`
+- \`ytilawa-history.txt\`
+- \`ytilawa-playlist-default.txt\`
+- \`ytilawa-SURAH.mp3\` downloads (for example, \`ytilawa-baqara.mp3\`)
 
-Downloads use `http.stream_read_buffer` and `io.buffer_append_file`, so MP3 data is written incrementally rather than accumulated in one in-memory string.
+Downloads use \`http.stream_read_buffer\` and \`io.buffer_append_file\`, so MP3 data is written incrementally rather than accumulated in one in-memory string.
 
 ## Current limitations
 

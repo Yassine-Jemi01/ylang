@@ -1,4 +1,4 @@
-from "./catalog.yl" import fetch_surahs, fetch_reciters, surah_count, surah_name, surah_arabic_name, reciter_count, reciter_name, reciter_audio_url;
+from "./catalog.yl" import fetch_surahs, fetch_reciters, surah_count, surah_name, surah_arabic_name, reciter_count, reciter_name, reciter_letter, reciter_audio_url;
 from "./storage.yl" import storage_read, storage_add_favorite, storage_add_history, storage_add_playlist;
 from "./player.yl" import player_play_remote, player_play_local, player_download;
 from "./ui.yl" import ui_draw_main, ui_prompt, ui_wait;
@@ -19,7 +19,13 @@ function choose_surah(borrowed_string document, int current) -> int {
 
     while (!done) {
         tui.clear();
-        tui.write("Browse Surahs — Up/Down, Enter select, Esc cancel\n\n");
+        tui.write("\x1b[1;36m");
+        tui.write("  SURAH LIBRARY\n");
+        tui.write("\x1b[0;90m");
+        tui.write("  Select a chapter from the Quran\n");
+        tui.write("  ------------------------------------------------------------\n");
+        tui.write("\x1b[0m");
+
         let int start = selected - 4;
         if (start < 0) {
             start = 0;
@@ -31,18 +37,39 @@ function choose_surah(borrowed_string document, int current) -> int {
         let int index = start;
         while (index < end) {
             if (index == selected) {
-                tui.write("> ");
+                tui.write("\x1b[1;30;46m  > ");
+            }
+            else if (index % 2 == 0) {
+                tui.write("\x1b[0;37m    ");
             }
             else {
-                tui.write("  ");
+                tui.write("\x1b[0;90m    ");
             }
-            tui.write(to_string(index + 1));
-            tui.write("  ");
+
+            let int number = index + 1;
+            if (number < 10) {
+                tui.write("00");
+            }
+            else if (number < 100) {
+                tui.write("0");
+            }
+            tui.write(to_string(number));
+            tui.write("  |  ");
             let owned_string entry_name = surah_name(index);
             tui.write(entry_name);
-            tui.write("\n");
+            tui.write("\x1b[0m\n");
             index = index + 1;
         }
+
+        tui.write("\n\x1b[0;90m  Showing ");
+        tui.write(to_string(start + 1));
+        tui.write("-");
+        tui.write(to_string(end));
+        tui.write(" of ");
+        tui.write(to_string(count));
+        tui.write("   |   Selected: ");
+        tui.write(to_string(selected + 1));
+        tui.write("\n  Up/Down Move  PgUp/PgDn Page  Home/End Jump  Enter Select  Esc Back\x1b[0m\n");
 
         let int key = tui.poll_key();
         if (key == 1001 and selected > 0) {
@@ -50,6 +77,24 @@ function choose_surah(borrowed_string document, int current) -> int {
         }
         else if (key == 1002 and selected + 1 < count) {
             selected = selected + 1;
+        }
+        else if (key == 1008) {
+            selected = selected - 8;
+            if (selected < 0) {
+                selected = 0;
+            }
+        }
+        else if (key == 1009) {
+            selected = selected + 8;
+            if (selected >= count) {
+                selected = count - 1;
+            }
+        }
+        else if (key == 1005) {
+            selected = 0;
+        }
+        else if (key == 1006) {
+            selected = count - 1;
         }
         else if (key == 13) {
             done = true;
@@ -78,7 +123,13 @@ function choose_reciter(borrowed_string document, int current) -> int {
 
     while (!done) {
         tui.clear();
-        tui.write("Choose Reader — Up/Down, Enter select, Esc cancel\n\n");
+        tui.write("\x1b[1;36m");
+        tui.write("  RECITER DIRECTORY\n");
+        tui.write("\x1b[0;90m");
+        tui.write("  English names  /  MP3Quran.net catalogue\n");
+        tui.write("  ------------------------------------------------------------\n");
+        tui.write("\x1b[0m");
+
         let int start = selected - 4;
         if (start < 0) {
             start = 0;
@@ -90,18 +141,50 @@ function choose_reciter(borrowed_string document, int current) -> int {
         let int index = start;
         while (index < end) {
             if (index == selected) {
-                tui.write("> ");
+                tui.write("\x1b[1;30;46m  > ");
+            }
+            else if (index % 2 == 0) {
+                tui.write("\x1b[0;37m    ");
             }
             else {
-                tui.write("  ");
+                tui.write("\x1b[0;90m    ");
             }
-            tui.write(to_string(index + 1));
-            tui.write("  ");
+
+            let owned_string letter = reciter_letter(document, index);
+            tui.write("\x1b[1;33m[");
+            tui.write(letter);
+            tui.write("]\x1b[0m");
+            if (index == selected) {
+                tui.write("\x1b[1;30;46m ");
+            }
+            else {
+                tui.write(" ");
+            }
+
+            let int number = index + 1;
+            if (number < 10) {
+                tui.write("00");
+            }
+            else if (number < 100) {
+                tui.write("0");
+            }
+            tui.write(to_string(number));
+            tui.write("  |  ");
             let owned_string entry_name = reciter_name(document, index);
             tui.write(entry_name);
-            tui.write("\n");
+            tui.write("\x1b[0m\n");
             index = index + 1;
         }
+
+        tui.write("\n\x1b[0;90m  Showing ");
+        tui.write(to_string(start + 1));
+        tui.write("-");
+        tui.write(to_string(end));
+        tui.write(" of ");
+        tui.write(to_string(count));
+        tui.write("   |   Selected: ");
+        tui.write(to_string(selected + 1));
+        tui.write("\n  Up/Down Move  PgUp/PgDn Page  Home/End Jump  Enter Select  Esc Back\x1b[0m\n");
 
         let int key = tui.poll_key();
         if (key == 1001 and selected > 0) {
@@ -109,6 +192,24 @@ function choose_reciter(borrowed_string document, int current) -> int {
         }
         else if (key == 1002 and selected + 1 < count) {
             selected = selected + 1;
+        }
+        else if (key == 1008) {
+            selected = selected - 8;
+            if (selected < 0) {
+                selected = 0;
+            }
+        }
+        else if (key == 1009) {
+            selected = selected + 8;
+            if (selected >= count) {
+                selected = count - 1;
+            }
+        }
+        else if (key == 1005) {
+            selected = 0;
+        }
+        else if (key == 1006) {
+            selected = count - 1;
         }
         else if (key == 13) {
             done = true;
@@ -182,8 +283,10 @@ function download_current(borrowed_string reciters, int surah_id, int reciter_in
 function show_saved(string title, string path) -> int {
     let owned_string contents = storage_read(path);
     tui.clear();
+    tui.write("\x1b[1;36m");
     tui.write(title);
-    tui.write("\n------------------------------\n");
+    tui.write("\x1b[0;90m\n  ------------------------------------------------------------\n");
+    tui.write("\x1b[0m");
     if (string.length(contents) == 0) {
         tui.write("No entries yet.\n");
     }
@@ -195,11 +298,11 @@ function show_saved(string title, string path) -> int {
 }
 
 function ytilawa_main() -> int {
-    print("YTilawa Extended — loading MP3Quran.net catalog...");
+    print("YTilawa Extended — loading MP3Quran.net catalogue...");
     let owned_string surahs = fetch_surahs();
     let owned_string reciters = fetch_reciters();
     if (!json.valid(surahs) or !json.valid(reciters)) {
-        print("Could not load the live Quran catalog.");
+        print("Could not load the live Quran catalogue.");
         print(http.last_error());
         return 1;
     }
@@ -207,7 +310,7 @@ function ytilawa_main() -> int {
     let int total_surahs = surah_count(surahs);
     let int total_reciters = reciter_count(reciters);
     if (total_surahs != 114 or total_reciters <= 0) {
-        print("The catalog response is incomplete or has an unexpected shape.");
+        print("The catalogue response is incomplete or has an unexpected shape.");
         return 1;
     }
 
@@ -222,7 +325,7 @@ function ytilawa_main() -> int {
     let bool playing = false;
     let bool paused = false;
     let bool running = true;
-    let string message = "Ready. Catalog: MP3Quran.net.";
+    let string message = "Ready. English reader directory loaded.";
 
     while (running) {
         if (playing and voice.is_finished()) {
@@ -285,8 +388,6 @@ function ytilawa_main() -> int {
                 message = "No matching reader was found.";
             }
         } else if (key == 32) {
-            // Use the application's playback state as the toggle source.
-            // SDL_mixer reports paused music as "playing" at the C API level.
             if (paused) {
                 voice.resume();
                 paused = false;
