@@ -237,6 +237,7 @@ h1, h2, h3, p { margin: 0; }
   .preview-grid.feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .preview-grid .feature-card:nth-child(3) { border-top: 1px solid var(--line); border-left: 0; }
   .preview-grid .feature-card:nth-child(4) { border-top: 1px solid var(--line); }
+  .preview-grid .feature-card:nth-child(5) { border-top: 1px solid var(--line); border-left: 0; }
   .hero h1 { font-size: clamp(3rem, 5.8vw, 4.3rem); }
   .ecosystem-inner { grid-template-columns: 140px minmax(0, 1fr); gap: 15px; }
   .ecosystem-loop .logoloop__label { font-size: .72rem; }
