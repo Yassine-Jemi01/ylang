@@ -64,6 +64,22 @@ class ManifestTests(unittest.TestCase):
             else:
                 self.assertFalse(optional_seen, "core exercise appears after optional track")
 
+    def test_manifest_rejects_paths_outside_exercise_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "exercises"
+            root.mkdir()
+            manifest = Path(directory) / "manifest.json"
+            manifest.write_text(json.dumps([{
+                "title": "Unsafe", "category": "test", "file": "../outside.yl",
+                "starter": "starter.yl", "description": "test", "hint": "test",
+                "expected_output": "",
+            }]), encoding="utf-8")
+            with mock.patch.object(ylanglings, "EXERCISES", root), mock.patch.object(
+                ylanglings, "MANIFEST", manifest
+            ):
+                with self.assertRaisesRegex(SystemExit, "unsafe file path"):
+                    ylanglings.load_manifest()
+
 
 class CliStateTests(unittest.TestCase):
     def test_corrupt_progress_recovers_to_empty_state(self):
@@ -112,6 +128,23 @@ class CliStateTests(unittest.TestCase):
             with contextlib.redirect_stdout(output):
                 self.assertIsNone(ylanglings.run_compiler("ylang", "check", "exercise.yl"))
         self.assertIn("60-second", output.getvalue())
+
+    def test_next_optional_selects_first_optional_challenge(self):
+        with mock.patch.object(sys, "argv", ["ylanglings", "next", "--optional"]), mock.patch.object(
+            ylanglings, "command_run"
+        ) as command:
+            ylanglings.main()
+        command.assert_called_once_with(17, self.manifest)
+
+    def test_edit_uses_configured_editor_without_a_shell(self):
+        completed = type("Result", (), {"returncode": 0})()
+        with mock.patch.dict(os.environ, {"EDITOR": "nano -w"}), mock.patch.object(
+            ylanglings.subprocess, "run", return_value=completed
+        ) as run:
+            self.assertEqual(ylanglings.command_edit(1, self.manifest), 0)
+        args = run.call_args.args[0]
+        self.assertEqual(args[:2], ["nano", "-w"])
+        self.assertEqual(args[2], str(ylanglings.EXERCISES / self.manifest[0]["file"]))
 
     def test_invalid_exercise_number_has_actionable_error(self):
         for command in (ylanglings.command_run, ylanglings.command_hint):
