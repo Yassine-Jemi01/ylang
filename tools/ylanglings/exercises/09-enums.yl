@@ -1,0 +1,9 @@
+enum Direction { North, East, South, West }
+
+function main() -> int {
+    let Direction facing = Direction.Up;
+    if (facing == Direction.North) {
+        print("north");
+    }
+    return 0;
+}
