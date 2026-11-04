@@ -65,14 +65,14 @@ function player_download(string url, string path) -> int {
     return total;
 }
 
-function player_pause() {
+function player_pause() -> void {
     voice.pause();
 }
 
-function player_resume() {
+function player_resume() -> void {
     voice.resume();
 }
 
-function player_stop() {
+function player_stop() -> void {
     voice.stop();
 }
