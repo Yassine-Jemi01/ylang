@@ -17,22 +17,22 @@ function ui_draw_main(borrowed_string surah, borrowed_string reciter, int surah_
     tui.write(surah);
     tui.write("\x1b[0;90m  #");
     tui.write(to_string(surah_id));
-    tui.write("\x1b[0m\n  Reader  ");
+    tui.write("\x1b[K\x1b[0m\n  Reader  ");
     tui.write("\x1b[1;37m");
     tui.write(reciter);
-    tui.write("\x1b[0m\n  Volume  ");
+    tui.write("\x1b[K\x1b[0m\n  Volume  ");
     tui.write("\x1b[1;35m");
     tui.write(to_string(volume));
-    tui.write("%\x1b[0m\n  State   ");
+    tui.write("%\x1b[K\x1b[0m\n  State   ");
 
     if (paused) {
-        tui.write("\x1b[1;33mPAUSED\x1b[0m\n");
+        tui.write("\x1b[1;33mPAUSED\x1b[K\x1b[0m\n");
     }
     else if (playing) {
-        tui.write("\x1b[1;32mPLAYING\x1b[0m\n");
+        tui.write("\x1b[1;32mPLAYING\x1b[K\x1b[0m\n");
     }
     else {
-        tui.write("\x1b[0;90mSTOPPED\x1b[0m\n");
+        tui.write("\x1b[0;90mSTOPPED\x1b[K\x1b[0m\n");
     }
 
     tui.write("\n\x1b[1;36m  CONTROLS\n");
@@ -51,7 +51,7 @@ function ui_draw_main(borrowed_string surah, borrowed_string reciter, int surah_
     tui.write("\x1b[0;90m  ------------------------------------------------------------\n");
     tui.write("\x1b[1;36m  ");
     tui.write(message);
-    tui.write("\x1b[0m\n");
+    tui.write("\x1b[K\x1b[0m\n");
     tui.write("\x1b[J\x1b[?2026l");
     return 0;
 }
