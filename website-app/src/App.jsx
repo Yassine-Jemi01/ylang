@@ -304,6 +304,13 @@ function ExperimentalSection() {
           />
           <FeatureCard
             number="04"
+            icon={<FiCode />}
+            title="JSON text API"
+            description="Parse, validate, inspect, escape, and format bounded JSON documents with native standard-library helpers."
+            meta="NATIVE JSON · 16 MiB LIMIT"
+          />
+          <FeatureCard
+            number="05"
             icon={<FiMonitor />}
             title="Measured tooling"
             description="Run repeatable compile/runtime benchmarks, expand regression coverage, and use editor commands for diagnostics and debugging."
@@ -312,6 +319,7 @@ function ExperimentalSection() {
         </div>
         <div className="preview-links">
           <a className="text-link" href={SITE + 'learn/reference/HTTP.html'}>HTTP and async task guide <FiArrowUpRight aria-hidden="true" /></a>
+          <a className="text-link" href={SITE + 'learn/reference/JSON.html'}>JSON standard-library guide <FiArrowUpRight aria-hidden="true" /></a>
           <a className="text-link" href={SITE + 'learn/reference/DEBUGGER.html'}>Debugger guide <FiArrowUpRight aria-hidden="true" /></a>
           <a className="text-link" href={SITE + 'learn/reference/CHANGELOG-2.2.0.html'}>YLang 2.2.0 release notes <FiArrowUpRight aria-hidden="true" /></a>
           <a className="text-link" href={SITE + 'learn/reference/SECURITY.html'}>Security model and HTTP defaults <FiArrowUpRight aria-hidden="true" /></a>
