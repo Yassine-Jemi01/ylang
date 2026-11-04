@@ -26,14 +26,35 @@ def load_manifest():
 
 def load_progress():
     try:
-        return json.loads(PROGRESS.read_text(encoding="utf-8"))
+        progress = json.loads(PROGRESS.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {"completed": []}
+
+    if not isinstance(progress, dict):
+        return {"completed": []}
+    completed = progress.get("completed", [])
+    if not isinstance(completed, list):
+        return {"completed": []}
+    valid = sorted({
+        number for number in completed
+        if isinstance(number, int) and not isinstance(number, bool) and number > 0
+    })
+    return {"completed": valid}
 
 
 def save_progress(progress):
     CONFIG.mkdir(parents=True, exist_ok=True)
-    PROGRESS.write_text(json.dumps(progress, indent=2) + "\n", encoding="utf-8")
+    temporary = PROGRESS.with_name(PROGRESS.name + ".tmp")
+    temporary.write_text(json.dumps(progress, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(PROGRESS)
+
+
+def completed_exercises(progress, manifest):
+    return {
+        number for number in progress.get("completed", [])
+        if isinstance(number, int) and not isinstance(number, bool)
+        and 1 <= number <= len(manifest)
+    }
 
 
 def compiler_path(value):
@@ -59,7 +80,7 @@ def print_exercise(number, item):
 
 
 def command_list(manifest, progress):
-    completed = set(progress.get("completed", []))
+    completed = completed_exercises(progress, manifest)
     for number, item in enumerate(manifest, 1):
         mark = "✓" if number in completed else " "
         print(f"[{mark}] {number:02d}  {item['title']:<27} {item['category']}")
@@ -87,7 +108,7 @@ def command_reset(number, manifest):
     starter = EXERCISES / item["starter"]
     shutil.copyfile(starter, target)
     progress = load_progress()
-    progress["completed"] = [n for n in progress.get("completed", []) if n != number]
+    progress["completed"] = sorted(completed_exercises(progress, manifest) - {number})
     save_progress(progress)
     print(f"Restored starter: {target}")
 
@@ -109,7 +130,7 @@ def command_verify(number, manifest, compiler):
 
     if item.get("mode") == "check":
         progress = load_progress()
-        completed = set(progress.get("completed", []))
+        completed = completed_exercises(progress, manifest)
         completed.add(number)
         progress["completed"] = sorted(completed)
         save_progress(progress)
@@ -146,7 +167,7 @@ def command_verify(number, manifest, compiler):
         return 1
 
     progress = load_progress()
-    completed = set(progress.get("completed", []))
+    completed = completed_exercises(progress, manifest)
     completed.add(number)
     progress["completed"] = sorted(completed)
     save_progress(progress)
@@ -187,7 +208,7 @@ def main():
     elif args.action == "verify":
         raise SystemExit(command_verify(args.number, manifest, compiler_path(args.compiler)))
     elif args.action == "next":
-        completed = set(progress.get("completed", []))
+        completed = completed_exercises(progress, manifest)
         number = next((i for i, item in enumerate(manifest, 1) if i not in completed and not item.get("optional", False)), None)
         if number is None:
             print("All core exercises completed. Try optional challenges with: ylanglings list")
