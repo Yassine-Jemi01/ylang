@@ -134,7 +134,7 @@ class CliStateTests(unittest.TestCase):
             ylanglings, "command_run"
         ) as command:
             ylanglings.main()
-        command.assert_called_once_with(17, self.manifest)
+        command.assert_called_once_with(17, ylanglings.load_manifest())
 
     def test_edit_uses_configured_editor_without_a_shell(self):
         completed = type("Result", (), {"returncode": 0})()
