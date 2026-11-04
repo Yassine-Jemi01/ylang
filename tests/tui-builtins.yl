@@ -5,6 +5,7 @@ function main() -> int {
     let int width = tui.width();
     let int height = tui.height();
     let bool cleared = tui.clear();
+    let bool flushed = tui.flush();
     let bool cursor = tui.set_cursor(1, 1);
     let bool hidden = tui.hide_cursor();
     let bool shown = tui.show_cursor();
