@@ -309,11 +309,20 @@ def command_verify(number, manifest, compiler):
 
 
 def command_verify_all(manifest, compiler):
+    global CONFIG, PROGRESS
+    original_config, original_progress = CONFIG, PROGRESS
     failures = []
-    for number, item in enumerate(manifest, 1):
-        print(f"\n=== {number:02d}/{len(manifest):02d}: {item['title']} ===")
-        if command_verify(number, manifest, compiler) != 0:
-            failures.append(number)
+    try:
+        with tempfile.TemporaryDirectory(prefix="ylanglings-verify-") as state_directory:
+            CONFIG = Path(state_directory)
+            PROGRESS = CONFIG / "progress.json"
+            for number, item in enumerate(manifest, 1):
+                print(f"\n=== {number:02d}/{len(manifest):02d}: {item['title']} ===")
+                if command_verify(number, manifest, compiler) != 0:
+                    failures.append(number)
+    finally:
+        CONFIG, PROGRESS = original_config, original_progress
+
     if failures:
         failed = ", ".join(f"{number:02d}" for number in failures)
         print(f"\nYLanglings verification failed for exercise(s): {failed}")
