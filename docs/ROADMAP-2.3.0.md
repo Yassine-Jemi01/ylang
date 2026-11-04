@@ -16,7 +16,7 @@ Make YLang 2.3 a dependable, polished minor release: improve the existing compil
 - Keep backend limitations explicit; do not claim C/NASM parity where a feature is unsupported.
 
 ### 2. Standard library maturity
-- JSON: parser, validation, accessors, formatting, and (if accepted after review) immutable object/array builders.
+- JSON: parser, validation, accessors, formatting, and immutable raw-text object/array builders; validation remains a release gate.
 - HTTP: synchronous requests, HTTP task API, pull-based streaming, binary-safe reads, timeouts, TLS verification, redirect/header safety, and clear errors.
 - Binary I/O: bounded byte buffers and documented ownership/freeing rules.
 - TUI: raw input, dimensions, cursor/screen control, polling, and responsive examples.
@@ -68,7 +68,11 @@ A release candidate is not ready until all applicable gates below pass on the ex
 
 ## Current workstream notes
 
-- Pull requests are independent proposals until merged; an open PR is not a completed feature.
-- CI must be green on the final combined branch, not merely on earlier PR heads.
+- Integrated on `main`: YTilawa app removal, homepage/TUI design refresh, bounded diagnostics and module loading, HTTP header underflow guard, immutable JSON builders, and parser/code-generation recursion guards.
+- The shared TUI, Voice, HTTP streaming, and binary I/O libraries remain in scope; only the YTilawa application and its dedicated tests/build steps were removed.
+- Automated checks have intentionally been deferred until the implementation work is complete; no passing result is claimed yet.
+
+- 2.3 implementation is integrated directly into `main`; each workstream is recorded in commit history and this checklist.
+- CI must be green on the final combined commit, not merely on earlier feature branches.
 - CircleCI and GitHub Actions failures must be inspected and fixed; missing configuration is not a passing check.
 - No test, sanitizer, benchmark, or platform result may be described as passing without an actual run result.
