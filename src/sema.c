@@ -453,6 +453,7 @@ static const TuiBuiltin tui_builtins[] = {
     {"tui.height", 0, TYPE_INT, {TYPE_VOID}},
     {"tui.clear", 0, TYPE_BOOL, {TYPE_VOID}},
     {"tui.write", 1, TYPE_BOOL, {TYPE_STRING}},
+    {"tui.flush", 0, TYPE_BOOL, {TYPE_VOID}},
     {"tui.set_cursor", 2, TYPE_BOOL, {TYPE_INT, TYPE_INT}},
     {"tui.hide_cursor", 0, TYPE_BOOL, {TYPE_VOID}},
     {"tui.show_cursor", 0, TYPE_BOOL, {TYPE_VOID}},
@@ -1036,7 +1037,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 if (!builtin) {
                     diagnostic(c, expr->token, "error", "E2152",
                                "Unknown TUI function.",
-                               "Use tui.init, tui.read_key, tui.poll_key, tui.width, tui.height, tui.clear, tui.write, tui.set_cursor, tui.hide_cursor, tui.show_cursor, tui.sleep_ms, tui.last_error, or tui.shutdown.");
+                               "Use tui.init, tui.read_key, tui.poll_key, tui.width, tui.height, tui.clear, tui.write, tui.flush, tui.set_cursor, tui.hide_cursor, tui.show_cursor, tui.sleep_ms, tui.last_error, or tui.shutdown.");
                     for (size_t i = 0; i < expr->as.call.count; i++)
                         (void)check_expr(checker, expr->as.call.args[i]);
                     expr->type = TYPE_ERROR;
