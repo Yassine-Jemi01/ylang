@@ -38,7 +38,8 @@ function choose_surah(borrowed_string document, int current) -> int {
             }
             tui.write(to_string(index + 1));
             tui.write("  ");
-            tui.write(surah_name(document, index));
+            let owned_string entry_name = surah_name(document, index);
+            tui.write(entry_name);
             tui.write("\n");
             index = index + 1;
         }
@@ -96,7 +97,8 @@ function choose_reciter(borrowed_string document, int current) -> int {
             }
             tui.write(to_string(index + 1));
             tui.write("  ");
-            tui.write(reciter_name(document, index));
+            let owned_string entry_name = reciter_name(document, index);
+            tui.write(entry_name);
             tui.write("\n");
             index = index + 1;
         }
