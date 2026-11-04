@@ -232,6 +232,8 @@ Imports can be nested, and repeated references to the same canonical file reuse 
 
 ## Command-line reference
 
+The compiler accepts both `ylang help` / `ylang --help` and `ylang version` / `ylang --version`. See the [complete CLI reference](docs/CLI.md) for commands, defaults, and exit behavior.
+
 ```text
 ylang --help
 ylang --version
