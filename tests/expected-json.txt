@@ -11,7 +11,7 @@ false
 hello
 world
 {"name":"YLang","\u03bb":42,"version":23,"price":2.5,"unicode":"\uD83D\uDE00","enabled":true,"items":[1,2,3],"message":"hello\nworld"}
-"line\nquote\""
+{"title":"Tilawa","count":3,"line\nkey":false}
 false
 Invalid JSON syntax
 
