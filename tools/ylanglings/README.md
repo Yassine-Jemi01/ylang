@@ -77,7 +77,8 @@ and owned strings. Optional challenges are separate from core completion.
 
 For runnable exercises, verification requires the source to pass `ylang check`,
 build successfully, exit with status zero, and produce the exact expected output.
-Each program is limited to ten seconds. API/signature exercises marked
+Each compiler check/build command has a 60-second limit, and each exercise
+program is limited to ten seconds. API/signature exercises marked
 `mode: check` are compiler-checked without launching native integrations;
 their runtime behavior is covered by the compiler's integration suite.
 
