@@ -24,7 +24,7 @@ def load_manifest():
     try:
         with MANIFEST.open(encoding="utf-8") as handle:
             manifest = json.load(handle)
-    except (OSError, json.JSONDecodeError) as error:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
         raise SystemExit(f"Could not read YLanglings manifest: {error}") from error
     if not isinstance(manifest, list) or not manifest:
         raise SystemExit("Invalid YLanglings manifest: expected a non-empty exercise list.")
@@ -41,7 +41,7 @@ def load_manifest():
         if missing:
             raise SystemExit(f"Invalid manifest entry {number}: missing {', '.join(missing)}.")
         mode = item.get("mode", "run")
-        if mode not in {"run", "check"}:
+        if not isinstance(mode, str) or mode not in {"run", "check"}:
             raise SystemExit(f"Invalid mode in manifest entry {number}: {mode!r}.")
         optional = item.get("optional", False)
         if not isinstance(optional, bool):
@@ -83,8 +83,10 @@ def load_manifest():
 
 def load_progress():
     try:
+        if PROGRESS.stat().st_size > 1024 * 1024:
+            return {"completed": []}
         progress = json.loads(PROGRESS.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return {"completed": []}
 
     if not isinstance(progress, dict):
@@ -113,6 +115,8 @@ def save_progress(progress):
             temporary.flush()
             os.fsync(temporary.fileno())
         os.replace(temporary_path, PROGRESS)
+    except OSError as error:
+        raise SystemExit(f"Could not save YLanglings progress: {error}") from error
     finally:
         if temporary_path is not None:
             temporary_path.unlink(missing_ok=True)
@@ -265,6 +269,9 @@ def command_verify(number, manifest, compiler):
                                     stderr=subprocess.STDOUT, timeout=10)
         except subprocess.TimeoutExpired:
             print("The program exceeded the 10-second exercise limit.")
+            return 1
+        except OSError as error:
+            print(f"Could not launch the exercise program: {error}")
             return 1
 
     if result.returncode != 0:
