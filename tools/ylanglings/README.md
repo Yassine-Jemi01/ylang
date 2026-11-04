@@ -15,12 +15,24 @@ release blocker for YLang 2.3.
 
 ## Start
 
-From the repository root:
+Install it for the current user (no network or package manager required):
 
 \`\`\`sh
-python3 tools/ylanglings/ylanglings.py list
-python3 tools/ylanglings/ylanglings.py next
-python3 tools/ylanglings/ylanglings.py run 01
+make -C tools/ylanglings install
+\`\`\`
+
+Ensure \`~/.local/bin\` is on PATH and that the YLang compiler is available. Then start:
+
+\`\`\`sh
+ylanglings list
+ylanglings next
+ylanglings run 01
+\`\`\`
+
+To uninstall:
+
+\`\`\`sh
+make -C tools/ylanglings uninstall
 \`\`\`
 
 Edit the displayed \`.yl\` file, then verify it:
