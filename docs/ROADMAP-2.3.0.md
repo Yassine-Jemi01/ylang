@@ -65,7 +65,9 @@ A release candidate is not ready until all applicable gates below pass on the ex
 - [ ] Benchmarks are run on a recorded machine/toolchain and compared with the 2.2 baseline; publish only measured results.
 - [x] No YTilawa app or YTilawa-specific test/build dependency remains.
 - [ ] Changelog, version metadata, install instructions, and release notes agree.
+- [ ] The version-specific pre-publication checklist `docs/RELEASE-CHECKLIST-2.3.0.md` is fully checked and the exact final commit is recorded.
 - [ ] Version is changed to 2.3.0 only after the gates above pass; tag and GitHub release are created from that verified commit.
+- [ ] Complete `docs/POST-RELEASE-CHECKLIST-2.3.0.md` against the published tag and uploaded artifacts.
 
 ## Current workstream notes
 
