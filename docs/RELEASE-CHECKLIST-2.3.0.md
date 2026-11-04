@@ -61,8 +61,8 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] Update README and the official homepage/documents so 2.3.0 is the latest stable release, the stable feature cards are accurate, and development labels move to the next milestone.
 - [ ] Update the online-book introduction and documentation landing page to show 2.3.0 as stable without changing the book's established visual styling.
 - [ ] Update the top-level `CHANGELOG.md` history so 2.3.0 is recorded as stable and the next development section is clearly identified.
-- [ ] Change `VERSION` to exactly `2.3.0` and `.github/PUBLISH_STABLE` to exactly `2.3.0` together in the reviewed release-authorization commit.
-- [ ] Confirm `docs/RELEASE-CHECKLIST-2.3.0.md` contains no unchecked required gate before the stable publishing workflow is allowed to run.
-- [ ] Verify the publishing workflow tests and publishes the exact authorization commit; do not create the tag manually or reuse an existing tag.
+- [ ] Prepare the reviewed release-authorization commit with `VERSION` and `.github/PUBLISH_STABLE` both set to exactly `2.3.0`; this commit is the publication trigger.
+- [ ] In that same authorization commit, mark every required item in this checklist complete only after its evidence has been reviewed; the publishing workflow must find no remaining `- [ ]` entries.
+- [ ] Review the publishing workflow to confirm it checks out, tests, and publishes the exact authorization commit. The workflow creates the tag itself and refuses to overwrite or reuse an existing tag.
 
 When every gate is complete, the stable release workflow may create `v2.3.0`. Follow [the post-release checklist](POST-RELEASE-CHECKLIST-2.3.0.md) afterward.
