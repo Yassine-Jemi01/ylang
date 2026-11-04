@@ -602,6 +602,7 @@ typedef struct {
     int64_t id;
     bool active;
     bool done;
+    bool headers_complete;
     bool attached;
     bool paused;
     CURL *easy;
