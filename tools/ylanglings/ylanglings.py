@@ -29,6 +29,8 @@ def load_manifest():
     if not isinstance(manifest, list) or not manifest:
         raise SystemExit("Invalid YLanglings manifest: expected a non-empty exercise list.")
     seen_files = set()
+    seen_starters = set()
+    seen_titles = set()
     core_count = optional_count = 0
     root = EXERCISES.resolve()
     for number, item in enumerate(manifest, 1):
@@ -46,15 +48,27 @@ def load_manifest():
             raise SystemExit(f"Invalid optional flag in manifest entry {number}.")
         if mode == "run" and not isinstance(item.get("expected_output"), str):
             raise SystemExit(f"Runnable exercise {number} needs expected_output.")
+        resolved_paths = {}
         for field in ("file", "starter"):
             candidate = (root / item[field]).resolve()
             if not candidate.is_relative_to(root):
                 raise SystemExit(f"Manifest entry {number} has an unsafe {field} path.")
             if not candidate.is_file():
                 raise SystemExit(f"Manifest entry {number} references missing {field}: {item[field]}")
-        if item["file"] in seen_files:
+            resolved_paths[field] = candidate
+        exercise_path_resolved = str(resolved_paths["file"])
+        starter_path_resolved = str(resolved_paths["starter"])
+        if exercise_path_resolved == starter_path_resolved:
+            raise SystemExit(f"Manifest entry {number} uses the same file as its starter and editable exercise.")
+        if exercise_path_resolved in seen_files:
             raise SystemExit(f"Duplicate exercise file in manifest entry {number}: {item['file']}")
-        seen_files.add(item["file"])
+        if starter_path_resolved in seen_starters:
+            raise SystemExit(f"Duplicate starter file in manifest entry {number}: {item['starter']}")
+        if item["title"] in seen_titles:
+            raise SystemExit(f"Duplicate exercise title in manifest entry {number}: {item['title']}")
+        seen_files.add(exercise_path_resolved)
+        seen_starters.add(starter_path_resolved)
+        seen_titles.add(item["title"])
         if optional:
             optional_count += 1
         else:
