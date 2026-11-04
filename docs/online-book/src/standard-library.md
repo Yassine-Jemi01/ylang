@@ -26,7 +26,7 @@ Text values often arrive from files, console input, or network responses. Do not
 
 The documented helpers include \`string.is_int(text)\`, which checks whether the full text is a valid signed integer representation, and \`string.parse_int(text)\`, which parses integer text with failure handling. Consult the specification for exact accepted formats and failure behavior.
 
-When handling untrusted or user-provided text, validate the result before using it in arithmetic or as an index, path, or other control value.
+When handling untrusted or user-provided text, validate the result before using it in arithmetic or as an index, path, or other control value. For JSON, use `json.parse`, typed getters, and `json.last_error`; use `json.escape` when inserting user-provided text into a JSON string. The immutable `json.object`, `json.array`, `json.set`, `json.remove`, and `json.push` helpers build raw JSON text without introducing a dynamic JSON value tree.
 
 ## Files, paths, and environment
 
