@@ -9,7 +9,7 @@ YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable r
 - Removed the YTilawa application and its dedicated fixtures/build steps while retaining shared TUI, Voice, HTTP streaming, and binary I/O libraries.
 - Added compiler resource limits for diagnostic count/output, import depth, module count, and aggregate project source size; root files are size-checked before allocation and embedded NUL bytes are rejected in root/imported sources.
 - Fixed an HTTP response-header capacity underflow and added an exact-boundary loopback fixture.
-- Added immutable raw-JSON builders with key escaping and deterministic duplicate-key replacement; invalid fragments and results deeper than 128 containers are rejected. Added a standalone [builder example](examples/json-builders.yl).
+- Added immutable raw-JSON builders with key escaping and deterministic duplicate-key replacement; invalid fragments and results deeper than 128 containers are rejected, exactly 16 MiB of generated output is accepted, and larger results fail with a runtime error. Added a standalone [builder example](examples/json-builders.yl).
 - Defined duplicate-key behavior: getters return the first value, `json.set` replaces that value and collapses later copies, and `json.remove` drops all copies.
 - Added parser statement-depth recovery, code-generation recursion guards, and fail-closed C generation on emission diagnostics.
 - Added `ylang help` and `ylang version` subcommands, CLI documentation, and responsive homepage/TUI design updates.
