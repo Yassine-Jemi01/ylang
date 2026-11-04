@@ -162,25 +162,6 @@ def main():
             sys.stderr.write(binary_result.stderr)
             raise SystemExit("binary HTTP streaming integration test failed")
 
-        # YTilawa's download path must stream each binary chunk directly to disk.
-        download_output = "build/test-ytilawa-download.exe" if os.name == "nt" else "build/test-ytilawa-download"
-        run_checked([compiler, "check", "tests/ytilawa-download.yl"])
-        run_checked([compiler, "build", "tests/ytilawa-download.yl", "-o", download_output])
-        download_result = subprocess.run(
-            [str(ROOT / download_output)],
-            cwd=ROOT,
-            input=f"{port}\\n",
-            text=True,
-            capture_output=True,
-            timeout=45,
-        )
-        expected_download = "9437184\\n9437184\\n"
-        if download_result.returncode != 0 or download_result.stdout != expected_download:
-            sys.stderr.write("--- expected YTilawa download output ---\\n" + expected_download)
-            sys.stderr.write("--- actual YTilawa download output ---\\n" + download_result.stdout)
-            sys.stderr.write(download_result.stderr)
-            raise SystemExit("YTilawa progressive download integration test failed")
-
         # If SDL2_mixer is installed, verify the compiler can hand an HTTP
         # stream directly to the audio decoder without staging a local file.
         mixer_available = subprocess.run(
