@@ -410,7 +410,9 @@ static Expr *parse_primary(Parser *p)
                 token_is(&token, "owned_string") || token_is(&token, "io") ||
                 token_is(&token, "path") || token_is(&token, "image") ||
                 token_is(&token, "gui") || token_is(&token, "http") ||
-                token_is(&token, "env")) {
+                token_is(&token, "env") || token_is(&token, "json") ||
+                token_is(&token, "terminal") || token_is(&token, "tui") ||
+                token_is(&token, "voice")) {
                 StringBuilder qualified;
                 sb_init(&qualified);
                 sb_append_n(&qualified, token.start, token.length);
