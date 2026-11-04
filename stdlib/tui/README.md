@@ -2,6 +2,10 @@
 
 `std.tui` provides synchronous raw-key terminal input and ANSI terminal control for interactive command-line applications. Its functions are compiler-recognized builtins; no external TUI dependency is required.
 
+## Responsive example
+
+From the repository root, run `make tui-example` to build the keyboard-driven, resize-aware menu. The executable is written to `build/tui-menu`; the source is [`examples/tui-menu.yl`](../../examples/tui-menu.yl).
+
 ## API
 
 | Function | Return | Purpose |
