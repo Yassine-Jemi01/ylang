@@ -34,6 +34,8 @@ function main() -> int {
 }
 ```
 
+For a complete responsive example with focus highlighting, keyboard hints, and narrow-terminal layout handling, see [`examples/tui-menu.yl`](https://github.com/Yassine-Jemi01/ylang/blob/main/examples/tui-menu.yl).
+
 ## API
 
 See [the std.tui reference](../../../stdlib/tui/README.md) for all functions and key codes.
