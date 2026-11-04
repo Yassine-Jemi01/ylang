@@ -142,6 +142,15 @@ class CliStateTests(unittest.TestCase):
         self.assertEqual(ylanglings.CONFIG, original_config)
         self.assertEqual(ylanglings.PROGRESS, original_progress)
 
+    def test_verify_all_reports_complete_success(self):
+        manifest = ylanglings.load_manifest()
+        output = io.StringIO()
+        with mock.patch.object(ylanglings, "command_verify", return_value=0) as verify, contextlib.redirect_stdout(output):
+            status = ylanglings.command_verify_all(manifest, "ylang")
+        self.assertEqual(status, 0)
+        self.assertEqual(verify.call_count, 26)
+        self.assertIn("All 26 YLanglings exercises passed.", output.getvalue())
+
     def test_compiler_timeout_is_reported_without_hanging(self):
         output = io.StringIO()
         timeout = ylanglings.subprocess.TimeoutExpired(cmd=["ylang"], timeout=60)
