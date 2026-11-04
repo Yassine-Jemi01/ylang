@@ -74,7 +74,7 @@ function choose_surah(borrowed_string document, int current) -> int {
             tui.write("  |  ");
             let owned_string entry_name = surah_name(index);
             tui.write(entry_name);
-            tui.write("\x1b[0m\n");
+            tui.write("\x1b[0m\x1b[K\n");
             index = index + 1;
         }
 
@@ -89,7 +89,7 @@ function choose_surah(borrowed_string document, int current) -> int {
         tui.write("\n  Up/Down Move  PgUp/PgDn Page  Home/End Jump  / Search  Enter Select  Esc Back\x1b[0m\n");
         tui.write("  ");
         tui.write(notice);
-        tui.write("\n");
+        tui.write("\x1b[K\n");
         tui.write("\x1b[J\x1b[?2026l");
         }
 
