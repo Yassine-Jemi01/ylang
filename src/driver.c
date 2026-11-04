@@ -158,7 +158,7 @@ static char *read_source_file(const char *path, size_t *length)
     if (fseek(file, 0, SEEK_END) != 0) { fclose(file); return NULL; }
     long size = ftell(file);
     if (size < 0 || fseek(file, 0, SEEK_SET) != 0) { fclose(file); return NULL; }
-    if ((uintmax_t)size > (uintmax_t)YLANG_MAX_MODULE_SOURCE_BYTES) {
+    if ((uintmax_t)size > (uintmax_t)YLANG_MAX_PROJECT_SOURCE_BYTES) {
         (void)fclose(file);
         errno = EFBIG;
         return NULL;
