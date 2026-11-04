@@ -444,12 +444,33 @@ function reciter_display_index(borrowed_string document, int display_index) -> i
 
 function reciter_display_position(borrowed_string document, int source_index) -> int {
     let int count = reciter_count(document);
+    let int source_rank = reciter_popularity_rank(document, source_index);
     let int display = 0;
-    while (display < count) {
-        if (reciter_display_index(document, display) == source_index) return display;
-        display = display + 1;
+    if (source_rank > 0) {
+        let int priority = 1;
+        while (priority < source_rank) {
+            let int scan = 0;
+            while (scan < count) {
+                if (reciter_popularity_rank(document, scan) == priority) {
+                    display = display + 1;
+                }
+                scan = scan + 1;
+            }
+            priority = priority + 1;
+        }
+        return display;
     }
-    return 0;
+    let int scan = 0;
+    while (scan < count) {
+        if (reciter_popularity_rank(document, scan) > 0) {
+            display = display + 1;
+        }
+        else if (scan < source_index) {
+            display = display + 1;
+        }
+        scan = scan + 1;
+    }
+    return display;
 }
 
 function reciter_audio_url(borrowed_string document, int reciter_index, int surah_id) -> owned_string {
