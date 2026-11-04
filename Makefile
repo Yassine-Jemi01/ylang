@@ -152,7 +152,7 @@ install: $(BIN)
 	install -m 755 $(BIN) '$(DESTDIR)$(BINDIR)/ylang'
 
 install-ylanglings:
-	$(MAKE) -C tools/ylanglings install PREFIX="$(PREFIX)" BINDIR="$(BINDIR)" DATADIR="$(PREFIX)/share/ylanglings"
+	$(MAKE) -C tools/ylanglings install PREFIX="$(PREFIX)" BINDIR="$(BINDIR)" DATADIR="$(PREFIX)/share/ylanglings" PYTHON="$(PYTHON)"
 
 uninstall-ylanglings:
 	$(MAKE) -C tools/ylanglings uninstall PREFIX="$(PREFIX)" BINDIR="$(BINDIR)" DATADIR="$(PREFIX)/share/ylanglings"
