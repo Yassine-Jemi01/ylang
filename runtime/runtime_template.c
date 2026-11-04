@@ -23,6 +23,7 @@
 #include <io.h>
 #include <conio.h>
 #else
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/ioctl.h>
@@ -1815,6 +1816,52 @@ static HANDLE yl_tui_input_handle;
 static DWORD yl_tui_saved_input_mode;
 #else
 static struct termios yl_tui_saved_termios;
+static const int yl_tui_signals[] = { SIGINT, SIGTERM, SIGHUP, SIGQUIT };
+static struct sigaction yl_tui_previous_actions[
+    sizeof(yl_tui_signals) / sizeof(yl_tui_signals[0])
+];
+static size_t yl_tui_installed_signal_count;
+
+static void yl_tui_signal_exit(int signal_number) {
+    if (yl_tui_active) {
+        (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &yl_tui_saved_termios);
+        static const char cursor_restore[] = "\033[?25h";
+        (void)write(STDOUT_FILENO, cursor_restore, sizeof(cursor_restore) - 1U);
+        yl_tui_active = false;
+    }
+    _exit(128 + signal_number);
+}
+
+static bool yl_tui_install_signal_handlers(void) {
+    struct sigaction action;
+    memset(&action, 0, sizeof(action));
+    action.sa_handler = yl_tui_signal_exit;
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = 0;
+    const size_t signal_count = sizeof(yl_tui_signals) / sizeof(yl_tui_signals[0]);
+    while (yl_tui_installed_signal_count < signal_count) {
+        size_t index = yl_tui_installed_signal_count;
+        if (sigaction(yl_tui_signals[index], &action,
+                      &yl_tui_previous_actions[index]) != 0) {
+            while (yl_tui_installed_signal_count > 0U) {
+                size_t restore_index = --yl_tui_installed_signal_count;
+                (void)sigaction(yl_tui_signals[restore_index],
+                                &yl_tui_previous_actions[restore_index], NULL);
+            }
+            return false;
+        }
+        yl_tui_installed_signal_count++;
+    }
+    return true;
+}
+
+static void yl_tui_restore_signal_handlers(void) {
+    while (yl_tui_installed_signal_count > 0U) {
+        size_t index = --yl_tui_installed_signal_count;
+        (void)sigaction(yl_tui_signals[index],
+                        &yl_tui_previous_actions[index], NULL);
+    }
+}
 #endif
 
 static void yl_tui_set_error(const char *message) {
@@ -1823,16 +1870,20 @@ static void yl_tui_set_error(const char *message) {
 }
 
 static void yl_tui_restore(void) {
-    if (!yl_tui_active) return;
+    if (yl_tui_active) {
 #ifdef _WIN32
-    if (yl_tui_input_handle != INVALID_HANDLE_VALUE)
-        (void)SetConsoleMode(yl_tui_input_handle, yl_tui_saved_input_mode);
+        if (yl_tui_input_handle != INVALID_HANDLE_VALUE)
+            (void)SetConsoleMode(yl_tui_input_handle, yl_tui_saved_input_mode);
 #else
-    (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &yl_tui_saved_termios);
+        (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &yl_tui_saved_termios);
 #endif
-    (void)fputs("\033[?25h", stdout);
-    (void)fflush(stdout);
-    yl_tui_active = false;
+        (void)fputs("\033[?25h", stdout);
+        (void)fflush(stdout);
+        yl_tui_active = false;
+    }
+#ifndef _WIN32
+    yl_tui_restore_signal_handlers();
+#endif
 }
 
 static bool yl_tui_init(void) {
@@ -1873,6 +1924,13 @@ static bool yl_tui_init(void) {
     }
 #endif
     yl_tui_active = true;
+#ifndef _WIN32
+    if (!yl_tui_install_signal_handlers()) {
+        yl_tui_restore();
+        yl_tui_set_error("could not install terminal restoration signal handlers");
+        return false;
+    }
+#endif
     if (!yl_tui_restore_registered) {
         (void)atexit(yl_tui_restore);
         yl_tui_restore_registered = true;
