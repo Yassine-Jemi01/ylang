@@ -18,6 +18,16 @@ if ./build/ylang check examples/type-conversions.yl --cc clang > build/check-cc.
     exit 1
 fi
 grep -Fq -- "--cc is only supported by build and debug" build/check-cc.out
+if ./build/ylang build examples/type-conversions.yl -o "" > build/empty-output-path.out 2>&1; then
+    echo "FAIL: build accepted an empty output path" >&2
+    exit 1
+fi
+grep -Fq -- "-o needs a non-empty output path" build/empty-output-path.out
+if ./build/ylang build examples/type-conversions.yl -o build/first -o build/second > build/duplicate-output-option.out 2>&1; then
+    echo "FAIL: build accepted duplicate -o options" >&2
+    exit 1
+fi
+grep -Fq -- "-o may be specified only once" build/duplicate-output-option.out
 ./build/ylang build examples/type-conversions.yl -o build/test-type-conversions >/dev/null
 ./build/test-type-conversions > build/type-conversions.out
 diff -u tests/expected-type-conversions.txt build/type-conversions.out
