@@ -243,7 +243,7 @@ ylanglings verify 01
 ylanglings --compiler ./build/ylang verify-all
 ```
 
-It requires Python 3.10+ and a built YLang compiler, but no network connection or third-party Python packages. See the [YLanglings guide](tools/ylanglings/README.md) and [book chapter](docs/online-book/src/ylanglings.md).
+It requires Python 3.10+ and a built YLang compiler, but no network connection or third-party Python packages. The repository's `make test` target runs the YLanglings contract suite and verifies the full exercise curriculum without changing your personal progress. See the [YLanglings guide](tools/ylanglings/README.md) and [book chapter](docs/online-book/src/ylanglings.md).
 
 ## Command-line reference
 
