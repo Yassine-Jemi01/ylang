@@ -25,7 +25,8 @@ The `fix` command never overwrites the input implicitly. The current automatic-f
 - `65`: source contains an embedded NUL byte and is rejected as non-text input.
 - `66`: the source file could not be read.
 - `70`: an allocation/resource preparation failure was reported by the CLI.
-- `73`: an output or temporary-directory operation failed.
+- `73`: an output file or temporary build directory could not be created/opened.
+- `74`: writing or closing the output produced by `ylang fix` failed.
 - `check` and source-validation failures return a nonzero status. A native compiler's exit status is propagated when possible; signal termination is converted to a nonzero status.
 
 Detailed diagnostics are written to standard error. Successful `check`, C generation, assembly generation, and native builds print the output path or source checked. The exact wording may improve, but scripts should rely on the exit code and produced file rather than parsing prose.
