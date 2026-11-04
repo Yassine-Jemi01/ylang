@@ -98,5 +98,8 @@ Add a broken starter under `exercises/` and a manifest entry containing:
 - `mode: check` only when the exercise is intentionally a compile-time API check
 - `optional: true` for challenges outside the core track
 
-Keep starter files small and focused on one learning objective. The
-YLanglings manifest and CLI contract are checked in CI.
+Keep starter files small and focused on one learning objective. The 2.3
+manifest validator intentionally pins the curriculum at 16 core and 10 optional
+exercises; changing those counts requires updating the validator, contract tests,
+and release acceptance checklist in the same change. The YLanglings manifest
+and CLI contract are checked in CI.
