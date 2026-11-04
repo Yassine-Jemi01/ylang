@@ -909,6 +909,8 @@ static Stmt *parse_statement(Parser *p)
 
         /* Discard the over-deep block iteratively instead of recursing further. */
         unsigned brace_depth = 0U;
+        unsigned paren_depth = 0U;
+        unsigned bracket_depth = 0U;
         bool saw_block = false;
         while (p->current.type != TOKEN_EOF) {
             if (p->current.type == TOKEN_LEFT_BRACE) {
@@ -921,6 +923,19 @@ static Stmt *parse_statement(Parser *p)
                     advance_parser(p);
                     break;
                 }
+            } else if (p->current.type == TOKEN_LEFT_PAREN) {
+                paren_depth++;
+            } else if (p->current.type == TOKEN_RIGHT_PAREN) {
+                if (paren_depth > 0U) paren_depth--;
+            } else if (p->current.type == TOKEN_LEFT_BRACKET) {
+                bracket_depth++;
+            } else if (p->current.type == TOKEN_RIGHT_BRACKET) {
+                if (bracket_depth > 0U) bracket_depth--;
+            } else if (p->current.type == TOKEN_SEMICOLON &&
+                       brace_depth == 0U && paren_depth == 0U &&
+                       bracket_depth == 0U) {
+                advance_parser(p);
+                break;
             }
             advance_parser(p);
         }
