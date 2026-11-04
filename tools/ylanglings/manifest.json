@@ -134,7 +134,7 @@
     "file": "optional-04-json.yl",
     "starter": "starter/optional-04-json.yl",
     "description": "Repair the JSON key lookup and read the integer field.",
-    "hint": "The document contains a numeric field named score.",
+    "hint": "Use json.get_int with the existing score key.",
     "expected_output": "42\n",
     "mode": "run"
   },
