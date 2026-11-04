@@ -13,7 +13,7 @@ YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable r
 - Defined duplicate-key behavior: getters return the first value, `json.set` replaces that value and collapses later copies, and `json.remove` drops all copies.
 - Added parser statement-depth recovery, code-generation recursion guards, and fail-closed C generation on emission diagnostics.
 - Added `ylang help` and `ylang version` subcommands, aligned command output, a full CLI reference, and a dependency-free `make tui-example` target with build-smoke coverage.
-- Added 2.3-specific pre-publication and post-publication checklists, exposed them in the book/docs site, shipped them in YSPM packages, and added CI/release-workflow checks for their presence.
+- Added 2.3-specific pre-publication and post-publication checklists, exposed them in the book/docs site, shipped them in YSPM packages, and added CI/release-workflow checks for their presence. Stable publication now waits for CircleCI success on the exact authorization SHA.
 - Expanded regression fixtures for resource limits, diagnostic sanitization, parser nesting, JSON builders, HTTP headers, and CLI aliases.
 
 All build, regression, sanitizer, fuzz, cross-platform, website/book, packaging, and benchmark gates remain pending until the validation phase. Do not change `VERSION` or publish `v2.3.0` before the acceptance checklist is complete.
