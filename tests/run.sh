@@ -1744,6 +1744,14 @@ if ./build/ylang check build/module-size/main.yl > build/module-size/size.out 2>
 fi
 grep -q 'E1029' build/module-size/size.out
 
+# The root file is rejected before allocating its contents.
+truncate -s 67108865 build/module-size/root-large.yl
+if ./build/ylang check build/module-size/root-large.yl > build/module-size/root-size.out 2>&1; then
+    echo "FAIL: a root source exceeding 64 MiB was accepted" >&2
+    exit 1
+fi
+grep -q 'E1029' build/module-size/root-size.out
+
 # Deeply nested statements must fail with a bounded diagnostic, not exhaust the C stack.
 mkdir -p build/statement-depth
 {
