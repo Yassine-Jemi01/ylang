@@ -39,6 +39,14 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] JSON nesting accepts 128 containers and rejects 129, including when builders combine individually valid values.
 - [ ] JSON output accepts exactly 16 MiB and rejects larger generated output without returning truncated JSON.
 
+## YLanglings learning track
+
+- [ ] Manifest validation passes: all exercise/starter paths exist, exercise IDs/files are unique, and every entry has valid metadata.
+- [ ] All 16 core exercises pass against the exact candidate compiler; runnable exercises build/run with expected output and compile-only API checks are explicitly identified.
+- [ ] All 10 optional challenges pass their documented verification mode against the exact candidate compiler.
+- [ ] CLI list/next/run/hint/verify/reset behavior, progress persistence/recovery, invalid exercise handling, and custom compiler selection pass regression tests.
+- [ ] User install/uninstall smoke test passes; the installed tool works offline and does not require third-party Python packages.
+
 ## Platforms, editor support, docs, and packaging
 
 - [ ] Native Windows MinGW-w64 smoke workflow passes; documentation does not imply full Windows parity.
