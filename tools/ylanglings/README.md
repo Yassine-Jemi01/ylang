@@ -27,9 +27,10 @@ Ensure `~/.local/bin` is on PATH and that the YLang compiler is available. Then:
 ylanglings list
 ylanglings next
 ylanglings run 01
+ylanglings edit 01
 ```
 
-Edit the displayed `.yl` file, then verify it:
+Edit the displayed `.yl` file, then open it with `ylanglings edit 01` if desired and verify it:
 
 ```sh
 ylanglings verify 01
@@ -46,7 +47,8 @@ Other commands:
 - `hint NUMBER` — show a hint without revealing the solution.
 - `reset NUMBER` — restore the original broken starter.
 - `list` — show core and optional exercise progress.
-- `next` — open the first incomplete core exercise.
+- `next` — show the first incomplete core exercise.
+- `edit NUMBER` — open an exercise in the editor selected by `VISUAL` or `EDITOR`.
 
 To uninstall:
 
