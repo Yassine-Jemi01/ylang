@@ -1,7 +1,7 @@
 // TUI presentation helpers. No network, storage, or audio state lives here.
 
-function ui_draw_main(string surah, string reciter, int surah_id,
-                      int volume, bool playing, bool paused, string message) -> int {
+function ui_draw_main(borrowed_string surah, borrowed_string reciter, int surah_id,
+                      int volume, bool playing, bool paused, borrowed_string message) -> int {
     tui.clear();
     tui.write("YTilawa Extended\n");
     tui.write("MP3Quran.net catalog and recitation servers\n");
@@ -42,10 +42,10 @@ function ui_prompt(string prompt) -> owned_string {
     if (!tui.init()) {
         print(tui.last_error());
     }
-    return value;
+    return move(value);
 }
 
-function ui_wait(string message) -> int {
+function ui_wait(borrowed_string message) -> int {
     tui.write("\n");
     tui.write(message);
     tui.write(" — press any key");
