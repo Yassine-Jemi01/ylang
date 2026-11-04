@@ -43,7 +43,7 @@ See [Binary I/O](binary-io.md) for byte-oriented file access and its current lim
 YLang 2.3 adds immutable raw-text builders. The [JSON reference](reference/JSON.md) contains a complete example in which `json.object` and `json.array` create containers, `json.escape` encodes user text, and `json.set`, `json.push`, and `json.remove` return new owned strings. The original values are never modified in place. These builder functions are development additions and are not available in the stable 2.2.0 release.
 
 
-The JSON API represents a document and extracted values as JSON text held in owned strings; it does not create a dynamic object tree. Use `json.parse` or `json.valid` before trusting input, check optional keys with `json.has`, and inspect `json.last_error()` after a failed lookup or typed conversion.
+The JSON API represents a document and extracted values as JSON text held in owned strings; it does not create a dynamic object tree. For input containing duplicate object keys, getters return the first value; `json.set` replaces that key and removes later duplicates, while `json.remove` removes all copies. Use `json.parse` or `json.valid` before trusting input, check optional keys with `json.has`, and inspect `json.last_error()` after a failed lookup or typed conversion.
 
 YLang 2.2.0 provides parsing, accessors, escaping, and pretty-printing. The immutable builders `json.object`, `json.array`, `json.set`, `json.remove`, and `json.push` are additions in the unreleased 2.3 development line. Builder values must be valid raw JSON fragments; use `json.escape` to construct a JSON string literal. Each builder returns a new owned string rather than mutating the original. See the [JSON reference](reference/JSON.md) for limits and exact behavior.
 
