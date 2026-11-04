@@ -2,7 +2,7 @@
 
 **Status: blocked / development.** YLang 2.2.0 remains the latest stable release. This checklist is the mandatory pre-publication gate for the exact commit that will become `v2.3.0`.
 
-Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag, or publish assets until every required item below has evidence attached to the candidate commit.
+Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag, or publish assets until every substantive build, security, compatibility, documentation, and packaging gate below has evidence attached to the candidate commit. The final publication-authorization items are completed in the reviewed authorization commit itself.
 
 ## Candidate integrity
 
