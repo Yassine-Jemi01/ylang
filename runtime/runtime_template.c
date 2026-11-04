@@ -1916,6 +1916,7 @@ static bool yl_tui_init(void) {
         yl_tui_set_error("could not enable raw Windows console input");
         return false;
     }
+    yl_tui_active = true;
 #else
     if (tcgetattr(STDIN_FILENO, &yl_tui_saved_termios) != 0) {
         yl_tui_set_error("could not read terminal attributes");
@@ -1926,16 +1927,14 @@ static bool yl_tui_init(void) {
     raw.c_iflag &= (tcflag_t)~(IXON | ICRNL);
     raw.c_cc[VMIN] = 1;
     raw.c_cc[VTIME] = 0;
-    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) != 0) {
-        yl_tui_set_error("could not enable raw terminal input");
+    if (!yl_tui_install_signal_handlers()) {
+        yl_tui_set_error("could not install terminal restoration signal handlers");
         return false;
     }
-#endif
     yl_tui_active = true;
-#ifndef _WIN32
-    if (!yl_tui_install_signal_handlers()) {
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) != 0) {
         yl_tui_restore();
-        yl_tui_set_error("could not install terminal restoration signal handlers");
+        yl_tui_set_error("could not enable raw terminal input");
         return false;
     }
 #endif
