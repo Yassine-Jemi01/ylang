@@ -57,6 +57,7 @@ A release candidate is not ready until all applicable gates below pass on the ex
 - [ ] AddressSanitizer and UndefinedBehaviorSanitizer suites pass.
 - [ ] Frontend fuzz smoke test completes without crash or sanitizer finding.
 - [ ] HTTP streaming, binary streaming, HTTP task, Voice (where SDL2_mixer is available), and TUI integration tests pass.
+- [ ] `make tui-example` builds the responsive terminal-menu sample from a clean checkout and the example remains documented in both std.tui references.
 - [ ] JSON parser and builder edge cases pass, including malformed input, escaping, duplicate keys, limits, and error behavior.
 - [ ] Website production build and asset/link integrity checks pass.
 - [ ] Online book builds and all referenced pages/examples are checked.
