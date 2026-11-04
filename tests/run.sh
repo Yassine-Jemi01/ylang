@@ -1697,4 +1697,27 @@ grep -q 'JSON argument type mismatch' build/json-type-error.out
 printf 'Ada\\n42\\n1.5\\nyes\\n' | ./build/test-terminal-input > build/terminal-input.stdout
 diff -u tests/expected-terminal-input.txt build/terminal-input.stdout
 
+# Deeply nested statements must fail with a bounded diagnostic, not exhaust the C stack.
+mkdir -p build/statement-depth
+{
+    printf 'function main() -> int {\n'
+    i=0
+    while [ "$i" -lt 260 ]; do
+        printf 'if (true) {\n'
+        i=$((i + 1))
+    done
+    printf 'print(1);\n'
+    i=0
+    while [ "$i" -lt 260 ]; do
+        printf '}\n'
+        i=$((i + 1))
+    done
+    printf 'return 0;\n}\n'
+} > build/statement-depth/deep.yl
+if ./build/ylang check build/statement-depth/deep.yl > build/statement-depth/deep.out 2>&1; then
+    echo "FAIL: deeply nested statements were accepted" >&2
+    exit 1
+fi
+grep -q 'E1018' build/statement-depth/deep.out
+
 echo "All YLang tests passed."
