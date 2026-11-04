@@ -5,7 +5,7 @@
 ## Work integrated so far
 
 - Removed the YTilawa application and its app-specific source, fixtures, and build steps. Shared TUI, Voice, HTTP streaming, and binary I/O facilities remain part of YLang.
-- Added compiler resource limits for diagnostic output, module count, aggregate module source size, and import depth.
+- Added compiler resource limits for diagnostic output, module count, aggregate project source size, and import depth. Root files are size-checked before allocation; root and imported source files containing embedded NUL bytes are rejected.
 - Added parser statement-nesting and code-generation recursion guards with dedicated diagnostics; recovery also handles unbraced nested statements, and C generation now fails closed on emission diagnostics.
 - Fixed an HTTP response-header capacity check that could underflow an unsigned size calculation.
 - Added immutable raw-JSON builders: `json.object()`, `json.array()`, `json.set()`, `json.remove()`, and `json.push()`. `json.set` escapes keys and collapses duplicate copies of the replaced key.
