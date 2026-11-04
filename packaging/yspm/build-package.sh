@@ -41,32 +41,41 @@ cp -a "$ROOT/stdlib/." "$STAGE/usr/share/ylang/stdlib/"
 install -m 644 "$ROOT/include/ylang/gui.h" "$STAGE/usr/include/ylang/gui.h"
 install -m 644 "$ROOT/LICENSE" "$STAGE/usr/share/licenses/ylang/LICENSE"
 
-for file in \
-    README.md \
-    docs/language-spec.md \
-    CHANGELOG.md \
-    "docs/CHANGELOG-${VERSION}.md" \
-    docs/CHANGELOG-2.2.0.md \
-    docs/CHANGELOG-2.3.0.md \
-    docs/ROADMAP-2.3.0.md \
-    docs/JSON.md \
-    docs/HTTP-STREAMING.md \
-    docs/error-codes.md \
-    docs/CLI.md \
-    docs/ACCEPTANCE-2.2.0.md \
-    docs/CHANGELOG-2.1.0.md \
-    docs/CHANGELOG-2.0.0.md \
-    docs/CHANGELOG-2.0-BETA.md \
-    docs/MEMORY-MODEL.md \
-    docs/GAME2D.md \
-    docs/WINDOWS.md \
-    docs/HTTP.md \
-    docs/PERFORMANCE.md \
-    docs/SECURITY.md \
-    docs/DEBUGGER.md \
-    docs/DEBUGGER-SPEC.md \
+doc_files=(
+    README.md
+    docs/language-spec.md
+    CHANGELOG.md
+    "docs/CHANGELOG-${VERSION}.md"
+    docs/ROADMAP-2.3.0.md
+    docs/JSON.md
+    docs/HTTP-STREAMING.md
+    docs/error-codes.md
+    docs/CLI.md
+    docs/ACCEPTANCE-2.2.0.md
+    docs/CHANGELOG-2.1.0.md
+    docs/CHANGELOG-2.0.0.md
+    docs/CHANGELOG-2.0-BETA.md
+    docs/MEMORY-MODEL.md
+    docs/GAME2D.md
+    docs/WINDOWS.md
+    docs/HTTP.md
+    docs/PERFORMANCE.md
+    docs/SECURITY.md
+    docs/DEBUGGER.md
+    docs/DEBUGGER-SPEC.md
     docs/ROADMAP-2.2.0.md
-do
+)
+
+# Keep the current version's changelog from the dynamic entry above, and ship
+# both the stable 2.2 notes and the 2.3 development notes exactly once.
+if [[ "$VERSION" != "2.2.0" ]]; then
+    doc_files+=(docs/CHANGELOG-2.2.0.md)
+fi
+if [[ "$VERSION" != "2.3.0" ]]; then
+    doc_files+=(docs/CHANGELOG-2.3.0.md)
+fi
+
+for file in "${doc_files[@]}"; do
     if [[ -f "$ROOT/$file" ]]; then
         install -m 644 "$ROOT/$file" "$STAGE/usr/share/doc/ylang/$(basename "$file")"
     fi
