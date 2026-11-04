@@ -13,7 +13,7 @@ companion tool rather than a compiler dependency.
 From the YLang repository root, install the local command:
 
 ```sh
-make -C tools/ylanglings install
+make install-ylanglings
 ```
 
 Then use it from any directory:
