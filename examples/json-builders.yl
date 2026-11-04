@@ -1,0 +1,20 @@
+// Immutable raw-JSON builders added in the YLang 2.3 development line.
+// Build with: ylang build examples/json-builders.yl -o json-builders
+
+function main() -> int {
+    let owned_string empty_profile = json.object();
+    let owned_string display_name = json.escape("Ada Lovelace");
+    let owned_string named_profile = json.set(empty_profile, "name", display_name);
+    let owned_string complete_profile = json.set(named_profile, "score", "42");
+
+    let owned_string empty_tags = json.array();
+    let owned_string compiler_tag = json.escape("compiler");
+    let owned_string tags = json.push(empty_tags, compiler_tag);
+
+    let owned_string profile_without_score = json.remove(complete_profile, "score");
+
+    print(complete_profile);
+    print(tags);
+    print(profile_without_score);
+    return 0;
+}
