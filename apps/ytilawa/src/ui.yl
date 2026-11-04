@@ -15,11 +15,11 @@ function ui_draw_main(string surah, string reciter, int surah_id,
     tui.write("\nVolume: ");
     tui.write(to_string(volume));
     tui.write("%\nState: ");
-    if (paused) tui.write("Paused\n") {
-        ;
+    if (paused) {
+        tui.write("Paused\n");
     }
-    else if (playing) tui.write("Playing\n") {
-        ;
+    else if (playing) {
+        tui.write("Playing\n");
     }
     else {
         tui.write("Stopped\n");
