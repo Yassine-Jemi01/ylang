@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define YLANG_MAX_MODULE_SOURCE_BYTES (64U * 1024U * 1024U)
+#define YLANG_MAX_PROJECT_SOURCE_BYTES (64U * 1024U * 1024U)
 
 typedef struct ArenaBlock {
     struct ArenaBlock *next;
