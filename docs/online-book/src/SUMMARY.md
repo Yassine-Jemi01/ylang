@@ -44,6 +44,7 @@
 - [Backend Roadmap](reference/BACKEND-ROADMAP.md)
 - [YLang Debugger](reference/DEBUGGER.md)
 - [Performance Benchmarking](reference/PERFORMANCE.md)
+- [Command-line Reference](reference/CLI.md)
 - [Security Model and Safe Defaults](reference/SECURITY.md)
 - [YLang 2.2 Roadmap](reference/ROADMAP-2.2.0.md)
 - [YLang 2.3.0 Development Notes](reference/CHANGELOG-2.3.0.md)
