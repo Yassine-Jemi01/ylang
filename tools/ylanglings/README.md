@@ -1,81 +1,94 @@
 # YLanglings
 
-YLanglings is an offline, compiler-backed practice tool inspired by Rustlings.
-It ships intentionally broken YLang source files. The learner edits the source,
-then asks the real YLang compiler to check, build, and run the solution.
+YLanglings is YLang's offline, compiler-backed learning track, inspired by Rustlings.
+It ships intentionally broken YLang source files. Learners edit each exercise,
+then use the real YLang compiler to check, build, and run their solution.
 
-It is an optional learning companion, not a compiler dependency and not a
-release blocker for YLang 2.3.
+YLanglings is included in the YLang 2.3 developer experience and release review.
+It is a companion tool rather than a compiler dependency.
 
 ## Requirements
 
 - Python 3.10+
-- A built YLang compiler available as \`ylang\` on PATH (or pass \`--compiler\`)
+- A built YLang compiler available as `ylang` on PATH (or pass `--compiler`)
 - No network connection and no third-party Python packages
 
 ## Start
 
-Install it for the current user (no network or package manager required):
+Install it for the current user:
 
-\`\`\`sh
+```sh
 make -C tools/ylanglings install
-\`\`\`
+```
 
-Ensure \`~/.local/bin\` is on PATH and that the YLang compiler is available. Then start:
+Ensure `~/.local/bin` is on PATH and that the YLang compiler is available. Then:
 
-\`\`\`sh
+```sh
 ylanglings list
 ylanglings next
 ylanglings run 01
-\`\`\`
+```
 
-To uninstall:
+Edit the displayed `.yl` file, then verify it:
 
-\`\`\`sh
-make -C tools/ylanglings uninstall
-\`\`\`
-
-Edit the displayed \`.yl\` file, then verify it:
-
-\`\`\`sh
+```sh
 ylanglings verify 01
-\`\`\`
+```
 
 If YLang is not on PATH:
 
-\`\`\`sh
+```sh
 ylanglings --compiler ./build/ylang verify 01
-\`\`\`
+```
 
 Other commands:
 
-- \`hint NUMBER\` — show a hint, not the solution.
-- \`reset NUMBER\` — restore the original broken starter.
-- \`list\` — show progress.
-- \`next\` — open the first incomplete exercise.
+- `hint NUMBER` — show a hint without revealing the solution.
+- `reset NUMBER` — restore the original broken starter.
+- `list` — show core and optional exercise progress.
+- `next` — open the first incomplete core exercise.
 
-Progress is stored locally in \`$XDG_CONFIG_HOME/ylanglings/progress.json\`
-(or \`~/.config/ylanglings/progress.json\`). Exercise source files remain in
-this directory, so they can be edited with any editor. No telemetry is sent.
+To uninstall:
 
-## Exercise design
+```sh
+make -C tools/ylanglings uninstall
+```
 
-The core track covers syntax, values and types, mutability, expressions,
-conditions, loops, functions, arrays, structs, enums, modules, strings,
-diagnostics, and standard-library use. Optional challenges are marked
-\`optional\` in the manifest and are never required to finish the core track.
+Progress is stored locally in `$XDG_CONFIG_HOME/ylanglings/progress.json`
+(or `~/.config/ylanglings/progress.json`). Exercise source files remain in
+the installation directory, so they can be edited with any editor. No telemetry
+is sent and no network access is required.
 
-Verification is deliberately stricter than \`ylang check\`: the source must
-also build, exit successfully, and produce the expected output. Each run is
-limited to ten seconds. The exercise tool does not claim to validate memory
-safety or replace the compiler's full test suite.
+## Exercise tracks
+
+The core track contains 16 exercises covering syntax, values and types,
+mutability, conditions, loops, functions, arrays, structs, enums, strings,
+modules, conversions, loop control, and file I/O.
+
+The optional track contains 10 challenges for nested loops, enum logic,
+struct functions, JSON, Binary I/O, HTTP streaming, TUI, Voice, GUI lifecycle,
+and owned strings. Optional challenges are separate from core completion.
+
+## Verification model
+
+For runnable exercises, verification requires the source to pass `ylang check`,
+build successfully, exit with status zero, and produce the exact expected output.
+Each program is limited to ten seconds. API/signature exercises marked
+`mode: check` are compiler-checked without launching native integrations;
+their runtime behavior is covered by the compiler's integration suite.
+
+YLanglings does not claim to validate memory safety or replace the compiler's
+full regression and sanitizer suites.
 
 ## Adding an exercise
 
-Add a broken starter file under \`exercises/\` and a manifest entry containing:
+Add a broken starter under `exercises/` and a manifest entry containing:
 
-- \`title\`, \`category\`, \`file\`, and \`starter\`
-- a short \`description\` and a non-spoiling \`hint\`
-- \`expected_output\` for the corrected program
+- `title`, `category`, `file`, and `starter`
+- a short `description` and a non-spoiling `hint`
+- `expected_output` for runnable exercises
+- `mode: check` only when the exercise is intentionally a compile-time API check
+- `optional: true` for challenges outside the core track
 
-Keep starter files intentionally small, with one main learning objective.
+Keep starter files small and focused on one learning objective. The
+YLanglings manifest and CLI contract are checked in CI.
