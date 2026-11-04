@@ -11,7 +11,7 @@ false
 hello
 world
 {"name":"YLang","\u03bb":42,"version":23,"price":2.5,"unicode":"\uD83D\uDE00","enabled":true,"items":[1,2,3],"message":"hello\nworld"}
-{"title":"YLang","count":3,"line\nkey":false}
+"line\nquote\""
 false
 Invalid JSON syntax
 
@@ -30,6 +30,6 @@ YLang
 1
 {"count":9,"other":true}
 {"other":true}
-{"title":"YLang","count":3,"line\\nkey":false}
+{"title":"YLang","count":3,"line\nkey":false}
 true
 true
