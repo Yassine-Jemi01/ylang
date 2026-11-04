@@ -135,7 +135,7 @@ class CliStateTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertEqual(verify.call_count, 26)
         self.assertIn("02", output.getvalue())
-        self.assertIn("All 26", output.getvalue()) is False
+        self.assertNotIn("All 26", output.getvalue())
 
     def test_compiler_timeout_is_reported_without_hanging(self):
         output = io.StringIO()
