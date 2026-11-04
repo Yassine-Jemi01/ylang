@@ -19,7 +19,7 @@ else
 GAME2D_OUTPUT ?= build/dodge
 endif
 
-.PHONY: all clean test sanitize install uninstall print-version tui-example gui gui-example game2d-example install-gui voice voice-example voice-test install-voice check-sdl2 check-voice check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
+.PHONY: all clean test ylanglings-test sanitize install uninstall print-version tui-example gui gui-example game2d-example install-gui voice voice-example voice-test install-voice check-sdl2 check-voice check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
 
 all: $(BIN)
 
@@ -53,7 +53,10 @@ build/frontend-unit: tests/frontend_unit.c src/parser.c src/lexer.c src/arena.c 
 frontend-unit-test: build/frontend-unit
 	./build/frontend-unit
 
-test: $(BIN) frontend-unit-test
+ylanglings-test:
+	$(PYTHON) -m unittest discover -s tools/ylanglings/tests -v
+
+test: $(BIN) frontend-unit-test ylanglings-test
 	sh tests/run.sh
 
 FUZZ_CC ?= clang
