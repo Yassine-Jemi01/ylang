@@ -1,6 +1,6 @@
 function main() -> int {
     let owned_string first = string.own("YLang");
-    let owned_string second = owned_string.concat(first, "lings");
+    let owned_string second = owned_string.concat(first, 7);
     print(second);
     return 0;
 }
