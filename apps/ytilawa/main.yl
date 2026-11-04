@@ -1,0 +1,5 @@
+from "./src/main.yl" import ytilawa_main;
+
+function main() -> int {
+    return ytilawa_main();
+}
