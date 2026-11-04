@@ -45,6 +45,25 @@ if [[ ! -x "$INSTALLED_COMPILER" ]]; then
     exit 1
 fi
 
+INSTALLED_DOCS="$INSTALL_ROOT/usr/share/doc/ylang"
+for required_doc in \
+    CHANGELOG.md \
+    "CHANGELOG-$VERSION.md" \
+    CHANGELOG-2.3.0.md \
+    ROADMAP-2.3.0.md \
+    RELEASE-CHECKLIST-2.3.0.md \
+    POST-RELEASE-CHECKLIST-2.3.0.md \
+    JSON.md \
+    HTTP-STREAMING.md \
+    CLI.md \
+    error-codes.md
+do
+    if [[ ! -s "$INSTALLED_DOCS/$required_doc" ]]; then
+        echo "smoke-install: installed package is missing documentation file $required_doc" >&2
+        exit 1
+    fi
+done
+
 export YLANG_PATH="$INSTALL_ROOT/usr/share/ylang/stdlib"
 "$INSTALLED_COMPILER" --version
 "$INSTALLED_COMPILER" check "$ROOT/examples/demo.yl"
