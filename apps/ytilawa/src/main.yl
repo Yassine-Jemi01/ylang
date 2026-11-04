@@ -176,16 +176,31 @@ function main() -> int {
         if (key == 113 || key == 81) {
             running = false;
         } else if (key == 98 || key == 66) {
+            let int previous_surah = current_surah;
             current_surah = choose_surah(surahs, current_surah);
+            if (current_surah != previous_surah) {
+                voice.stop();
+                playing = false;
+                paused = false;
+            }
             message = "Surah selected.";
         } else if (key == 114 || key == 82) {
+            let int previous_reciter = current_reciter;
             current_reciter = choose_reciter(reciters, current_reciter);
+            if (current_reciter != previous_reciter) {
+                voice.stop();
+                playing = false;
+                paused = false;
+            }
             message = "Reader selected.";
         } else if (key == 47) {
             let owned_string query = ui_prompt("Search surah: ");
             let int found = find_surah(surahs, query);
             if (found > 0) {
                 current_surah = found;
+                voice.stop();
+                playing = false;
+                paused = false;
                 message = "Search result selected.";
             } else {
                 message = "No matching surah was found.";
@@ -195,6 +210,9 @@ function main() -> int {
             let int found = find_reciter(reciters, query);
             if (found >= 0) {
                 current_reciter = found;
+                voice.stop();
+                playing = false;
+                paused = false;
                 message = "Reader search result selected.";
             } else {
                 message = "No matching reader was found.";
