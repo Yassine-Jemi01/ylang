@@ -1,0 +1,6 @@
+function main() -> int {
+    let string object = "{}";
+    let owned_string invalid = json.set(object, "count", 42);
+    print(invalid);
+    return 0;
+}
