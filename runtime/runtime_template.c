@@ -1060,9 +1060,13 @@ static bool yl_json_number(YLJson *p) {
 }
 static bool yl_json_value(YLJson *p, size_t *start, size_t *end) {
     yl_json_ws(p);
-    if (p->depth >= YL_JSON_MAX_DEPTH || p->i >= p->n) return false;
-    *start = p->i;
+    if (p->i >= p->n) return false;
     char c = p->s[p->i];
+    if ((c == '{' || c == '[') && p->depth >= YL_JSON_MAX_DEPTH) {
+        yl_json_error("JSON nesting exceeds the 128-level limit");
+        return false;
+    }
+    *start = p->i;
     if (c == '"') {
         size_t a, b;
         if (!yl_json_string_end(p, &a, &b)) return false;
@@ -1099,8 +1103,12 @@ static bool yl_json_root(const char *text, YLJson *p, size_t *start, size_t *end
     if (!text) { yl_json_error("JSON input is null"); return false; }
     size_t n = strlen(text);
     if (n > YL_JSON_MAX_INPUT) { yl_json_error("JSON input exceeds the 16 MiB limit"); return false; }
+    yl_json_error("");
     p->s = text; p->n = n; p->i = 0U; p->depth = 0U;
-    if (!yl_json_value(p, start, end)) { yl_json_error("Invalid JSON syntax"); return false; }
+    if (!yl_json_value(p, start, end)) {
+        if (yl_json_error_text[0] == '\0') yl_json_error("Invalid JSON syntax");
+        return false;
+    }
     yl_json_ws(p);
     if (p->i != p->n) { yl_json_error("Unexpected data after JSON value"); return false; }
     yl_json_error(""); return true;
@@ -1165,6 +1173,12 @@ static const char *yl_json_buffer_finish(YLJsonBuffer *b) {
         b->data = malloc(1U);
         if (!b->data) yl_runtime_error("out of memory");
         b->data[0] = '\0';
+    }
+    YLJson validation;
+    size_t start, end;
+    if (!yl_json_root(b->data, &validation, &start, &end)) {
+        free(b->data);
+        return "";
     }
     return (const char *)yl_track(b->data, b->length + 1U);
 }
