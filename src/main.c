@@ -22,15 +22,15 @@ static void usage(FILE *stream)
         "  ylang help  |  ylang --help  |  ylang -h\n"
         "  ylang version  |  ylang --version  |  ylang -V\n\n"
         "Commands:\n"
-        "  check   Parse the source and validate types without producing a binary.\n"
-        "  build   Generate C and invoke GCC or Clang to create a native executable.\n"
-        "  debug   Build with debug symbols and launch GDB (Linux) or LLDB (macOS).\n"
+        "  check      Parse the source and validate types without producing a binary.\n"
+        "  build      Generate C and invoke GCC or Clang to create a native executable.\n"
+        "  debug      Build with debug symbols and launch GDB (Linux) or LLDB (macOS).\n"
         "  build-asm  Build the supported subset with NASM and ld (Linux x86-64).\n"
-        "  emit-c    Write the generated C source for inspection.\n"
-        "  emit-asm  Emit experimental Linux x86-64 NASM assembly for the supported subset.\n"
-        "  fix       Apply high-confidence safe fixes to a new source file.\n"
-        "  help      Print this command reference.\n"
-        "  version   Print the compiler version.\n",
+        "  emit-c     Write the generated C source for inspection.\n"
+        "  emit-asm   Emit experimental Linux x86-64 NASM assembly for the supported subset.\n"
+        "  fix        Apply high-confidence safe fixes to a new source file.\n"
+        "  help       Print this command reference.\n"
+        "  version    Print the compiler version.\n",
         stream);
 }
 
