@@ -53,7 +53,7 @@ A release candidate is not ready until all applicable gates below pass on the ex
 - [ ] Clean build with Clang on macOS.
 - [ ] Native Windows smoke workflow passes; support claims remain limited to what is covered.
 - [ ] Full compiler regression suite passes, including frontend unit tests and integration tests.
-- [ ] Focused regression cases pass for the 1,024-module and 64 MiB total-project-source limits (including root-file pre-allocation rejection), the 100-diagnostic cap, root/imported embedded-NUL rejection, control-byte escaping, deep braced/unbraced parser nesting, JSON builder argument typing, invalid fragments, first-match duplicate-key lookup/replacement/removal, 128/129-level parser and combined-builder boundaries, and the exact 16 KiB HTTP-header boundary.
+- [ ] Focused regression cases pass for the 1,024-module and 64 MiB total-project-source limits (including root-file pre-allocation rejection), the 100-diagnostic cap, root/imported embedded-NUL rejection, control-byte escaping, deep braced/unbraced parser nesting, JSON builder argument typing, invalid fragments, first-match duplicate-key lookup/replacement/removal, 128/129-level parser and combined-builder boundaries, exact 16 MiB JSON output acceptance/overflow, and the exact 16 KiB HTTP-header boundary.
 - [ ] AddressSanitizer and UndefinedBehaviorSanitizer suites pass.
 - [ ] Frontend fuzz smoke test completes without crash or sanitizer finding.
 - [ ] HTTP streaming, binary streaming, HTTP task, Voice (where SDL2_mixer is available), and TUI integration tests pass.
