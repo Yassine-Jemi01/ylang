@@ -159,7 +159,7 @@ h1, h2, h3, p { margin: 0; }
 
 /* 2.2 development preview */
 .preview-section { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: radial-gradient(ellipse at 15% 20%, rgb(141 56 22 / 9%), transparent 45%), var(--bg-2); }
-.preview-grid.feature-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.preview-grid.feature-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .preview-grid .feature-card { min-height: 264px; padding: 23px 21px 22px; }
 .preview-grid .feature-card p { min-height: 106px; }
 .preview-grid .feature-meta { letter-spacing: .065em; }
