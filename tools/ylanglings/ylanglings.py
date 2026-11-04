@@ -53,7 +53,7 @@ def load_manifest():
             raise SystemExit(f"Runnable exercise {number} needs expected_output.")
         resolved_paths = {}
         for field in ("file", "starter"):
-            if "\\0" in item[field]:
+            if "\0" in item[field]:
                 raise SystemExit(f"Manifest entry {number} has an unsafe {field} path.")
             try:
                 candidate = (root / item[field]).resolve()
