@@ -15,6 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 EXERCISES = ROOT / "exercises"
+SOLUTIONS = ROOT / "solutions"
 MANIFEST = ROOT / "manifest.json"
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or (Path.home() / ".config")) / "ylanglings"
 PROGRESS = CONFIG / "progress.json"
@@ -247,11 +248,11 @@ def run_compiler(compiler, *arguments):
         raise SystemExit(f"Could not run YLang compiler: {error}") from error
 
 
-def command_verify(number, manifest, compiler, persist_progress=True):
+def command_verify(number, manifest, compiler, persist_progress=True, source_override=None):
     if number < 1 or number > len(manifest):
         raise SystemExit("Unknown exercise number. Run 'ylanglings list'.")
     item = manifest[number - 1]
-    source = exercise_path(item)
+    source = Path(source_override) if source_override is not None else exercise_path(item)
     if not source.is_file():
         raise SystemExit(f"Exercise file is missing: {source}")
 
@@ -321,18 +322,38 @@ def command_verify(number, manifest, compiler, persist_progress=True):
     return 0
 
 
+def solution_path(item):
+    relative = item.get("solution")
+    if not isinstance(relative, str) or not relative.strip():
+        raise SystemExit(f"Exercise {item.get('title', '<unknown>')} has no maintainer solution.")
+    root = SOLUTIONS.resolve()
+    try:
+        candidate = (root / relative).resolve()
+        if not candidate.is_relative_to(root):
+            raise SystemExit(f"Unsafe solution path for {item['title']}.")
+        if not candidate.is_file():
+            raise SystemExit(
+                "verify-all requires the YLanglings source checkout with its solutions/ directory; "
+                f"missing solution for {item['title']}: {relative}"
+            )
+    except (OSError, RuntimeError, ValueError) as error:
+        raise SystemExit(f"Invalid solution path for {item['title']}: {error}") from error
+    return candidate
+
+
 def command_verify_all(manifest, compiler):
+    solutions = [(number, item, solution_path(item)) for number, item in enumerate(manifest, 1)]
     failures = []
-    for number, item in enumerate(manifest, 1):
+    for number, item, source in solutions:
         print(f"\n=== {number:02d}/{len(manifest):02d}: {item['title']} ===")
-        if command_verify(number, manifest, compiler, persist_progress=False) != 0:
+        if command_verify(number, manifest, compiler, persist_progress=False, source_override=source) != 0:
             failures.append(number)
 
     if failures:
         failed = ", ".join(f"{number:02d}" for number in failures)
         print(f"\nYLanglings verification failed for exercise(s): {failed}")
         return 1
-    print(f"\nAll {len(manifest)} YLanglings exercises passed.")
+    print(f"\nAll {len(manifest)} YLanglings reference solutions passed.")
     return 0
 
 
