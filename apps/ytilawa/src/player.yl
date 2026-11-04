@@ -1,6 +1,6 @@
 // Audio and download operations. This module owns HTTP-to-Voice handoff.
 
-function player_play_remote(string url, int volume) -> bool {
+function player_play_remote(borrowed_string url, int volume) -> bool {
     if (string.length(url) == 0) {
         return false;
     }
@@ -13,7 +13,7 @@ function player_play_remote(string url, int volume) -> bool {
     return voice.play_stream(stream);
 }
 
-function player_play_local(string path, int volume) -> bool {
+function player_play_local(borrowed_string path, int volume) -> bool {
     if (string.length(path) == 0) {
         return false;
     }
@@ -23,7 +23,7 @@ function player_play_local(string path, int volume) -> bool {
     return voice.play(path);
 }
 
-function player_download(string url, string path) -> int {
+function player_download(borrowed_string url, borrowed_string path) -> int {
     if (string.length(url) == 0 or string.length(path) == 0) {
         return -1;
     }
@@ -55,7 +55,7 @@ function player_download(string url, string path) -> int {
     }
 
     let int status = http.stream_status(stream);
-    let owned_string error = http.stream_error(stream);
+    let string error = http.stream_error(stream);
     http.stream_close(stream);
     io.buffer_free(buffer);
 
