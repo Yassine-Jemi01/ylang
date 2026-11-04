@@ -235,7 +235,7 @@ Imports can be nested, and repeated references to the same canonical file reuse 
 YLanglings is an offline, Rustlings-inspired learning tool included in the 2.3 development scope. It provides 16 core exercises and 10 optional challenges; edit each starter program and verify it with the real compiler. Install and use it with:
 
 ```sh
-make -C tools/ylanglings install
+make install-ylanglings
 ylanglings list
 ylanglings next
 ylanglings verify 01
