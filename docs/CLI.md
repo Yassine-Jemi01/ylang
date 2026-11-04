@@ -14,7 +14,7 @@ The compiler uses explicit subcommands. Run `ylang help`, `ylang --help`, or `yl
 | `ylang build-asm FILE.yl [-o PATH]` | Assemble and link the experimental NASM subset. | `a.out` |
 | `ylang fix FILE.yl -o PATH` | Apply only high-confidence fixes to a separate output file. | Explicit path required |
 
-The `--cc` option selects GCC or Clang for the generated C program. It does not select the compiler used to build YLang itself. The C backend remains the default; NASM is limited to Linux x86-64 and its documented supported subset.
+The `--cc` option is accepted only by `build` and `debug`; it selects GCC or Clang for the generated C program. Commands such as `check`, `emit-c`, `emit-asm`, `build-asm`, and `fix` reject it instead of silently ignoring it. It does not select the compiler used to build YLang itself. The C backend remains the default; NASM is limited to Linux x86-64 and its documented supported subset.
 
 The `fix` command never overwrites the input implicitly. The current automatic-fix set is intentionally narrow; after it writes a file, run `ylang check` on that output.
 
