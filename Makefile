@@ -11,11 +11,12 @@ BINDIR ?= $(PREFIX)/bin
 
 SRC := $(wildcard src/*.c)
 OBJ := $(patsubst src/%.c,build/%.o,$(SRC))
-BIN := build/ylang
 
 ifeq ($(OS),Windows_NT)
+BIN := build/ylang.exe
 GAME2D_OUTPUT ?= build/dodge.exe
 else
+BIN := build/ylang
 GAME2D_OUTPUT ?= build/dodge
 endif
 
