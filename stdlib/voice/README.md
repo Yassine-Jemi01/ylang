@@ -41,10 +41,12 @@ The runtime uses SDL2_mixer codecs available in the installed build (commonly WA
 Ogg Vorbis, FLAC, and MP3). Codec support depends on how SDL2_mixer was packaged.
 It currently supports one music track at a time. Natural completion is observable
 through `voice.is_finished()`; polling either state query releases the completed mixer
-object. `voice.play_stream(http_stream)` transfers ownership of the stream to the audio
-runtime and reads incrementally through SDL_RWops; do not use the HTTP handle again after
-passing it to Voice. The stream reader is forward-only and does not support seeking.
-Text-to-speech, multiple simultaneous voices, seeking, playlists, and recording are not
+object. `voice.play_stream(http_stream)` transfers ownership of the stream to the
+audio runtime; do not use the HTTP handle again after passing it to Voice. The bridge
+caches received bytes in a temporary disk-backed file so compressed-audio decoders can
+seek backwards and forwards. Backward seeks use cached bytes, forward seeks fetch more
+network data, and end-relative seeks may drain the response before continuing playback.
+Text-to-speech, multiple simultaneous voices, playlists, and recording are not
 implemented yet.
 
 ## Build
