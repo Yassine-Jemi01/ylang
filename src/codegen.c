@@ -1777,9 +1777,16 @@ bool generate_c(Compiler *c, const char *path)
         fprintf(out, "int main(void) { int64_t result = %s(); yl_cleanup(); return (int)result; }\n", main_fn->c_name);
     }
 
-    bool okay = !ferror(out);
+    bool okay = !c->had_error && !ferror(out);
     if (fclose(out) != 0) okay = false;
-    if (!okay) fprintf(stderr, "ylang: failed while writing '%s'\n", path);
+    if (!okay) {
+        if (c->had_error) {
+            fprintf(stderr, "ylang: code generation failed for '%s'; no C source was kept.\n", path);
+        } else {
+            fprintf(stderr, "ylang: failed while writing '%s'\n", path);
+        }
+        (void)remove(path);
+    }
     return okay;
 }
 
