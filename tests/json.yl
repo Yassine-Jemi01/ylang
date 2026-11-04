@@ -21,7 +21,7 @@ function main() -> int {
     print(json.last_error());
     print(json.pretty("{\"text\":\"a, b: c\",\"n\":1}"));
     let owned_string obj = json.object();
-    let owned_string title_json = json.escape("Tilawa");
+    let owned_string title_json = json.escape("YLang");
     let owned_string obj2 = json.set(obj, "title", title_json);
     let owned_string obj3 = json.set(obj2, "count", "3");
     let owned_string arr = json.array();
