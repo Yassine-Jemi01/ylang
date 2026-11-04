@@ -135,7 +135,7 @@ def main():
                 except OSError as error:
                     if error.errno != errno.EIO:
                         raise
-            if b"\\x1b[?25h" not in signal_output:
+            if b"\x1b[?25h" not in signal_output:
                 raise SystemExit(f"TUI signal handler did not restore cursor visibility: {signal_output!r}")
             signal_restored = termios.tcgetattr(signal_slave)
             if (signal_restored[3] & mask) != (signal_original[3] & mask):
