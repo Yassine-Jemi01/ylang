@@ -607,6 +607,11 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "json.parse") == 0) return "yl_json_parse";
     if (strcmp(name, "json.stringify") == 0) return "yl_json_stringify";
     if (strcmp(name, "json.pretty") == 0) return "yl_json_pretty";
+    if (strcmp(name, "json.object") == 0) return "yl_json_object";
+    if (strcmp(name, "json.array") == 0) return "yl_json_array";
+    if (strcmp(name, "json.set") == 0) return "yl_json_set";
+    if (strcmp(name, "json.remove") == 0) return "yl_json_remove";
+    if (strcmp(name, "json.push") == 0) return "yl_json_push";
     if (strcmp(name, "json.valid") == 0) return "yl_json_valid";
     if (strcmp(name, "json.get") == 0) return "yl_json_get";
     if (strcmp(name, "json.get_string") == 0) return "yl_json_get_string";
