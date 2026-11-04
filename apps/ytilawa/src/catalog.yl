@@ -485,7 +485,14 @@ function reciter_display_position(borrowed_string document, int source_index) ->
                 }
                 scan = scan + 1;
             }
-            priority = priority + 1;
+                priority = priority + 1;
+        }
+        let int same_rank_scan = 0;
+        while (same_rank_scan < source_index) {
+            if (reciter_popularity_rank(document, same_rank_scan) == source_rank) {
+                display = display + 1;
+            }
+            same_rank_scan = same_rank_scan + 1;
         }
         return display;
     }
