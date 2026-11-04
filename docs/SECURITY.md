@@ -25,6 +25,8 @@ The experimental C-backend client uses libcurl and applies these defaults:
 - Automatic redirects are limited to five and allowed only for HTTP/HTTPS. The built-in JSON `Content-Type` header is permitted through redirects, but if the request includes any other header, a 3xx response is returned directly rather than forwarding arbitrary headers such as `X-API-Key` to a new target.
 - HTTP status codes such as 401, 404, and 500 are response statuses, not transport errors. Check `http.status()` and `http.last_error()` separately.
 - At most 32 HTTP task handles may be in flight. `http_task` values are process-local, single-consumption handles; cancellation does not undo a request already received by the server.
+- HTTP streaming uses a separate pull-based API with at most 16 active streams and a fixed 64 KiB response buffer. It has a 5-second connection timeout but intentionally no whole-transfer timeout, so long-lived streams are possible. A program must close streams it no longer needs; process shutdown also releases them.
+- `http.stream_read()` is text-oriented and cannot preserve embedded NUL bytes. Use `http.stream_read_buffer()` with a root `io.buffer` for binary data, and free that buffer when finished.
 
 These safeguards reduce common accidental leaks and resource exhaustion, but they do **not** make a caller-supplied URL safe in every deployment. In server-side applications, validate URLs against an application-specific hostname/IP allow-list and consider access to loopback, private, link-local, and metadata addresses before making a request.
 
