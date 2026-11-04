@@ -125,5 +125,10 @@ function main() -> int {
     print(http.status());
     print(string.length(http.last_error()) > 0);
     print(string.length(env.get("YLANG_MISSING_TEST_VAR")) == 0);
+
+    let owned_string oversized_headers = http.get(string.concat(base, "/headers-underflow"));
+    print(oversized_headers);
+    print(string.length(http.last_error()) > 0);
+    print(string.contains(http.last_error(), "16 KiB"));
     return 0;
 }
