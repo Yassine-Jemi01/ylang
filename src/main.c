@@ -62,6 +62,7 @@ int main(int argc, char **argv)
     const char *input = argv[2];
     const char *output = NULL;
     const char *cc = "gcc";
+    bool cc_option_set = false;
     for (int i = 3; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0) {
             if (i + 1 >= argc) {
@@ -75,6 +76,7 @@ int main(int argc, char **argv)
                 return 64;
             }
             cc = argv[++i];
+            cc_option_set = true;
             if (strcmp(cc, "gcc") != 0 && strcmp(cc, "clang") != 0) {
                 fputs("ylang: supported native compilers are gcc and clang\n", stderr);
                 return 64;
@@ -87,6 +89,11 @@ int main(int argc, char **argv)
             usage(stderr);
             return 64;
         }
+    }
+    if (cc_option_set && strcmp(command, "build") != 0 &&
+        strcmp(command, "debug") != 0) {
+        fputs("ylang: --cc is only supported by build and debug\n", stderr);
+        return 64;
     }
     if (strcmp(command, "check") == 0 && output) {
         fputs("ylang: check does not accept -o\n", stderr);
