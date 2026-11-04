@@ -1,13 +1,15 @@
 // Local text-file persistence for favorites, history, and playlists.
 
 function storage_read(string path) -> owned_string {
-    if (!io.file_exists(path)) return "";
+    if (!io.file_exists(path)) {
+        return "";
+    }
     return io.read_file(path);
 }
 
 function storage_append(string path, string record) -> bool {
     let owned_string existing = storage_read(path);
-    if (string.length(existing) > 0 && !string.ends_with(existing, "\n")) {
+    if (string.length(existing) > 0 and !string.ends_with(existing, "\n")) {
         existing = string.concat(existing, "\n");
     }
     let owned_string updated = string.concat(existing, record);
@@ -17,7 +19,9 @@ function storage_append(string path, string record) -> bool {
 
 function storage_contains(string path, string record) -> bool {
     let owned_string existing = storage_read(path);
-    if (string.length(existing) == 0) return false;
+    if (string.length(existing) == 0) {
+        return false;
+    }
     let owned_string marker = string.concat("\n", record);
     marker = string.concat(marker, "\n");
     let owned_string wrapped = string.concat("\n", existing);
@@ -26,7 +30,9 @@ function storage_contains(string path, string record) -> bool {
 
 function storage_add_favorite(int surah_id) -> bool {
     let owned_string record = to_string(surah_id);
-    if (storage_contains("ytilawa-favorites.txt", record)) return true;
+    if (storage_contains("ytilawa-favorites.txt", record)) {
+        return true;
+    }
     return storage_append("ytilawa-favorites.txt", record);
 }
 
