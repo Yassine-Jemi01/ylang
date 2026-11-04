@@ -77,8 +77,7 @@ Each program is limited to ten seconds. API/signature exercises marked
 `mode: check` are compiler-checked without launching native integrations;
 their runtime behavior is covered by the compiler's integration suite.
 
-YLanglings does not claim to validate memory safety or replace the compiler's
-full regression and sanitizer suites.
+Exercise programs are native executables and run with the current user's permissions; YLanglings is not a sandbox. Review a starter and your changes before running them. YLanglings does not claim to validate memory safety or replace the compiler's full regression and sanitizer suites.
 
 ## Adding an exercise
 
