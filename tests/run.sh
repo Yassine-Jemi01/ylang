@@ -1737,6 +1737,22 @@ if ./build/ylang check build/statement-depth/deep.yl > build/statement-depth/dee
 fi
 grep -q 'E1018' build/statement-depth/deep.out
 
+# The nesting guard must also recover from deeply nested unbraced loop bodies.
+{
+    printf 'function main() -> int {\n'
+    i=0
+    while [ "$i" -lt 260 ]; do
+        printf 'while (true) '
+        i=$((i + 1))
+    done
+    printf 'print(1); return 0; }\n'
+} > build/statement-depth/unbraced.yl
+if ./build/ylang check build/statement-depth/unbraced.yl > build/statement-depth/unbraced.out 2>&1; then
+    echo "FAIL: deeply nested unbraced statements were accepted" >&2
+    exit 1
+fi
+grep -q 'E1018' build/statement-depth/unbraced.out
+
 # Global help/version subcommands must match their option aliases.
 ./build/ylang help > build/cli-help.out
 grep -q "Usage:" build/cli-help.out
