@@ -70,7 +70,7 @@ A release candidate is not ready until all applicable gates below pass on the ex
 - [ ] YLanglings user install/uninstall smoke test passes and offline operation is confirmed.
 - [ ] Website production build and asset/link integrity checks pass.
 - [ ] Online book builds and all referenced pages/examples are checked.
-- [ ] Editor diagnostics and extension packaging checks pass.
+- [ ] VS Code and Neovim diagnostics/syntax checks pass, the VS Code `.vsix` packages, and Zed Tree-sitter generation/corpus tests pass.
 - [ ] YSPM package build, archive inspection, install, and removal smoke tests pass.
 - [ ] Benchmarks are run on a recorded machine/toolchain and compared with the 2.2 baseline; publish only measured results.
 - [x] No YTilawa app or YTilawa-specific test/build dependency remains.
