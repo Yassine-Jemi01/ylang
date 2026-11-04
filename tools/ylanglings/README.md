@@ -12,6 +12,7 @@ It is a companion tool rather than a compiler dependency.
 - Python 3.10+
 - A built YLang compiler available as `ylang` on PATH (or pass `--compiler`)
 - No network connection and no third-party Python packages
+- Windows installation commands use the MSYS2 MINGW64 shell; the Python CLI itself is platform-independent
 
 ## Start
 
