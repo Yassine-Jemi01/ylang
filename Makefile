@@ -19,7 +19,7 @@ else
 GAME2D_OUTPUT ?= build/dodge
 endif
 
-.PHONY: all clean test sanitize install uninstall print-version gui gui-example game2d-example install-gui voice voice-example voice-test install-voice check-sdl2 check-voice check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
+.PHONY: all clean test sanitize install uninstall print-version tui-example gui gui-example game2d-example install-gui voice voice-example voice-test install-voice check-sdl2 check-voice check-runtime-template regen-runtime-template frontend-unit-test fuzz-frontend fuzz-smoke
 
 all: $(BIN)
 
@@ -81,6 +81,10 @@ check-sdl2:
 gui: check-sdl2 build/libylang_gui.a
 
 gui-example: check-sdl2 build/gui-example
+
+tui-example: $(BIN)
+	@mkdir -p build
+	./build/ylang build examples/tui-menu.yl -o build/tui-menu
 
 game2d-example: check-sdl2 $(BIN)
 	@mkdir -p build
