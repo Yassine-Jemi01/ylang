@@ -37,6 +37,39 @@ function main() -> int {
 | json.escape(text) | owned_string | Encode a string as a JSON string literal |
 | json.last_error() | string | Read the most recent JSON diagnostic |
 
+## Immutable builders (YLang 2.3 development)
+
+The following example uses only validated raw JSON fragments. It creates a profile, adds a numeric field, builds a string array with `json.escape`, and removes a property by returning a new object.
+
+```yl
+function main() -> int {
+    let owned_string empty_profile = json.object();
+    let owned_string display_name = json.escape("Ada Lovelace");
+    let owned_string named_profile = json.set(empty_profile, "name", display_name);
+    let owned_string complete_profile = json.set(named_profile, "score", "42");
+
+    let owned_string empty_tags = json.array();
+    let owned_string compiler_tag = json.escape("compiler");
+    let owned_string tags = json.push(empty_tags, compiler_tag);
+
+    let owned_string profile_without_score = json.remove(complete_profile, "score");
+    print(complete_profile);
+    print(tags);
+    print(profile_without_score);
+    return 0;
+}
+```
+
+Expected output:
+
+```json
+{"name":"Ada Lovelace","score":42}
+["compiler"]
+{"name":"Ada Lovelace"}
+```
+
+The original strings remain unchanged: each builder returns a new `owned_string`. The complete runnable version is [`examples/json-builders.yl`](../examples/json-builders.yl).
+
 ## Representation and behavior
 
 The parser, accessors, and formatter are part of the documented 2.2 standard-library surface. Immutable object/array builders are additions in the unreleased 2.3 development line; do not assume they are available in a 2.2.0 installation.
