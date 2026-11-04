@@ -213,7 +213,8 @@ static size_t yl_http_header_write(char *data, size_t size, size_t count, void *
     size_t length = bytes;
     while (length > 0U && (data[length - 1U] == '\n' || data[length - 1U] == '\r')) length--;
     if (length == 0U) return bytes;
-    if (length > YL_HTTP_MAX_HEADERS - yl_http_response_header_length - 1U) {
+    if (yl_http_response_header_length >= YL_HTTP_MAX_HEADERS ||
+        length > YL_HTTP_MAX_HEADERS - yl_http_response_header_length - 1U) {
         yl_http_response_headers_too_large = true;
         return 0U;
     }
