@@ -51,6 +51,8 @@ jobs:
         run: ${{ steps.compiler.outputs.make }} clean all CC="${{ steps.compiler.outputs.cc }}"
       - name: Build optional GUI runtime
         run: ${{ steps.compiler.outputs.make }} gui gui-example game2d-example CC="${{ steps.compiler.outputs.cc }}"
+      - name: Build responsive TUI example
+        run: ${{ steps.compiler.outputs.make }} tui-example CC="${{ steps.compiler.outputs.cc }}"
       - name: Build optional Voice runtime and YLang example
         run: ${{ steps.compiler.outputs.make }} voice voice-example voice-test CC="${{ steps.compiler.outputs.cc }}"
       - name: Run regression tests
