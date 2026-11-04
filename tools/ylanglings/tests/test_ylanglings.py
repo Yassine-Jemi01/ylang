@@ -71,6 +71,18 @@ class CliStateTests(unittest.TestCase):
             with mock.patch.object(ylanglings, "PROGRESS", progress_path):
                 self.assertEqual(ylanglings.load_progress(), {"completed": []})
 
+    def test_malformed_progress_shape_and_identifiers_are_sanitized(self):
+        with tempfile.TemporaryDirectory() as directory:
+            progress_path = Path(directory) / "progress.json"
+            with mock.patch.object(ylanglings, "PROGRESS", progress_path):
+                progress_path.write_text("null", encoding="utf-8")
+                self.assertEqual(ylanglings.load_progress(), {"completed": []})
+                progress_path.write_text(
+                    json.dumps({"completed": [1, 1, True, -2, "3", 4]}),
+                    encoding="utf-8",
+                )
+                self.assertEqual(ylanglings.load_progress(), {"completed": [1, 4]})
+
     def test_progress_is_saved_and_loaded(self):
         with tempfile.TemporaryDirectory() as directory:
             config = Path(directory) / "config"
@@ -97,6 +109,32 @@ class CliStateTests(unittest.TestCase):
                 with self.assertRaises(SystemExit) as raised:
                     command(0, ylanglings.load_manifest())
                 self.assertIn("ylanglings list", str(raised.exception))
+
+    def test_user_install_and_uninstall_smoke(self):
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory) / "prefix"
+            config = Path(directory) / "config"
+            environment = {**__import__("os").environ, "XDG_CONFIG_HOME": str(config)}
+            subprocess_run = __import__("subprocess").run
+            subprocess_run(
+                ["make", "-C", str(TOOL_DIR), "install", f"PREFIX={prefix}"],
+                check=True, stdout=__import__("subprocess").PIPE,
+                stderr=__import__("subprocess").STDOUT, text=True,
+            )
+            executable = prefix / "bin" / "ylanglings"
+            self.assertTrue(executable.is_file())
+            listing = subprocess_run(
+                [str(executable), "list"], check=True, capture_output=True,
+                text=True, env=environment,
+            )
+            self.assertIn("26", listing.stdout)
+            subprocess_run(
+                ["make", "-C", str(TOOL_DIR), "uninstall", f"PREFIX={prefix}"],
+                check=True, stdout=__import__("subprocess").PIPE,
+                stderr=__import__("subprocess").STDOUT, text=True,
+            )
+            self.assertFalse(executable.exists())
+            self.assertFalse((prefix / "share" / "ylanglings").exists())
 
 
 if __name__ == "__main__":
