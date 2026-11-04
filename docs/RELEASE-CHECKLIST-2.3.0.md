@@ -29,7 +29,7 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 
 - [ ] AddressSanitizer and UndefinedBehaviorSanitizer suites pass.
 - [ ] Frontend fuzz smoke test completes without crash, hang, or sanitizer finding.
-- [ ] HTTP synchronous/task/streaming integration tests pass, including oversized response-header rejection at the 16 KiB boundary.
+- [ ] HTTP synchronous/task/streaming integration tests pass, including oversized response-header rejection at the 16 KiB boundary and binary stream transport errors returning `-1` after buffered bytes are drained.
 - [ ] Binary file and streaming integration tests pass, including end-of-file, truncation, and buffer-boundary cases.
 - [ ] Voice-to-HTTP-stream integration passes where SDL2_mixer and a supported decoder are available; unavailable optional dependencies are reported as explicit skips.
 - [ ] TUI pseudo-terminal integration passes; interactive input and cursor restoration are reviewed.
