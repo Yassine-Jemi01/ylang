@@ -190,6 +190,12 @@ jobs:
             "root/usr/share/doc/ylang/CHANGELOG.md" \
             "root/usr/share/doc/ylang/CHANGELOG-2.1.0.md" \
             "root/usr/share/doc/ylang/CHANGELOG-2.2.0.md" \
+            "root/usr/share/doc/ylang/CHANGELOG-2.3.0.md" \
+            "root/usr/share/doc/ylang/ROADMAP-2.3.0.md" \
+            "root/usr/share/doc/ylang/JSON.md" \
+            "root/usr/share/doc/ylang/HTTP-STREAMING.md" \
+            "root/usr/share/doc/ylang/CLI.md" \
+            "root/usr/share/doc/ylang/error-codes.md" \
             "root/usr/share/doc/ylang/ACCEPTANCE-2.2.0.md" \
             "root/usr/share/doc/ylang/MEMORY-MODEL.md" \
             "root/usr/share/doc/ylang/HTTP.md" \
@@ -316,6 +322,11 @@ jobs:
           test -s website/learn/reference/MEMORY-MODEL.html
           test -s website/learn/reference/CHANGELOG-2.1.0.html
           test -s website/learn/reference/CHANGELOG-2.2.0.html
+          test -s website/learn/reference/CHANGELOG-2.3.0.html
+          test -s website/learn/reference/ROADMAP-2.3.0.html
+          test -s website/learn/reference/JSON.html
+          test -s website/learn/reference/HTTP-STREAMING.html
+          test -s website/learn/reference/CLI.html
           test -s website/learn/reference/ACCEPTANCE-2.2.0.html
           test -s website/learn/reference/PERFORMANCE.html
           test -s website/learn/reference/SECURITY.html
