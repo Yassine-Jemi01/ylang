@@ -52,6 +52,8 @@ REFERENCE_DOCS = (
     "STABLE-RELEASE-CHECKLIST.md",
     "CHANGELOG-2.0-BETA.md",
     "BETA-RELEASE-CHECKLIST.md",
+    "RELEASE-CHECKLIST-2.3.0.md",
+    "POST-RELEASE-CHECKLIST-2.3.0.md",
 )
 
 LINK = re.compile(r"\]\(([^)]+)\)")
