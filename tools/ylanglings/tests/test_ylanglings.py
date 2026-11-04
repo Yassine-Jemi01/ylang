@@ -105,6 +105,14 @@ class CliStateTests(unittest.TestCase):
         self.assertIn("Optional: nested loops", rendered)
         self.assertIn("2/26 completed", rendered)
 
+    def test_compiler_timeout_is_reported_without_hanging(self):
+        output = io.StringIO()
+        timeout = ylanglings.subprocess.TimeoutExpired(cmd=["ylang"], timeout=60)
+        with mock.patch.object(ylanglings.subprocess, "run", side_effect=timeout):
+            with contextlib.redirect_stdout(output):
+                self.assertIsNone(ylanglings.run_compiler("ylang", "check", "exercise.yl"))
+        self.assertIn("60-second", output.getvalue())
+
     def test_invalid_exercise_number_has_actionable_error(self):
         for command in (ylanglings.command_run, ylanglings.command_hint):
             with self.subTest(command=command.__name__):
