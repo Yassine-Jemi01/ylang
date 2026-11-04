@@ -113,6 +113,9 @@ function Header() {
                   <a href={`${SITE}learn/reference/DEBUGGER.html`}><FiTerminal /> Debugger (experimental) <FiArrowUpRight className="menu-external" /></a>
                 </DropdownMenu.Item>
                 <DropdownMenu.Item className="resource-menu-item" asChild>
+                  <a href={`${SITE}learn/reference/ROADMAP-2.3.0.html`}><FiLayers /> 2.3 development roadmap <FiArrowUpRight className="menu-external" /></a>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item className="resource-menu-item" asChild>
                   <a href={`${SITE}classic.html`}><FiLayers /> Classic homepage <FiArrowUpRight className="menu-external" /></a>
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
