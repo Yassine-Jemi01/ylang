@@ -1740,6 +1740,10 @@ static bool yl_tui_read_byte_timeout(unsigned char *value, int timeout_ms) {
 
 static int64_t yl_tui_read_key_internal(bool blocking) {
     if (!yl_tui_active && !yl_tui_init()) return -1;
+    if (fflush(stdout) != 0) {
+        yl_tui_set_error("could not flush terminal output before reading input");
+        return -1;
+    }
 #ifdef _WIN32
     if (!blocking && !_kbhit()) return -1;
     int key = _getch();
@@ -1834,8 +1838,14 @@ static bool yl_tui_clear(void) {
 }
 
 static bool yl_tui_write(const char *text) {
-    bool okay = text && fputs(text, stdout) != EOF && fflush(stdout) == 0;
-    if (!okay) yl_tui_set_error("could not write terminal output");
+    bool okay = text && fputs(text, stdout) != EOF;
+    if (!okay) yl_tui_set_error("could not buffer terminal output");
+    return okay;
+}
+
+static bool yl_tui_flush(void) {
+    bool okay = fflush(stdout) == 0;
+    if (!okay) yl_tui_set_error("could not flush terminal output");
     return okay;
 }
 
