@@ -247,7 +247,7 @@ def run_compiler(compiler, *arguments):
         raise SystemExit(f"Could not run YLang compiler: {error}") from error
 
 
-def command_verify(number, manifest, compiler):
+def command_verify(number, manifest, compiler, persist_progress=True):
     if number < 1 or number > len(manifest):
         raise SystemExit("Unknown exercise number. Run 'ylanglings list'.")
     item = manifest[number - 1]
@@ -264,11 +264,12 @@ def command_verify(number, manifest, compiler):
         return 1
 
     if item.get("mode") == "check":
-        progress = load_progress()
-        completed = completed_exercises(progress, manifest)
-        completed.add(number)
-        progress["completed"] = sorted(completed)
-        save_progress(progress)
+        if persist_progress:
+            progress = load_progress()
+            completed = completed_exercises(progress, manifest)
+            completed.add(number)
+            progress["completed"] = sorted(completed)
+            save_progress(progress)
         print(f"Exercise {number:02d} passed compiler checking: {item['title']}")
         print("This API exercise is check-only; runtime integration is covered separately.")
         return 0
@@ -308,30 +309,24 @@ def command_verify(number, manifest, compiler):
         print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
         return 1
 
-    progress = load_progress()
-    completed = completed_exercises(progress, manifest)
-    completed.add(number)
-    progress["completed"] = sorted(completed)
-    save_progress(progress)
+    if persist_progress:
+        progress = load_progress()
+        completed = completed_exercises(progress, manifest)
+        completed.add(number)
+        progress["completed"] = sorted(completed)
+        save_progress(progress)
     print(f"Exercise {number:02d} passed: {item['title']}")
-    print("Progress saved locally. Continue with: ylanglings next")
+    if persist_progress:
+        print("Progress saved locally. Continue with: ylanglings next")
     return 0
 
 
 def command_verify_all(manifest, compiler):
-    global CONFIG, PROGRESS
-    original_config, original_progress = CONFIG, PROGRESS
     failures = []
-    try:
-        with tempfile.TemporaryDirectory(prefix="ylanglings-verify-") as state_directory:
-            CONFIG = Path(state_directory)
-            PROGRESS = CONFIG / "progress.json"
-            for number, item in enumerate(manifest, 1):
-                print(f"\n=== {number:02d}/{len(manifest):02d}: {item['title']} ===")
-                if command_verify(number, manifest, compiler) != 0:
-                    failures.append(number)
-    finally:
-        CONFIG, PROGRESS = original_config, original_progress
+    for number, item in enumerate(manifest, 1):
+        print(f"\n=== {number:02d}/{len(manifest):02d}: {item['title']} ===")
+        if command_verify(number, manifest, compiler, persist_progress=False) != 0:
+            failures.append(number)
 
     if failures:
         failed = ", ".join(f"{number:02d}" for number in failures)
