@@ -37,6 +37,7 @@ local SHORT_MESSAGES = {
   E2012 = "char must be one byte",
   E2013 = "Cannot use void in an f-string",
   E2014 = "No calls or assignments inside f-strings",
+  E2015 = "String literals cannot contain NUL bytes",
   E2017 = "const arrays are not supported",
   E2018 = "Array needs an initializer",
   E2019 = "Array literal needs an array declaration",
