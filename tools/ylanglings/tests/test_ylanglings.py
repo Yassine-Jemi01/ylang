@@ -202,6 +202,17 @@ class CliStateTests(unittest.TestCase):
                 self.assertTrue(progress_path.is_file())
                 self.assertEqual(list(config.glob(".progress-*.tmp")), [])
 
+    def test_progress_directory_creation_failure_has_actionable_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config_file = Path(directory) / "not-a-directory"
+            config_file.write_text("occupied", encoding="utf-8")
+            with mock.patch.object(ylanglings, "CONFIG", config_file), mock.patch.object(
+                ylanglings, "PROGRESS", config_file / "progress.json"
+            ):
+                with self.assertRaises(SystemExit) as raised:
+                    ylanglings.save_progress({"completed": [1]})
+            self.assertIn("Could not save YLanglings progress", str(raised.exception))
+
     def test_reset_atomically_restores_starter_and_clears_completion(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "exercises"
