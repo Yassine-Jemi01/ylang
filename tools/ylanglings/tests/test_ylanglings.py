@@ -178,6 +178,31 @@ class CliStateTests(unittest.TestCase):
                 self.assertTrue(progress_path.is_file())
                 self.assertEqual(list(config.glob(".progress-*.tmp")), [])
 
+    def test_reset_atomically_restores_starter_and_clears_completion(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "exercises"
+            root.mkdir()
+            (root / "starter").mkdir()
+            exercise = root / "exercise.yl"
+            starter = root / "starter" / "exercise.yl"
+            exercise.write_text("learner changes\\n", encoding="utf-8")
+            starter.write_text("original starter\\n", encoding="utf-8")
+            config = Path(directory) / "config"
+            progress_path = config / "progress.json"
+            with mock.patch.object(ylanglings, "EXERCISES", root), mock.patch.object(
+                ylanglings, "CONFIG", config
+            ), mock.patch.object(ylanglings, "PROGRESS", progress_path):
+                ylanglings.save_progress({"completed": [1]})
+                with contextlib.redirect_stdout(io.StringIO()):
+                    ylanglings.command_reset(1, [{
+                        "title": "Reset fixture",
+                        "file": "exercise.yl",
+                        "starter": "starter/exercise.yl",
+                    }])
+                self.assertEqual(exercise.read_text(encoding="utf-8"), "original starter\\n")
+                self.assertEqual(ylanglings.load_progress(), {"completed": []})
+                self.assertEqual(list(root.glob(".ylanglings-reset-*.tmp")), [])
+
     def test_list_shows_core_and_optional_exercises(self):
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
