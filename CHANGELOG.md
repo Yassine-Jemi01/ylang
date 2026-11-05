@@ -9,6 +9,8 @@ All notable changes to YLang are documented here. This project follows semantic 
 - Aligned the asynchronous HTTP client User-Agent with the 2.3 runtime and removed an unused task-state field that belonged only to streaming metadata.
 
 YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable release.
+
+- POSIX C and NASM builds now publish executables atomically from private staging directories, preserving existing outputs when compilation or linking fails.
 - Improved YLanglings progress-save error handling when its configuration directory cannot be created.
 - Made `build-asm` publish linked executables atomically so linker failures preserve any existing output file.
 - Guarded YLanglings uninstall against recursively deleting an unrelated directory and added a regression test.
