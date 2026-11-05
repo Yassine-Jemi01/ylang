@@ -1824,6 +1824,7 @@ static HANDLE yl_tui_input_handle;
 static HANDLE yl_tui_output_handle;
 static DWORD yl_tui_saved_input_mode;
 static DWORD yl_tui_saved_output_mode;
+static bool yl_tui_output_mode_saved;
 #else
 static struct termios yl_tui_saved_termios;
 static const int yl_tui_signals[] = { SIGINT, SIGTERM, SIGHUP, SIGQUIT };
@@ -1881,8 +1882,10 @@ static void yl_tui_restore(void) {
 #ifdef _WIN32
         if (yl_tui_input_handle != INVALID_HANDLE_VALUE)
             (void)SetConsoleMode(yl_tui_input_handle, yl_tui_saved_input_mode);
-        if (yl_tui_output_handle != INVALID_HANDLE_VALUE)
+        if (yl_tui_output_mode_saved &&
+            yl_tui_output_handle != INVALID_HANDLE_VALUE)
             (void)SetConsoleMode(yl_tui_output_handle, yl_tui_saved_output_mode);
+        yl_tui_output_mode_saved = false;
 #else
         (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &yl_tui_saved_termios);
 #endif
@@ -1926,6 +1929,7 @@ static bool yl_tui_init(void) {
         yl_tui_set_error("could not read Windows console output mode");
         return false;
     }
+    yl_tui_output_mode_saved = true;
 #ifdef ENABLE_VIRTUAL_TERMINAL_PROCESSING
     if (!SetConsoleMode(yl_tui_output_handle,
                         yl_tui_saved_output_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING)) {
