@@ -180,7 +180,7 @@ def compiler_path(value):
 
 def confined_exercise_path(item, field):
     relative_path = item[field]
-    if "\\0" in relative_path:
+    if "\0" in relative_path:
         raise SystemExit(f"Unsafe {field} path in YLanglings manifest.")
     tool_root = ROOT.resolve()
     try:
