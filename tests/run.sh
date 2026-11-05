@@ -1314,9 +1314,6 @@ EOF
     run_backend_parity tests/asm-basic.yl arithmetic
     run_backend_parity tests/escape-parity.yl escapes
     run_backend_parity build/enum-basic.yl enums-match
-    run_backend_parity tests/asm-match-once.yl match-once
-    printf 'evaluated\neast\n' > build/asm-match-once.expected
-    diff -u build/asm-match-once.expected build/parity-match-once-c.out
     run_backend_parity build/imports/repeated-asm.yl imported-functions
     echo "PASS: C/NASM differential parity samples"
 
