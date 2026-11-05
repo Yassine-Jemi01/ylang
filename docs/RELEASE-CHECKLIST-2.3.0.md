@@ -36,7 +36,7 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] TUI pseudo-terminal integration passes; interactive input and cursor restoration are reviewed.
 - [ ] Windows TUI smoke confirms raw input, ANSI cursor/screen output, and restoration of both saved console modes; interactive coverage remains a release gate.
 - [ ] `make tui-example` builds the responsive terminal-menu sample from a clean checkout; its polling loop, narrow-width layout, and resize refresh are reviewed.
-- [ ] JSON parser/accessor tests pass for malformed numbers, invalid escapes, Unicode/surrogates, UTF-8 validation, U+0000, lookup failures, and negative/out-of-range array indices with `json.last_error()` diagnostics.
+- [ ] JSON parser/accessor/escape tests pass for malformed numbers, invalid escapes, Unicode/surrogates, UTF-8 validation (including invalid bytes passed to `json.escape` and object keys), U+0000, lookup failures, and negative/out-of-range array indices with `json.last_error()` diagnostics.
 - [ ] JSON builder tests pass for object/array construction, escaping, duplicate keys, immutability, invalid fragments/container types, and `json.last_error()`.
 - [ ] JSON nesting accepts 128 containers and rejects 129, including when builders combine individually valid values.
 - [ ] JSON output accepts exactly 16 MiB and rejects larger generated output without returning truncated JSON.
