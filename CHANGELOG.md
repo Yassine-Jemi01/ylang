@@ -9,6 +9,7 @@ All notable changes to YLang are documented here. This project follows semantic 
 - Aligned the asynchronous HTTP client User-Agent with the 2.3 runtime and removed an unused task-state field that belonged only to streaming metadata.
 
 YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable release.
+- Improved diagnostic rendering on large source files by locating source excerpts from token offsets, avoiding repeated full source-prefix scans.
 
 - Removed the YTilawa application and its dedicated fixtures/build steps while retaining shared TUI, Voice, HTTP streaming, and binary I/O libraries.
 - Added compiler resource limits for diagnostic count/output, import depth, module count, and aggregate project source size; root files are size-checked before allocation and embedded NUL bytes are rejected in root/imported sources.
