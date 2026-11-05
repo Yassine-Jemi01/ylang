@@ -64,5 +64,9 @@ function main() -> int {
     let owned_string wrong_push_target = json.push("{}", "1");
     print(string.length(wrong_push_target) == 0);
     print(string.contains(json.last_error(), "requires an array"));
+    let owned_string cleared_error_object = json.object();
+    print(string.length(json.last_error()) == 0);
+    let owned_string cleared_error_array = json.array();
+    print(string.length(json.last_error()) == 0);
     return 0;
 }
