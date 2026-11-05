@@ -1227,6 +1227,7 @@ static const char *yl_json_set(const char *raw, const char *key, const char *val
     p.i = a;
     if (p.s[p.i++] != '{') { yl_json_error("json.set requires an object"); return ""; }
     const char *encoded = yl_json_escape(key ? key : "");
+    if (!encoded[0]) return "";
     YLJsonBuffer out = {0}; yl_json_buffer_char(&out, '{');
     bool first = true, replaced = false;
     yl_json_ws(&p);
