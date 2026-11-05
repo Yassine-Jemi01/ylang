@@ -51,7 +51,7 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] All 16 core exercises pass against the exact candidate compiler; runnable exercises build/run with expected output and compile-only API checks are explicitly identified.
 - [ ] All 10 optional challenges pass their documented verification mode against the exact candidate compiler; the release workflow runs `ylanglings --compiler ./build/ylang verify-all` on Linux/macOS and the native Windows compiler.
 - [ ] CLI list/next/next --optional/run/edit/hint/verify/verify-all/reset behavior, progress persistence/recovery (including deeply nested corrupt JSON and unwritable configuration paths), malformed editor command handling, invalid exercise handling, safe manifest path validation, and custom compiler selection pass regression tests.
-- [ ] User install/uninstall smoke test passes; the installed tool works offline and does not require third-party Python packages.
+- [ ] User install/uninstall smoke test passes, including refusal to recursively remove an unexpected data directory; the installed tool works offline and does not require third-party Python packages.
 
 ## Platforms, editor support, docs, and packaging
 
