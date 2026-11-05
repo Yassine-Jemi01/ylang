@@ -20,12 +20,14 @@ static void voice_clear_error(void)
     SDL_AtomicUnlock(&voice_error_lock);
 }
 
-static bool voice_has_error(void)
+static void voice_set_error_if_empty(const char *message)
 {
     SDL_AtomicLock(&voice_error_lock);
-    bool has_error = voice_error[0] != '\0';
+    if (!voice_error[0]) {
+        (void)snprintf(voice_error, sizeof(voice_error), "%s",
+                       message && *message ? message : "unknown audio error");
+    }
     SDL_AtomicUnlock(&voice_error_lock);
-    return has_error;
 }
 typedef struct {
     int64_t stream_id;
@@ -278,7 +280,7 @@ bool ylvoice_play_stream(int64_t stream_id, YLVoiceStreamRead read_callback,
        freesrc is zero, so we close it only after the decoder is halted/freed. */
     Mix_Music *next = Mix_LoadMUS_RW(rwops, 0);
     if (!next) {
-        if (!voice_has_error()) voice_set_error(Mix_GetError());
+        voice_set_error_if_empty(Mix_GetError());
         (void)SDL_RWclose(rwops);
         return false;
     }
