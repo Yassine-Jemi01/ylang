@@ -320,7 +320,7 @@ jobs:
               [.statuses[] | select((.context // "") | startswith($prefix))]
               | sort_by(.created_at // "")
               | group_by(.context)
-              | map(.[-1])
+              | map(max_by(.created_at // ""))
             ' <<< "$response")"
             count="$(jq 'length' <<< "$matching")"
             if [[ "$count" -lt "$expected_contexts" ]]; then
