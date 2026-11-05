@@ -85,7 +85,7 @@ void diagnostic(Compiler *c, Token token, const char *level,
              */
             line_start = token.start;
             while (line_start > shown_source &&
-                   line_start[-1] != '\\n' && line_start[-1] != '\\r') {
+                   line_start[-1] != '\n' && line_start[-1] != '\r') {
                 line_start--;
             }
             current_line = line;
@@ -96,7 +96,7 @@ void diagnostic(Compiler *c, Token token, const char *level,
         line_start = shown_source;
         while (shown_source && current_line < line &&
                line_start < shown_source + shown_source_length) {
-            if (*line_start++ == '\\n') current_line++;
+            if (*line_start++ == '\n') current_line++;
         }
     }
     const char *line_end = line_start;
