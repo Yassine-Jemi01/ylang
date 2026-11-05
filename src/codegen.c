@@ -556,6 +556,7 @@ static void emit_fstring_expr(StringBuilder *sb, Expr *expr)
             switch (embedded->type) {
                 case TYPE_INT:
                 case TYPE_HTTP_TASK:
+                case TYPE_HTTP_STREAM:
                     sb_append(&args, "(long long)("); emit_expr(&args, embedded); sb_append(&args, ")");
                     break;
                 case TYPE_FLOAT:
@@ -1231,6 +1232,7 @@ static void emit_print_value(FILE *out, Expr *expr, unsigned indent)
             fputs("));\n", out); break;
         case TYPE_INT:
         case TYPE_HTTP_TASK:
+        case TYPE_HTTP_STREAM:
             fputs("printf(\"%lld\", (long long)(", out); emit_expr_to_file(out, expr);
             fputs("));\n", out); break;
         case TYPE_VOID: case TYPE_ERROR:
