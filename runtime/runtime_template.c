@@ -741,6 +741,10 @@ static bool yl_http_stream_pump(YLHttpStream *stream) {
         if (message->data.result != CURLE_OK) {
             if (stream->response_headers_too_large)
                 yl_http_stream_error_set(stream, "HTTP response headers exceeded the 16 KiB limit");
+            else if (stream->error[0])
+                /* Preserve the more specific callback/pump error instead of
+                   replacing it with libcurl's generic write-error text. */
+                yl_http_stream_error_set(stream, stream->error);
             else if (stream->error_buffer[0])
                 yl_http_stream_error_set(stream, stream->error_buffer);
             else
