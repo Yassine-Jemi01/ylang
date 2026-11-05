@@ -1526,6 +1526,7 @@ static const char *yl_json_at(const char *text,int64_t index) {
     yl_json_error("JSON array index out of range");return "";
 }
 static const char *yl_json_escape(const char *value) {
+    yl_json_error("");
     if (!value) {
         yl_json_error("JSON string input is null");
         return "";
