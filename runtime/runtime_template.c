@@ -1525,7 +1525,22 @@ static const char *yl_json_at(const char *text,int64_t index) {
     yl_json_error("JSON array index out of range");return "";
 }
 static const char *yl_json_escape(const char *value) {
-    size_t n=strlen(value), cap;
+    if (!value) {
+        yl_json_error("JSON string input is null");
+        return "";
+    }
+    size_t n = strlen(value);
+    /* JSON text must contain valid UTF-8; escaping ASCII controls alone is
+       not enough to make arbitrary byte strings valid JSON. */
+    YLJson utf8 = {value, n, 0U, 0U};
+    while (utf8.i < utf8.n) {
+        unsigned char c = (unsigned char)utf8.s[utf8.i++];
+        if (c >= 0x80U && !yl_json_utf8_advance(&utf8, c)) {
+            yl_json_error("JSON string is not valid UTF-8");
+            return "";
+        }
+    }
+    size_t cap;
     if(n>(SIZE_MAX-3U)/6U) yl_runtime_error("JSON string is too large");
     cap=n*6U+3U; char *o=malloc(cap);if(!o)yl_runtime_error("out of memory");
     size_t j=0U;o[j++]='"';
