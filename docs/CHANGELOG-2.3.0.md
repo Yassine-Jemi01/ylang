@@ -8,6 +8,7 @@
 
 ## Work integrated so far
 - Hardened NUL handling across the string boundary: `io.read_line` and formatting reject embedded zero bytes at runtime, while buffered synchronous and task-based HTTP string results reject binary NUL bodies with a clear error and direct users to binary-safe streaming.
+- The text-oriented `http.stream_read` now also rejects NUL-containing chunks with a stream error instead of returning a silently truncated string; `http.stream_read_buffer` remains the binary-safe path.
 - Rejected escaped NUL bytes in string literals and f-string text instead of silently truncating NUL-terminated values; the one-byte `char` type retains its zero-byte support. Added compiler regression fixtures and editor diagnostic labels.
 - Fixed C-backend formatting of `http_stream` handles in both `print` and f-strings; the HTTP streaming integration fixture now covers both forms.
 - Fixed C-backend formatting of `http_stream` handles in both `print` and f-strings; the HTTP streaming integration fixture now covers both forms.
