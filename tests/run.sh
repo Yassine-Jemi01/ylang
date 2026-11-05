@@ -52,6 +52,40 @@ for staging_directory in build/.ylang-tmp-*; do
     fi
 done
 
+# Exercise the maximum combined optional-library flag path without invoking a real linker.
+mkdir -p build/fake-native-tools
+cat > build/fake-native-tools/pkg-config <<'EOF'
+#!/bin/sh
+i=1
+while [ "$i" -le 64 ]; do
+    printf '%s ' "-DFAKE_DEPENDENCY_FLAG_$i"
+    i=$((i + 1))
+done
+printf '\\n'
+EOF
+cat > build/fake-native-tools/gcc <<'EOF'
+#!/bin/sh
+count=0
+while [ "$#" -gt 0 ]; do
+    if [ "$1" = "-o" ]; then
+        shift
+        : > "$1"
+        chmod 755 "$1"
+        printf '%s\\n' "$count" > build/native-argv-count
+        exit 0
+    fi
+    count=$((count + 1))
+    shift
+done
+exit 2
+EOF
+chmod +x build/fake-native-tools/pkg-config build/fake-native-tools/gcc
+./build/ylang check tests/native-flags-combined.yl >/dev/null
+PATH="$PWD/build/fake-native-tools:$PATH" ./build/ylang build tests/native-flags-combined.yl -o build/native-flags-combined --cc gcc > build/native-flags-combined.out
+test -s build/native-flags-combined
+test "$(cat build/native-argv-count)" -gt 200
+grep -q 'Build succeeded: build/native-flags-combined' build/native-flags-combined.out
+
 # String and character escapes must have the same byte semantics in generated C.
 ./build/ylang check tests/escape-parity.yl >/dev/null
 ./build/ylang build tests/escape-parity.yl -o build/test-escape-parity >/dev/null
