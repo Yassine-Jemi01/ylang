@@ -45,10 +45,12 @@ fi
 grep -q 'native compilation failed' build/atomic-c-fail.out
 ./build/atomic-c-target > build/atomic-c-preserved.out
 diff -u tests/expected-type-conversions.txt build/atomic-c-preserved.out
-if find build -maxdepth 1 -type d -name '.ylang-tmp-*' -print -quit | grep -q .; then
-    echo "FAIL: native build left a private staging directory" >&2
-    exit 1
-fi
+for staging_directory in build/.ylang-tmp-*; do
+    if [ -d "$staging_directory" ]; then
+        echo "FAIL: native build left a private staging directory: $staging_directory" >&2
+        exit 1
+    fi
+done
 
 # String and character escapes must have the same byte semantics in generated C.
 ./build/ylang check tests/escape-parity.yl >/dev/null
@@ -1239,10 +1241,12 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     grep -q 'ld failed' build/atomic-nasm-fail.out
     ./build/atomic-nasm-target > build/atomic-nasm-preserved.out
     diff -u tests/expected-asm-basic.txt build/atomic-nasm-preserved.out
-    if find build -maxdepth 1 -type d -name '.ylang-tmp-*' -print -quit | grep -q .; then
-        echo "FAIL: build-asm left a staged executable after linker failure" >&2
-        exit 1
-    fi
+    for staging_directory in build/.ylang-tmp-*; do
+        if [ -d "$staging_directory" ]; then
+            echo "FAIL: build-asm left a private staging directory after linker failure: $staging_directory" >&2
+            exit 1
+        fi
+    done
 
     # Empty string literals must emit exactly one terminator and print a blank line.
     cat > build/asm-empty-string.yl <<'EOF'
