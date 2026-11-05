@@ -277,6 +277,11 @@ static Expr *parse_fstring(Parser *p, Token token)
             size_t consumed = 0;
             if (decode_escape_sequence(inside + pos + 1, length - pos - 1,
                                        &decoded, &consumed)) {
+                if (decoded == 0U) {
+                    diagnostic(p->compiler, token, "error", "E2015",
+                               "F-string text cannot contain NUL bytes.",
+                               "Use a byte buffer for binary data; keep string values NUL-free.");
+                }
                 char output = (char)decoded;
                 sb_append_n(&text, &output, 1);
                 pos += consumed + 1U;
