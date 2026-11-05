@@ -1,5 +1,7 @@
 # YLang 2.3.0 — Development Notes
 
+- Hardened the stable-publication CircleCI gate so it waits for both required job contexts and evaluates the latest result per context, rather than accepting the first completed job or an obsolete failed rerun.
+
 - Applied the 16 MiB generated-output limit to `json.escape`, accounting for quotes and control-byte expansion; added exact-boundary and overflow fixtures.
 
 **Status: unreleased development notes.** YLang 2.2.0 remains the latest stable release. This document records work merged into the 2.3 development branch; it is not a release announcement and does not imply that validation gates have passed.
