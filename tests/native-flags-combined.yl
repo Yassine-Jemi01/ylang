@@ -1,0 +1,9 @@
+function main() -> int {
+    let bool gui_ready = gui.init();
+    let bool voice_ready = voice.init();
+    let http_stream stream = http.stream_open("GET", "", "", "");
+    let bool stream_started = voice.play_stream(stream);
+    gui.shutdown();
+    voice.shutdown();
+    return 0;
+}
