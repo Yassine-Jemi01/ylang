@@ -10,7 +10,7 @@ From the repository root, run `make tui-example` to build the keyboard-driven, r
 
 | Function | Return | Purpose |
 |---|---|---|
-| `tui.init()` | `bool` | Require interactive stdin/stdout, enable raw input, and disable terminal echo |
+| `tui.init()` | `bool` | Require interactive stdin/stdout, enable raw input, disable echo, and enable ANSI output on Windows consoles |
 | `tui.shutdown()` | `void` | Restore the terminal's saved input mode |
 | `tui.read_key()` | `int` | Block until a key or supported escape sequence is read |
 | `tui.poll_key()` | `int` | Return a key immediately, or `-1` when no key is available |
@@ -34,7 +34,7 @@ Unknown escape sequences return Escape (27). The current implementation does not
 
 ## Resource safety
 
-Call `tui.init()` before entering the UI loop and always call `tui.shutdown()` before normal exit. The runtime also registers a process-exit restoration handler, so a normal process exit restores the saved terminal mode. On POSIX, SIGINT, SIGTERM, SIGHUP, and SIGQUIT also restore the saved terminal mode and cursor before the process exits. Applications should still use a cleanup path for errors and user-requested exits.
+Call `tui.init()` before entering the UI loop and always call `tui.shutdown()` before normal exit. The runtime also registers a process-exit restoration handler, so a normal process exit restores the saved terminal mode. On Windows, initialization saves and enables both console input and output modes; if ANSI output cannot be enabled, initialization fails and restores the input mode already changed. On POSIX, SIGINT, SIGTERM, SIGHUP, and SIGQUIT also restore the saved terminal mode and cursor before the process exits. Applications should still use a cleanup path for errors and user-requested exits.
 
 The API is synchronous. `tui.read_key()` blocks until input arrives; `tui.poll_key()` is nonblocking and returns `-1` when idle. Use `tui.sleep_ms()` between event-loop polls to avoid busy loops.
 
