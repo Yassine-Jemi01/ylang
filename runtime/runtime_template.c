@@ -1880,9 +1880,11 @@ static void yl_tui_set_error(const char *message) {
 static void yl_tui_restore(void) {
     if (yl_tui_active) {
 #ifdef _WIN32
-        if (yl_tui_input_handle != INVALID_HANDLE_VALUE)
+        if (yl_tui_input_handle != NULL &&
+            yl_tui_input_handle != INVALID_HANDLE_VALUE)
             (void)SetConsoleMode(yl_tui_input_handle, yl_tui_saved_input_mode);
         if (yl_tui_output_mode_saved &&
+            yl_tui_output_handle != NULL &&
             yl_tui_output_handle != INVALID_HANDLE_VALUE)
             (void)SetConsoleMode(yl_tui_output_handle, yl_tui_saved_output_mode);
         yl_tui_output_mode_saved = false;
@@ -1906,7 +1908,7 @@ static bool yl_tui_init(void) {
     }
 #ifdef _WIN32
     yl_tui_input_handle = GetStdHandle(STD_INPUT_HANDLE);
-    if (yl_tui_input_handle == INVALID_HANDLE_VALUE ||
+    if (yl_tui_input_handle == NULL || yl_tui_input_handle == INVALID_HANDLE_VALUE ||
         !GetConsoleMode(yl_tui_input_handle, &yl_tui_saved_input_mode)) {
         yl_tui_set_error("could not read Windows console input mode");
         return false;
@@ -1923,7 +1925,7 @@ static bool yl_tui_init(void) {
     yl_tui_active = true;
 
     yl_tui_output_handle = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (yl_tui_output_handle == INVALID_HANDLE_VALUE ||
+    if (yl_tui_output_handle == NULL || yl_tui_output_handle == INVALID_HANDLE_VALUE ||
         !GetConsoleMode(yl_tui_output_handle, &yl_tui_saved_output_mode)) {
         yl_tui_restore();
         yl_tui_set_error("could not read Windows console output mode");
