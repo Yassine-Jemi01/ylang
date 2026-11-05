@@ -24,6 +24,7 @@ bool ylvoice_is_playing(void);
 bool ylvoice_is_paused(void);
 bool ylvoice_is_finished(void);
 bool ylvoice_set_volume(int64_t percent);
+/* Returns a per-thread snapshot, valid until the next call on the same thread. */
 const char *ylvoice_last_error(void);
 void ylvoice_shutdown(void);
 
