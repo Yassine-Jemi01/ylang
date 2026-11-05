@@ -1173,7 +1173,11 @@ bool generate_asm(Compiler *compiler, const char *path)
     if (ctx.okay) emit_runtime(&ctx);
     bool okay = ctx.okay && !ferror(out);
     if (fclose(out) != 0) okay = false;
-    if (!okay) fprintf(stderr, "ylang: failed while writing NASM source '%s'.\n", path);
+    if (!okay) {
+        fprintf(stderr, "ylang: failed while writing NASM source '%s'.\\n", path);
+        /* Never leave truncated assembly that could be mistaken for valid output. */
+        (void)remove(path);
+    }
 
     for (size_t i = 0; i < ctx.string_count; i++) free(ctx.strings[i].bytes);
     free(ctx.strings);
