@@ -122,6 +122,19 @@ class ManifestTests(unittest.TestCase):
                 with self.assertRaisesRegex(SystemExit, "Duplicate reference solution"):
                     ylanglings.load_manifest()
 
+    def test_exercise_paths_are_revalidated_at_use_time(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "ylanglings"
+            exercises = root / "exercises"
+            exercises.mkdir(parents=True)
+            with mock.patch.object(ylanglings, "ROOT", root), mock.patch.object(
+                ylanglings, "EXERCISES", exercises
+            ):
+                with self.assertRaisesRegex(SystemExit, "Unsafe file path"):
+                    ylanglings.exercise_path({"file": "../outside.yl"})
+                with self.assertRaisesRegex(SystemExit, "Unsafe starter path"):
+                    ylanglings.starter_path({"starter": "../outside.yl"})
+
     def test_manifest_rejects_deep_and_oversized_json_cleanly(self):
         with tempfile.TemporaryDirectory() as directory:
             manifest_path = Path(directory) / "manifest.json"
