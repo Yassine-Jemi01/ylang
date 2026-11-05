@@ -192,6 +192,33 @@ if ./build/ylang check build/embedded-nul.yl > build/embedded-nul.out 2>&1; then
 fi
 grep -q 'contains a NUL byte' build/embedded-nul.out
 
+# C-backed strings are NUL-terminated: reject escaped zero bytes instead of
+# silently truncating a source literal or f-string at runtime.
+cat > build/string-nul-literal.yl <<'EOF'
+function main() -> int {
+    let string value = "before\\0after";
+    return 0;
+}
+EOF
+if ./build/ylang check build/string-nul-literal.yl > build/string-nul-literal.out 2>&1; then
+    echo "FAIL: a string literal containing an escaped NUL byte was accepted" >&2
+    exit 1
+fi
+grep -q 'E2015' build/string-nul-literal.out
+
+cat > build/fstring-nul-literal.yl <<'EOF'
+function main() -> int {
+    let int value = 1;
+    print(f"before\\0{value}");
+    return 0;
+}
+EOF
+if ./build/ylang check build/fstring-nul-literal.yl > build/fstring-nul-literal.out 2>&1; then
+    echo "FAIL: f-string text containing an escaped NUL byte was accepted" >&2
+    exit 1
+fi
+grep -q 'E2015' build/fstring-nul-literal.out
+
 # Excessively nested expressions must fail with a parser diagnostic, not a crash.
 {
     printf 'function main() -> int { return '
