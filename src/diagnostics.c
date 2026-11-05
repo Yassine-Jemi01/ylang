@@ -84,12 +84,10 @@ void diagnostic(Compiler *c, Token token, const char *level,
              * for every diagnostic (up to 100 times on large inputs).
              */
             line_start = token.start;
-            const char *source_end = shown_source + shown_source_length;
             while (line_start > shown_source &&
                    line_start[-1] != '\\n' && line_start[-1] != '\\r') {
                 line_start--;
             }
-            if (line_start > source_end) line_start = shown_source;
             current_line = line;
             token_in_source = true;
         }
