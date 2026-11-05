@@ -7,6 +7,7 @@
 - Fixed binary buffer cleanup so freeing a parent or nested slice invalidates and releases all descendant slice handles without leaving orphaned slots; expanded the dynamic-buffer regression fixture for root and non-root parent release.
 - Preserved specific HTTP streaming callback errors when libcurl reports a generic transfer/write failure, so callers retain the actionable runtime diagnostic.
 - Fixed `json.at` so negative indices set the same explicit out-of-range diagnostic as other invalid array indices.
+- Hardened `json.escape` and JSON builder keys to reject invalid UTF-8 instead of emitting malformed JSON strings.
 - Removed the YTilawa application and its app-specific source, fixtures, and build steps. Shared TUI, Voice, HTTP streaming, and binary I/O facilities remain part of YLang.
 - Added compiler resource limits for diagnostic output, module count, aggregate project source size, and import depth. Root files are size-checked before allocation; root and imported source files containing embedded NUL bytes are rejected.
 - Added parser statement-nesting and code-generation recursion guards with dedicated diagnostics; recovery also handles unbraced nested statements, and C generation now fails closed on emission diagnostics.
