@@ -19,6 +19,8 @@ world
 "café"
 false
 Invalid JSON syntax
+"recovered"
+true
 
 JSON string contains U+0000, which YLang strings cannot represent
 {
