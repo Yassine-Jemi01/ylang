@@ -87,6 +87,7 @@ A release candidate is not ready until all applicable gates below pass on the ex
 - NASM output generation now removes incomplete assembly files after an emission or final write failure, matching the C backend's fail-closed artifact behavior.
 - Synchronous, task-based, and streaming HTTP clients now use the same `YLang/2.3` User-Agent; redirect safety recognizes the permitted `Content-Type` field name case-insensitively, with a lowercase-header regression fixture.
 - The C backend now formats `http_stream` handles consistently in `print` and f-strings; the HTTP integration fixture covers both output paths.
+- String and f-string text now reject escaped NUL bytes at compile time, preventing silent truncation in the NUL-terminated runtime string representation; `char` still supports the zero byte.
 - POSIX C and NASM builds now stage executables in private directories beside the destination and atomically publish only successful output; failed compiler/linker runs leave existing binaries untouched.
 - `json.escape` now enforces the 16 MiB generated-output ceiling after accounting for quote and control-byte expansion; invalid UTF-8 string/key and exact/overflow output fixtures are added.
 - Stable publication now waits for both configured CircleCI job contexts and evaluates the newest status for each context, avoiding premature success from the first completed job or stale failed reruns.
