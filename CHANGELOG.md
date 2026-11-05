@@ -9,6 +9,7 @@ All notable changes to YLang are documented here. This project follows semantic 
 - Aligned the asynchronous HTTP client User-Agent with the 2.3 runtime and removed an unused task-state field that belonged only to streaming metadata.
 
 YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable release.
+- Bounded YLanglings manifest loading and added clean recovery diagnostics for deeply nested or oversized manifest data.
 - Hardened YLanglings progress recovery against deeply nested malformed JSON.
 - Improved YLanglings editor-launch diagnostics for malformed `EDITOR` and `VISUAL` command strings.
 - Sized native compiler argument storage from the actual optional-library flag counts instead of a fixed stack array.
