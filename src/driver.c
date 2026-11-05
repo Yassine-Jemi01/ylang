@@ -515,7 +515,31 @@ static int run_native_compiler(const char *cc, const char *c_path,
                               &voice_flag_count)) return 1;
     }
 
-    char *args[192];
+    size_t args_capacity = 48U;
+    if (sdl_flag_count > SIZE_MAX - args_capacity) {
+        fputs("ylang: native compiler argument list is too large.\n", stderr);
+        return 1;
+    }
+    args_capacity += sdl_flag_count;
+    if (voice_flag_count > SIZE_MAX - args_capacity) {
+        fputs("ylang: native compiler argument list is too large.\n", stderr);
+        return 1;
+    }
+    args_capacity += voice_flag_count;
+    if (http_flag_count > SIZE_MAX - args_capacity) {
+        fputs("ylang: native compiler argument list is too large.\n", stderr);
+        return 1;
+    }
+    args_capacity += http_flag_count;
+    if (args_capacity > SIZE_MAX / sizeof(char *)) {
+        fputs("ylang: native compiler argument list is too large.\n", stderr);
+        return 1;
+    }
+    char **args = calloc(args_capacity, sizeof(*args));
+    if (!args) {
+        fputs("ylang: out of memory preparing native compiler arguments.\n", stderr);
+        return 1;
+    }
     size_t n = 0U;
     args[n++] = (char *)cc;
     if (uses_http) args[n++] = "-DYLANG_USE_HTTP=1";
@@ -563,16 +587,21 @@ static int run_native_compiler(const char *cc, const char *c_path,
 
 #ifdef _WIN32
     intptr_t status = _spawnvp(_P_WAIT, cc, (const char * const *)args);
+    int result;
     if (status == -1) {
         fprintf(stderr, "ylang: could not execute native compiler '%s': %s\n",
                 cc, strerror(errno));
-        return 1;
+        result = 1;
+    } else {
+        result = (int)status;
     }
-    return (int)status;
+    free(args);
+    return result;
 #else
     pid_t pid = fork();
     if (pid < 0) {
         fprintf(stderr, "ylang: could not start native compiler: %s\n", strerror(errno));
+        free(args);
         return 1;
     }
     if (pid == 0) {
@@ -584,10 +613,12 @@ static int run_native_compiler(const char *cc, const char *c_path,
     while (waitpid(pid, &status, 0) < 0) {
         if (errno == EINTR) continue;
         fprintf(stderr, "ylang: waitpid failed: %s\n", strerror(errno));
+        free(args);
         return 1;
     }
-    if (WIFEXITED(status)) return WEXITSTATUS(status);
-    return 1;
+    int result = WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+    free(args);
+    return result;
 #endif
 }
 
