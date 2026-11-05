@@ -231,7 +231,7 @@ class CliStateTests(unittest.TestCase):
             config = Path(directory) / "config"
             environment = {**os.environ, "XDG_CONFIG_HOME": str(config)}
             subprocess.run(
-                ["make", "-C", str(TOOL_DIR.parents[1]), "install-ylanglings", f"PREFIX={prefix}", f"PYTHON={sys.executable}"],
+                ["make", "-C", str(TOOL_DIR.parents[1]), "install-ylanglings", f"PREFIX={prefix}", f"PYTHON={'python' if os.name == 'nt' else sys.executable}"],
                 check=True, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT, text=True,
             )
