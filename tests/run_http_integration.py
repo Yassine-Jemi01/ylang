@@ -164,6 +164,38 @@ def main():
             sys.stderr.write(binary_result.stderr)
             raise SystemExit("binary HTTP streaming integration test failed")
 
+        # The text stream API must reject embedded NUL instead of silently
+        # returning a truncated string; callers use read_buffer for raw bytes.
+        text_nul_source = ROOT / "build" / "http-stream-text-nul.yl"
+        text_nul_source.write_text(
+            "function main() -> int {\\n"
+            "    let string port = io.read_line();\\n"
+            '    let string base = string.concat("http://127.0.0.1:", port);\\n'
+            '    let http_stream stream = http.stream_open("GET", string.concat(base, "/stream-binary"), "", "");\\n'
+            "    let owned_string text = http.stream_read(stream, 32);\\n"
+            "    print(string.length(text) == 0);\\n"
+            '    print(string.contains(http.stream_error(stream), "NUL bytes"));\\n'
+            "    http.stream_close(stream);\\n"
+            "    return 0;\\n"
+            "}\\n",
+            encoding="utf-8",
+        )
+        text_nul_output = "build/test-http-stream-text-nul.exe" if os.name == "nt" else "build/test-http-stream-text-nul"
+        run_checked([compiler, "check", str(text_nul_source.relative_to(ROOT))])
+        run_checked([compiler, "build", str(text_nul_source.relative_to(ROOT)), "-o", text_nul_output])
+        text_nul_result = subprocess.run(
+            [str(ROOT / text_nul_output)],
+            cwd=ROOT,
+            input=f"{port}\\n",
+            text=True,
+            capture_output=True,
+            timeout=20,
+        )
+        if text_nul_result.returncode != 0 or text_nul_result.stdout != "true\\ntrue\\n":
+            sys.stderr.write("--- actual text NUL stream output ---\\n" + text_nul_result.stdout)
+            sys.stderr.write(text_nul_result.stderr)
+            raise SystemExit("HTTP text streaming NUL rejection test failed")
+
         # A truncated transfer must deliver any buffered bytes, then report -1
         # rather than disguising a transport error as normal EOF.
         error_source = ROOT / "build" / "http-stream-binary-error.yl"
