@@ -14,6 +14,8 @@ import tempfile
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 ROOT = Path(__file__).resolve().parent
+MAX_MANIFEST_BYTES = 1024 * 1024
+MAX_PROGRESS_BYTES = 1024 * 1024
 EXERCISES = ROOT / "exercises"
 SOLUTIONS = ROOT / "solutions"
 MANIFEST = ROOT / "manifest.json"
@@ -23,10 +25,11 @@ PROGRESS = CONFIG / "progress.json"
 
 def load_manifest():
     try:
-        if MANIFEST.stat().st_size > 1024 * 1024:
+        with MANIFEST.open("rb") as handle:
+            raw_manifest = handle.read(MAX_MANIFEST_BYTES + 1)
+        if len(raw_manifest) > MAX_MANIFEST_BYTES:
             raise SystemExit("YLanglings manifest exceeds the 1 MiB limit.")
-        with MANIFEST.open(encoding="utf-8") as handle:
-            manifest = json.load(handle)
+        manifest = json.loads(raw_manifest.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, RecursionError) as error:
         raise SystemExit(f"Could not read YLanglings manifest: {error}") from error
     if not isinstance(manifest, list) or not manifest:
@@ -112,9 +115,11 @@ def load_manifest():
 
 def load_progress():
     try:
-        if PROGRESS.stat().st_size > 1024 * 1024:
+        with PROGRESS.open("rb") as handle:
+            raw_progress = handle.read(MAX_PROGRESS_BYTES + 1)
+        if len(raw_progress) > MAX_PROGRESS_BYTES:
             return {"completed": []}
-        progress = json.loads(PROGRESS.read_text(encoding="utf-8"))
+        progress = json.loads(raw_progress.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, RecursionError):
         return {"completed": []}
 
