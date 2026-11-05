@@ -249,7 +249,7 @@ class CliStateTests(unittest.TestCase):
 
     def test_user_install_and_uninstall_smoke(self):
         with tempfile.TemporaryDirectory() as directory:
-            prefix = Path(directory) / "prefix"
+            prefix = Path(directory) / "prefix with spaces"
             config = Path(directory) / "config"
             environment = {**os.environ, "XDG_CONFIG_HOME": str(config)}
             subprocess.run(
