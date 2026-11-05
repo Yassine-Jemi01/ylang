@@ -358,6 +358,13 @@ static const char *yl_http_request(const char *method, const char *url, const ch
     long response_code = 0;
     (void)curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
     yl_http_last_status_code = (int64_t)response_code;
+    if (code == CURLE_OK && response.length > 0U &&
+        memchr(response.data, '\0', response.length) != NULL) {
+        yl_http_set_error("HTTP response contains NUL bytes; use binary-safe HTTP streaming");
+        free(response.data);
+        response.data = NULL;
+        response.length = 0U;
+    }
     if (code != CURLE_OK) {
         if (yl_http_response_headers_too_large) yl_http_set_error("HTTP response headers exceeded the 16 KiB limit");
         else if (response.too_large) yl_http_set_error("HTTP response exceeded the 8 MiB limit");
@@ -588,6 +595,11 @@ static const char *yl_http_await(int64_t id) {
     yl_http_last_status_code = task->status;
     yl_http_response_header_length = task->response_header_length;
     memcpy(yl_http_response_header_text, task->response_headers, task->response_header_length + 1U);
+    if (!task->error[0] && task->body.length > 0U &&
+        memchr(task->body.data, '\0', task->body.length) != NULL) {
+        yl_http_task_error(task,
+            "HTTP response contains NUL bytes; use binary-safe HTTP streaming");
+    }
     yl_http_set_error(task->error[0] ? task->error : "");
     char *result = NULL;
     if (!task->error[0] && task->body.data) {
