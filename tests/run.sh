@@ -1666,6 +1666,9 @@ true
 true
 68
 2
+true
+1
+67
 3
 67
 255
@@ -1673,10 +1676,11 @@ true
 true
 0
 true
-true
 -1
 -1
-true
+-1
+false
+false
 EOF
 diff -u build/binary-buffer-dynamic.expected build/binary-buffer-dynamic.stdout
 # Binary buffer append supports chunked streaming downloads without text conversion.
