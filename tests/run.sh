@@ -227,6 +227,55 @@ function main() -> int {
 EOF
 ./build/ylang check build/char-zero-literal.yl >/dev/null
 
+cat > build/char-zero-to-string.yl <<'EOF'
+function main() -> int {
+    print(to_string('\\0'));
+    return 0;
+}
+EOF
+./build/ylang build build/char-zero-to-string.yl -o build/char-zero-to-string >/dev/null
+if ./build/char-zero-to-string > build/char-zero-to-string.out 2>&1; then
+    echo "FAIL: converting a zero char to a string silently truncated" >&2
+    exit 1
+else
+    char_string_status=$?
+    [ "$char_string_status" -eq 70 ]
+fi
+grep -q 'formatted string contains a NUL byte' build/char-zero-to-string.out
+
+cat > build/fstring-char-zero.yl <<'EOF'
+function main() -> int {
+    let char zero = '\\0';
+    print(f"value={zero}");
+    return 0;
+}
+EOF
+./build/ylang build build/fstring-char-zero.yl -o build/fstring-char-zero >/dev/null
+if ./build/fstring-char-zero > build/fstring-char-zero.out 2>&1; then
+    echo "FAIL: formatting a zero char into an f-string silently truncated" >&2
+    exit 1
+else
+    fstring_char_status=$?
+    [ "$fstring_char_status" -eq 70 ]
+fi
+grep -q 'formatted string contains a NUL byte' build/fstring-char-zero.out
+
+cat > build/input-nul.yl <<'EOF'
+function main() -> int {
+    print(io.read_line());
+    return 0;
+}
+EOF
+./build/ylang build build/input-nul.yl -o build/input-nul >/dev/null
+if printf 'left\\000right\\n' | ./build/input-nul > build/input-nul.out 2>&1; then
+    echo "FAIL: io.read_line silently truncated an input line at NUL" >&2
+    exit 1
+else
+    input_nul_status=$?
+    [ "$input_nul_status" -eq 70 ]
+fi
+grep -q 'standard input line contains a NUL byte' build/input-nul.out
+
 # Excessively nested expressions must fail with a parser diagnostic, not a crash.
 {
     printf 'function main() -> int { return '
