@@ -586,7 +586,25 @@ static YType check_expr(Checker *checker, Expr *expr)
             return expr->type;
         }
         case EXPR_BOOL: expr->type = TYPE_BOOL; return expr->type;
-        case EXPR_STRING: expr->type = TYPE_STRING; return expr->type;
+        case EXPR_STRING: {
+            unsigned char *bytes = NULL;
+            size_t length = 0U;
+            if (decode_quoted_literal(expr->token, &bytes, &length)) {
+                for (size_t i = 0; i < length; i++) {
+                    if (bytes[i] == 0U) {
+                        diagnostic(c, expr->token, "error", "E2015",
+                                   "String literals cannot contain NUL bytes.",
+                                   "Use a byte buffer for binary data; keep string values NUL-free.");
+                        expr->type = TYPE_ERROR;
+                        free(bytes);
+                        return expr->type;
+                    }
+                }
+            }
+            free(bytes);
+            expr->type = TYPE_STRING;
+            return expr->type;
+        }
         case EXPR_CHAR: {
             unsigned char *bytes = NULL;
             size_t length = 0;
