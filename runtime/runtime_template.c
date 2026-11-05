@@ -1565,9 +1565,9 @@ static const char *yl_json_escape(const char *value) {
     size_t escaped_length = 2U; /* Opening and closing quotes. */
     for (size_t i = 0U; i < n; i++) {
         unsigned char c = (unsigned char)value[i];
-        size_t extra = (c == '"' || c == '\\\\' || c == '\\b' ||
-                        c == '\\f' || c == '\\n' || c == '\\r' ||
-                        c == '\\t') ? 2U : (c < 0x20U ? 6U : 1U);
+        size_t extra = (c == '"' || c == '\\' || c == '\b' ||
+                        c == '\f' || c == '\n' || c == '\r' ||
+                        c == '\t') ? 2U : (c < 0x20U ? 6U : 1U);
         if (escaped_length > YL_JSON_MAX_INPUT - extra) {
             yl_json_error("JSON output exceeds the 16 MiB limit");
             return "";
