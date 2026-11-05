@@ -115,6 +115,24 @@ static int fail(const char *message)
     return 1;
 }
 
+typedef struct {
+    SDL_sem *ready;
+    SDL_sem *resume;
+    bool snapshot_stable;
+} ErrorSnapshotContext;
+
+static int SDLCALL test_error_snapshot_thread(void *userdata)
+{
+    ErrorSnapshotContext *context = (ErrorSnapshotContext *)userdata;
+    const char *snapshot = ylvoice_last_error();
+    char expected[256];
+    (void)snprintf(expected, sizeof(expected), "%s", snapshot);
+    (void)SDL_SemPost(context->ready);
+    (void)SDL_SemWait(context->resume);
+    context->snapshot_stable = strcmp(snapshot, expected) == 0;
+    return 0;
+}
+
 int main(void)
 {
     const char *path = "build/voice-test.wav";
@@ -184,6 +202,33 @@ int main(void)
         return fail("missing audio file was accepted");
     if (ylvoice_last_error()[0] == '\0')
         return fail("missing audio file did not report an error");
+
+    /* A snapshot returned on one thread must not be overwritten when another
+       thread updates the shared latest-error message. */
+    if (!ylvoice_set_volume(101)) return fail("invalid volume was accepted before snapshot test");
+    ErrorSnapshotContext snapshot_context = {
+        SDL_CreateSemaphore(0U), SDL_CreateSemaphore(0U), false
+    };
+    if (!snapshot_context.ready || !snapshot_context.resume) {
+        if (snapshot_context.ready) SDL_DestroySemaphore(snapshot_context.ready);
+        if (snapshot_context.resume) SDL_DestroySemaphore(snapshot_context.resume);
+        return fail("could not create error snapshot test semaphores");
+    }
+    SDL_Thread *snapshot_thread = SDL_CreateThread(
+        test_error_snapshot_thread, "voice-error-snapshot", &snapshot_context);
+    if (!snapshot_thread) {
+        SDL_DestroySemaphore(snapshot_context.ready);
+        SDL_DestroySemaphore(snapshot_context.resume);
+        return fail("could not create error snapshot test thread");
+    }
+    (void)SDL_SemWait(snapshot_context.ready);
+    (void)ylvoice_play("build/does-not-exist.wav");
+    (void)SDL_SemPost(snapshot_context.resume);
+    (void)SDL_WaitThread(snapshot_thread, NULL);
+    SDL_DestroySemaphore(snapshot_context.ready);
+    SDL_DestroySemaphore(snapshot_context.resume);
+    if (!snapshot_context.snapshot_stable)
+        return fail("another thread overwrote the error snapshot");
 
     ylvoice_shutdown();
     ylvoice_shutdown();
