@@ -1,7 +1,0 @@
-function main() -> int {
-    let int initialized = gui.init();
-    if (initialized) {
-        gui.shutdown();
-    }
-    return 0;
-}
