@@ -69,7 +69,7 @@ count=0
 while [ "$#" -gt 0 ]; do
     if [ "$1" = "-o" ]; then
         shift
-        : > "$1"
+        printf 'fake native artifact\n' > "$1"
         chmod 755 "$1"
         printf '%s\n' "$count" > build/native-argv-count
         exit 0
