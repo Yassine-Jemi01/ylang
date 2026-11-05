@@ -25,6 +25,11 @@ function main() -> int {
     print(io.buffer_get(buffer, 2));
     print(io.buffer_save("build/dynamic-buffer-slice.bin", 0, view));
 
+    let int nested = io.buffer_slice(view, 0, 1);
+    print(nested > 0);
+    print(io.buffer_length(nested));
+    print(io.buffer_get(nested, 0));
+
     let int loaded = io.buffer_load("build/dynamic-buffer-test.bin", 1, 3);
     print(io.buffer_length(loaded));
     print(io.buffer_get(loaded, 0));
@@ -36,6 +41,8 @@ function main() -> int {
     print(io.buffer_free(buffer));
     print(io.buffer_length(buffer));
     print(io.buffer_length(view));
+    print(io.buffer_length(nested));
     print(io.buffer_free(view));
+    print(io.buffer_free(nested));
     return 0;
 }
