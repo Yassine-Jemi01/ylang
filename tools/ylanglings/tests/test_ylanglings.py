@@ -304,6 +304,14 @@ class CliStateTests(unittest.TestCase):
         self.assertEqual(args[:2], ["nano", "-w"])
         self.assertEqual(args[2], str(ylanglings.EXERCISES / self.manifest[0]["file"]))
 
+    def test_malformed_editor_command_has_actionable_error(self):
+        with mock.patch.dict(os.environ, {"VISUAL": "", "EDITOR": "broken editor"}), mock.patch.object(
+            ylanglings.shlex, "split", side_effect=ValueError("No closing quotation")
+        ):
+            with self.assertRaises(SystemExit) as raised:
+                ylanglings.command_edit(1, self.manifest)
+        self.assertIn("Could not parse EDITOR command", str(raised.exception))
+
     def test_invalid_exercise_number_has_actionable_error(self):
         for command in (ylanglings.command_run, ylanglings.command_hint):
             with self.subTest(command=command.__name__):
