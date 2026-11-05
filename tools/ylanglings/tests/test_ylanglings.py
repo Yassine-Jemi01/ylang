@@ -98,6 +98,30 @@ class ManifestTests(unittest.TestCase):
                     ylanglings.load_manifest()
 
 
+    def test_manifest_rejects_duplicate_reference_solution_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "exercises"
+            root.mkdir()
+            for name in ("one.yl", "two.yl", "starter-one.yl", "starter-two.yl"):
+                (root / name).write_text("", encoding="utf-8")
+            manifest = Path(directory) / "manifest.json"
+            entries = []
+            for title, filename, starter in (
+                ("First", "one.yl", "starter-one.yl"),
+                ("Second", "two.yl", "starter-two.yl"),
+            ):
+                entries.append({
+                    "title": title, "category": "test", "file": filename,
+                    "starter": starter, "description": "test", "hint": "test",
+                    "solution": "same.yl", "expected_output": "",
+                })
+            manifest.write_text(json.dumps(entries), encoding="utf-8")
+            with mock.patch.object(ylanglings, "EXERCISES", root), mock.patch.object(
+                ylanglings, "MANIFEST", manifest
+            ):
+                with self.assertRaisesRegex(SystemExit, "Duplicate reference solution"):
+                    ylanglings.load_manifest()
+
     def test_manifest_rejects_unsafe_reference_solution_paths(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "exercises"
