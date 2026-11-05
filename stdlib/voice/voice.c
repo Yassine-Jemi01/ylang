@@ -16,18 +16,17 @@ static SDL_SpinLock voice_error_lock;
 static void voice_clear_error(void)
 {
     SDL_AtomicLock(&voice_error_lock);
-    voice_clear_error();
+    voice_error[0] = '\0';
     SDL_AtomicUnlock(&voice_error_lock);
 }
 
 static bool voice_has_error(void)
 {
     SDL_AtomicLock(&voice_error_lock);
-    bool has_error = voice_error[0] != '\\0';
+    bool has_error = voice_error[0] != '\0';
     SDL_AtomicUnlock(&voice_error_lock);
     return has_error;
 }
-
 typedef struct {
     int64_t stream_id;
     YLVoiceStreamRead read_callback;
@@ -211,7 +210,7 @@ static SDL_RWops *voice_create_stream_rwops(int64_t stream_id,
 bool ylvoice_init(void)
 {
     if (voice_initialized) return true;
-    voice_error[0] = '\0';
+    voice_clear_error();
     if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
         voice_set_error(SDL_GetError());
         return false;
@@ -248,7 +247,7 @@ bool ylvoice_play(const char *path)
     }
     voice_music = next;
     voice_track_completed = false;
-    voice_error[0] = '\0';
+    voice_clear_error();
     return true;
 }
 
@@ -267,7 +266,7 @@ bool ylvoice_play_stream(int64_t stream_id, YLVoiceStreamRead read_callback,
     }
     /* A failed stream callback may provide a more useful transport error than
        SDL_mixer's generic decoder error. Start clean and preserve that detail. */
-    voice_error[0] = '\0';
+    voice_clear_error();
     SDL_RWops *rwops = voice_create_stream_rwops(
         stream_id, read_callback, error_callback, close_callback);
     if (!rwops) {
@@ -344,7 +343,7 @@ bool ylvoice_set_volume(int64_t percent)
     }
     if (!voice_initialized && !ylvoice_init()) return false;
     (void)Mix_VolumeMusic((int)((percent * MIX_MAX_VOLUME) / 100));
-    voice_error[0] = '\0';
+    voice_clear_error();
     return true;
 }
 
