@@ -151,7 +151,7 @@ class CliStateTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(verify.call_count, 26)
         self.assertTrue(all(call.kwargs.get("persist_progress") is False for call in verify.call_args_list))
-        self.assertIn("All 26 YLanglings exercises passed.", output.getvalue())
+        self.assertIn("All 26 YLanglings reference solutions passed.", output.getvalue())
 
     def test_compiler_timeout_is_reported_without_hanging(self):
         output = io.StringIO()
