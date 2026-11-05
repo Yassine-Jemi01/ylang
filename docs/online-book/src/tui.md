@@ -42,7 +42,7 @@ Build the responsive menu with `make tui-example`; it writes `build/tui-menu`. Y
 
 | Function | Return | Behavior |
 |---|---|---|
-| `tui.init()` | `bool` | Enable raw input and disable echo |
+| `tui.init()` | `bool` | Enable raw input, disable echo, and enable ANSI output on Windows consoles |
 | `tui.shutdown()` | `void` | Restore terminal input mode |
 | `tui.read_key()` | `int` | Read one key or supported navigation key (blocking) |
 | `tui.poll_key()` | `int` | Read a key if available, otherwise return `-1` |
@@ -58,4 +58,4 @@ Navigation key codes are Up 1001, Down 1002, Right 1003, Left 1004, Home 1005, E
 
 ## Limitations
 
-The runtime restores terminal state on normal exit and, on POSIX, on SIGINT, SIGTERM, SIGHUP, and SIGQUIT before terminating. TUI initialization requires both stdin and stdout to be attached to interactive terminals; it refuses redirected output rather than writing escape sequences into a file or pipe. The first version is synchronous and single-key oriented; use `tui.poll_key()` plus `tui.sleep_ms()` for a responsive polling event loop. It does not yet provide mouse events, key-release events, Unicode grapheme editing, terminal resize events, or a full widget/layout system. Re-query dimensions during the event loop. The C backend is supported; the experimental NASM backend rejects TUI calls. POSIX raw-key behavior is covered by a pseudo-terminal integration test. Windows raw input still needs dedicated interactive CI coverage.
+The runtime restores terminal state on normal exit and, on POSIX, on SIGINT, SIGTERM, SIGHUP, and SIGQUIT before terminating. On Windows, initialization saves and enables both console input and ANSI output modes, and restores the saved modes during cleanup. TUI initialization requires both stdin and stdout to be attached to interactive terminals; it refuses redirected output rather than writing escape sequences into a file or pipe. The first version is synchronous and single-key oriented; use `tui.poll_key()` plus `tui.sleep_ms()` for a responsive polling event loop. It does not yet provide mouse events, key-release events, Unicode grapheme editing, terminal resize events, or a full widget/layout system. Re-query dimensions during the event loop. The C backend is supported; the experimental NASM backend rejects TUI calls. POSIX raw-key behavior is covered by a pseudo-terminal integration test. Windows raw input still needs dedicated interactive CI coverage.
