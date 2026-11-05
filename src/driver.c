@@ -769,53 +769,17 @@ int ylang_run(const char *command, const char *input_path,
             if (result != 0) {
                 fprintf(stderr, "ylang: NASM failed (exit %d).\n", result);
             } else {
-                const char *last_separator = strrchr(target, '/');
-                const char *parent_path = last_separator ? target : ".";
-                size_t parent_length = last_separator
-                    ? (last_separator == target ? 1U : (size_t)(last_separator - target))
-                    : 1U;
-                bool parent_has_separator =
-                    parent_length > 0U && parent_path[parent_length - 1U] == '/';
-                size_t separator_length = parent_has_separator ? 0U : 1U;
-                if (parent_length > SIZE_MAX - separator_length -
-                                    sizeof(".ylang-tmp-XXXXXX")) {
-                    fputs("ylang: output directory path is too long for atomic NASM publication.\n", stderr);
-                    result = 64;
+                staging_directory = create_sibling_staging_directory(target);
+                if (!staging_directory) {
+                    fprintf(stderr, "ylang: cannot create private staging directory beside '%s': %s\n",
+                            target, strerror(errno));
+                    result = errno == ENOMEM ? 70 : 1;
                 } else {
-                    size_t directory_size = parent_length + separator_length +
-                                            sizeof(".ylang-tmp-XXXXXX");
-                    staging_directory = malloc(directory_size);
-                    if (!staging_directory) {
-                        fputs("ylang: out of memory preparing atomic NASM output.\n", stderr);
-                        result = 70;
-                    } else {
-                        memcpy(staging_directory, parent_path, parent_length);
-                        size_t template_offset = parent_length;
-                        if (!parent_has_separator)
-                            staging_directory[template_offset++] = '/';
-                        memcpy(staging_directory + template_offset,
-                               ".ylang-tmp-XXXXXX", sizeof(".ylang-tmp-XXXXXX"));
-                        if (!mkdtemp(staging_directory)) {
-                            fprintf(stderr, "ylang: cannot create private staging directory beside '%s': %s\n",
-                                    target, strerror(errno));
-                            result = 1;
-                        } else {
-                            size_t directory_length = strlen(staging_directory);
-                            if (directory_length > SIZE_MAX - sizeof("/executable")) {
-                                fputs("ylang: staged executable path is too long.\n", stderr);
-                                result = 64;
-                            } else {
-                                size_t staged_size = directory_length + sizeof("/executable");
-                                staged_target = malloc(staged_size);
-                                if (!staged_target) {
-                                    fputs("ylang: out of memory preparing staged executable path.\n", stderr);
-                                    result = 70;
-                                } else {
-                                    (void)snprintf(staged_target, staged_size,
-                                                   "%s/executable", staging_directory);
-                                }
-                            }
-                        }
+                    staged_target = create_staged_executable_path(staging_directory);
+                    if (!staged_target) {
+                        fprintf(stderr, "ylang: cannot prepare staged executable path: %s\n",
+                                strerror(errno));
+                        result = errno == ENOMEM ? 70 : 64;
                     }
                 }
                 if (result == 0) {
