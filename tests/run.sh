@@ -196,7 +196,7 @@ grep -q 'contains a NUL byte' build/embedded-nul.out
 # silently truncating a source literal or f-string at runtime.
 cat > build/string-nul-literal.yl <<'EOF'
 function main() -> int {
-    let string value = "before\\0after";
+    let string value = "before\0after";
     return 0;
 }
 EOF
@@ -209,7 +209,7 @@ grep -q 'E2015' build/string-nul-literal.out
 cat > build/fstring-nul-literal.yl <<'EOF'
 function main() -> int {
     let int value = 1;
-    print(f"before\\0{value}");
+    print(f"before\0{value}");
     return 0;
 }
 EOF
