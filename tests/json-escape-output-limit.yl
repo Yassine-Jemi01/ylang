@@ -1,0 +1,6 @@
+function main() -> int {
+    let string raw = io.read_file("build/json-escape-limit/value.txt");
+    let owned_string escaped = json.escape(raw);
+    print(string.length(escaped) == 16777216);
+    return 0;
+}
