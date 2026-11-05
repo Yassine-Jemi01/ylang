@@ -9,6 +9,7 @@ All notable changes to YLang are documented here. This project follows semantic 
 - Aligned the asynchronous HTTP client User-Agent with the 2.3 runtime and removed an unused task-state field that belonged only to streaming metadata.
 
 YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable release.
+- Fixed C-backend printing and f-string formatting for `http_stream` handles, with HTTP integration coverage.
 - Unified the HTTP client User-Agent at `YLang/2.3` and made redirect allow-list matching for `Content-Type` case-insensitive, with a lowercase-header regression fixture.
 - Confined YLanglings maintainer reference solutions to the tool's own source tree.
 - Revalidated YLanglings exercise and starter paths at use time, rejecting path traversal and symlink escapes before edit/reset operations.
