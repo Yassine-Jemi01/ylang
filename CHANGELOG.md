@@ -13,7 +13,7 @@ YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable r
 - Made HTTP stream status/header access wait for final response metadata (including permitted redirects) without consuming the body, and extended the loopback fixture to exercise metadata-first reads.
 - Propagated libcurl multi-poll and resume failures into stream error/done state instead of leaving a failed stream waiting indefinitely.
 - Guarded HTTP task and stream handle allocation against signed identifier overflow instead of wrapping IDs back to values that could collide with live handles.
-- Preserved specific HTTP streaming callback errors when libcurl reports a generic transfer/write failure, and retained Voice stream callback diagnostics when SDL_mixer reports a generic decoder setup failure.
+- Preserved specific HTTP streaming callback errors when libcurl reports a generic transfer/write failure, and retained Voice stream callback diagnostics when SDL_mixer reports a generic decoder setup failure; synchronized Voice error-state access across threads.
 - Fixed `json.at` so negative indices set an explicit out-of-range diagnostic.
 - Made `json.escape` and JSON builder keys reject invalid UTF-8 instead of emitting malformed JSON.
 - Fixed dynamic binary-buffer lifetime cleanup so freeing a root buffer or nested slice invalidates all descendant slice handles; added regression-fixture coverage for both parent-release cases.
