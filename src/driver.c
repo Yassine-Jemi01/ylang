@@ -705,21 +705,27 @@ int ylang_run(const char *command, const char *input_path,
             if (result != 0) {
                 fprintf(stderr, "ylang: NASM failed (exit %d).\n", result);
             } else {
-                size_t staged_size = strlen(target) + sizeof(".ylang-tmp-XXXXXX");
-                staged_target = malloc(staged_size);
-                if (!staged_target) {
-                    fputs("ylang: out of memory preparing atomic NASM output.\n", stderr);
-                    result = 70;
+                size_t target_length = strlen(target);
+                if (target_length > SIZE_MAX - sizeof(".ylang-tmp-XXXXXX")) {
+                    fputs("ylang: output path is too long for atomic NASM publication.\n", stderr);
+                    result = 64;
                 } else {
-                    (void)snprintf(staged_target, staged_size, "%s.ylang-tmp-XXXXXX", target);
-                    int staged_fd = mkstemp(staged_target);
-                    if (staged_fd < 0) {
-                        fprintf(stderr, "ylang: cannot create staged output beside '%s': %s\n",
-                                target, strerror(errno));
-                        result = 1;
-                    } else if (close(staged_fd) != 0) {
-                        fprintf(stderr, "ylang: cannot close staged output: %s\n", strerror(errno));
-                        result = 1;
+                    size_t staged_size = target_length + sizeof(".ylang-tmp-XXXXXX");
+                    staged_target = malloc(staged_size);
+                    if (!staged_target) {
+                        fputs("ylang: out of memory preparing atomic NASM output.\n", stderr);
+                        result = 70;
+                    } else {
+                        (void)snprintf(staged_target, staged_size, "%s.ylang-tmp-XXXXXX", target);
+                        int staged_fd = mkstemp(staged_target);
+                        if (staged_fd < 0) {
+                            fprintf(stderr, "ylang: cannot create staged output beside '%s': %s\n",
+                                    target, strerror(errno));
+                            result = 1;
+                        } else if (close(staged_fd) != 0) {
+                            fprintf(stderr, "ylang: cannot close staged output: %s\n", strerror(errno));
+                            result = 1;
+                        }
                     }
                 }
                 if (result == 0) {
