@@ -1771,6 +1771,28 @@ if ./build/test-json-output-limit > build/json-output-limit/overflow.out 2>&1; t
 fi
 grep -q 'JSON output exceeds the 16 MiB limit' build/json-output-limit/overflow.out
 
+# json.escape must enforce the same exact 16 MiB generated-output boundary.
+mkdir -p build/json-escape-limit
+./build/ylang check tests/json-escape-output-limit.yl >/dev/null
+./build/ylang build tests/json-escape-output-limit.yl -o build/test-json-escape-output-limit >/dev/null
+python3 - <<'PY'
+from pathlib import Path
+limit = 16 * 1024 * 1024
+Path("build/json-escape-limit/value.txt").write_bytes(b"a" * (limit - 2))
+PY
+./build/test-json-escape-output-limit > build/json-escape-limit/exact.out
+grep -Fxq 'true' build/json-escape-limit/exact.out
+python3 - <<'PY'
+from pathlib import Path
+limit = 16 * 1024 * 1024
+Path("build/json-escape-limit/value.txt").write_bytes(b"a" * (limit - 1))
+PY
+if ./build/test-json-escape-output-limit > build/json-escape-limit/overflow.out 2>&1; then
+    echo "FAIL: json.escape accepted output larger than 16 MiB" >&2
+    exit 1
+fi
+grep -q 'JSON output exceeds the 16 MiB limit' build/json-escape-limit/overflow.out
+
 # std.terminal line input, typed parsing, flushing, and redirected stdin detection.
 ./build/ylang check tests/terminal-input.yl >/dev/null
 ./build/ylang build tests/terminal-input.yl -o build/test-terminal-input >/dev/null
