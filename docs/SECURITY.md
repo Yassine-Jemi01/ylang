@@ -6,7 +6,7 @@
 
 The compiler bounds several input-driven resources to keep malformed or unexpectedly large projects from consuming unbounded memory or call-stack depth:
 
-- At most 100 diagnostics are printed for one compilation; source-line excerpts are limited to 160 bytes and non-printable/non-ASCII bytes are escaped in diagnostic output.
+- At most 100 diagnostics are printed for one compilation; source-line excerpts are limited to 160 bytes and non-printable/non-ASCII bytes are escaped in diagnostic output. When a diagnostic token belongs to a source buffer, its line excerpt is located from the token offset rather than rescanning from the start of the file.
 - A program may load at most 1,024 source modules.
 - The root source and all imported source files together are limited to 64 MiB. The root file is size-checked before allocating its contents; imported files are size-checked before each allocation. Embedded NUL bytes are rejected in both root and imported source files rather than being treated as end-of-file.
 - Module import recursion is limited to 256 levels.
