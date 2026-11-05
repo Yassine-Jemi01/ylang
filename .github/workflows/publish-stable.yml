@@ -309,12 +309,22 @@ jobs:
         run: |
           set -euo pipefail
           expected_prefix="ci/circleci:"
+          # CircleCI config defines two required jobs. Do not treat the first
+          # completed job as a green workflow while the other has not reported.
+          expected_contexts=2
           for attempt in $(seq 1 60); do
             response="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status")"
-            matching="$(jq -c --arg prefix "$expected_prefix" '[.statuses[] | select(.context | startswith($prefix))]' <<< "$response")"
+            # A rerun may leave older failed statuses in history. Evaluate only
+            # the newest status for each CircleCI context.
+            matching="$(jq -c --arg prefix "$expected_prefix" '
+              [.statuses[] | select((.context // "") | startswith($prefix))]
+              | sort_by(.created_at // "")
+              | group_by(.context)
+              | map(.[-1])
+            ' <<< "$response")"
             count="$(jq 'length' <<< "$matching")"
-            if [[ "$count" -eq 0 ]]; then
-              echo "Waiting for CircleCI to report a status on ${GITHUB_SHA} (attempt $attempt/60)."
+            if [[ "$count" -lt "$expected_contexts" ]]; then
+              echo "Waiting for all ${expected_contexts} CircleCI job contexts on ${GITHUB_SHA} (${count}/${expected_contexts}, attempt $attempt/60)."
               sleep 15
               continue
             fi
