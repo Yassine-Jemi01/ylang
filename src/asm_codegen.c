@@ -995,6 +995,11 @@ static bool emit_function(AsmContext *ctx, Function *function)
     };
     if (!prepare_function(ctx, function)) return false;
 
+    if (ctx->match_slot_count > SIZE_MAX - ctx->slot_count) {
+        fputs("ylang: NASM stack frame is too large.\n", stderr);
+        ctx->okay = false;
+        return false;
+    }
     size_t total_slots = ctx->slot_count + ctx->match_slot_count;
     if (total_slots > (SIZE_MAX - 15U) / 8U) {
         fputs("ylang: NASM stack frame is too large.\n", stderr);
