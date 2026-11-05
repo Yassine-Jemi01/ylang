@@ -932,6 +932,12 @@ static const char *yl_http_stream_read(int64_t id, int64_t max_bytes) {
     char *result = malloc(capacity + 1U);
     if (!result) yl_runtime_error("out of memory reading HTTP stream");
     size_t take = yl_http_stream_take(stream, result, capacity);
+    if (take > 0U && memchr(result, '\0', take) != NULL) {
+        free(result);
+        yl_http_stream_error_set(stream,
+            "stream_read received NUL bytes; use stream_read_buffer for binary data");
+        return yl_http_empty();
+    }
     result[take] = '\0';
     return (const char *)yl_track(result, take + 1U);
 }
