@@ -10,6 +10,8 @@ All notable changes to YLang are documented here. This project follows semantic 
 
 YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable release.
 
+- Hardened the stable-publication CircleCI gate to require both configured job contexts and inspect each context's latest status.
+
 - Applied the 16 MiB generated-output limit to `json.escape`, including escaped-control expansion, with exact-boundary and overflow fixtures.
 - Fixed NASM `match` lowering to evaluate the subject once; added a side-effecting C/NASM parity regression.
 - The experimental NASM backend removes partial assembly output after emission or file-write failures.
