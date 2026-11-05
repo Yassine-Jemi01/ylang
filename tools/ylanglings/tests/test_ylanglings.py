@@ -82,12 +82,31 @@ class ManifestTests(unittest.TestCase):
             manifest.write_text(json.dumps([{
                 "title": "Unsafe", "category": "test", "file": "../outside.yl",
                 "starter": "starter.yl", "description": "test", "hint": "test",
-                "expected_output": "",
+                "solution": "safe.yl", "expected_output": "",
             }]), encoding="utf-8")
             with mock.patch.object(ylanglings, "EXERCISES", root), mock.patch.object(
                 ylanglings, "MANIFEST", manifest
             ):
                 with self.assertRaisesRegex(SystemExit, "unsafe file path"):
+                    ylanglings.load_manifest()
+
+
+    def test_manifest_rejects_unsafe_reference_solution_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "exercises"
+            root.mkdir()
+            (root / "exercise.yl").write_text("", encoding="utf-8")
+            (root / "starter.yl").write_text("", encoding="utf-8")
+            manifest = Path(directory) / "manifest.json"
+            manifest.write_text(json.dumps([{
+                "title": "Unsafe solution", "category": "test", "file": "exercise.yl",
+                "starter": "starter.yl", "description": "test", "hint": "test",
+                "solution": "../outside.yl", "expected_output": "",
+            }]), encoding="utf-8")
+            with mock.patch.object(ylanglings, "EXERCISES", root), mock.patch.object(
+                ylanglings, "MANIFEST", manifest
+            ):
+                with self.assertRaisesRegex(SystemExit, "unsafe solution path"):
                     ylanglings.load_manifest()
 
 
