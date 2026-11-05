@@ -32,6 +32,24 @@ grep -Fq -- "-o may be specified only once" build/duplicate-output-option.out
 ./build/test-type-conversions > build/type-conversions.out
 diff -u tests/expected-type-conversions.txt build/type-conversions.out
 
+# Native builds publish atomically: failed compiler runs must preserve the old executable.
+mkdir -p build/failing-compiler
+printf '#!/bin/sh\nexit 1\n' > build/failing-compiler/gcc
+chmod +x build/failing-compiler/gcc
+printf 'old-output\n' > build/atomic-c-target
+./build/ylang build examples/type-conversions.yl -o build/atomic-c-target >/dev/null
+if PATH="$PWD/build/failing-compiler:$PATH" ./build/ylang build examples/type-conversions.yl -o build/atomic-c-target > build/atomic-c-fail.out 2>&1; then
+    echo "FAIL: native build succeeded with a failing compiler" >&2
+    exit 1
+fi
+grep -q 'native compilation failed' build/atomic-c-fail.out
+./build/atomic-c-target > build/atomic-c-preserved.out
+diff -u tests/expected-type-conversions.txt build/atomic-c-preserved.out
+if find build -maxdepth 1 -type d -name '.ylang-tmp-*' -print -quit | grep -q .; then
+    echo "FAIL: native build left a private staging directory" >&2
+    exit 1
+fi
+
 # String and character escapes must have the same byte semantics in generated C.
 ./build/ylang check tests/escape-parity.yl >/dev/null
 ./build/ylang build tests/escape-parity.yl -o build/test-escape-parity >/dev/null
