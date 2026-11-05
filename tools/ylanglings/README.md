@@ -90,8 +90,9 @@ Exercise programs are native executables and run with the current user's permiss
 
 Add a broken starter under `exercises/` and a manifest entry containing:
 
-- `title`, `category`, `file`, and `starter`
+- `title`, `category`, `file`, `starter`, and a unique `solution` path
 - a short `description` and a non-spoiling `hint`
+- a private maintainer reference file under `solutions/`; it is never copied into learner installs
 - `expected_output` for runnable exercises
 - `mode: check` only when the exercise is intentionally a compile-time API check
 - `optional: true` for challenges outside the core track
