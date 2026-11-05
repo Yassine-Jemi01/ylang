@@ -1174,7 +1174,7 @@ bool generate_asm(Compiler *compiler, const char *path)
     bool okay = ctx.okay && !ferror(out);
     if (fclose(out) != 0) okay = false;
     if (!okay) {
-        fprintf(stderr, "ylang: failed while writing NASM source '%s'.\\n", path);
+        fprintf(stderr, "ylang: failed while writing NASM source '%s'.\n", path);
         /* Never leave truncated assembly that could be mistaken for valid output. */
         (void)remove(path);
     }
