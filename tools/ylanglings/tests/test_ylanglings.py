@@ -361,6 +361,24 @@ class CliStateTests(unittest.TestCase):
                     command(0, ylanglings.load_manifest())
                 self.assertIn("ylanglings list", str(raised.exception))
 
+    def test_install_refuses_unmanaged_data_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            victim = Path(directory) / "ylanglings"
+            victim.mkdir()
+            marker = victim / "important.txt"
+            marker.write_text("keep", encoding="utf-8")
+            result = subprocess.run(
+                [
+                    "make", "-C", str(TOOL_DIR), "install",
+                    f"BINDIR={Path(directory) / 'bin'}",
+                    f"DATADIR={victim}",
+                ],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Refusing to overwrite an unmanaged YLanglings data directory", result.stdout + result.stderr)
+            self.assertEqual(marker.read_text(encoding="utf-8"), "keep")
+
     def test_uninstall_refuses_unexpected_data_directory(self):
         with tempfile.TemporaryDirectory() as directory:
             victim = Path(directory) / "ylanglings"
