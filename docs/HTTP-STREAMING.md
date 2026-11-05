@@ -32,7 +32,7 @@ function main() -> int {
 | Function | Result | Contract |
 |---|---|---|
 | `http.stream_open(method, url, body, headers)` | `http_stream` | Start a bounded pull-based request |
-| `http.stream_read(stream, max_bytes)` | `owned_string` | Return up to the requested number of bytes as a NUL-terminated text string |
+| `http.stream_read(stream, max_bytes)` | `owned_string` | Return up to the requested number of bytes as a NUL-terminated text string; embedded NUL rejects the chunk and terminates the stream |
 | `http.stream_read_buffer(stream, buffer, max_bytes)` | `int` | Overwrite a root `io.buffer` with the next raw bytes; return the byte count, or `-1` on error |
 | `http.stream_done(stream)` | `bool` | True after transfer completion and buffer drain |
 | `http.stream_status(stream)` | `int` | Wait for and return the final HTTP response status |
