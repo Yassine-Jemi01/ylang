@@ -1821,7 +1821,9 @@ static bool yl_tui_restore_registered;
 static char yl_tui_error_text[192];
 #ifdef _WIN32
 static HANDLE yl_tui_input_handle;
+static HANDLE yl_tui_output_handle;
 static DWORD yl_tui_saved_input_mode;
+static DWORD yl_tui_saved_output_mode;
 #else
 static struct termios yl_tui_saved_termios;
 static const int yl_tui_signals[] = { SIGINT, SIGTERM, SIGHUP, SIGQUIT };
@@ -1879,6 +1881,8 @@ static void yl_tui_restore(void) {
 #ifdef _WIN32
         if (yl_tui_input_handle != INVALID_HANDLE_VALUE)
             (void)SetConsoleMode(yl_tui_input_handle, yl_tui_saved_input_mode);
+        if (yl_tui_output_handle != INVALID_HANDLE_VALUE)
+            (void)SetConsoleMode(yl_tui_output_handle, yl_tui_saved_output_mode);
 #else
         (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &yl_tui_saved_termios);
 #endif
@@ -1914,6 +1918,26 @@ static bool yl_tui_init(void) {
         return false;
     }
     yl_tui_active = true;
+
+    yl_tui_output_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (yl_tui_output_handle == INVALID_HANDLE_VALUE ||
+        !GetConsoleMode(yl_tui_output_handle, &yl_tui_saved_output_mode)) {
+        yl_tui_restore();
+        yl_tui_set_error("could not read Windows console output mode");
+        return false;
+    }
+#ifdef ENABLE_VIRTUAL_TERMINAL_PROCESSING
+    if (!SetConsoleMode(yl_tui_output_handle,
+                        yl_tui_saved_output_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING)) {
+        yl_tui_restore();
+        yl_tui_set_error("could not enable ANSI output for the Windows console");
+        return false;
+    }
+#else
+    yl_tui_restore();
+    yl_tui_set_error("this Windows SDK does not expose virtual-terminal output support");
+    return false;
+#endif
 #else
     if (tcgetattr(STDIN_FILENO, &yl_tui_saved_termios) != 0) {
         yl_tui_set_error("could not read terminal attributes");
