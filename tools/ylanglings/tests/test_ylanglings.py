@@ -180,6 +180,8 @@ class CliStateTests(unittest.TestCase):
             with mock.patch.object(ylanglings, "PROGRESS", progress_path):
                 progress_path.write_text("null", encoding="utf-8")
                 self.assertEqual(ylanglings.load_progress(), {"completed": []})
+                progress_path.write_text("[" * 2000 + "0" + "]" * 2000, encoding="utf-8")
+                self.assertEqual(ylanglings.load_progress(), {"completed": []})
                 progress_path.write_text(
                     json.dumps({"completed": [1, 1, True, -2, "3", 4]}),
                     encoding="utf-8",
