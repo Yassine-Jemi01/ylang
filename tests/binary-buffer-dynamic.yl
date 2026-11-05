@@ -30,6 +30,14 @@ function main() -> int {
     print(io.buffer_length(nested));
     print(io.buffer_get(nested, 0));
 
+    let int parent_view = io.buffer_slice(buffer, 0, 1);
+    let int child_view = io.buffer_slice(parent_view, 0, 1);
+    print(parent_view > 0);
+    print(child_view > 0);
+    print(io.buffer_free(parent_view));
+    print(io.buffer_length(child_view));
+    print(io.buffer_free(child_view));
+
     let int loaded = io.buffer_load("build/dynamic-buffer-test.bin", 1, 3);
     print(io.buffer_length(loaded));
     print(io.buffer_get(loaded, 0));
