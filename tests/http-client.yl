@@ -90,6 +90,19 @@ function main() -> int {
     print(custom);
     print(http.status());
 
+    let owned_string binary_body = http.get(string.concat(base, "/binary-response"));
+    print(string.length(binary_body) == 0);
+    print(http.status());
+    print(string.contains(http.last_error(), "NUL bytes"));
+
+    let http_task binary_task = http.request_async(
+        "GET", string.concat(base, "/binary-response"), "", ""
+    );
+    let owned_string async_binary_body = await binary_task;
+    print(string.length(async_binary_body) == 0);
+    print(http.status());
+    print(string.contains(http.last_error(), "NUL bytes"));
+
     let owned_string missing = http.get(string.concat(base, "/missing"));
     print(missing);
     print(http.status());
