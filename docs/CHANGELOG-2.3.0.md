@@ -7,6 +7,7 @@
 **Status: unreleased development notes.** YLang 2.2.0 remains the latest stable release. This document records work merged into the 2.3 development branch; it is not a release announcement and does not imply that validation gates have passed.
 
 ## Work integrated so far
+- Synchronous, task-based, and streaming HTTP clients now share the `YLang/2.3` User-Agent; redirect safety recognizes the permitted `Content-Type` header case-insensitively, with a lowercase-header redirect regression fixture.
 - YLanglings now verifies that its maintainer-only `solutions/` directory remains inside the tool root before resolving reference solutions, preventing an externally redirected solution tree.
 - YLanglings now resolves and rechecks exercise/starter paths at each operation, rejecting path traversal and symlink escapes before edit/reset operations.
 - YLanglings now caps manifest input at 1 MiB and reports deeply nested malformed JSON cleanly; regression coverage checks both cases.
