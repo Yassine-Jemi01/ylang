@@ -1,0 +1,7 @@
+function main() -> int {
+    let owned_string first = string.own("YLang");
+    let owned_string combined = owned_string.concat(first, "lings");
+    let owned_string transferred = move(combined);
+    print(transferred);
+    return 0;
+}
