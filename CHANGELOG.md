@@ -21,6 +21,8 @@ YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable r
 - Expanded the native benchmark report with host architecture, CPU identification, effective optimization flag, and core compiler flags so later 2.3 performance comparisons retain more of their machine/toolchain context.
 - Promoted YLanglings into the 2.3 developer-experience scope: documented its 16 core exercises and 10 optional challenges, added manifest/CLI/progress/install contract tests, and wired them into `make test`.
 - Hardened YLanglings manifest loading against missing files and paths outside the exercise tree; added separate core/optional progress, `next --optional`, editor launching through `VISUAL`/`EDITOR`, durable atomic progress writes, and explicit native-execution trust-boundary documentation.
+- Completed the private maintainer reference-solution set for all 26 YLanglings exercises, added source-path safety and distinct-solution contract coverage, and clarified that `verify-all` is source-checkout-only so learner installs do not receive answers.
+- Replaced the unsupported GUI exercise with a JSON Builders challenge backed by the 2.3 immutable JSON API; corrected incomplete starter tasks and fixed the generated launcher to forward CLI arguments.
 - Added 2.3-specific pre-publication and post-publication checklists, exposed them in the book/docs site, shipped them in YSPM packages, and added CI/release-workflow checks for their presence. Stable publication now waits for CircleCI success on the exact authorization SHA.
 - Expanded regression fixtures for resource limits, diagnostic sanitization, parser nesting, JSON builders, HTTP headers, and CLI aliases.
 
