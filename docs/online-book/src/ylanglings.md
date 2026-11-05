@@ -31,8 +31,6 @@ Edit the displayed source file directly, or use `ylanglings edit 01` to open it 
 
 ```sh
 ylanglings verify 01
-# Verify the complete curriculum against the current compiler:
-ylanglings --compiler ./build/ylang verify-all
 ```
 
 If the compiler is not on PATH, pass its location:
@@ -72,7 +70,7 @@ that the compiler accepts the documented API signatures; they do not pretend
 to exercise a native audio, GUI, or terminal device. Runtime behavior for
 those integrations belongs to the compiler's dedicated integration tests.
 
-`ylanglings verify-all` checks all 26 exercises and collects failures; it deliberately does not write learner progress. The repository's `make test` target runs both the CLI contract tests and this full curriculum verification.
+`ylanglings verify-all` is a maintainer-only command available from the source checkout, where the private `solutions/` directory is present. It checks all 26 reference solutions, collects failures, and never writes learner progress. The repository's `make test` target runs both the CLI contract tests and this full curriculum verification. The normal user installation deliberately omits reference solutions.
 
 YLanglings is a learning aid, not a replacement for the compiler regression
 suite, security review, or sanitizer tests. It verifies only the behavior
