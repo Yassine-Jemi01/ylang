@@ -60,6 +60,11 @@ To uninstall:
 make uninstall-ylanglings PREFIX="$HOME/.local"
 ```
 
+The installer marks the data directory it creates. Installation and removal refuse unmanaged or symlinked data directories rather than overwriting or recursively deleting them.
+
+```sh
+```
+
 Progress is stored locally in `$XDG_CONFIG_HOME/ylanglings/progress.json`
 (or `~/.config/ylanglings/progress.json`). Exercise source files remain in
 the installation directory, so they can be edited with any editor. No telemetry
