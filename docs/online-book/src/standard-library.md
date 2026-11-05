@@ -35,7 +35,7 @@ Use the documented \`io\` and \`path\` operations for file-related work instead 
 
 The \`env.get(name)\` helper reads a process environment variable without launching a shell. Environment variables may contain missing, empty, or unexpected values; check the documented return behavior and validate the value before depending on it. Avoid storing secrets in source code or printing sensitive environment values to logs.
 
-See [Binary I/O](binary-io.md) for byte-oriented file access and its current limits. HTTP streaming can copy raw response chunks into reusable byte buffers with `http.stream_read_buffer`; do not use the text-only `http.stream_read` API for binary payloads.
+See [Binary I/O](binary-io.md) for byte-oriented file access and its current limits. HTTP streaming can copy raw response chunks into reusable byte buffers with `http.stream_read_buffer`; do not use the text-only `http.stream_read` API for binary payloads. If a text chunk contains an embedded NUL byte, `http.stream_read` records a stream error, terminates that stream, and discards queued text bytes.
 
 ## JSON documents
 ## Building JSON text in 2.3
