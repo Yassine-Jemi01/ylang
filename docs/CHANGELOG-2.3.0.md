@@ -4,6 +4,8 @@
 
 ## Work integrated so far
 
+- Aligned the asynchronous HTTP client User-Agent with the 2.3 runtime and removed an unused task-state field that belonged only to streaming metadata.
+
 - Fixed binary buffer cleanup so freeing a parent or nested slice invalidates and releases all descendant slice handles without leaving orphaned slots; expanded the dynamic-buffer regression fixture for root and non-root parent release.
 - Preserved specific HTTP streaming callback errors when libcurl reports a generic transfer/write failure, so callers retain the actionable runtime diagnostic. Preserved specific Voice stream callback diagnostics when SDL_mixer reports generic decoder or playback-start errors, and synchronized cross-thread error-state access with per-thread snapshots from the C accessor; added a two-thread regression fixture for snapshot isolation.
 - Fixed `json.at` so negative indices set the same explicit out-of-range diagnostic as other invalid array indices.
