@@ -7,6 +7,7 @@
 **Status: unreleased development notes.** YLang 2.2.0 remains the latest stable release. This document records work merged into the 2.3 development branch; it is not a release announcement and does not imply that validation gates have passed.
 
 ## Work integrated so far
+- YLanglings now reports malformed `EDITOR`/`VISUAL` command quoting as an actionable configuration error instead of exposing a Python traceback; added a regression test.
 - Replaced the fixed-size native compiler argument array with a capacity derived from the actual SDL2, SDL2_mixer, and libcurl flag counts, preventing stack overwrite when optional libraries are combined.
 - POSIX native C builds now use the same private sibling-directory publication strategy as NASM builds: a failed compiler invocation cannot truncate an existing executable, and successful output is atomically renamed into place.
 - YLanglings now converts progress-directory creation failures into a concise actionable CLI error and preserves the original save error if temporary-file cleanup also fails; added a regression case.
