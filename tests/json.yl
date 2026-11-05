@@ -20,6 +20,7 @@ function main() -> int {
     print(json.get_string(document, "message"));
     print(json.stringify(document));
     print(json.escape("line\nquote\""));
+    print(json.escape("café"));
     print(json.valid("{broken"));
     print(json.last_error());
     let owned_string zero_doc = json.parse("{\"zero\":\"\\u0000\"}");
