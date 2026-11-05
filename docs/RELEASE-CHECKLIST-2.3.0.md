@@ -19,7 +19,8 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] Clean build with Clang on macOS from a fresh checkout.
 - [ ] Full compiler regression suite passes on the exact candidate commit.
 - [ ] C/NASM parity regression confirms a side-effecting `match` subject is evaluated exactly once by both backends.
-- [ ] NASM linker failure preserves an existing destination and removes the staged executable.
+- [ ] NASM linker failure preserves an existing destination and removes its private staging directory.
+- [ ] POSIX native compiler failure preserves an existing destination and removes its private staging directory.
 - [ ] Frontend lexer/parser unit tests pass.
 - [ ] Module loader limits pass: 256-level import depth, 1,024-module total, and 64 MiB aggregate root/imported source limit.
 - [ ] Root and imported files containing embedded NUL bytes are rejected with the documented diagnostic behavior.
