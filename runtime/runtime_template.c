@@ -1217,8 +1217,8 @@ static const char *yl_json_buffer_finish(YLJsonBuffer *b) {
     }
     return (const char *)yl_track(b->data, b->length + 1U);
 }
-static const char *yl_json_object(void) { char *p = malloc(3U); if (!p) yl_runtime_error("out of memory"); memcpy(p, "{}", 3U); return (const char *)yl_track(p, 3U); }
-static const char *yl_json_array(void) { char *p = malloc(3U); if (!p) yl_runtime_error("out of memory"); memcpy(p, "[]", 3U); return (const char *)yl_track(p, 3U); }
+static const char *yl_json_object(void) { yl_json_error(""); char *p = malloc(3U); if (!p) yl_runtime_error("out of memory"); memcpy(p, "{}", 3U); return (const char *)yl_track(p, 3U); }
+static const char *yl_json_array(void) { yl_json_error(""); char *p = malloc(3U); if (!p) yl_runtime_error("out of memory"); memcpy(p, "[]", 3U); return (const char *)yl_track(p, 3U); }
 static const char *yl_json_set(const char *raw, const char *key, const char *value) {
     YLJson vp; size_t va, vb;
     if (!yl_json_root(value, &vp, &va, &vb)) return "";
