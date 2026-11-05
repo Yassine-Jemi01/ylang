@@ -239,11 +239,9 @@ make install-ylanglings PREFIX="$HOME/.local"
 ylanglings list
 ylanglings next
 ylanglings verify 01
-# Verify the complete curriculum against the current compiler:
-ylanglings --compiler ./build/ylang verify-all
 ```
 
-It requires Python 3.10+ and a built YLang compiler, but no network connection or third-party Python packages. The repository's `make test` target runs the YLanglings contract suite and verifies the full exercise curriculum without changing your personal progress. See the [YLanglings guide](tools/ylanglings/README.md) and [book chapter](docs/online-book/src/ylanglings.md).
+It requires Python 3.10+ and a built YLang compiler, but no network connection or third-party Python packages. The repository's `make test` target runs the YLanglings contract suite and verifies all 26 private reference solutions without changing learner progress. The maintainer-only `verify-all` command is available from a source checkout; reference solutions are not installed with the learner tool. See the [YLanglings guide](tools/ylanglings/README.md) and [book chapter](docs/online-book/src/ylanglings.md).
 
 ## Command-line reference
 
