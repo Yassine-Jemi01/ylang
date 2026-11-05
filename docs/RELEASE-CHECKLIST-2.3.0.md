@@ -18,6 +18,7 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] Clean build with Clang on Linux from a fresh checkout.
 - [ ] Clean build with Clang on macOS from a fresh checkout.
 - [ ] Full compiler regression suite passes on the exact candidate commit.
+- [ ] C/NASM parity regression confirms a side-effecting `match` subject is evaluated exactly once by both backends.
 - [ ] Frontend lexer/parser unit tests pass.
 - [ ] Module loader limits pass: 256-level import depth, 1,024-module total, and 64 MiB aggregate root/imported source limit.
 - [ ] Root and imported files containing embedded NUL bytes are rejected with the documented diagnostic behavior.
