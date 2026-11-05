@@ -178,8 +178,27 @@ def compiler_path(value):
     raise SystemExit(f"YLang compiler not found: {value}\nPass --compiler /path/to/ylang or add ylang to PATH.")
 
 
+def confined_exercise_path(item, field):
+    relative_path = item[field]
+    if "\\0" in relative_path:
+        raise SystemExit(f"Unsafe {field} path in YLanglings manifest.")
+    tool_root = ROOT.resolve()
+    try:
+        exercise_root = EXERCISES.resolve()
+        candidate = (exercise_root / relative_path).resolve()
+    except (OSError, RuntimeError, ValueError) as error:
+        raise SystemExit(f"Could not resolve YLanglings {field} path: {error}") from error
+    if not exercise_root.is_relative_to(tool_root) or not candidate.is_relative_to(exercise_root):
+        raise SystemExit(f"Unsafe {field} path in YLanglings manifest.")
+    return candidate
+
+
 def exercise_path(item):
-    return EXERCISES / item["file"]
+    return confined_exercise_path(item, "file")
+
+
+def starter_path(item):
+    return confined_exercise_path(item, "starter")
 
 
 def print_exercise(number, item):
@@ -252,7 +271,7 @@ def command_reset(number, manifest):
         raise SystemExit("Unknown exercise number. Run 'ylanglings list'.")
     item = manifest[number - 1]
     target = exercise_path(item)
-    starter = EXERCISES / item["starter"]
+    starter = starter_path(item)
     temporary_path = None
     try:
         with tempfile.NamedTemporaryFile(
