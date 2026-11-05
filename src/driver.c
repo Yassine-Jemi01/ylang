@@ -696,6 +696,7 @@ int ylang_run(const char *command, const char *input_path,
         (void)snprintf(object_path, object_size, "%s/generated.o", temporary_directory);
 
         int result = 1;
+        char *staged_target = NULL;
         if (generate_asm(&compiler, asm_path)) {
             char *nasm_args[] = {
                 "nasm", "-f", "elf64", asm_path, "-o", object_path, NULL
@@ -704,10 +705,37 @@ int ylang_run(const char *command, const char *input_path,
             if (result != 0) {
                 fprintf(stderr, "ylang: NASM failed (exit %d).\n", result);
             } else {
-                char *ld_args[] = { "ld", "-o", (char *)target, object_path, NULL };
-                result = run_external(ld_args);
-                if (result != 0) {
-                    fprintf(stderr, "ylang: ld failed (exit %d).\n", result);
+                size_t staged_size = strlen(target) + sizeof(".ylang-tmp-XXXXXX");
+                staged_target = malloc(staged_size);
+                if (!staged_target) {
+                    fputs("ylang: out of memory preparing atomic NASM output.\n", stderr);
+                    result = 70;
+                } else {
+                    (void)snprintf(staged_target, staged_size, "%s.ylang-tmp-XXXXXX", target);
+                    int staged_fd = mkstemp(staged_target);
+                    if (staged_fd < 0) {
+                        fprintf(stderr, "ylang: cannot create staged output beside '%s': %s\n",
+                                target, strerror(errno));
+                        result = 1;
+                    } else if (close(staged_fd) != 0) {
+                        fprintf(stderr, "ylang: cannot close staged output: %s\n", strerror(errno));
+                        result = 1;
+                    }
+                }
+                if (result == 0) {
+                    char *ld_args[] = { "ld", "-o", staged_target, object_path, NULL };
+                    result = run_external(ld_args);
+                    if (result != 0) {
+                        fprintf(stderr, "ylang: ld failed (exit %d).\n", result);
+                    } else if (chmod(staged_target, 0755) != 0) {
+                        fprintf(stderr, "ylang: cannot set executable permissions on staged output: %s\n",
+                                strerror(errno));
+                        result = 1;
+                    } else if (rename(staged_target, target) != 0) {
+                        fprintf(stderr, "ylang: cannot publish executable '%s': %s\n",
+                                target, strerror(errno));
+                        result = 1;
+                    }
                 }
             }
         }
@@ -715,6 +743,10 @@ int ylang_run(const char *command, const char *input_path,
 
         (void)unlink(asm_path);
         (void)unlink(object_path);
+        if (staged_target) {
+            (void)unlink(staged_target);
+            free(staged_target);
+        }
         (void)rmdir(temporary_directory);
         free(asm_path);
         free(object_path);
