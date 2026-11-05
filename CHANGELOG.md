@@ -9,6 +9,7 @@ All notable changes to YLang are documented here. This project follows semantic 
 - Aligned the asynchronous HTTP client User-Agent with the 2.3 runtime and removed an unused task-state field that belonged only to streaming metadata.
 
 YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable release.
+- Guarded YLanglings uninstall against recursively deleting an unrelated directory and added a regression test.
 
 - Hardened the stable-publication CircleCI gate to require both configured job contexts and inspect each context's latest status.
 
