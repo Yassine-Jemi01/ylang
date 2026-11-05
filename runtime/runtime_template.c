@@ -1936,7 +1936,11 @@ static bool yl_tui_init(void) {
     }
 #endif
     if (!yl_tui_restore_registered) {
-        (void)atexit(yl_tui_restore);
+        if (atexit(yl_tui_restore) != 0) {
+            yl_tui_restore();
+            yl_tui_set_error("could not register terminal restoration at process exit");
+            return false;
+        }
         yl_tui_restore_registered = true;
     }
     yl_tui_error_text[0] = '\0';
