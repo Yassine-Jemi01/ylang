@@ -61,7 +61,7 @@ while [ "$i" -le 64 ]; do
     printf '%s ' "-DFAKE_DEPENDENCY_FLAG_$i"
     i=$((i + 1))
 done
-printf '\\n'
+printf '\n'
 EOF
 cat > build/fake-native-tools/gcc <<'EOF'
 #!/bin/sh
@@ -71,7 +71,7 @@ while [ "$#" -gt 0 ]; do
         shift
         : > "$1"
         chmod 755 "$1"
-        printf '%s\\n' "$count" > build/native-argv-count
+        printf '%s\n' "$count" > build/native-argv-count
         exit 0
     fi
     count=$((count + 1))
