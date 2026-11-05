@@ -371,7 +371,6 @@ typedef struct {
     int64_t id;
     bool active;
     bool done;
-    bool headers_complete;
     bool attached;
     CURL *easy;
     struct curl_slist *headers;
@@ -527,7 +526,7 @@ static int64_t yl_http_request_async(const char *method, const char *url, const 
     YL_HTTP_TASK_OPTION(CURLOPT_SSL_VERIFYHOST, 2L);
     YL_HTTP_TASK_OPTION(CURLOPT_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
     YL_HTTP_TASK_OPTION(CURLOPT_REDIR_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
-    YL_HTTP_TASK_OPTION(CURLOPT_USERAGENT, "YLang/2.2");
+    YL_HTTP_TASK_OPTION(CURLOPT_USERAGENT, "YLang/2.3");
     if (task->headers) YL_HTTP_TASK_OPTION(CURLOPT_HTTPHEADER, task->headers);
     if (strcmp(method, "GET") == 0) YL_HTTP_TASK_OPTION(CURLOPT_HTTPGET, 1L);
     else if (strcmp(method, "HEAD") == 0) {
