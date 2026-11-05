@@ -36,16 +36,17 @@ diff -u tests/expected-type-conversions.txt build/type-conversions.out
 mkdir -p build/failing-compiler
 printf '#!/bin/sh\nexit 1\n' > build/failing-compiler/gcc
 chmod +x build/failing-compiler/gcc
-printf 'old-output\n' > build/atomic-c-target
-./build/ylang build examples/type-conversions.yl -o build/atomic-c-target >/dev/null
-if PATH="$PWD/build/failing-compiler:$PATH" ./build/ylang build examples/type-conversions.yl -o build/atomic-c-target > build/atomic-c-fail.out 2>&1; then
+mkdir -p build/atomic-c-output-dir
+printf 'old-output\n' > build/atomic-c-output-dir/executable
+./build/ylang build examples/type-conversions.yl -o build/atomic-c-output-dir/executable >/dev/null
+if PATH="$PWD/build/failing-compiler:$PATH" ./build/ylang build examples/type-conversions.yl -o build/atomic-c-output-dir/executable > build/atomic-c-fail.out 2>&1; then
     echo "FAIL: native build succeeded with a failing compiler" >&2
     exit 1
 fi
 grep -q 'native compilation failed' build/atomic-c-fail.out
-./build/atomic-c-target > build/atomic-c-preserved.out
+./build/atomic-c-output-dir/executable > build/atomic-c-preserved.out
 diff -u tests/expected-type-conversions.txt build/atomic-c-preserved.out
-for staging_directory in build/.ylang-tmp-*; do
+for staging_directory in build/atomic-c-output-dir/.ylang-tmp-*; do
     if [ -d "$staging_directory" ]; then
         echo "FAIL: native build left a private staging directory: $staging_directory" >&2
         exit 1
@@ -1266,16 +1267,17 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     mkdir -p build/failing-linker
     printf '#!/bin/sh\nexit 1\n' > build/failing-linker/ld
     chmod +x build/failing-linker/ld
-    printf 'old-output\n' > build/atomic-nasm-target
-    ./build/ylang build-asm tests/asm-basic.yl -o build/atomic-nasm-target >/dev/null
-    if PATH="$PWD/build/failing-linker:$PATH" ./build/ylang build-asm tests/asm-basic.yl -o build/atomic-nasm-target > build/atomic-nasm-fail.out 2>&1; then
+    mkdir -p build/atomic-nasm-output-dir
+    printf 'old-output\n' > build/atomic-nasm-output-dir/executable
+    ./build/ylang build-asm tests/asm-basic.yl -o build/atomic-nasm-output-dir/executable >/dev/null
+    if PATH="$PWD/build/failing-linker:$PATH" ./build/ylang build-asm tests/asm-basic.yl -o build/atomic-nasm-output-dir/executable > build/atomic-nasm-fail.out 2>&1; then
         echo "FAIL: build-asm succeeded with a failing linker" >&2
         exit 1
     fi
     grep -q 'ld failed' build/atomic-nasm-fail.out
-    ./build/atomic-nasm-target > build/atomic-nasm-preserved.out
+    ./build/atomic-nasm-output-dir/executable > build/atomic-nasm-preserved.out
     diff -u tests/expected-asm-basic.txt build/atomic-nasm-preserved.out
-    for staging_directory in build/.ylang-tmp-*; do
+    for staging_directory in build/atomic-nasm-output-dir/.ylang-tmp-*; do
         if [ -d "$staging_directory" ]; then
             echo "FAIL: build-asm left a private staging directory after linker failure: $staging_directory" >&2
             exit 1
