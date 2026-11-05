@@ -1,0 +1,14 @@
+struct Rectangle {
+    int width;
+    int height;
+}
+
+function perimeter(Rectangle rectangle) -> int {
+    return 2 * (rectangle.width + rectangle.height);
+}
+
+function main() -> int {
+    let Rectangle room = Rectangle(5, 8);
+    print(perimeter(room));
+    return 0;
+}
