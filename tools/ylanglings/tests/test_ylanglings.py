@@ -64,6 +64,16 @@ class ManifestTests(unittest.TestCase):
             else:
                 self.assertFalse(optional_seen, "core exercise appears after optional track")
 
+    def test_every_exercise_has_a_distinct_maintainer_reference_solution(self):
+        for item in self.manifest:
+            with self.subTest(exercise=item["title"]):
+                exercise = (ylanglings.EXERCISES / item["file"]).read_text(encoding="utf-8")
+                solution = ylanglings.solution_path(item).read_text(encoding="utf-8")
+                self.assertNotEqual(
+                    exercise, solution,
+                    "the editable exercise must not already contain its reference solution",
+                )
+
     def test_manifest_rejects_paths_outside_exercise_root(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "exercises"
