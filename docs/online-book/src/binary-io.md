@@ -59,7 +59,7 @@ io.buffer_save("packet.bin", 0, packet);
 io.buffer_free(packet);
 ```
 
-A slice shares its parent's storage: changing a byte through either handle is visible through the other. Slices may be nested. A slice cannot be resized, cleared, or appended to; it can be read, modified, and saved. Freeing the parent invalidates its slices, and shrinking a parent makes out-of-range slices temporarily inaccessible. Free slice handles explicitly. The runtime releases any buffers not explicitly freed during normal program cleanup. Handles are process-local and must not be persisted.
+A slice shares its parent's storage: changing a byte through either handle is visible through the other. Slices may be nested. A slice cannot be resized, cleared, or appended to; it can be read, modified, and saved. Freeing any buffer invalidates that buffer and all nested descendant slices, releasing their handle slots together. Shrinking a parent makes out-of-range slices temporarily inaccessible. You may still free a slice explicitly when it is no longer needed. The runtime releases any buffers not explicitly freed during normal program cleanup. Handles are process-local and must not be persisted.
 
 ## Endian-aware integers
 
