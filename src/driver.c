@@ -320,6 +320,68 @@ static char *create_temporary_directory(const char *prefix)
 #endif
 }
 
+#ifndef _WIN32
+static char *create_sibling_staging_directory(const char *target)
+{
+    if (!target || !*target) {
+        errno = EINVAL;
+        return NULL;
+    }
+    const char *last_separator = strrchr(target, '/');
+    const char *parent_path = last_separator ? target : ".";
+    size_t parent_length = last_separator
+        ? (last_separator == target ? 1U : (size_t)(last_separator - target))
+        : 1U;
+    bool parent_has_separator =
+        parent_length > 0U && parent_path[parent_length - 1U] == '/';
+    size_t separator_length = parent_has_separator ? 0U : 1U;
+    const char *suffix = ".ylang-tmp-XXXXXX";
+    size_t suffix_size = sizeof(".ylang-tmp-XXXXXX");
+    if (parent_length > SIZE_MAX - separator_length - suffix_size) {
+        errno = ENAMETOOLONG;
+        return NULL;
+    }
+    size_t capacity = parent_length + separator_length + suffix_size;
+    char *directory = malloc(capacity);
+    if (!directory) {
+        errno = ENOMEM;
+        return NULL;
+    }
+    memcpy(directory, parent_path, parent_length);
+    size_t offset = parent_length;
+    if (!parent_has_separator) directory[offset++] = '/';
+    memcpy(directory + offset, suffix, suffix_size);
+    if (!mkdtemp(directory)) {
+        int saved = errno;
+        free(directory);
+        errno = saved;
+        return NULL;
+    }
+    return directory;
+}
+
+static char *create_staged_executable_path(const char *directory)
+{
+    if (!directory) {
+        errno = EINVAL;
+        return NULL;
+    }
+    size_t length = strlen(directory);
+    if (length > SIZE_MAX - sizeof("/executable")) {
+        errno = ENAMETOOLONG;
+        return NULL;
+    }
+    size_t capacity = length + sizeof("/executable");
+    char *path = malloc(capacity);
+    if (!path) {
+        errno = ENOMEM;
+        return NULL;
+    }
+    (void)snprintf(path, capacity, "%s/executable", directory);
+    return path;
+}
+#endif
+
 static bool read_sdl2_flags(char *storage, size_t capacity,
                             char **flags, size_t flag_capacity,
                             size_t *flag_count)
