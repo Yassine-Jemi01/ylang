@@ -239,7 +239,23 @@ def command_reset(number, manifest):
     item = manifest[number - 1]
     target = exercise_path(item)
     starter = EXERCISES / item["starter"]
-    shutil.copyfile(starter, target)
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb", dir=target.parent, prefix=".ylanglings-reset-",
+            suffix=".tmp", delete=False,
+        ) as temporary:
+            temporary_path = Path(temporary.name)
+            with starter.open("rb") as source:
+                shutil.copyfileobj(source, temporary)
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        os.replace(temporary_path, target)
+    except OSError as error:
+        raise SystemExit(f"Could not restore exercise starter: {error}") from error
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
     progress = load_progress()
     progress["completed"] = sorted(completed_exercises(progress, manifest) - {number})
     save_progress(progress)
