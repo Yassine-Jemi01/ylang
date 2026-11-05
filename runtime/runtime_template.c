@@ -1552,6 +1552,12 @@ static const char *yl_json_escape(const char *value) {
         return "";
     }
     size_t n = strlen(value);
+    /* Even an unescaped byte needs one output byte, plus the surrounding
+       quotes. Reject impossible inputs before scanning their contents. */
+    if (n > YL_JSON_MAX_INPUT - 2U) {
+        yl_json_error("JSON output exceeds the 16 MiB limit");
+        return "";
+    }
     /* JSON text must contain valid UTF-8; escaping ASCII controls alone is
        not enough to make arbitrary byte strings valid JSON. */
     YLJson utf8 = {value, n, 0U, 0U};
