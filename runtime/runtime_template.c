@@ -275,7 +275,17 @@ static bool yl_http_headers(const char *raw, struct curl_slist **result) {
 }
 static bool yl_http_redirects_allowed(const struct curl_slist *headers) {
     for (const struct curl_slist *item = headers; item; item = item->next) {
-        if (!item->data || strncmp(item->data, "Content-Type:", 13U) != 0) return false;
+        if (!item->data) return false;
+        const char *colon = strchr(item->data, ':');
+        if (!colon || (size_t)(colon - item->data) != 12U) return false;
+        static const char content_type[] = "Content-Type";
+        for (size_t i = 0; i < sizeof(content_type) - 1U; i++) {
+            unsigned char actual = (unsigned char)item->data[i];
+            unsigned char expected = (unsigned char)content_type[i];
+            if (actual >= 'A' && actual <= 'Z') actual = (unsigned char)(actual + ('a' - 'A'));
+            if (expected >= 'A' && expected <= 'Z') expected = (unsigned char)(expected + ('a' - 'A'));
+            if (actual != expected) return false;
+        }
     }
     return true;
 }
@@ -327,7 +337,7 @@ static const char *yl_http_request(const char *method, const char *url, const ch
     YL_HTTP_OPTION(CURLOPT_SSL_VERIFYHOST, 2L);
     YL_HTTP_OPTION(CURLOPT_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
     YL_HTTP_OPTION(CURLOPT_REDIR_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
-    YL_HTTP_OPTION(CURLOPT_USERAGENT, "YLang/2.2");
+    YL_HTTP_OPTION(CURLOPT_USERAGENT, "YLang/2.3");
     if (headers) YL_HTTP_OPTION(CURLOPT_HTTPHEADER, headers);
     if (strcmp(method, "GET") == 0) {
         YL_HTTP_OPTION(CURLOPT_HTTPGET, 1L);
