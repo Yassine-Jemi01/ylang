@@ -51,8 +51,8 @@ functions, arrays, structs, enums, strings, modules, f-string interpolation,
 explicit conversions, loop control, and text file I/O.
 
 The optional track contains 10 challenges for nested loops, enum logic,
-struct functions, JSON, Binary I/O, HTTP Streaming, terminal UI, Voice, GUI
-lifecycle, and owned strings. Optional challenges are separate from core
+struct functions, JSON parsing, Binary I/O, HTTP Streaming, terminal UI,
+Voice, JSON builders, and owned strings. Optional challenges are separate from core
 completion and are never required to finish the core track.
 
 ## How verification works
