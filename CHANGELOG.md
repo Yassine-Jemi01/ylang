@@ -13,6 +13,8 @@ YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable r
 - Made HTTP stream status/header access wait for final response metadata (including permitted redirects) without consuming the body, and extended the loopback fixture to exercise metadata-first reads.
 - Propagated libcurl multi-poll and resume failures into stream error/done state instead of leaving a failed stream waiting indefinitely.
 - Guarded HTTP task and stream handle allocation against signed identifier overflow instead of wrapping IDs back to values that could collide with live handles.
+- Preserved specific HTTP streaming callback errors when libcurl reports a generic transfer/write failure.
+- Fixed dynamic binary-buffer lifetime cleanup so freeing a root buffer or nested slice invalidates all descendant slice handles; added regression-fixture coverage for both parent-release cases.
 - Added immutable raw-JSON builders with key escaping and deterministic duplicate-key replacement; invalid fragments and results deeper than 128 containers are rejected, exactly 16 MiB of generated output is accepted, and larger results fail with a runtime error. Added a standalone [builder example](examples/json-builders.yl).
 - Defined duplicate-key behavior: getters return the first value, `json.set` replaces that value and collapses later copies, and `json.remove` drops all copies.
 - Added parser statement-depth recovery, code-generation recursion guards, and fail-closed C generation on emission diagnostics.
