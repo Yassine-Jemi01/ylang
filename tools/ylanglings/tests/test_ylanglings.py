@@ -185,6 +185,18 @@ class ReferenceSolutionTests(unittest.TestCase):
                 with self.assertRaisesRegex(SystemExit, "Unsafe solution path"):
                     ylanglings.solution_path({"title": "Escape", "solution": "../outside.yl"})
 
+    def test_solutions_directory_must_remain_inside_tool_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            tool_root = Path(directory) / "tool"
+            outside = Path(directory) / "outside-solutions"
+            outside.mkdir()
+            (outside / "valid.yl").write_text("fn main() -> int { return 0; }\\n", encoding="utf-8")
+            with mock.patch.object(ylanglings, "ROOT", tool_root), mock.patch.object(
+                ylanglings, "SOLUTIONS", outside
+            ):
+                with self.assertRaisesRegex(SystemExit, "Unsafe YLanglings solutions directory"):
+                    ylanglings.solution_path({"title": "External", "solution": "valid.yl"})
+
     def test_missing_reference_solution_has_actionable_error(self):
         with tempfile.TemporaryDirectory() as directory, mock.patch.object(
             ylanglings, "SOLUTIONS", Path(directory)
