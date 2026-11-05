@@ -24,6 +24,7 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] Frontend lexer/parser unit tests pass.
 - [ ] Module loader limits pass: 256-level import depth, 1,024-module total, and 64 MiB aggregate root/imported source limit.
 - [ ] Root and imported files containing embedded NUL bytes are rejected with the documented diagnostic behavior; escaped NUL bytes in string literals and f-string text are rejected while `char` zero remains supported.
+- [ ] Runtime string boundaries reject NUL bytes from `io.read_line`, `to_string(char)`, and f-string formatting without truncation; zero-valued `char` literals remain valid.
 - [ ] Diagnostic output is capped at 100 entries and control/non-ASCII bytes are escaped safely.
 - [ ] Braced and unbraced parser-depth recovery tests pass; code generation fails closed if an emission diagnostic occurs.
 - [ ] CLI `help`, `--help`, `-h`, `version`, `--version`, and `-V` aliases produce identical outputs within each group; subcommand help works and empty/duplicate output options or unused/duplicate `--cc` options fail with usage diagnostics.
@@ -32,7 +33,7 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 
 - [ ] AddressSanitizer and UndefinedBehaviorSanitizer suites pass.
 - [ ] Frontend fuzz smoke test completes without crash, hang, or sanitizer finding.
-- [ ] HTTP synchronous/task/streaming integration tests pass, including `http_stream` handle printing and f-string formatting, oversized response-header rejection at the 16 KiB boundary, case-insensitive `Content-Type` redirect allow-list matching, and binary stream transport errors returning `-1` after buffered bytes are drained; specific callback errors remain retrievable instead of being overwritten by generic libcurl write errors; libcurl poll/resume failures terminate the stream with a retrievable error; status/header access waits for final metadata without consuming the body.
+- [ ] HTTP synchronous/task/streaming integration tests pass, including `http_stream` handle printing and f-string formatting, explicit rejection of NUL-containing buffered/task response bodies, oversized response-header rejection at the 16 KiB boundary, case-insensitive `Content-Type` redirect allow-list matching, and binary stream transport errors returning `-1` after buffered bytes are drained; specific callback errors remain retrievable instead of being overwritten by generic libcurl write errors; libcurl poll/resume failures terminate the stream with a retrievable error; status/header access waits for final metadata without consuming the body.
 - [ ] Binary file and streaming integration tests pass, including end-of-file, truncation, and buffer-boundary cases.
 - [ ] Dynamic binary-buffer lifetime coverage passes for nested slices, freeing both a root buffer and a non-root slice with live descendants, invalidated handles, and reclaimed handle slots.
 - [ ] Voice-to-HTTP-stream integration passes where SDL2_mixer and a supported decoder are available; unavailable optional dependencies are reported as explicit skips.
