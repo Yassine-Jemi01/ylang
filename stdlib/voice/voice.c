@@ -287,7 +287,7 @@ bool ylvoice_play_stream(int64_t stream_id, YLVoiceStreamRead read_callback,
     Mix_HaltMusic();
     voice_release_music();
     if (Mix_PlayMusic(next, 0) != 0) {
-        voice_set_error(Mix_GetError());
+        voice_set_error_if_empty(Mix_GetError());
         Mix_FreeMusic(next);
         (void)SDL_RWclose(rwops);
         return false;
