@@ -14,6 +14,8 @@
 - Aligned the no-build-macro CLI version fallback with the latest stable 2.2.0 version.
 - Added dedicated 2.3 pre-publication and post-publication checklists, integrated them into the online book, documentation website, YSPM package payload, and stable release preflight. The publishing workflow now waits for CircleCI to report success on the exact release SHA.
 - Added the `make tui-example` target and build-smoke coverage for the responsive terminal menu, with links in the online book and public TUI reference.
+- Completed the private maintainer reference-solution set for all 26 YLanglings exercises, added source-path safety and distinct-solution contract coverage, and clarified that `verify-all` is source-checkout-only so learner installs do not receive answers.
+- Replaced the unsupported GUI exercise with a JSON Builders challenge backed by the 2.3 immutable JSON API; corrected incomplete starter tasks and fixed the generated launcher to forward CLI arguments.
 - Expanded regression fixtures for module count/size limits, diagnostic output caps/control-byte escaping, deep unbraced parser nesting, JSON builder argument typing and duplicate keys, and exact-boundary oversized HTTP headers.
 - Updated the online book build manifest, YSPM documentation payload, security/HTTP/JSON/CLI/error-code guides, and homepage navigation.
 
