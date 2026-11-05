@@ -7,6 +7,7 @@
 **Status: unreleased development notes.** YLang 2.2.0 remains the latest stable release. This document records work merged into the 2.3 development branch; it is not a release announcement and does not imply that validation gates have passed.
 
 ## Work integrated so far
+- YLanglings now resolves and rechecks exercise/starter paths at each operation, preventing a changed symlink or path traversal from redirecting edit/reset operations outside the exercise tree.
 - YLanglings now caps manifest input at 1 MiB and reports deeply nested malformed JSON cleanly; regression coverage checks both cases.
 - YLanglings now treats deeply nested/corrupt progress JSON as recoverable empty progress instead of allowing Python's JSON recursion limit to terminate the CLI; added coverage.
 - YLanglings now reports malformed `EDITOR`/`VISUAL` command quoting as an actionable configuration error instead of exposing a Python traceback; added a regression test.
