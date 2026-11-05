@@ -14,6 +14,9 @@ function main() -> int {
     let owned_string negative_index = json.at(items, -1);
     print(string.length(negative_index) == 0);
     print(string.contains(json.last_error(), "index out of range"));
+    let owned_string high_index = json.at(items, 99);
+    print(string.length(high_index) == 0);
+    print(string.contains(json.last_error(), "index out of range"));
     print(json.get_string(document, "message"));
     print(json.stringify(document));
     print(json.escape("line\nquote\""));
