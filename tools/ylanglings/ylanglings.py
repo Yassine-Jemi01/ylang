@@ -259,7 +259,11 @@ def command_reset(number, manifest):
         raise SystemExit(f"Could not restore exercise starter: {error}") from error
     finally:
         if temporary_path is not None:
-            temporary_path.unlink(missing_ok=True)
+            try:
+                temporary_path.unlink(missing_ok=True)
+            except OSError:
+                # Do not mask the primary reset error with a cleanup failure.
+                pass
     progress = load_progress()
     progress["completed"] = sorted(completed_exercises(progress, manifest) - {number})
     save_progress(progress)
