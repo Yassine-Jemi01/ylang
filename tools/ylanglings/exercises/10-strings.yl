@@ -1,5 +1,5 @@
 function main() -> int {
     let string language = "YLang";
-    print(string.length(language));
+    print(string.length(5));
     return 0;
 }
