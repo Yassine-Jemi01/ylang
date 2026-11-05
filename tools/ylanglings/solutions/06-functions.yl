@@ -1,0 +1,8 @@
+function double(int value) -> int {
+    return value * 2;
+}
+
+function main() -> int {
+    print(double(21));
+    return 0;
+}
