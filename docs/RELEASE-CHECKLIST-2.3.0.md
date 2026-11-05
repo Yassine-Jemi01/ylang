@@ -33,6 +33,7 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] Binary file and streaming integration tests pass, including end-of-file, truncation, and buffer-boundary cases.
 - [ ] Voice-to-HTTP-stream integration passes where SDL2_mixer and a supported decoder are available; unavailable optional dependencies are reported as explicit skips.
 - [ ] TUI pseudo-terminal integration passes; interactive input and cursor restoration are reviewed.
+- [ ] Windows TUI smoke confirms raw input, ANSI cursor/screen output, and restoration of both saved console modes; interactive coverage remains a release gate.
 - [ ] `make tui-example` builds the responsive terminal-menu sample from a clean checkout; its polling loop, narrow-width layout, and resize refresh are reviewed.
 - [ ] JSON parser/accessor tests pass for malformed numbers, invalid escapes, Unicode/surrogates, UTF-8 validation, U+0000, and lookup failures.
 - [ ] JSON builder tests pass for object/array construction, escaping, duplicate keys, immutability, invalid fragments/container types, and `json.last_error()`.
