@@ -3,6 +3,7 @@
 **Status: unreleased development notes.** YLang 2.2.0 remains the latest stable release. This document records work merged into the 2.3 development branch; it is not a release announcement and does not imply that validation gates have passed.
 
 ## Work integrated so far
+- Improved diagnostic rendering on large source files by locating source excerpts from token offsets, avoiding repeated full source-prefix scans.
 
 - Made HTTP streaming redirect detection honor the case-insensitive HTTP field-name rules for `Location`, including mixed-case header names.
 
