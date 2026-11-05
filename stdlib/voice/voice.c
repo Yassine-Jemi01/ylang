@@ -247,6 +247,9 @@ bool ylvoice_play_stream(int64_t stream_id, YLVoiceStreamRead read_callback,
         if (close_callback) close_callback(stream_id);
         return false;
     }
+    /* A failed stream callback may provide a more useful transport error than
+       SDL_mixer's generic decoder error. Start clean and preserve that detail. */
+    voice_error[0] = '\\0';
     SDL_RWops *rwops = voice_create_stream_rwops(
         stream_id, read_callback, error_callback, close_callback);
     if (!rwops) {
@@ -258,7 +261,7 @@ bool ylvoice_play_stream(int64_t stream_id, YLVoiceStreamRead read_callback,
        freesrc is zero, so we close it only after the decoder is halted/freed. */
     Mix_Music *next = Mix_LoadMUS_RW(rwops, 0);
     if (!next) {
-        voice_set_error(Mix_GetError());
+        if (!voice_error[0]) voice_set_error(Mix_GetError());
         (void)SDL_RWclose(rwops);
         return false;
     }
