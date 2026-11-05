@@ -23,7 +23,7 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] POSIX native compiler failure preserves an existing destination and removes its private staging directory.
 - [ ] Frontend lexer/parser unit tests pass.
 - [ ] Module loader limits pass: 256-level import depth, 1,024-module total, and 64 MiB aggregate root/imported source limit.
-- [ ] Root and imported files containing embedded NUL bytes are rejected with the documented diagnostic behavior.
+- [ ] Root and imported files containing embedded NUL bytes are rejected with the documented diagnostic behavior; escaped NUL bytes in string literals and f-string text are rejected while `char` zero remains supported.
 - [ ] Diagnostic output is capped at 100 entries and control/non-ASCII bytes are escaped safely.
 - [ ] Braced and unbraced parser-depth recovery tests pass; code generation fails closed if an emission diagnostic occurs.
 - [ ] CLI `help`, `--help`, `-h`, `version`, `--version`, and `-V` aliases produce identical outputs within each group; subcommand help works and empty/duplicate output options or unused/duplicate `--cc` options fail with usage diagnostics.
