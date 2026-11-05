@@ -68,5 +68,12 @@ function main() -> int {
     print(string.length(json.last_error()) == 0);
     let owned_string cleared_error_array = json.array();
     print(string.length(json.last_error()) == 0);
+    let owned_string invalid_utf8 = to_string('\xFF');
+    let owned_string invalid_utf8_escape = json.escape(invalid_utf8);
+    print(string.length(invalid_utf8_escape) == 0);
+    print(string.contains(json.last_error(), "not valid UTF-8"));
+    let owned_string invalid_utf8_key = json.set(obj, invalid_utf8, "1");
+    print(string.length(invalid_utf8_key) == 0);
+    print(string.contains(json.last_error(), "not valid UTF-8"));
     return 0;
 }
