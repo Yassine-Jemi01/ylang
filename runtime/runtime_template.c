@@ -2661,10 +2661,32 @@ static int64_t yl_http_stream_read_buffer(int64_t stream_id, int64_t buffer_id,
 }
 #endif
 static bool yl_binary_buffer_free(int64_t id) {
-    YLBinaryBuffer *buffer = yl_binary_buffer_find(id);
-    if (!buffer) return false;
-    if (buffer->parent_id == 0) free(buffer->data);
-    memset(buffer, 0, sizeof(*buffer));
+    if (!yl_binary_buffer_find(id)) return false;
+
+    /* Slices borrow their parent's storage. Freeing any buffer invalidates
+       every descendant slice, including slices nested several levels deep. */
+    for (size_t i = 0; i < YL_BINARY_BUFFER_SLOTS; i++) {
+        YLBinaryBuffer *candidate = &yl_binary_buffers[i];
+        if (candidate->id == 0) continue;
+
+        int64_t ancestor_id = candidate->id;
+        size_t depth = 0U;
+        bool descendant = false;
+        while (ancestor_id != 0 && depth++ < YL_BINARY_BUFFER_SLOTS) {
+            YLBinaryBuffer *ancestor = yl_binary_buffer_find(ancestor_id);
+            if (!ancestor) break;
+            if (ancestor->id == id) {
+                descendant = true;
+                break;
+            }
+            ancestor_id = ancestor->parent_id;
+        }
+
+        if (descendant) {
+            if (candidate->parent_id == 0) free(candidate->data);
+            memset(candidate, 0, sizeof(*candidate));
+        }
+    }
     return true;
 }
 static int64_t yl_binary_buffer_load(const char *path, int64_t offset, int64_t length) {
