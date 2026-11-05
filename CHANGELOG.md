@@ -4,6 +4,8 @@ All notable changes to YLang are documented here. This project follows semantic 
 
 ## [2.3.0] — development (not released)
 
+- Made HTTP streaming redirect detection honor the case-insensitive HTTP field-name rules for `Location`, including mixed-case header names.
+
 - Aligned the asynchronous HTTP client User-Agent with the 2.3 runtime and removed an unused task-state field that belonged only to streaming metadata.
 
 YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable release.
