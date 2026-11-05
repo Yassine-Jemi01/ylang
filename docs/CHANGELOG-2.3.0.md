@@ -2,7 +2,10 @@
 
 **Status: unreleased development notes.** YLang 2.2.0 remains the latest stable release. This document records work merged into the 2.3 development branch; it is not a release announcement and does not imply that validation gates have passed.
 
-## Work integrated so far
+##
+
+- Fixed binary buffer cleanup so freeing a parent or nested slice invalidates and releases all descendant slice handles without leaving orphaned slots.
+ Work integrated so far
 
 - Removed the YTilawa application and its app-specific source, fixtures, and build steps. Shared TUI, Voice, HTTP streaming, and binary I/O facilities remain part of YLang.
 - Added compiler resource limits for diagnostic output, module count, aggregate project source size, and import depth. Root files are size-checked before allocation; root and imported source files containing embedded NUL bytes are rejected.
