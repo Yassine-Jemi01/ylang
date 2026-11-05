@@ -221,7 +221,7 @@ grep -q 'E2015' build/fstring-nul-literal.out
 
 cat > build/char-zero-literal.yl <<'EOF'
 function main() -> int {
-    let char zero = '\\0';
+    let char zero = '\0';
     return 0;
 }
 EOF
@@ -229,7 +229,7 @@ EOF
 
 cat > build/char-zero-to-string.yl <<'EOF'
 function main() -> int {
-    print(to_string('\\0'));
+    print(to_string('\0'));
     return 0;
 }
 EOF
@@ -245,7 +245,7 @@ grep -q 'formatted string contains a NUL byte' build/char-zero-to-string.out
 
 cat > build/fstring-char-zero.yl <<'EOF'
 function main() -> int {
-    let char zero = '\\0';
+    let char zero = '\0';
     print(f"value={zero}");
     return 0;
 }
@@ -267,7 +267,7 @@ function main() -> int {
 }
 EOF
 ./build/ylang build build/input-nul.yl -o build/input-nul >/dev/null
-if printf 'left\\000right\\n' | ./build/input-nul > build/input-nul.out 2>&1; then
+if printf 'left\000right\n' | ./build/input-nul > build/input-nul.out 2>&1; then
     echo "FAIL: io.read_line silently truncated an input line at NUL" >&2
     exit 1
 else
