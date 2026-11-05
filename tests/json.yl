@@ -23,6 +23,8 @@ function main() -> int {
     print(json.escape("café"));
     print(json.valid("{broken"));
     print(json.last_error());
+    print(json.escape("recovered"));
+    print(string.length(json.last_error()) == 0);
     let owned_string zero_doc = json.parse("{\"zero\":\"\\u0000\"}");
     print(json.get_string(zero_doc, "zero"));
     print(json.last_error());
