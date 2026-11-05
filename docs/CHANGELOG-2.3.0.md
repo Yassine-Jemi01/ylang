@@ -18,6 +18,7 @@
 - YLanglings now caps manifest input at 1 MiB and reports deeply nested malformed JSON cleanly; regression coverage checks both cases.
 - YLanglings now treats deeply nested/corrupt progress JSON as recoverable empty progress instead of allowing Python's JSON recursion limit to terminate the CLI; added coverage.
 - YLanglings now reports malformed `EDITOR`/`VISUAL` command quoting as an actionable configuration error instead of exposing a Python traceback; added a regression test.
+- YLanglings install/uninstall now requires a managed-data ownership marker and refuses unmanaged or symlinked data directories, preventing accidental recursive deletion or overwrite.
 - Replaced the fixed-size native compiler argument array with a capacity derived from the actual SDL2, SDL2_mixer, and libcurl flag counts, preventing stack overwrite when optional libraries are combined.
 - POSIX native C builds now use the same private sibling-directory publication strategy as NASM builds: a failed compiler invocation cannot truncate an existing executable, and successful output is atomically renamed into place.
 - YLanglings now converts progress-directory creation failures into a concise actionable CLI error and preserves the original save error if temporary-file cleanup also fails; added a regression case.
