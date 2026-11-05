@@ -1,0 +1,7 @@
+function main() -> int {
+    let string path = "sample.bin";
+    io.write_u16_be(path, 0, 258);
+    let int value = io.read_u16_be(path, 0);
+    print(value);
+    return 0;
+}
