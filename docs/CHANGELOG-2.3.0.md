@@ -5,7 +5,7 @@
 ## Work integrated so far
 
 - Fixed binary buffer cleanup so freeing a parent or nested slice invalidates and releases all descendant slice handles without leaving orphaned slots; expanded the dynamic-buffer regression fixture for root and non-root parent release.
-- Preserved specific HTTP streaming callback errors when libcurl reports a generic transfer/write failure, so callers retain the actionable runtime diagnostic. Preserved specific Voice stream callback diagnostics when SDL_mixer reports generic decoder or playback-start errors, and synchronized cross-thread error-state access with per-thread snapshots from the C accessor.
+- Preserved specific HTTP streaming callback errors when libcurl reports a generic transfer/write failure, so callers retain the actionable runtime diagnostic. Preserved specific Voice stream callback diagnostics when SDL_mixer reports generic decoder or playback-start errors, and synchronized cross-thread error-state access with per-thread snapshots from the C accessor; added a two-thread regression fixture for snapshot isolation.
 - Fixed `json.at` so negative indices set the same explicit out-of-range diagnostic as other invalid array indices.
 - Hardened `json.escape` and JSON builder keys to reject invalid UTF-8 instead of emitting malformed JSON strings; successful escaping and empty-container creation now clear stale JSON diagnostics.
 - Removed the YTilawa application and its app-specific source, fixtures, and build steps. Shared TUI, Voice, HTTP streaming, and binary I/O facilities remain part of YLang.
