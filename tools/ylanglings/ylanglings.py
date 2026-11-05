@@ -11,7 +11,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 ROOT = Path(__file__).resolve().parent
 EXERCISES = ROOT / "exercises"
@@ -32,12 +32,13 @@ def load_manifest():
     seen_files = set()
     seen_starters = set()
     seen_titles = set()
+    seen_solutions = set()
     core_count = optional_count = 0
     root = EXERCISES.resolve()
     for number, item in enumerate(manifest, 1):
         if not isinstance(item, dict):
             raise SystemExit(f"Invalid manifest entry {number}: expected an object.")
-        required = ("title", "category", "file", "starter", "description", "hint")
+        required = ("title", "category", "file", "starter", "description", "hint", "solution")
         missing = [field for field in required if not isinstance(item.get(field), str) or not item[field].strip()]
         if missing:
             raise SystemExit(f"Invalid manifest entry {number}: missing {', '.join(missing)}.")
@@ -77,9 +78,24 @@ def load_manifest():
             raise SystemExit(f"Duplicate starter file in manifest entry {number}: {item['starter']}")
         if item["title"] in seen_titles:
             raise SystemExit(f"Duplicate exercise title in manifest entry {number}: {item['title']}")
+        solution_path_text = item["solution"]
+        posix_solution = PurePosixPath(solution_path_text)
+        windows_solution = PureWindowsPath(solution_path_text)
+        if (
+            posix_solution.is_absolute()
+            or windows_solution.is_absolute()
+            or bool(windows_solution.drive)
+            or ".." in posix_solution.parts
+            or ".." in windows_solution.parts
+        ):
+            raise SystemExit(f"Manifest entry {number} has an unsafe solution path.")
+        normalized_solution = posix_solution.as_posix()
+        if normalized_solution in seen_solutions:
+            raise SystemExit(f"Duplicate reference solution in manifest entry {number}: {solution_path_text}")
         seen_files.add(exercise_path_resolved)
         seen_starters.add(starter_path_resolved)
         seen_titles.add(item["title"])
+        seen_solutions.add(normalized_solution)
         if optional:
             optional_count += 1
         else:
