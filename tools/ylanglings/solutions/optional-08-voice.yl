@@ -1,0 +1,12 @@
+function main() -> int {
+    let bool initialized = voice.init();
+    if (!initialized) {
+        print(voice.last_error());
+        return 1;
+    }
+    if (!voice.play("sample.mp3")) {
+        print(voice.last_error());
+    }
+    voice.shutdown();
+    return 0;
+}
