@@ -9,6 +9,7 @@ All notable changes to YLang are documented here. This project follows semantic 
 - Aligned the asynchronous HTTP client User-Agent with the 2.3 runtime and removed an unused task-state field that belonged only to streaming metadata.
 
 YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable release.
+- Sized native compiler argument storage from the actual optional-library flag counts instead of a fixed stack array.
 
 - POSIX C and NASM builds now publish executables atomically from private staging directories, preserving existing outputs when compilation or linking fails.
 - Improved YLanglings progress-save error handling when its configuration directory cannot be created.
