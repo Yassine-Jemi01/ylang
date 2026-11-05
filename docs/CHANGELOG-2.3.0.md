@@ -7,6 +7,7 @@
 **Status: unreleased development notes.** YLang 2.2.0 remains the latest stable release. This document records work merged into the 2.3 development branch; it is not a release announcement and does not imply that validation gates have passed.
 
 ## Work integrated so far
+- POSIX native C builds now use the same private sibling-directory publication strategy as NASM builds: a failed compiler invocation cannot truncate an existing executable, and successful output is atomically renamed into place.
 - YLanglings now converts progress-directory creation failures into a concise actionable CLI error and preserves the original save error if temporary-file cleanup also fails; added a regression case.
 - `build-asm` now links to a uniquely staged executable beside the requested target and atomically renames it into place only after a successful link; a failing-linker regression ensures an existing target is preserved and temporary output is cleaned.
 - Hardened the YLanglings uninstall target so it refuses to recursively remove a data directory that is not explicitly named `ylanglings`; added a regression test that protects an unrelated directory.
