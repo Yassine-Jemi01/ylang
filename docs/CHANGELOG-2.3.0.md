@@ -1,5 +1,7 @@
 # YLang 2.3.0 — Development Notes
 
+- Applied the 16 MiB generated-output limit to `json.escape`, accounting for quotes and control-byte expansion; added exact-boundary and overflow fixtures.
+
 **Status: unreleased development notes.** YLang 2.2.0 remains the latest stable release. This document records work merged into the 2.3 development branch; it is not a release announcement and does not imply that validation gates have passed.
 
 ## Work integrated so far
