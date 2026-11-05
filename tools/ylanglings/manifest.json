@@ -249,16 +249,16 @@
     "solution": "optional-08-voice.yl"
   },
   {
-    "title": "Optional: path helpers",
-    "category": "standard library",
-    "file": "optional-09-paths.yl",
-    "starter": "starter/optional-09-paths.yl",
-    "description": "Use path.basename and path.extension to inspect a path without splitting it manually.",
-    "hint": "The basename includes the final filename; the extension includes the leading dot.",
+    "title": "Optional: JSON builders",
+    "category": "optional · standard library",
+    "file": "optional-09-json-builders.yl",
+    "starter": "starter/optional-09-json-builders.yl",
+    "description": "Create a JSON object and add a numeric property with the immutable builder API.",
+    "hint": "json.set expects a valid raw JSON value; pass the number as JSON text.",
     "mode": "run",
     "optional": true,
-    "solution": "optional-09-paths.yl",
-    "expected_output": "report.txt\n.txt\n"
+    "solution": "optional-09-json-builders.yl",
+    "expected_output": "{\"score\":42}\n"
   },
   {
     "title": "Optional: Owned strings",
