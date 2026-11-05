@@ -7,6 +7,7 @@
 **Status: unreleased development notes.** YLang 2.2.0 remains the latest stable release. This document records work merged into the 2.3 development branch; it is not a release announcement and does not imply that validation gates have passed.
 
 ## Work integrated so far
+- Rejected escaped NUL bytes in string literals and f-string text instead of silently truncating NUL-terminated values; the one-byte `char` type retains its zero-byte support. Added compiler regression fixtures and editor diagnostic labels.
 - Fixed C-backend formatting of `http_stream` handles in both `print` and f-strings; the HTTP streaming integration fixture now covers both forms.
 - Fixed C-backend formatting of `http_stream` handles in both `print` and f-strings; the HTTP streaming integration fixture now covers both forms.
 - Synchronous, task-based, and streaming HTTP clients now share the `YLang/2.3` User-Agent; redirect safety recognizes the permitted `Content-Type` header case-insensitively, with a lowercase-header redirect regression fixture.
