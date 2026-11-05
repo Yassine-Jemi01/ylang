@@ -28,6 +28,12 @@ function main() -> int {
     print(redirected);
     print(http.status());
 
+    let owned_string lowercase_content_type_redirect = http.get_with_headers(
+        string.concat(base, "/redirect"), "content-type: application/json"
+    );
+    print(lowercase_content_type_redirect);
+    print(http.status());
+
     let owned_string guarded_redirect = http.get_with_headers(
         string.concat(base, "/redirect"), "X-Secret: must-not-follow"
     );
