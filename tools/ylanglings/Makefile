@@ -20,7 +20,7 @@ install:
 		fi; \
 	else \
 		install -d "$(DATADIR)"; \
-		printf '%s\\n' "$(INSTALL_MARKER_VALUE)" > "$(DATADIR)/$(INSTALL_MARKER)"; \
+		printf '%s\n' "$(INSTALL_MARKER_VALUE)" > "$(DATADIR)/$(INSTALL_MARKER)"; \
 	fi
 	install -d "$(BINDIR)"
 	cp -R exercises manifest.json README.md ylanglings.py "$(DATADIR)/"
