@@ -1212,6 +1212,7 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     mkdir -p build/failing-linker
     printf '#!/bin/sh\nexit 1\n' > build/failing-linker/ld
     chmod +x build/failing-linker/ld
+    printf 'old-output\n' > build/atomic-nasm-target
     ./build/ylang build-asm tests/asm-basic.yl -o build/atomic-nasm-target >/dev/null
     if PATH="$PWD/build/failing-linker:$PATH" ./build/ylang build-asm tests/asm-basic.yl -o build/atomic-nasm-target > build/atomic-nasm-fail.out 2>&1; then
         echo "FAIL: build-asm succeeded with a failing linker" >&2
