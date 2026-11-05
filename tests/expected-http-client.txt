@@ -26,6 +26,12 @@ deleted:{"method":"delete"}
 true
 custom|{"source":"ylang"}
 200
+true
+200
+true
+true
+200
+true
 not-found
 404
 
