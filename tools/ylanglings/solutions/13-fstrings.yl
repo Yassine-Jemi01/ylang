@@ -1,0 +1,5 @@
+function main() -> int {
+    let string name = "YLang";
+    print(f"Hello from {name}!");
+    return 0;
+}
