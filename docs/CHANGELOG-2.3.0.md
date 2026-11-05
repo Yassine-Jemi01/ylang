@@ -8,6 +8,7 @@
 
 ## Work integrated so far
 - Fixed C-backend formatting of `http_stream` handles in both `print` and f-strings; the HTTP streaming integration fixture now covers both forms.
+- Fixed C-backend formatting of `http_stream` handles in both `print` and f-strings; the HTTP streaming integration fixture now covers both forms.
 - Synchronous, task-based, and streaming HTTP clients now share the `YLang/2.3` User-Agent; redirect safety recognizes the permitted `Content-Type` header case-insensitively, with a lowercase-header redirect regression fixture.
 - YLanglings now verifies that its maintainer-only `solutions/` directory remains inside the tool root before resolving reference solutions, preventing an externally redirected solution tree.
 - YLanglings now resolves and rechecks exercise/starter paths at each operation, rejecting path traversal and symlink escapes before edit/reset operations.
