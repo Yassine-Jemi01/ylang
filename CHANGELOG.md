@@ -16,6 +16,7 @@ YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable r
 - Added immutable raw-JSON builders with key escaping and deterministic duplicate-key replacement; invalid fragments and results deeper than 128 containers are rejected, exactly 16 MiB of generated output is accepted, and larger results fail with a runtime error. Added a standalone [builder example](examples/json-builders.yl).
 - Defined duplicate-key behavior: getters return the first value, `json.set` replaces that value and collapses later copies, and `json.remove` drops all copies.
 - Added parser statement-depth recovery, code-generation recursion guards, and fail-closed C generation on emission diagnostics.
+- Enabled Windows virtual-terminal output for `std.tui`; initialization now saves/restores both console modes and fails cleanly when ANSI output mode cannot be enabled.
 - Added `ylang help` and `ylang version` subcommands, aligned command output, a full CLI reference, and a dependency-free `make tui-example` target with build-smoke coverage.
 - Tightened CLI option handling: `--cc` is rejected where it has no effect, and `ylang <command> --help` now prints the command reference without treating `--help` as a source filename.
 - Expanded the native benchmark report with host architecture, CPU identification, effective optimization flag, and core compiler flags so later 2.3 performance comparisons retain more of their machine/toolchain context.
