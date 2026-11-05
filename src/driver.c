@@ -917,10 +917,39 @@ int ylang_run(const char *command, const char *input_path,
         printf("Generated C source: %s\n", c_path);
     } else {
         const char *target = native_target;
+        const char *build_target = target;
         bool debug_mode = strcmp(command, "debug") == 0;
-        result = run_native_compiler(cc ? cc : "gcc", c_path, target,
-                                     compiler.uses_gui, debug_mode, compiler.uses_http,
-                                     compiler.uses_voice);
+        bool can_compile = true;
+#ifndef _WIN32
+        char *staging_directory = create_sibling_staging_directory(target);
+        char *staged_target = staging_directory
+            ? create_staged_executable_path(staging_directory) : NULL;
+        if (!staging_directory) {
+            fprintf(stderr, "ylang: cannot create private staging directory beside '%s': %s\n",
+                    target, strerror(errno));
+            can_compile = false;
+            result = errno == ENOMEM ? 70 : 1;
+        } else if (!staged_target) {
+            fprintf(stderr, "ylang: cannot prepare staged executable path: %s\n",
+                    strerror(errno));
+            can_compile = false;
+            result = errno == ENOMEM ? 70 : 64;
+        } else {
+            build_target = staged_target;
+        }
+#endif
+        if (can_compile) {
+            result = run_native_compiler(cc ? cc : "gcc", c_path, build_target,
+                                         compiler.uses_gui, debug_mode, compiler.uses_http,
+                                         compiler.uses_voice);
+#ifndef _WIN32
+            if (result == 0 && rename(staged_target, target) != 0) {
+                fprintf(stderr, "ylang: cannot publish executable '%s': %s\n",
+                        target, strerror(errno));
+                result = 1;
+            }
+#endif
+        }
         if (result == 0) {
             printf("Build succeeded: %s\n", target);
             if (debug_mode) {
@@ -935,9 +964,19 @@ int ylang_run(const char *command, const char *input_path,
                 result = run_external(debugger_args);
 #endif
             }
-        } else {
+        } else if (can_compile) {
             fprintf(stderr, "ylang: native compilation failed (exit %d).\n", result);
         }
+#ifndef _WIN32
+        if (staged_target) {
+            (void)unlink(staged_target);
+            free(staged_target);
+        }
+        if (staging_directory) {
+            (void)rmdir(staging_directory);
+            free(staging_directory);
+        }
+#endif
         (void)unlink(c_path);
         (void)rmdir(temporary_directory);
     }
