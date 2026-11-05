@@ -11,6 +11,22 @@ static Mix_Music *voice_music;
 static SDL_RWops *voice_stream_rwops;
 static bool voice_track_completed;
 static char voice_error[256];
+static SDL_SpinLock voice_error_lock;
+
+static void voice_clear_error(void)
+{
+    SDL_AtomicLock(&voice_error_lock);
+    voice_clear_error();
+    SDL_AtomicUnlock(&voice_error_lock);
+}
+
+static bool voice_has_error(void)
+{
+    SDL_AtomicLock(&voice_error_lock);
+    bool has_error = voice_error[0] != '\\0';
+    SDL_AtomicUnlock(&voice_error_lock);
+    return has_error;
+}
 
 typedef struct {
     int64_t stream_id;
@@ -25,8 +41,10 @@ typedef struct {
 
 static void voice_set_error(const char *message)
 {
+    SDL_AtomicLock(&voice_error_lock);
     (void)snprintf(voice_error, sizeof(voice_error), "%s",
                    message && *message ? message : "unknown audio error");
+    SDL_AtomicUnlock(&voice_error_lock);
 }
 
 static void voice_release_music(void)
@@ -261,7 +279,7 @@ bool ylvoice_play_stream(int64_t stream_id, YLVoiceStreamRead read_callback,
        freesrc is zero, so we close it only after the decoder is halted/freed. */
     Mix_Music *next = Mix_LoadMUS_RW(rwops, 0);
     if (!next) {
-        if (!voice_error[0]) voice_set_error(Mix_GetError());
+        if (!voice_has_error()) voice_set_error(Mix_GetError());
         (void)SDL_RWclose(rwops);
         return false;
     }
@@ -332,7 +350,11 @@ bool ylvoice_set_volume(int64_t percent)
 
 const char *ylvoice_last_error(void)
 {
-    return voice_error[0] ? voice_error : "No error";
+    static _Thread_local char snapshot[sizeof(voice_error)];
+    SDL_AtomicLock(&voice_error_lock);
+    memcpy(snapshot, voice_error, sizeof(snapshot));
+    SDL_AtomicUnlock(&voice_error_lock);
+    return snapshot[0] ? snapshot : "No error";
 }
 
 void ylvoice_shutdown(void)
