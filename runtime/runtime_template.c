@@ -1555,7 +1555,7 @@ static const char *yl_json_escape(const char *value) {
     /* Even an unescaped byte needs one output byte, plus the surrounding
        quotes. Reject impossible inputs before scanning their contents. */
     if (n > YL_JSON_MAX_INPUT - 2U) {
-        yl_json_error("JSON output exceeds the 16 MiB limit");
+        yl_runtime_error("JSON output exceeds the 16 MiB limit");
         return "";
     }
     /* JSON text must contain valid UTF-8; escaping ASCII controls alone is
@@ -1575,7 +1575,7 @@ static const char *yl_json_escape(const char *value) {
                         c == '\f' || c == '\n' || c == '\r' ||
                         c == '\t') ? 2U : (c < 0x20U ? 6U : 1U);
         if (escaped_length > YL_JSON_MAX_INPUT - extra) {
-            yl_json_error("JSON output exceeds the 16 MiB limit");
+            yl_runtime_error("JSON output exceeds the 16 MiB limit");
             return "";
         }
         escaped_length += extra;
