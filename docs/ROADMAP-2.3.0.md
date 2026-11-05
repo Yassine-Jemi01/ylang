@@ -10,6 +10,7 @@ Make YLang 2.3 a dependable, polished minor release: improve the existing compil
 
 ### 1. Compiler reliability and security
 - Bound parser, module loader, diagnostics, and code-generation resource usage.
+- Bound parser, module loader, diagnostics, code generation, and native compiler argument-vector resource usage.
 - Preserve stable language behavior and produce deterministic diagnostics.
 - Review HTTP header/body handling, buffer boundaries, path handling, and process invocation.
 - Add focused regression fixtures for every accepted fix.
