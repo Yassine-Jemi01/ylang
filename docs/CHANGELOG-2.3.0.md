@@ -7,6 +7,7 @@
 **Status: unreleased development notes.** YLang 2.2.0 remains the latest stable release. This document records work merged into the 2.3 development branch; it is not a release announcement and does not imply that validation gates have passed.
 
 ## Work integrated so far
+- YLanglings now caps manifest input at 1 MiB and reports deeply nested malformed JSON cleanly; regression coverage checks both cases.
 - YLanglings now treats deeply nested/corrupt progress JSON as recoverable empty progress instead of allowing Python's JSON recursion limit to terminate the CLI; added coverage.
 - YLanglings now reports malformed `EDITOR`/`VISUAL` command quoting as an actionable configuration error instead of exposing a Python traceback; added a regression test.
 - Replaced the fixed-size native compiler argument array with a capacity derived from the actual SDL2, SDL2_mixer, and libcurl flag counts, preventing stack overwrite when optional libraries are combined.
