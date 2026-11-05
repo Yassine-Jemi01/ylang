@@ -175,6 +175,7 @@ def main():
             "    let owned_string text = http.stream_read(stream, 32);\\n"
             "    print(string.length(text) == 0);\\n"
             '    print(string.contains(http.stream_error(stream), "NUL bytes"));\\n'
+            "    print(http.stream_done(stream));\\n"
             "    http.stream_close(stream);\\n"
             "    return 0;\\n"
             "}\\n",
@@ -191,7 +192,7 @@ def main():
             capture_output=True,
             timeout=20,
         )
-        if text_nul_result.returncode != 0 or text_nul_result.stdout != "true\\ntrue\\n":
+        if text_nul_result.returncode != 0 or text_nul_result.stdout != "true\\ntrue\\ntrue\\n":
             sys.stderr.write("--- actual text NUL stream output ---\\n" + text_nul_result.stdout)
             sys.stderr.write(text_nul_result.stderr)
             raise SystemExit("HTTP text streaming NUL rejection test failed")
