@@ -20,6 +20,11 @@ typedef struct {
 } AsmVarSlot;
 
 typedef struct {
+    Stmt *statement;
+    size_t slot;
+} AsmMatchSlot;
+
+typedef struct {
     Expr *expression;
     unsigned char *bytes;
     size_t length;
@@ -42,6 +47,9 @@ typedef struct {
     AsmVarSlot *slots;
     size_t slot_count;
     size_t slot_capacity;
+    AsmMatchSlot *match_slots;
+    size_t match_slot_count;
+    size_t match_slot_capacity;
     size_t temporary_depth;
     Function *function;
     AsmLoop *loop;
@@ -291,6 +299,43 @@ static bool add_slot(AsmContext *ctx, VarDecl *variable)
     return true;
 }
 
+static bool add_match_slot(AsmContext *ctx, Stmt *statement)
+{
+    if (ctx->match_slot_count == ctx->match_slot_capacity) {
+        size_t next = ctx->match_slot_capacity ? ctx->match_slot_capacity * 2U : 8U;
+        if (next < ctx->match_slot_capacity ||
+            next > SIZE_MAX / sizeof(*ctx->match_slots)) {
+            fputs("ylang: NASM match table is too large.\n", stderr);
+            ctx->okay = false;
+            return false;
+        }
+        AsmMatchSlot *grown = realloc(ctx->match_slots, next * sizeof(*grown));
+        if (!grown) {
+            fputs("ylang: out of memory for NASM match table.\n", stderr);
+            ctx->okay = false;
+            return false;
+        }
+        ctx->match_slots = grown;
+        ctx->match_slot_capacity = next;
+    }
+    ctx->match_slots[ctx->match_slot_count] =
+        (AsmMatchSlot){ statement, ctx->match_slot_count };
+    ctx->match_slot_count++;
+    return true;
+}
+
+static size_t match_slot_offset(AsmContext *ctx, Stmt *statement)
+{
+    for (size_t i = 0; i < ctx->match_slot_count; i++) {
+        if (ctx->match_slots[i].statement == statement) {
+            return (ctx->slot_count + ctx->match_slots[i].slot + 1U) * 8U;
+        }
+    }
+    fputs("ylang: internal error: no NASM stack slot for match expression.\n", stderr);
+    ctx->okay = false;
+    return 8U;
+}
+
 static bool collect_stmt_slots(AsmContext *ctx, Stmt *stmt)
 {
     if (!stmt) return true;
@@ -307,6 +352,7 @@ static bool collect_stmt_slots(AsmContext *ctx, Stmt *stmt)
             return collect_stmt_slots(ctx, stmt->as.if_stmt.then_branch) &&
                    collect_stmt_slots(ctx, stmt->as.if_stmt.else_branch);
         case STMT_MATCH:
+            if (!add_match_slot(ctx, stmt)) return false;
             for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++) {
                 if (!collect_stmt_slots(ctx, stmt->as.match_stmt.arms[i]->body)) return false;
             }
@@ -898,11 +944,13 @@ static bool emit_stmt(AsmContext *ctx, Stmt *stmt)
             return true;
         case STMT_MATCH: {
             unsigned end_label = new_label(ctx);
+            size_t value_offset = match_slot_offset(ctx, stmt);
+            if (!emit_expr(ctx, stmt->as.match_stmt.value)) return false;
+            fprintf(ctx->out, "    mov [rbp - %zu], rax\n", value_offset);
             for (size_t i = 0; i < stmt->as.match_stmt.arm_count; i++) {
                 MatchArm *arm = stmt->as.match_stmt.arms[i];
                 unsigned next_label = new_label(ctx);
-                if (!emit_expr(ctx, stmt->as.match_stmt.value)) return false;
-                fputs("    mov r10, rax\n", ctx->out);
+                fprintf(ctx->out, "    mov r10, [rbp - %zu]\n", value_offset);
                 fprintf(ctx->out, "    mov rax, 0x%016" PRIx64 "\n",
                         (uint64_t)(arm->variant ? arm->variant->value : 0));
                 fputs("    cmp r10, rax\n", ctx->out);
@@ -926,6 +974,7 @@ static bool prepare_function(AsmContext *ctx, Function *function)
     ctx->slots = NULL;
     ctx->slot_count = 0;
     ctx->slot_capacity = 0;
+    ctx->match_slot_count = 0;
     ctx->temporary_depth = 0;
     ctx->loop = NULL;
     ctx->function = function;
@@ -946,7 +995,13 @@ static bool emit_function(AsmContext *ctx, Function *function)
     };
     if (!prepare_function(ctx, function)) return false;
 
-    size_t raw_frame_size = ctx->slot_count * 8U;
+    size_t total_slots = ctx->slot_count + ctx->match_slot_count;
+    if (total_slots > (SIZE_MAX - 15U) / 8U) {
+        fputs("ylang: NASM stack frame is too large.\n", stderr);
+        ctx->okay = false;
+        return false;
+    }
+    size_t raw_frame_size = total_slots * 8U;
     size_t frame_size = (raw_frame_size + 15U) & ~(size_t)15U;
     fprintf(ctx->out, "\n%s:\n    push rbp\n    mov rbp, rsp\n",
             function->c_name);
@@ -1138,6 +1193,7 @@ bool generate_asm(Compiler *compiler, const char *path)
         for (size_t i = 0; i < ctx.string_count; i++) free(ctx.strings[i].bytes);
         free(ctx.strings);
         free(ctx.slots);
+        free(ctx.match_slots);
         return false;
     }
 
@@ -1146,6 +1202,7 @@ bool generate_asm(Compiler *compiler, const char *path)
         fprintf(stderr, "ylang: cannot write NASM source '%s'.\n", path);
         free(ctx.strings);
         free(ctx.slots);
+        free(ctx.match_slots);
         return false;
     }
     ctx.out = out;
@@ -1182,5 +1239,6 @@ bool generate_asm(Compiler *compiler, const char *path)
     for (size_t i = 0; i < ctx.string_count; i++) free(ctx.strings[i].bytes);
     free(ctx.strings);
     free(ctx.slots);
+    free(ctx.match_slots);
     return okay;
 }
