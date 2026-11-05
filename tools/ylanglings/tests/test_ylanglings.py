@@ -51,6 +51,10 @@ class ManifestTests(unittest.TestCase):
                 self.assertTrue(starter.is_relative_to(ylanglings.EXERCISES.resolve()))
                 self.assertTrue(exercise.is_file(), f"missing exercise: {exercise}")
                 self.assertTrue(starter.is_file(), f"missing starter: {starter}")
+                self.assertEqual(
+                    exercise.read_bytes(), starter.read_bytes(),
+                    "reset must restore the exact initial exercise source",
+                )
                 self.assertNotIn(item["file"], files)
                 files.add(item["file"])
                 self.assertNotIn(item["solution"], solutions)
