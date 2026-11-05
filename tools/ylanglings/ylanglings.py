@@ -395,8 +395,11 @@ def solution_path(item):
     relative = item.get("solution")
     if not isinstance(relative, str) or not relative.strip():
         raise SystemExit(f"Exercise {item.get('title', '<unknown>')} has no maintainer solution.")
-    root = SOLUTIONS.resolve()
+    tool_root = ROOT.resolve()
     try:
+        root = SOLUTIONS.resolve()
+        if not root.is_relative_to(tool_root):
+            raise SystemExit("Unsafe YLanglings solutions directory.")
         candidate = (root / relative).resolve()
         if not candidate.is_relative_to(root):
             raise SystemExit(f"Unsafe solution path for {item['title']}.")
