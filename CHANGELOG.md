@@ -25,7 +25,7 @@ YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable r
 - POSIX C and NASM builds now publish executables atomically from private staging directories, preserving existing outputs when compilation or linking fails.
 - Improved YLanglings progress-save error handling when its configuration directory cannot be created.
 - Made `build-asm` publish linked executables atomically so linker failures preserve any existing output file.
-- Guarded YLanglings uninstall against recursively deleting an unrelated directory and added a regression test.
+- Guarded YLanglings installation and removal with a private ownership marker; unmanaged or symlinked data directories are refused instead of recursively overwritten or deleted, with regression coverage.
 
 - Hardened the stable-publication CircleCI gate to require both configured job contexts and inspect each context's latest status.
 
