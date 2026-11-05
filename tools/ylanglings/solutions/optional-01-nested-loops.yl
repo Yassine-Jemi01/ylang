@@ -1,0 +1,10 @@
+function main() -> int {
+    let int total = 0;
+    for (let int row = 1; row <= 3; row = row + 1) {
+        for (let int column = 1; column <= 3; column = column + 1) {
+            total = total + column;
+        }
+    }
+    print(total);
+    return 0;
+}
