@@ -1220,7 +1220,7 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     grep -q 'ld failed' build/atomic-nasm-fail.out
     ./build/atomic-nasm-target > build/atomic-nasm-preserved.out
     diff -u tests/expected-asm-basic.txt build/atomic-nasm-preserved.out
-    if find build -maxdepth 1 -name 'atomic-nasm-target.ylang-tmp-*' -print -quit | grep -q .; then
+    if find build -maxdepth 1 -type d -name '.ylang-tmp-*' -print -quit | grep -q .; then
         echo "FAIL: build-asm left a staged executable after linker failure" >&2
         exit 1
     fi
