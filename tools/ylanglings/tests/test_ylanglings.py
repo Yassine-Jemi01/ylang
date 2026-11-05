@@ -122,6 +122,21 @@ class ManifestTests(unittest.TestCase):
                 with self.assertRaisesRegex(SystemExit, "Duplicate reference solution"):
                     ylanglings.load_manifest()
 
+    def test_manifest_rejects_deep_and_oversized_json_cleanly(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manifest_path = Path(directory) / "manifest.json"
+            manifest_path.write_text("[" * 2000 + "0" + "]" * 2000, encoding="utf-8")
+            with mock.patch.object(ylanglings, "MANIFEST", manifest_path):
+                with self.assertRaises(SystemExit) as raised:
+                    ylanglings.load_manifest()
+            self.assertIn("Could not read YLanglings manifest", str(raised.exception))
+
+            manifest_path.write_bytes(b" " * (1024 * 1024 + 1))
+            with mock.patch.object(ylanglings, "MANIFEST", manifest_path):
+                with self.assertRaises(SystemExit) as raised:
+                    ylanglings.load_manifest()
+            self.assertIn("exceeds the 1 MiB limit", str(raised.exception))
+
     def test_manifest_rejects_unsafe_reference_solution_paths(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "exercises"
