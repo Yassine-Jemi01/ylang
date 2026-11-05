@@ -31,6 +31,7 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] Frontend fuzz smoke test completes without crash, hang, or sanitizer finding.
 - [ ] HTTP synchronous/task/streaming integration tests pass, including oversized response-header rejection at the 16 KiB boundary and binary stream transport errors returning `-1` after buffered bytes are drained; libcurl poll/resume failures terminate the stream with a retrievable error; status/header access waits for final metadata without consuming the body.
 - [ ] Binary file and streaming integration tests pass, including end-of-file, truncation, and buffer-boundary cases.
+- [ ] Dynamic binary-buffer lifetime coverage passes for nested slices, freeing a parent with live descendants, invalidated handles, and reclaimed handle slots.
 - [ ] Voice-to-HTTP-stream integration passes where SDL2_mixer and a supported decoder are available; unavailable optional dependencies are reported as explicit skips.
 - [ ] TUI pseudo-terminal integration passes; interactive input and cursor restoration are reviewed.
 - [ ] Windows TUI smoke confirms raw input, ANSI cursor/screen output, and restoration of both saved console modes; interactive coverage remains a release gate.
