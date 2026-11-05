@@ -1,0 +1,15 @@
+enum Direction { North, East, South }
+
+function choose() -> Direction {
+    print("evaluated");
+    return Direction.East;
+}
+
+function main() -> int {
+    match (choose()) {
+        Direction.North -> { print("north"); }
+        Direction.East -> { print("east"); }
+        Direction.South -> { print("south"); }
+    }
+    return 0;
+}
