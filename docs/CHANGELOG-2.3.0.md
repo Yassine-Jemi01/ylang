@@ -12,6 +12,7 @@
 - Added compiler resource limits for diagnostic output, module count, aggregate project source size, and import depth. Root files are size-checked before allocation; root and imported source files containing embedded NUL bytes are rejected.
 - Added parser statement-nesting and code-generation recursion guards with dedicated diagnostics; recovery also handles unbraced nested statements, and C generation now fails closed on emission diagnostics.
 - Fixed an HTTP response-header capacity check that could underflow an unsigned size calculation.
+- Added the missing per-stream response-header completion state required by metadata-first status/header access.
 - Added immutable raw-JSON builders: `json.object()`, `json.array()`, `json.set()`, `json.remove()`, and `json.push()`. `json.set` escapes keys and collapses duplicate copies of the replaced key; getters use the first matching value and `json.remove` removes all copies. Added the runnable `examples/json-builders.yl` walkthrough and 128/129-container boundary coverage.
 - Refreshed the official homepage hero with a truthful code/native-build preview and improved the responsive terminal-menu example.
 - Added `ylang help` and `ylang version` subcommands with matching option aliases and a full CLI reference.
