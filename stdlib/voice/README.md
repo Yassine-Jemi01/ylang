@@ -43,7 +43,7 @@ It currently supports one music track at a time. Natural completion is observabl
 through `voice.is_finished()`; polling either state query releases the completed mixer
 object. `voice.play_stream(http_stream)` transfers ownership of the stream to the audio
 runtime and reads incrementally through SDL_RWops; do not use the HTTP handle again after
-passing it to Voice. The stream reader is forward-only and does not support seeking. If the stream callback fails during decoder setup, its specific transport diagnostic is preserved instead of being replaced by SDL_mixer's generic decode error.
+passing it to Voice. The stream reader is forward-only and does not support seeking. If the stream callback fails during decoder setup or playback startup, its specific transport diagnostic is preserved instead of being replaced by SDL_mixer's generic error.
 Text-to-speech, multiple simultaneous voices, seeking, playlists, and recording are not
 implemented yet.
 
