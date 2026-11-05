@@ -113,7 +113,7 @@ def load_progress():
         if PROGRESS.stat().st_size > 1024 * 1024:
             return {"completed": []}
         progress = json.loads(PROGRESS.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, RecursionError):
         return {"completed": []}
 
     if not isinstance(progress, dict):
