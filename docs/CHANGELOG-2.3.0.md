@@ -3,6 +3,7 @@
 **Status: unreleased development notes.** YLang 2.2.0 remains the latest stable release. This document records work merged into the 2.3 development branch; it is not a release announcement and does not imply that validation gates have passed.
 
 ## Work integrated so far
+- Fixed the experimental NASM backend to evaluate a `match` subject once, storing it in a per-match frame slot; added a C/NASM parity regression with a side-effecting subject.
 - The experimental NASM backend now removes its output file when emission or final file writing fails, preventing partial assembly from being mistaken for a successful artifact.
 - Improved diagnostic rendering on large source files by locating source excerpts from token offsets, avoiding repeated full source-prefix scans.
 
