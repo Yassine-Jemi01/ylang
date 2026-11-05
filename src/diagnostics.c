@@ -72,10 +72,34 @@ void diagnostic(Compiler *c, Token token, const char *level,
     fprintf(stderr, ":%zu:%zu\n", line, column);
 
     const char *line_start = shown_source;
-    size_t current_line = 1;
-    while (shown_source && current_line < line &&
-           line_start < shown_source + shown_source_length) {
-        if (*line_start++ == '\n') current_line++;
+    size_t current_line = 1U;
+    bool token_in_source = false;
+    if (shown_source && token.start) {
+        uintptr_t source_base = (uintptr_t)(const void *)shown_source;
+        if (token_address >= source_base &&
+            token_address - source_base <= shown_source_length) {
+            /*
+             * Tokens already point into their owning source buffer. Find the
+             * containing line locally instead of rescanning the entire file
+             * for every diagnostic (up to 100 times on large inputs).
+             */
+            line_start = token.start;
+            const char *source_end = shown_source + shown_source_length;
+            while (line_start > shown_source &&
+                   line_start[-1] != '\\n' && line_start[-1] != '\\r') {
+                line_start--;
+            }
+            if (line_start > source_end) line_start = shown_source;
+            current_line = line;
+            token_in_source = true;
+        }
+    }
+    if (!token_in_source) {
+        line_start = shown_source;
+        while (shown_source && current_line < line &&
+               line_start < shown_source + shown_source_length) {
+            if (*line_start++ == '\\n') current_line++;
+        }
     }
     const char *line_end = line_start;
     while (shown_source && line_end < shown_source + shown_source_length &&
