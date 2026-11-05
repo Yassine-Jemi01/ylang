@@ -9,6 +9,7 @@ YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable r
 - Removed the YTilawa application and its dedicated fixtures/build steps while retaining shared TUI, Voice, HTTP streaming, and binary I/O libraries.
 - Added compiler resource limits for diagnostic count/output, import depth, module count, and aggregate project source size; root files are size-checked before allocation and embedded NUL bytes are rejected in root/imported sources.
 - Fixed an HTTP response-header capacity underflow and added an exact-boundary loopback fixture.
+- Added the per-stream response-header completion state used by status/header access before body reads.
 - Corrected binary HTTP streaming reads to return `-1` after a transport failure once any buffered bytes have been drained, and added a truncated-response fixture.
 - Made HTTP stream status/header access wait for final response metadata (including permitted redirects) without consuming the body, and extended the loopback fixture to exercise metadata-first reads.
 - Propagated libcurl multi-poll and resume failures into stream error/done state instead of leaving a failed stream waiting indefinitely.
