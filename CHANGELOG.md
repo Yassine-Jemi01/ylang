@@ -9,6 +9,8 @@ All notable changes to YLang are documented here. This project follows semantic 
 - Aligned the asynchronous HTTP client User-Agent with the 2.3 runtime and removed an unused task-state field that belonged only to streaming metadata.
 
 YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable release.
+
+- Applied the 16 MiB generated-output limit to `json.escape`, including escaped-control expansion, with exact-boundary and overflow fixtures.
 - Fixed NASM `match` lowering to evaluate the subject once; added a side-effecting C/NASM parity regression.
 - The experimental NASM backend removes partial assembly output after emission or file-write failures.
 - Improved diagnostic rendering on large source files by locating source excerpts from token offsets, avoiding repeated full source-prefix scans.
