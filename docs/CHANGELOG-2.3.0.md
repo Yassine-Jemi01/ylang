@@ -18,7 +18,6 @@
 - YLanglings now converts progress-directory creation failures into a concise actionable CLI error and preserves the original save error if temporary-file cleanup also fails; added a regression case.
 - `build-asm` now links to a uniquely staged executable beside the requested target and atomically renames it into place only after a successful link; a failing-linker regression ensures an existing target is preserved and temporary output is cleaned.
 - Hardened the YLanglings uninstall target so it refuses to recursively remove a data directory that is not explicitly named `ylanglings`; added a regression test that protects an unrelated directory.
-- Fixed the experimental NASM backend to evaluate a `match` subject once, storing it in a per-match frame slot; added a C/NASM parity regression with a side-effecting subject.
 - The experimental NASM backend now removes its output file when emission or final file writing fails, preventing partial assembly from being mistaken for a successful artifact.
 - Improved diagnostic rendering on large source files by locating source excerpts from token offsets, avoiding repeated full source-prefix scans.
 
