@@ -515,6 +515,7 @@ static int run_native_compiler(const char *cc, const char *c_path,
                               &voice_flag_count)) return 1;
     }
 
+    /* Fixed compiler switches plus a terminator; optional pkg-config flags are added below. */
     size_t args_capacity = 48U;
     if (sdl_flag_count > SIZE_MAX - args_capacity) {
         fputs("ylang: native compiler argument list is too large.\n", stderr);
