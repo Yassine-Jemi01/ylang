@@ -8,6 +8,8 @@ authorized
 200
 redirect-target-reached
 200
+redirect-target-reached
+200
 
 302
 true
