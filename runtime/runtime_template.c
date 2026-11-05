@@ -1562,9 +1562,20 @@ static const char *yl_json_escape(const char *value) {
             return "";
         }
     }
-    size_t cap;
-    if(n>(SIZE_MAX-3U)/6U) yl_runtime_error("JSON string is too large");
-    cap=n*6U+3U; char *o=malloc(cap);if(!o)yl_runtime_error("out of memory");
+    size_t escaped_length = 2U; /* Opening and closing quotes. */
+    for (size_t i = 0U; i < n; i++) {
+        unsigned char c = (unsigned char)value[i];
+        size_t extra = (c == '"' || c == '\\\\' || c == '\\b' ||
+                        c == '\\f' || c == '\\n' || c == '\\r' ||
+                        c == '\\t') ? 2U : (c < 0x20U ? 6U : 1U);
+        if (escaped_length > YL_JSON_MAX_INPUT - extra) {
+            yl_json_error("JSON output exceeds the 16 MiB limit");
+            return "";
+        }
+        escaped_length += extra;
+    }
+    char *o = malloc(escaped_length + 1U);
+    if (!o) yl_runtime_error("out of memory");
     size_t j=0U;o[j++]='"';
     static const char hex[]="0123456789abcdef";
     for(size_t i=0;i<n;i++){unsigned char c=(unsigned char)value[i];
