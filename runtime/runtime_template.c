@@ -2663,29 +2663,31 @@ static int64_t yl_http_stream_read_buffer(int64_t stream_id, int64_t buffer_id,
 static bool yl_binary_buffer_free(int64_t id) {
     if (!yl_binary_buffer_find(id)) return false;
 
-    /* Slices borrow their parent's storage. Freeing any buffer invalidates
-       every descendant slice, including slices nested several levels deep. */
+    /* Slices borrow their parent's storage. Mark every descendant before
+       clearing any slot, because nested slices may occupy any table order. */
+    bool release_slot[YL_BINARY_BUFFER_SLOTS] = {false};
     for (size_t i = 0; i < YL_BINARY_BUFFER_SLOTS; i++) {
         YLBinaryBuffer *candidate = &yl_binary_buffers[i];
         if (candidate->id == 0) continue;
 
         int64_t ancestor_id = candidate->id;
         size_t depth = 0U;
-        bool descendant = false;
         while (ancestor_id != 0 && depth++ < YL_BINARY_BUFFER_SLOTS) {
             YLBinaryBuffer *ancestor = yl_binary_buffer_find(ancestor_id);
             if (!ancestor) break;
             if (ancestor->id == id) {
-                descendant = true;
+                release_slot[i] = true;
                 break;
             }
             ancestor_id = ancestor->parent_id;
         }
+    }
 
-        if (descendant) {
-            if (candidate->parent_id == 0) free(candidate->data);
-            memset(candidate, 0, sizeof(*candidate));
-        }
+    for (size_t i = 0; i < YL_BINARY_BUFFER_SLOTS; i++) {
+        if (!release_slot[i]) continue;
+        if (yl_binary_buffers[i].parent_id == 0)
+            free(yl_binary_buffers[i].data);
+        memset(&yl_binary_buffers[i], 0, sizeof(yl_binary_buffers[i]));
     }
     return true;
 }
