@@ -219,6 +219,14 @@ if ./build/ylang check build/fstring-nul-literal.yl > build/fstring-nul-literal.
 fi
 grep -q 'E2015' build/fstring-nul-literal.out
 
+cat > build/char-zero-literal.yl <<'EOF'
+function main() -> int {
+    let char zero = '\\0';
+    return 0;
+}
+EOF
+./build/ylang check build/char-zero-literal.yl >/dev/null
+
 # Excessively nested expressions must fail with a parser diagnostic, not a crash.
 {
     printf 'function main() -> int { return '
