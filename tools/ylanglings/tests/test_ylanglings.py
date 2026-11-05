@@ -300,6 +300,24 @@ class CliStateTests(unittest.TestCase):
                     command(0, ylanglings.load_manifest())
                 self.assertIn("ylanglings list", str(raised.exception))
 
+    def test_uninstall_refuses_unexpected_data_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            victim = Path(directory) / "keep-this-directory"
+            victim.mkdir()
+            marker = victim / "important.txt"
+            marker.write_text("keep", encoding="utf-8")
+            result = subprocess.run(
+                [
+                    "make", "-C", str(TOOL_DIR), "uninstall",
+                    f"BINDIR={Path(directory) / 'bin'}",
+                    f"DATADIR={victim}",
+                ],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Refusing to remove unexpected YLanglings data path", result.stdout + result.stderr)
+            self.assertEqual(marker.read_text(encoding="utf-8"), "keep")
+
     def test_user_install_and_uninstall_smoke(self):
         with tempfile.TemporaryDirectory() as directory:
             prefix = Path(directory) / "prefix with spaces"
