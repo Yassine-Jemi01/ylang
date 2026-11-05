@@ -610,6 +610,7 @@ typedef struct {
     bool done;
     bool attached;
     bool paused;
+    bool headers_complete;
     CURL *easy;
     CURLM *multi;
     struct curl_slist *headers;
