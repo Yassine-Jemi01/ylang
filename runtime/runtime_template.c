@@ -1512,7 +1512,11 @@ static int64_t yl_json_array_length(const char *text) {
     yl_json_error("Invalid JSON array"); return count;
 }
 static const char *yl_json_at(const char *text,int64_t index) {
-    YLJson p; size_t a,b; if(index<0 || !yl_json_root(text,&p,&a,&b)) return "";
+    if (index < 0) {
+        yl_json_error("JSON array index out of range");
+        return "";
+    }
+    YLJson p; size_t a,b; if(!yl_json_root(text,&p,&a,&b)) return "";
     p.i=a; if(p.s[p.i++]!='['){yl_json_error("JSON value is not an array");return "";}
     yl_json_ws(&p);
     for(int64_t i=0;;i++){size_t x,y;if(!yl_json_value(&p,&x,&y)){yl_json_error("JSON array index out of range");return "";}
