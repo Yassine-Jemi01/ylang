@@ -237,6 +237,8 @@ class CliStateTests(unittest.TestCase):
             )
             executable = prefix / "bin" / "ylanglings"
             self.assertTrue(executable.is_file())
+            launcher_text = executable.read_text(encoding="utf-8")
+            self.assertIn('"$@"', launcher_text, "installed launcher must forward CLI arguments")
             command = ["bash", str(executable), "list"] if os.name == "nt" else [str(executable), "list"]
             listing = subprocess.run(
                 command, check=True, capture_output=True,
