@@ -16,5 +16,6 @@ install:
 	@echo "Make sure $(BINDIR) is in PATH and the ylang compiler is available."
 
 uninstall:
+	@case "$(DATADIR)" in ylanglings|*/ylanglings) ;; *) echo "Refusing to remove unexpected YLanglings data path: $(DATADIR)" >&2; exit 1 ;; esac
 	rm -f "$(BINDIR)/ylanglings"
 	rm -rf "$(DATADIR)"
