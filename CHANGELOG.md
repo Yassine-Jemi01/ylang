@@ -10,6 +10,7 @@ All notable changes to YLang are documented here. This project follows semantic 
 
 YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable release.
 - Prevented silent NUL truncation in line input, formatted strings, and buffered HTTP/task responses; binary HTTP payloads must use the byte-buffer streaming API.
+- Text HTTP stream reads now reject NUL-containing chunks explicitly; binary stream reads remain available through `http.stream_read_buffer`.
 - Rejected NUL escapes in string literals and f-string text to prevent silent C-string truncation; byte-valued `char` literals remain supported.
 - Fixed C-backend printing and f-string formatting for `http_stream` handles, with HTTP integration coverage.
 - Fixed C-backend printing and f-string formatting for `http_stream` handles, with HTTP integration coverage.
