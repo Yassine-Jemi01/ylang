@@ -81,6 +81,31 @@ class ManifestTests(unittest.TestCase):
                     ylanglings.load_manifest()
 
 
+class ReferenceSolutionTests(unittest.TestCase):
+    def test_solution_paths_are_confined_to_private_solutions_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "solutions"
+            root.mkdir()
+            (root / "valid.yl").write_text("fn main() -> int { return 0; }\\n", encoding="utf-8")
+            outside = Path(directory) / "outside.yl"
+            outside.write_text("not a solution\\n", encoding="utf-8")
+            with mock.patch.object(ylanglings, "SOLUTIONS", root):
+                self.assertEqual(
+                    ylanglings.solution_path({"title": "Valid", "solution": "valid.yl"}),
+                    root / "valid.yl",
+                )
+                with self.assertRaisesRegex(SystemExit, "Unsafe solution path"):
+                    ylanglings.solution_path({"title": "Escape", "solution": "../outside.yl"})
+
+    def test_missing_reference_solution_has_actionable_error(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(
+            ylanglings, "SOLUTIONS", Path(directory)
+        ):
+            with self.assertRaisesRegex(SystemExit, "missing solution for Missing"):
+                ylanglings.solution_path({"title": "Missing", "solution": "missing.yl"})
+
+
+
 class CliStateTests(unittest.TestCase):
     def test_corrupt_progress_recovers_to_empty_state(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -151,6 +176,11 @@ class CliStateTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(verify.call_count, 26)
         self.assertTrue(all(call.kwargs.get("persist_progress") is False for call in verify.call_args_list))
+        expected_sources = [str(ylanglings.solution_path(item)) for item in manifest]
+        self.assertEqual(
+            [call.kwargs.get("source_override") for call in verify.call_args_list],
+            expected_sources,
+        )
         self.assertIn("All 26 YLanglings reference solutions passed.", output.getvalue())
 
     def test_compiler_timeout_is_reported_without_hanging(self):
