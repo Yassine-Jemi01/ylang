@@ -72,7 +72,7 @@ mutability, conditions, loops, functions, arrays, structs, enums, strings,
 modules, conversions, loop control, and file I/O.
 
 The optional track contains 10 challenges for nested loops, enum logic,
-struct functions, JSON, Binary I/O, HTTP streaming, TUI, Voice, GUI lifecycle,
+struct functions, JSON, Binary I/O, HTTP streaming, TUI, Voice, JSON builders,
 and owned strings. Optional challenges are separate from core completion.
 
 ## Verification model
