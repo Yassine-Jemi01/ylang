@@ -142,7 +142,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Connection", "close")
             self.end_headers()
         elif self.path == "/binary-response":
-            self.send_bytes(200, "before\\x00after", "application/octet-stream")
+            self.send_bytes(200, "before\x00after", "application/octet-stream")
         elif self.path == "/hello":
             self.send_bytes(200, "hello")
         elif self.path == "/auth":
