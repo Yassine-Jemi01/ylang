@@ -7,6 +7,9 @@
 
 /* Optional SDL2_mixer-backed voice/audio playback runtime.
  * The runtime owns the loaded music object until stop/shutdown or next play.
+ * Serialize all lifecycle/playback calls on one owner thread. Stream callbacks
+ * may run on SDL_mixer's audio thread; they must be thread-safe and must not
+ * call Voice lifecycle/playback functions. ylvoice_last_error() is thread-safe.
  */
 bool ylvoice_init(void);
 bool ylvoice_play(const char *path);
