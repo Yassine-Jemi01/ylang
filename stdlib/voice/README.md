@@ -34,7 +34,7 @@ See [`examples/voice.yl`](../../examples/voice.yl) for a complete compiler-level
 - `ylvoice_is_paused()` — report whether the current track is paused.
 - `ylvoice_is_finished()` — report natural completion and release the finished mixer object.
 - `ylvoice_set_volume(percent)` — set music volume from 0 to 100.
-- `ylvoice_last_error()` — retrieve the latest error.
+- `ylvoice_last_error()` — retrieve a synchronized per-thread snapshot of the latest error; the returned text remains valid until the next call on the same thread.
 - `ylvoice_shutdown()` — release the track and audio device.
 
 The runtime uses SDL2_mixer codecs available in the installed build (commonly WAV,
