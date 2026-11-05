@@ -936,6 +936,15 @@ static const char *yl_http_stream_read(int64_t id, int64_t max_bytes) {
         free(result);
         yl_http_stream_error_set(stream,
             "stream_read received NUL bytes; use stream_read_buffer for binary data");
+        /* Text mode cannot represent this response safely. Stop the transfer
+           and discard queued bytes so callers cannot mistake later chunks for
+           a complete text response or loop forever waiting for more text. */
+        stream->length = 0U;
+        stream->done = true;
+        if (stream->attached && stream->multi && stream->easy) {
+            (void)curl_multi_remove_handle(stream->multi, stream->easy);
+            stream->attached = false;
+        }
         return yl_http_empty();
     }
     result[take] = '\0';
