@@ -221,7 +221,13 @@ int main(void)
         SDL_DestroySemaphore(snapshot_context.resume);
         return fail("could not create error snapshot test thread");
     }
-    (void)SDL_SemWait(snapshot_context.ready);
+    if (SDL_SemWaitTimeout(snapshot_context.ready, 5000U) != 0) {
+        (void)SDL_SemPost(snapshot_context.resume);
+        (void)SDL_WaitThread(snapshot_thread, NULL);
+        SDL_DestroySemaphore(snapshot_context.ready);
+        SDL_DestroySemaphore(snapshot_context.resume);
+        return fail("error snapshot worker did not become ready");
+    }
     (void)ylvoice_play("build/does-not-exist.wav");
     (void)SDL_SemPost(snapshot_context.resume);
     (void)SDL_WaitThread(snapshot_thread, NULL);
