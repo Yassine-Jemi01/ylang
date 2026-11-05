@@ -32,7 +32,7 @@ Make YLang 2.3 a dependable, polished minor release: improve the existing compil
 ### 4. Learning experience — YLanglings
 - Treat YLanglings as an in-scope 2.3 developer-experience deliverable, not an optional afterthought.
 - Keep the 16-exercise core track and 10 optional challenges aligned with the actual 2.3 compiler syntax and APIs.
-- Validate manifest integrity and path containment, starter/reset pairs, separate core/optional progress, ordered listing, hints, editor launch, atomic progress persistence, retry/reset behavior, compiler selection, and clear CLI errors.
+- Validate manifest integrity and path containment, unique private reference-solution paths, complete maintainer solutions, starter/reset pairs, separate core/optional progress, ordered listing, hints, editor launch, atomic progress persistence, retry/reset behavior, compiler selection, and clear CLI errors.
 - Verify the tool installs and uninstalls cleanly for a user, works offline, and documents the distinction between runnable exercises and compile-only native API checks.
 - Include manifest/CLI regression tests in CI; compiler-backed exercise verification remains a release gate on the final candidate.
 
