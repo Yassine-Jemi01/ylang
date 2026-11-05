@@ -323,15 +323,15 @@ jobs:
               | map(max_by(.created_at // ""))
             ' <<< "$response")"
             count="$(jq 'length' <<< "$matching")"
-            if [[ "$count" -lt "$expected_contexts" ]]; then
-              echo "Waiting for all ${expected_contexts} CircleCI job contexts on ${GITHUB_SHA} (${count}/${expected_contexts}, attempt $attempt/60)."
-              sleep 15
-              continue
-            fi
             failed="$(jq '[.[] | select(.state == "failure" or .state == "error")] | length' <<< "$matching")"
             if [[ "$failed" -gt 0 ]]; then
               jq -r '.[] | select(.state == "failure" or .state == "error") | "FAILED: " + .context + " — " + (.description // "no description")' <<< "$matching"
               exit 1
+            fi
+            if [[ "$count" -lt "$expected_contexts" ]]; then
+              echo "Waiting for all ${expected_contexts} CircleCI job contexts on ${GITHUB_SHA} (${count}/${expected_contexts}, attempt $attempt/60)."
+              sleep 15
+              continue
             fi
             pending="$(jq '[.[] | select(.state != "success")] | length' <<< "$matching")"
             if [[ "$pending" -eq 0 ]]; then
