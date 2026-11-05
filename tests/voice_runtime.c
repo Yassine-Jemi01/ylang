@@ -50,6 +50,7 @@ typedef struct {
 static TestStream test_stream;
 static size_t test_stream_bytes_read;
 static size_t test_stream_expected_length;
+static size_t test_stream_fail_after = SIZE_MAX;
 
 static int load_test_stream(const char *path)
 {
@@ -77,7 +78,10 @@ static int load_test_stream(const char *path)
 static int64_t test_stream_read(int64_t stream_id, void *destination, size_t max_bytes)
 {
     if (stream_id != 7 || !destination || !test_stream.data) return -1;
+    if (test_stream.offset >= test_stream_fail_after) return -1;
     size_t remaining = test_stream.length - test_stream.offset;
+    if (remaining > test_stream_fail_after - test_stream.offset)
+        remaining = test_stream_fail_after - test_stream.offset;
     size_t count = remaining < max_bytes ? remaining : max_bytes;
     if (count > 512U) count = 512U;
     if (count) {
@@ -91,7 +95,7 @@ static int64_t test_stream_read(int64_t stream_id, void *destination, size_t max
 static const char *test_stream_error(int64_t stream_id)
 {
     (void)stream_id;
-    return "";
+    return "simulated HTTP stream transport failure";
 }
 
 static void test_stream_close(int64_t stream_id)
@@ -155,6 +159,22 @@ int main(void)
     ylvoice_stop();
     if (ylvoice_is_playing()) return fail("stopped stream still reports as playing");
     if (test_stream.data != NULL) return fail("stopping a stream did not release its source");
+
+    /* A callback's transport diagnostic must not be replaced by SDL_mixer's
+       generic decoder error when the stream fails during initial decoding. */
+    if (!load_test_stream(path)) return fail("could not load the failing callback stream fixture");
+    test_stream_fail_after = 12U;
+    bool failing_stream_started = ylvoice_play_stream(
+        7, test_stream_read, test_stream_error, test_stream_close);
+    if (failing_stream_started) {
+        for (unsigned i = 0U; i < 100U && !ylvoice_is_finished(); i++)
+            SDL_Delay(10U);
+    }
+    if (strstr(ylvoice_last_error(), "simulated HTTP stream transport failure") == NULL)
+        return fail("specific stream callback error was overwritten by the decoder");
+    ylvoice_stop();
+    if (test_stream.data != NULL) return fail("failed stream did not release its source");
+    test_stream_fail_after = SIZE_MAX;
 
     if (ylvoice_set_volume(101)) return fail("volume above 100 was accepted");
     if (strstr(ylvoice_last_error(), "volume") == NULL)
