@@ -1,0 +1,6 @@
+function main() -> int {
+    let owned_string empty = json.object();
+    let owned_string profile = json.set(empty, "score", 42);
+    print(profile);
+    return 0;
+}
