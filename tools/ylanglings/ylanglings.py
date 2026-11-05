@@ -23,9 +23,11 @@ PROGRESS = CONFIG / "progress.json"
 
 def load_manifest():
     try:
+        if MANIFEST.stat().st_size > 1024 * 1024:
+            raise SystemExit("YLanglings manifest exceeds the 1 MiB limit.")
         with MANIFEST.open(encoding="utf-8") as handle:
             manifest = json.load(handle)
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, RecursionError) as error:
         raise SystemExit(f"Could not read YLanglings manifest: {error}") from error
     if not isinstance(manifest, list) or not manifest:
         raise SystemExit("Invalid YLanglings manifest: expected a non-empty exercise list.")
