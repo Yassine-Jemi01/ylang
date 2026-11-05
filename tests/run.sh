@@ -1212,13 +1212,14 @@ if [ "$(uname -s)" = "Linux" ] && [ "$(uname -m)" = "x86_64" ] && command -v nas
     mkdir -p build/failing-linker
     printf '#!/bin/sh\nexit 1\n' > build/failing-linker/ld
     chmod +x build/failing-linker/ld
-    printf 'preserve-this-file\n' > build/atomic-nasm-target
+    ./build/ylang build-asm tests/asm-basic.yl -o build/atomic-nasm-target >/dev/null
     if PATH="$PWD/build/failing-linker:$PATH" ./build/ylang build-asm tests/asm-basic.yl -o build/atomic-nasm-target > build/atomic-nasm-fail.out 2>&1; then
         echo "FAIL: build-asm succeeded with a failing linker" >&2
         exit 1
     fi
     grep -q 'ld failed' build/atomic-nasm-fail.out
-    grep -Fxq 'preserve-this-file' build/atomic-nasm-target
+    ./build/atomic-nasm-target > build/atomic-nasm-preserved.out
+    diff -u tests/expected-asm-basic.txt build/atomic-nasm-preserved.out
     if find build -maxdepth 1 -name 'atomic-nasm-target.ylang-tmp-*' -print -quit | grep -q .; then
         echo "FAIL: build-asm left a staged executable after linker failure" >&2
         exit 1
