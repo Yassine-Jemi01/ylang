@@ -28,7 +28,7 @@ The experimental C-backend client uses libcurl and applies these defaults:
 - HTTP streaming uses a separate pull-based API with at most 16 active streams and a fixed 64 KiB response buffer. It has a 5-second connection timeout but intentionally no whole-transfer timeout, so long-lived streams are possible. A program must close streams it no longer needs; process shutdown also releases them.
 - Buffered synchronous and task-based HTTP response APIs return text strings. If a response body contains NUL, they return an empty string and expose an error directing the caller to binary-safe streaming.
 - YLang strings are NUL-terminated. Escaped NUL bytes in string/f-string literals, NUL bytes from line input, and NUL bytes produced by string formatting are rejected instead of being silently truncated; binary data belongs in byte buffers.
-- `http.stream_read()` is text-oriented and cannot preserve embedded NUL bytes. Use `http.stream_read_buffer()` with a root `io.buffer` for binary data, and free that buffer when finished.
+- `http.stream_read()` is text-oriented and rejects chunks containing embedded NUL bytes through `http.stream_error()`. Use `http.stream_read_buffer()` with a root `io.buffer` for binary data, and free that buffer when finished.
 
 These safeguards reduce common accidental leaks and resource exhaustion, but they do **not** make a caller-supplied URL safe in every deployment. In server-side applications, validate URLs against an application-specific hostname/IP allow-list and consider access to loopback, private, link-local, and metadata addresses before making a request.
 
