@@ -34,6 +34,7 @@ YLang diagnostics include stable codes to help users search documentation and re
 | E2011 | Floating-point literal is invalid or out of range. | Use a finite float literal. |
 | E2012 | Character literal is not one byte. | Use one ASCII byte or an escape. |
 | E2014 | Function calls or assignments appear in an f-string interpolation. | Compute the value before interpolating it. |
+| E2015 | A string literal or f-string text contains a NUL byte. | Use a byte buffer for binary data; keep string values NUL-free. |
 | E2020 | Unknown variable name. | Declare the variable or correct its spelling. |
 | E2021 | Variable may be read before initialization. | Assign it on every control-flow path before reading it. |
 | E2022 | Assignment to a `const` variable. | Keep constants immutable. |
