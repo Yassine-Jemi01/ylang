@@ -11,6 +11,9 @@ function main() -> int {
     print(json.has(document, "missing"));
     print(json.array_length(items));
     print(json.at(items, 1));
+    let owned_string negative_index = json.at(items, -1);
+    print(string.length(negative_index) == 0);
+    print(string.contains(json.last_error(), "index out of range"));
     print(json.get_string(document, "message"));
     print(json.stringify(document));
     print(json.escape("line\nquote\""));
