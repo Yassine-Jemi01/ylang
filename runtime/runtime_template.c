@@ -1658,6 +1658,10 @@ static const char *yl_format(const char *format, ...) {
     }
     (void)vsnprintf(buffer, (size_t)needed + 1, format, args);
     va_end(args);
+    if (needed > 0 && memchr(buffer, '\0', (size_t)needed) != NULL) {
+        free(buffer);
+        yl_runtime_error("formatted string contains a NUL byte");
+    }
     return (const char *)yl_track(buffer, (size_t)needed + 1U);
 }
 static int64_t yl_add_i64(int64_t a, int64_t b) {
@@ -1799,6 +1803,10 @@ static const char *yl_read_line(void) {
     if (!line) yl_runtime_error("out of memory");
     int ch = 0;
     while ((ch = fgetc(stdin)) != EOF && ch != '\n') {
+        if (ch == 0) {
+            free(line);
+            yl_runtime_error("standard input line contains a NUL byte");
+        }
         if (length + 1U >= capacity) {
             if (capacity > SIZE_MAX / 2U) {
                 free(line);
