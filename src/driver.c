@@ -697,6 +697,7 @@ int ylang_run(const char *command, const char *input_path,
         (void)snprintf(object_path, object_size, "%s/generated.o", temporary_directory);
 
         int result = 1;
+        char *staging_directory = NULL;
         char *staged_target = NULL;
         if (generate_asm(&compiler, asm_path)) {
             char *nasm_args[] = {
@@ -711,21 +712,34 @@ int ylang_run(const char *command, const char *input_path,
                     fputs("ylang: output path is too long for atomic NASM publication.\n", stderr);
                     result = 64;
                 } else {
-                    size_t staged_size = target_length + sizeof(".ylang-tmp-XXXXXX");
-                    staged_target = malloc(staged_size);
-                    if (!staged_target) {
+                    size_t directory_size = target_length + sizeof(".ylang-tmp-XXXXXX");
+                    staging_directory = malloc(directory_size);
+                    if (!staging_directory) {
                         fputs("ylang: out of memory preparing atomic NASM output.\n", stderr);
                         result = 70;
                     } else {
-                        (void)snprintf(staged_target, staged_size, "%s.ylang-tmp-XXXXXX", target);
-                        int staged_fd = mkstemp(staged_target);
-                        if (staged_fd < 0) {
-                            fprintf(stderr, "ylang: cannot create staged output beside '%s': %s\n",
+                        (void)snprintf(staging_directory, directory_size,
+                                       "%s.ylang-tmp-XXXXXX", target);
+                        if (!mkdtemp(staging_directory)) {
+                            fprintf(stderr, "ylang: cannot create private staging directory beside '%s': %s\n",
                                     target, strerror(errno));
                             result = 1;
-                        } else if (close(staged_fd) != 0) {
-                            fprintf(stderr, "ylang: cannot close staged output: %s\n", strerror(errno));
-                            result = 1;
+                        } else {
+                            size_t directory_length = strlen(staging_directory);
+                            if (directory_length > SIZE_MAX - sizeof("/executable")) {
+                                fputs("ylang: staged executable path is too long.\n", stderr);
+                                result = 64;
+                            } else {
+                                size_t staged_size = directory_length + sizeof("/executable");
+                                staged_target = malloc(staged_size);
+                                if (!staged_target) {
+                                    fputs("ylang: out of memory preparing staged executable path.\n", stderr);
+                                    result = 70;
+                                } else {
+                                    (void)snprintf(staged_target, staged_size,
+                                                   "%s/executable", staging_directory);
+                                }
+                            }
                         }
                     }
                 }
@@ -734,10 +748,6 @@ int ylang_run(const char *command, const char *input_path,
                     result = run_external(ld_args);
                     if (result != 0) {
                         fprintf(stderr, "ylang: ld failed (exit %d).\n", result);
-                    } else if (chmod(staged_target, 0755) != 0) {
-                        fprintf(stderr, "ylang: cannot set executable permissions on staged output: %s\n",
-                                strerror(errno));
-                        result = 1;
                     } else if (rename(staged_target, target) != 0) {
                         fprintf(stderr, "ylang: cannot publish executable '%s': %s\n",
                                 target, strerror(errno));
@@ -753,6 +763,10 @@ int ylang_run(const char *command, const char *input_path,
         if (staged_target) {
             (void)unlink(staged_target);
             free(staged_target);
+        }
+        if (staging_directory) {
+            (void)rmdir(staging_directory);
+            free(staging_directory);
         }
         (void)rmdir(temporary_directory);
         free(asm_path);
