@@ -276,7 +276,8 @@ bool ylvoice_play_stream(int64_t stream_id, YLVoiceStreamRead read_callback,
     voice_music = next;
     voice_stream_rwops = rwops;
     voice_track_completed = false;
-    voice_error[0] = '\0';
+    /* Do not clear here: the decoder may already have reported a stream
+       callback failure while Mix_PlayMusic was starting playback. */
     return true;
 }
 
