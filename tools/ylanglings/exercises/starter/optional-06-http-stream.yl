@@ -1,7 +1,7 @@
 function main() -> int {
     let http_stream stream = http.stream_open("GET", "https://example.com", "", "");
-    let bool done = http.stream_done(stream);
-    let string chunk = http.stream_read(stream, 1024);
+    let int done = http.stream_done(stream);
+    let owned_string chunk = http.stream_read(stream, 1024);
     http.stream_close(stream);
     return 0;
 }
