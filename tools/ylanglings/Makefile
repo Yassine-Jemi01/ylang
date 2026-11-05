@@ -8,7 +8,7 @@ PYTHON ?= python3
 install:
 	install -d "$(BINDIR)" "$(DATADIR)"
 	cp -R exercises manifest.json README.md ylanglings.py "$(DATADIR)/"
-	printf '#!/bin/sh\nexec "%s" "%s/ylanglings.py" "$@"\n' "$(PYTHON)" "$(DATADIR)" > "$(BINDIR)/ylanglings"
+	sed -e 's|@PYTHON@|$(PYTHON)|g' -e 's|@DATADIR@|$(DATADIR)|g' launcher.sh.in > "$(BINDIR)/ylanglings"
 	chmod 755 "$(BINDIR)/ylanglings"
 	@echo "Installed ylanglings to $(BINDIR)/ylanglings"
 	@echo "Make sure $(BINDIR) is in PATH and the ylang compiler is available."
