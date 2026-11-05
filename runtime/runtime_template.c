@@ -918,6 +918,27 @@ static bool yl_http_stream_done(int64_t id) {
     if (!stream) return true;
     return stream->done && stream->length == 0U;
 }
+static bool yl_http_stream_has_location_header(const char *headers) {
+    if (!headers) return false;
+    const char *line = headers;
+    while (*line) {
+        const char *end = strchr(line, '\n');
+        size_t length = end ? (size_t)(end - line) : strlen(line);
+        static const char name[] = "location:";
+        if (length >= sizeof(name) - 1U) {
+            size_t i = 0U;
+            for (; i < sizeof(name) - 1U; i++) {
+                unsigned char ch = (unsigned char)line[i];
+                if (ch >= 'A' && ch <= 'Z') ch = (unsigned char)(ch - 'A' + 'a');
+                if (ch != (unsigned char)name[i]) break;
+            }
+            if (i == sizeof(name) - 1U) return true;
+        }
+        if (!end) break;
+        line = end + 1;
+    }
+    return false;
+}
 static bool yl_http_stream_wait_headers(int64_t id) {
     YLHttpStream *stream = yl_http_stream_find(id);
     if (!stream) return false;
@@ -935,8 +956,7 @@ static bool yl_http_stream_wait_headers(int64_t id) {
         }
         bool redirect = yl_http_redirects_allowed(stream->headers) &&
             stream->status >= 300 && stream->status < 400 &&
-            (strstr(stream->response_headers, "Location:") ||
-             strstr(stream->response_headers, "location:"));
+            yl_http_stream_has_location_header(stream->response_headers);
         if (!redirect) return true;
         stream->headers_complete = false;
     }
