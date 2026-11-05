@@ -129,9 +129,9 @@ def load_progress():
 
 
 def save_progress(progress):
-    CONFIG.mkdir(parents=True, exist_ok=True)
     temporary_path = None
     try:
+        CONFIG.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(
             mode="w", encoding="utf-8", dir=CONFIG,
             prefix=".progress-", suffix=".tmp", delete=False,
@@ -146,7 +146,11 @@ def save_progress(progress):
         raise SystemExit(f"Could not save YLanglings progress: {error}") from error
     finally:
         if temporary_path is not None:
-            temporary_path.unlink(missing_ok=True)
+            try:
+                temporary_path.unlink(missing_ok=True)
+            except OSError:
+                # Preserve the actionable save error if cleanup is also denied.
+                pass
 
 
 def completed_exercises(progress, manifest):
