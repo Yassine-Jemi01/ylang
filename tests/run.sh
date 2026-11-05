@@ -1792,6 +1792,17 @@ if ./build/test-json-escape-output-limit > build/json-escape-limit/overflow.out 
     exit 1
 fi
 grep -q 'JSON output exceeds the 16 MiB limit' build/json-escape-limit/overflow.out
+# Escaped control bytes expand; the escaped result must remain under the same cap.
+python3 - <<'PY'
+from pathlib import Path
+limit = 16 * 1024 * 1024
+Path("build/json-escape-limit/value.txt").write_bytes(b"\n" * (limit // 2))
+PY
+if ./build/test-json-escape-output-limit > build/json-escape-limit/control-overflow.out 2>&1; then
+    echo "FAIL: json.escape accepted control-byte expansion above 16 MiB" >&2
+    exit 1
+fi
+grep -q 'JSON output exceeds the 16 MiB limit' build/json-escape-limit/control-overflow.out
 
 # std.terminal line input, typed parsing, flushing, and redirected stdin detection.
 ./build/ylang check tests/terminal-input.yl >/dev/null
