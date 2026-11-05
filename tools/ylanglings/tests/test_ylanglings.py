@@ -36,6 +36,7 @@ class ManifestTests(unittest.TestCase):
 
     def test_entries_have_unique_existing_files_and_valid_metadata(self):
         files = set()
+        solutions = set()
         for item in self.manifest:
             with self.subTest(exercise=item.get("title")):
                 self.assertTrue(item.get("title"))
@@ -52,6 +53,8 @@ class ManifestTests(unittest.TestCase):
                 self.assertTrue(starter.is_file(), f"missing starter: {starter}")
                 self.assertNotIn(item["file"], files)
                 files.add(item["file"])
+                self.assertNotIn(item["solution"], solutions)
+                solutions.add(item["solution"])
 
                 if item.get("mode", "run") == "run":
                     self.assertIsInstance(item.get("expected_output"), str)
