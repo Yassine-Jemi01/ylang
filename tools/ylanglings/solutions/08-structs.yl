@@ -1,0 +1,10 @@
+struct Point {
+    int x;
+    int y;
+}
+
+function main() -> int {
+    let Point point = Point(3, 4);
+    print(point.x + point.y);
+    return 0;
+}
