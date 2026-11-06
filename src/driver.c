@@ -911,7 +911,7 @@ int ylang_run(const char *command, const char *input_path,
         free(staged_target);
         if (staging_directory) {
             if (!remove_staging_tree(staging_directory)) {
-                fprintf(stderr, "ylang: could not fully remove private staging directory '%s': %s\\n",
+                fprintf(stderr, "ylang: could not fully remove private staging directory '%s': %s\n",
                         staging_directory, strerror(errno));
                 if (result == 0) result = 1;
             }
