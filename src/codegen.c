@@ -1165,6 +1165,19 @@ static void emit_expr_to_file(FILE *out, Expr *expr)
     sb_destroy(&sb);
 }
 
+/* Binary expressions already carry their own grouping parentheses. Avoid
+   wrapping them twice in control-flow conditions, which Clang diagnoses. */
+static void emit_condition_to_file(FILE *out, Expr *condition)
+{
+    if (condition && condition->kind == EXPR_BINARY) {
+        emit_expr_to_file(out, condition);
+        return;
+    }
+    fputc('(', out);
+    emit_expr_to_file(out, condition);
+    fputc(')', out);
+}
+
 /* Global initializers must stay within C's constant-expression rules.
    Runtime checked arithmetic helpers such as yl_neg_i64() are not valid here. */
 static void emit_constant_initializer(StringBuilder *sb, Expr *expr)
@@ -1538,9 +1551,9 @@ static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); fputs("putchar('\\n');\n", out);
             break;
         case STMT_IF:
-            emit_indent(out, indent); fputs("if (", out);
-            emit_expr_to_file(out, stmt->as.if_stmt.condition);
-            fputs(")\n", out);
+            emit_indent(out, indent); fputs("if ", out);
+            emit_condition_to_file(out, stmt->as.if_stmt.condition);
+            fputc('\n', out);
             emit_control_body(ctx, stmt->as.if_stmt.then_branch, indent);
             if (stmt->as.if_stmt.else_branch) {
                 emit_indent(out, indent); fputs("else\n", out);
@@ -1554,9 +1567,9 @@ static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
             pop_loop_mark(ctx);
             break;
         case STMT_WHILE:
-            emit_indent(out, indent); fputs("while (", out);
-            emit_expr_to_file(out, stmt->as.while_stmt.condition);
-            fputs(")\n", out);
+            emit_indent(out, indent); fputs("while ", out);
+            emit_condition_to_file(out, stmt->as.while_stmt.condition);
+            fputc('\n', out);
             push_loop_mark(ctx);
             emit_control_body(ctx, stmt->as.while_stmt.body, indent);
             pop_loop_mark(ctx);
