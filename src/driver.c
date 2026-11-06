@@ -24,6 +24,7 @@
 #define rmdir _rmdir
 #define ylang_mkdir(path, mode) _mkdir(path)
 #else
+#include <dirent.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #define ylang_mkdir(path, mode) mkdir(path, mode)
@@ -379,6 +380,49 @@ static char *create_staged_executable_path(const char *directory)
     }
     (void)snprintf(path, capacity, "%s/executable", directory);
     return path;
+}
+
+/* Clang on macOS creates an executable.dSYM bundle beside the staged binary.
+   Remove the whole private staging tree without following symlinks. */
+static bool remove_staging_tree(const char *path)
+{
+    struct stat status;
+    if (lstat(path, &status) != 0) return errno == ENOENT;
+    if (!S_ISDIR(status.st_mode)) return unlink(path) == 0 || errno == ENOENT;
+
+    DIR *directory = opendir(path);
+    if (!directory) return false;
+    bool okay = true;
+    for (;;) {
+        errno = 0;
+        struct dirent *entry = readdir(directory);
+        if (!entry) {
+            if (errno != 0) okay = false;
+            break;
+        }
+        if (strcmp(entry->d_name, ".") == 0 ||
+            strcmp(entry->d_name, "..") == 0) continue;
+        size_t path_length = strlen(path);
+        size_t name_length = strlen(entry->d_name);
+        if (path_length > SIZE_MAX - name_length - 2U) {
+            errno = ENAMETOOLONG;
+            okay = false;
+            continue;
+        }
+        size_t capacity = path_length + name_length + 2U;
+        char *child = malloc(capacity);
+        if (!child) {
+            errno = ENOMEM;
+            okay = false;
+            continue;
+        }
+        (void)snprintf(child, capacity, "%s/%s", path, entry->d_name);
+        if (!remove_staging_tree(child)) okay = false;
+        free(child);
+    }
+    if (closedir(directory) != 0) okay = false;
+    if (okay && rmdir(path) != 0 && errno != ENOENT) okay = false;
+    return okay;
 }
 #endif
 
@@ -864,12 +908,13 @@ int ylang_run(const char *command, const char *input_path,
 
         (void)unlink(asm_path);
         (void)unlink(object_path);
-        if (staged_target) {
-            (void)unlink(staged_target);
-            free(staged_target);
-        }
+        free(staged_target);
         if (staging_directory) {
-            (void)rmdir(staging_directory);
+            if (!remove_staging_tree(staging_directory)) {
+                fprintf(stderr, "ylang: could not fully remove private staging directory '%s': %s\\n",
+                        staging_directory, strerror(errno));
+                if (result == 0) result = 1;
+            }
             free(staging_directory);
         }
         (void)rmdir(temporary_directory);
