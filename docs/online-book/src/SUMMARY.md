@@ -4,7 +4,7 @@
 [Introduction](introduction.md)
 
 # المسار العربي — تعلّم YLang
-- [النسخة العربية: ابدأ من هنا](ar/README.md)
+- [النسخة العربية: ابدأ من هنا](ar/start-here.md)
 - [مقدمة إلى YLang](ar/introduction.md)
 - [تثبيت YLang](ar/getting-started.md)
 - [برنامجك الأول](ar/hello-world.md)

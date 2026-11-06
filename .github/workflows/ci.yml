@@ -330,7 +330,7 @@ jobs:
           mkdir -p website/learn
           cp -a docs/online-book/book/. website/learn/
           test -s website/learn/index.html
-          test -s website/learn/ar/README.html
+          test -s website/learn/ar/start-here.html
           test -s website/learn/ar/introduction.html
           test -s website/learn/ar/getting-started.html
           test -s website/learn/ar/hello-world.html
