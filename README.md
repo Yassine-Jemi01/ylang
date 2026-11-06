@@ -21,7 +21,7 @@ YLang **2.2.0** is the latest stable release. The documented core language and d
 
 ## The online book
 
-The [YLang Book](https://yassine-jemi01.github.io/ylang/learn/index.html) is a searchable, multi-page HTML guide with a chapter sidebar, previous/next navigation, theme switching, and copyable examples. It combines step-by-step tutorials with the canonical language, platform, compiler, and library references; it is rendered as a website, not served as raw Markdown.
+The [YLang Book](https://yassine-jemi01.github.io/ylang/learn/index.html) is a searchable, multi-page HTML guide with a chapter sidebar, previous/next navigation, theme switching, and copyable examples. It combines step-by-step tutorials with the canonical language, platform, compiler, and library references; it is rendered as a website, not served as raw Markdown. An initial [Arabic learning path](https://yassine-jemi01.github.io/ylang/learn/ar/start-here.html) covers the introduction, setup, first program, language basics, and YLanglings. Compiler diagnostics and API identifiers remain in English.
 
 ## Editor support
 

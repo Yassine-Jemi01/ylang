@@ -61,6 +61,7 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] VS Code extension packages successfully as a `.vsix` from the release candidate.
 - [ ] Zed Tree-sitter grammar generation and corpus tests pass; documentation clearly labels current LSP limitations.
 - [ ] Online book builds; every Summary entry, internal anchor, reference page, and example link is checked.
+- [ ] Arabic beginner path is linked from the English book, renders RTL prose with LTR code, and clearly states that compiler diagnostics remain in English.
 - [ ] Official website production build succeeds; navigation, mobile layout, stable release labels, 2.3 development links, and local assets pass integrity checks.
 - [ ] YSPM package builds from the candidate commit, contains one copy of each versioned changelog, and includes the required source-level library and documentation files.
 - [ ] YSPM package install and removal smoke tests pass in an isolated root.
