@@ -1948,6 +1948,8 @@ static volatile sig_atomic_t yl_tui_pending_signal;
 static void yl_tui_signal_notice(int signal_number) {
     /* Signal handlers may only record the event; terminal I/O is deferred. */
     yl_tui_pending_signal = (sig_atomic_t)signal_number;
+    static const char marker = 'S';
+    (void)write(STDERR_FILENO, &marker, 1U);
 }
 
 static bool yl_tui_install_signal_handlers(void) {

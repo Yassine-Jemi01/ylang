@@ -124,7 +124,20 @@ def main():
                 signal_process.wait(timeout=2)
                 raise SystemExit("TUI did not enable raw mode before signal test")
             signal_process.send_signal(signal.SIGINT)
-            signal_process.wait(timeout=3)
+            try:
+                signal_process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                ready, _, _ = select.select([signal_master], [], [], 0.2)
+                signal_output = bytearray()
+                if ready:
+                    try:
+                        signal_output.extend(os.read(signal_master, 4096))
+                    except OSError as error:
+                        if error.errno != errno.EIO:
+                            raise
+                signal_process.kill()
+                signal_process.wait(timeout=2)
+                raise SystemExit(f"TUI SIGINT did not exit; signal output: {signal_output!r}")
             if signal_process.returncode != 128 + signal.SIGINT:
                 raise SystemExit(f"TUI SIGINT exit status mismatch: {signal_process.returncode}")
             signal_output = bytearray()
