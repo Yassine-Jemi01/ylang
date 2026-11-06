@@ -149,6 +149,25 @@ if [ -f build/debug-launch.out ]; then
     grep -Fq "Build succeeded: build/debug-launch-test" build/debug-launch.out
 fi
 
+# On Linux, verify that the driver selects LLDB when GDB is absent from PATH.
+case "$(uname -s)" in
+    Darwin|MINGW*|MSYS*|CYGWIN*) ;;
+    *)
+        mkdir -p build/debugger-fallback-bin
+        ln -sf "$(command -v gcc)" build/debugger-fallback-bin/gcc
+        cat > build/debugger-fallback-bin/lldb <<'EOF'
+#!/bin/sh
+printf 'YLANG_TEST_FAKE_LLDB\n'
+exit 0
+EOF
+        chmod +x build/debugger-fallback-bin/lldb
+        printf 'quit\n' | PATH="$PWD/build/debugger-fallback-bin" \
+            ./build/ylang debug tests/debug-source-map.yl \
+            -o build/debug-lldb-fallback > build/debug-lldb-fallback.out 2>&1
+        grep -Fq 'YLANG_TEST_FAKE_LLDB' build/debug-lldb-fallback.out
+        ;;
+esac
+
 if ./build/ylang check tests/await-type-error.yl > build/await-type-error.out 2>&1; then
     echo "FAIL: await accepted an integer instead of an http_task" >&2
     exit 1
