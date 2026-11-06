@@ -314,7 +314,7 @@ jobs:
           grep -q "YLang" website-app/dist/index.html
 
   website-integrity:
-    name: English-only website integrity
+    name: Online book and website integrity
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
@@ -330,6 +330,12 @@ jobs:
           mkdir -p website/learn
           cp -a docs/online-book/book/. website/learn/
           test -s website/learn/index.html
+          test -s website/learn/ar/README.html
+          test -s website/learn/ar/introduction.html
+          test -s website/learn/ar/getting-started.html
+          test -s website/learn/ar/hello-world.html
+          test -s website/learn/ar/ylanglings.html
+          test -s website/learn/ar/language-basics.html
           test -s website/learn/ylanglings.html
           test -s website/learn/reference/language-spec.html
           test -s website/learn/reference/MEMORY-MODEL.html

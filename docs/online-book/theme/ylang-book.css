@@ -12,9 +12,7 @@ body { font-feature-settings: "kern"; }
   color: #e8f1ee;
 }
 #menu-bar .icon-button,
-#menu-bar button {
-  color: #9db1ad;
-}
+#menu-bar button { color: #9db1ad; }
 #menu-bar .icon-button:hover,
 #menu-bar button:hover { color: #93d4c8; }
 #sidebar { border-right: 1px solid #29413f; }
@@ -95,6 +93,32 @@ body { font-feature-settings: "kern"; }
 .navy .content main h2 { border-bottom-color: rgb(147 212 200 / 22%); }
 .navy .content main a:hover,
 .navy #sidebar a:hover { color: #d79a73; }
+
+/* RTL is enabled only on the Arabic learning path; the English book is unchanged. */
+.ylang-ar .content main {
+  direction: rtl;
+  text-align: right;
+  font-family: "Noto Sans Arabic", "Noto Naskh Arabic", sans-serif;
+}
+.ylang-ar .content main h1,
+.ylang-ar .content main h2,
+.ylang-ar .content main h3 { letter-spacing: 0; }
+.ylang-ar .content main blockquote {
+  border-left: 0;
+  border-right: 3px solid #167d8d;
+  border-radius: 7px 0 0 7px;
+}
+.ylang-ar .content main ul,
+.ylang-ar .content main ol { padding-right: 2rem; padding-left: 0; }
+.ylang-ar .content main pre,
+.ylang-ar .content main pre code,
+.ylang-ar .content main :not(pre) > code {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
+}
+.ylang-ar #sidebar { border-right: 0; border-left: 1px solid #29413f; }
+.ylang-ar #sidebar .active { border-left-color: transparent; border-right-color: #167d8d; }
 
 /* The script adds an explicit home link to the book toolbar. */
 .ylang-home-link {

@@ -3,6 +3,14 @@
 [The YLang Book](README.md)
 [Introduction](introduction.md)
 
+# المسار العربي — تعلّم YLang
+- [النسخة العربية: ابدأ من هنا](ar/README.md)
+- [مقدمة إلى YLang](ar/introduction.md)
+- [تثبيت YLang](ar/getting-started.md)
+- [برنامجك الأول](ar/hello-world.md)
+- [التعلّم بالتطبيق مع YLanglings](ar/ylanglings.md)
+- [أساسيات اللغة](ar/language-basics.md)
+
 # Part I — Start Here
 
 - [Install YLang](getting-started.md)

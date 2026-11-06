@@ -1,7 +1,16 @@
-/* Add a reliable link back to the current YLang React homepage from every mdBook page. */
+/* Add the homepage link and set the correct reading direction for Arabic chapters. */
 (() => {
   'use strict';
   const HOME_URL = 'https://yassine-jemi01.github.io/ylang/';
+
+  function setBookLanguage() {
+    const isArabic = /\/ar(?:\/|$)/.test(window.location.pathname);
+    if (isArabic) {
+      document.documentElement.lang = 'ar';
+      document.documentElement.dir = 'rtl';
+      document.body.classList.add('ylang-ar');
+    }
+  }
 
   function addHomeLink() {
     if (document.querySelector('.ylang-home-link')) return;
@@ -25,9 +34,14 @@
     toolbar.prepend(link);
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', addHomeLink, { once: true });
-  } else {
+  function initialize() {
+    setBookLanguage();
     addHomeLink();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialize, { once: true });
+  } else {
+    initialize();
   }
 })();
