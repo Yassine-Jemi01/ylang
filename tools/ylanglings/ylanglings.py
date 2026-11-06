@@ -23,13 +23,40 @@ CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or (Path.home() / ".config")) / 
 PROGRESS = CONFIG / "progress.json"
 
 
+def json_nesting_exceeds_limit(encoded, limit=256):
+    """Reject pathologically nested JSON before parsing or traversing it."""
+    depth = 0
+    in_string = False
+    escaped = False
+    for character in encoded:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                in_string = False
+        elif character == '"':
+            in_string = True
+        elif character in "[{":
+            depth += 1
+            if depth > limit:
+                return True
+        elif character in "]}":
+            depth -= 1
+    return False
+
+
 def load_manifest():
     try:
         with MANIFEST.open("rb") as handle:
             raw_manifest = handle.read(MAX_MANIFEST_BYTES + 1)
         if len(raw_manifest) > MAX_MANIFEST_BYTES:
             raise SystemExit("YLanglings manifest exceeds the 1 MiB limit.")
-        manifest = json.loads(raw_manifest.decode("utf-8"))
+        decoded_manifest = raw_manifest.decode("utf-8")
+        if json_nesting_exceeds_limit(decoded_manifest):
+            raise SystemExit("Could not read YLanglings manifest: JSON nesting exceeds the supported limit.")
+        manifest = json.loads(decoded_manifest)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, RecursionError) as error:
         raise SystemExit(f"Could not read YLanglings manifest: {error}") from error
     if not isinstance(manifest, list) or not manifest:
@@ -119,7 +146,10 @@ def load_progress():
             raw_progress = handle.read(MAX_PROGRESS_BYTES + 1)
         if len(raw_progress) > MAX_PROGRESS_BYTES:
             return {"completed": []}
-        progress = json.loads(raw_progress.decode("utf-8"))
+        decoded_progress = raw_progress.decode("utf-8")
+        if json_nesting_exceeds_limit(decoded_progress):
+            return {"completed": []}
+        progress = json.loads(decoded_progress)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, RecursionError):
         return {"completed": []}
 
@@ -418,7 +448,7 @@ def command_verify_all(manifest, compiler):
     failures = []
     for number, item, source in solutions:
         print(f"\n=== {number:02d}/{len(manifest):02d}: {item['title']} ===")
-        if command_verify(number, manifest, compiler, persist_progress=False, source_override=source) != 0:
+        if command_verify(number, manifest, compiler, persist_progress=False, source_override=str(source)) != 0:
             failures.append(number)
 
     if failures:

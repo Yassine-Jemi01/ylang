@@ -38,7 +38,7 @@ For a complete responsive example with focus highlighting, keyboard hints, and n
 
 ## API
 
-Build the responsive menu with `make tui-example`; it writes `build/tui-menu`. You can also run `ylang build examples/tui-menu.yl -o tui-menu` directly. See [the std.tui reference](../../../stdlib/tui/README.md) for all functions and key codes.
+Build the responsive menu with `make tui-example`; it writes `build/tui-menu`. You can also run `ylang build examples/tui-menu.yl -o tui-menu` directly. See [the std.tui reference](https://github.com/Yassine-Jemi01/ylang/blob/main/stdlib/tui/README.md) for all functions and key codes.
 
 | Function | Return | Behavior |
 |---|---|---|

@@ -1,0 +1,520 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Complete Language Specification - The YLang Book</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Learn YLang from your first program to its compiler, libraries, and platform guides.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-e96d0476.css">
+        <link rel="stylesheet" href="../css/chrome-d279d366.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../theme/ylang-book-3af300ff.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "navy";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-b7aa87c7.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-665c2066.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The YLang Book</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/Yassine-Jemi01/ylang" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="ylang-core-language-specification--200"><a class="header" href="#ylang-core-language-specification--200">YLang Core Language Specification — 2.0.0</a></h1>
+<p>This document defines the stable core language contract for YLang 2.0.0. Named imports, structs, enums, GUI/Game2D APIs, the NASM backend, native Windows support, and YSPM packaging are documented separately and remain experimental; their behavior is not covered by the stable-core compatibility guarantee. Syntax not listed here is not part of the stable core contract.</p>
+<h2 id="explicit-conversions"><a class="header" href="#explicit-conversions">Explicit conversions</a></h2>
+<p>YLang does not implicitly convert values between types. Use explicit conversion functions:</p>
+<ul>
+<li><code>to_float(integer)</code> converts a signed 64-bit integer to a double-precision float.</li>
+<li><code>to_int(float)</code> truncates toward zero and terminates with a runtime error if the input is non-finite or outside the signed 64-bit range.</li>
+<li><code>to_string(value)</code> supports <code>int</code>, <code>float</code>, <code>bool</code>, <code>char</code>, and <code>string</code>. A string input is returned unchanged.</li>
+<li><code>string.is_int(text)</code> returns whether the entire string is a valid base-10 signed 64-bit integer.</li>
+<li><code>string.parse_int(text)</code> converts a valid integer string; invalid or out-of-range input produces a runtime error. Check with <code>string.is_int</code> first when parsing untrusted input.</li>
+</ul>
+<h2 id="1-compilation-model"><a class="header" href="#1-compilation-model">1. Compilation model</a></h2>
+<p>YLang is a compiled language. <code>ylang check</code> parses and performs semantic checks. <code>ylang build</code> generates C and invokes GCC or Clang to produce a native executable. <code>ylang emit-c</code> writes C for inspection. There is no interpreter in this release.</p>
+<h2 id="2-source-form-and-statements"><a class="header" href="#2-source-form-and-statements">2. Source form and statements</a></h2>
+<p>Statements end with <code>;</code>, blocks use <code>{</code> and <code>}</code>, and comments use <code>//</code> through the end of a line or <code>/* ... */</code> across lines. Block comments cannot be nested and must be closed. Keywords are lowercase and case-sensitive. Source files are text and embedded NUL bytes are rejected before lexing. Each source file passed to the CLI is compiled as one program. A program must define <code>function main() -&gt; int</code> or <code>function main() -&gt; void</code>, with no parameters.</p>
+<h2 id="3-variables-and-constants"><a class="header" href="#3-variables-and-constants">3. Variables and constants</a></h2>
+<pre><code class="language-ylang">let int age;
+let int score = 100;
+let string name = "YLang";
+let bool enabled = true;
+let const int LIMIT = 100;
+</code></pre>
+<ul>
+<li>Mutable declaration: <code>let type name;</code> or <code>let type name = expression;</code>.</li>
+<li>Constant declaration: <code>let const type name = expression;</code>. Constants must be initialized and cannot be reassigned.</li>
+<li>A local variable must be assigned on every path before it is read. The checker rejects a read it cannot prove initialized.</li>
+<li>Global variables without explicit initializers receive a type-appropriate zero/empty default. Explicit initialization is preferred.</li>
+<li>A declaration can shadow a name in an outer block, but duplicate names within one scope are errors.</li>
+<li>Assignment is a statement, not a general nested expression.</li>
+</ul>
+<h2 id="4-types"><a class="header" href="#4-types">4. Types</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>int</code></td><td>Signed 64-bit integer</td></tr>
+<tr><td><code>float</code></td><td>64-bit floating-point value</td></tr>
+<tr><td><code>bool</code></td><td><code>true</code> or <code>false</code></td></tr>
+<tr><td><code>char</code></td><td>One byte; ASCII-oriented character value</td></tr>
+<tr><td><code>byte</code></td><td>Unsigned 8-bit integer (0–255); experimental Binary I/O type</td></tr>
+<tr><td><code>string</code></td><td>Immutable string data represented as a C string by the current backend</td></tr>
+<tr><td><code>void</code></td><td>Function return type only; cannot be used as a variable type</td></tr>
+</tbody>
+</table>
+</div>
+<p>No implicit numeric conversions are performed. Arithmetic operands must have compatible matching types. <code>%</code> is available only for <code>int</code>. Conditions must have type <code>bool</code>. Strings support equality and lexicographic ordering comparisons. String values are immutable.</p>
+<h3 id="user-defined-enums-experimental"><a class="header" href="#user-defined-enums-experimental">User-defined enums (experimental)</a></h3>
+<p>Unit enums are supported as named, distinct types:</p>
+<pre><code class="language-yl">enum Direction { North, East, South, West }
+
+function is_east(Direction direction) -&gt; bool {
+    return direction == Direction.East;
+}
+
+function main() -&gt; int {
+    let Direction facing = Direction.North;
+    if (is_east(Direction.East)) { print("east"); }
+    if (facing == Direction.North) { print("north"); }
+    return 0;
+}
+</code></pre>
+<p>Declare an enum before using its type. Refer to variants with <code>EnumName.Variant</code>. Values of different enum types cannot be mixed, and a variant can be passed to or returned from a function with the same enum type. Variants currently have no payloads. A statement <code>match (value) { EnumName.Variant -&gt; { ... } }</code> must contain exactly one arm for every variant; missing and duplicate arms are errors. For this milestone, the matched expression must not contain calls or assignments. Enum formatting with <code>print</code>, importing enum types across module boundaries, payload variants, and explicit numeric discriminants are not implemented yet. The C backend and the experimental NASM backend represent these unit variants as integer values while semantic analysis preserves their distinct YLang types.</p>
+<h2 id="5-literals-and-strings"><a class="header" href="#5-literals-and-strings">5. Literals and strings</a></h2>
+<pre><code class="language-ylang">let int n = 42;
+let float ratio = 1.25;
+let bool ready = true;
+let char initial = 'Y';
+let string message = "Hello
+";
+let string greeting = f"Hello {message}";
+</code></pre>
+<p><code>char</code> is one byte, not a Unicode scalar. Integer literals support decimal notation and hexadecimal notation such as <code>0xFF</code>; floating-point literals support decimal notation and scientific notation such as <code>1e3</code> or <code>2.5e-4</code>. A string literal must be terminated. F-strings begin with <code>f"</code> and interpolate expressions inside <code>{}</code>. Supported interpolations include variables and operators. Function calls and assignments are not allowed inside interpolation expressions; compute the value in a preceding statement. Quoted string and character literals decode <code> Character literals must decode to exactly one byte and may contain zero. String literals and f-string text reject zero bytes (</code>\0<code>or</code>\x00<code>) because YLang strings are NUL-terminated; use the byte-buffer API for binary data. F-strings apply the other supported escapes to literal text. Literal braces can also be escaped with doubled braces (</code>{{<code>and</code>}}`).</p>
+<h2 id="6-output"><a class="header" href="#6-output">6. Output</a></h2>
+<p><code>print(expression, ...)</code> writes values separated by one space and appends a newline:</p>
+<pre><code class="language-ylang">print("answer:", 42);
+print(f"Count: {n}");
+</code></pre>
+<p>Supported printable values are <code>int</code>, <code>float</code>, <code>bool</code>, <code>char</code>, and <code>string</code>. <code>print</code> is a statement in this release.</p>
+<h2 id="7-expressions-and-operators"><a class="header" href="#7-expressions-and-operators">7. Expressions and operators</a></h2>
+<ul>
+<li>Unary: <code>-</code>, <code>not</code></li>
+<li>Arithmetic: <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>%</code></li>
+<li>Comparison: <code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code></li>
+<li>Boolean: <code>and</code>, <code>or</code></li>
+<li>Assignment: <code>=</code> and <code>+=</code> as statements; postfix <code>++</code> increments a mutable numeric variable by one</li>
+<li>Grouping: <code>(expression)</code></li>
+<li>Calls: <code>name(argument, ...)</code></li>
+</ul>
+<p>Operator precedence is conventional: unary operators, multiplication/division/modulo, addition/subtraction, comparisons/equality, <code>and</code>, then <code>or</code>. Parentheses may be used to make grouping explicit. Evaluations with observable side effects are sequenced from left to right: function-call arguments, eager binary operands, struct initializer fields, and array initializer elements. For assignment, the target location is evaluated before the right-hand side. Boolean <code>and</code> and <code>or</code> short-circuit from left to right.</p>
+<p>Signed integer overflow, integer division/modulo by zero, and floating-point division by zero are handled by generated runtime helpers and terminate the program with a runtime-error message and status 70. This does not mean every possible C-level issue is guarded or that the language is memory-safe.</p>
+<h2 id="loops"><a class="header" href="#loops">Loops</a></h2>
+<p>Three loop forms are supported:</p>
+<pre><code class="language-ylang">loop() {
+    // Repeat until break.
+    break;
+}
+
+while (count &lt; limit) {
+    count += 1; or count++;
+}
+
+for (let int i = 0; i &lt; limit; i = i + 1) {
+    print(i);
+}
+</code></pre>
+<ul>
+<li><code>loop()</code> is an unconditional loop.</li>
+<li><code>while (condition)</code> repeats while a boolean condition is true.</li>
+<li><code>for (initializer; condition; increment)</code> uses C-style clauses. The initializer may be a <code>let</code> declaration or expression; condition and increment may be omitted.</li>
+<li><code>break;</code> exits the innermost loop and <code>continue;</code> starts its next iteration.</li>
+<li>A <code>for</code> initializer declaration is scoped to the loop and its body.</li>
+</ul>
+<h2 id="fixed-size-arrays"><a class="header" href="#fixed-size-arrays">Fixed-size arrays</a></h2>
+<p>YLang supports fixed-size arrays with an explicit element type and an initializer. The length is inferred from the initializer. Arrays may be local or global, must contain at least one element, and all elements must have the same type.</p>
+<pre><code class="language-ylang">let int scores[] = [10, 20, 30];
+
+function main() -&gt; int {
+    scores[1] = 42;
+    print(scores[0], scores[1], scores[2]);
+    return 0;
+}
+</code></pre>
+<ul>
+<li>Indexing starts at zero.</li>
+<li>Array indices must be <code>int</code>; every access performs a runtime bounds check and exits with status 70 on an invalid index.</li>
+<li>Element assignment is supported, such as <code>scores[1] = 42;</code>.</li>
+<li>Whole-array assignment, returning arrays, nested arrays, and <code>const</code> arrays are not supported yet. Array parameters use <code>type name[]</code>; the generated native ABI passes a pointer and a separate length value.</li>
+<li>Arrays must be initialized at declaration; their size cannot change at runtime.</li>
+</ul>
+<h2 id="standard-string-and-input-library"><a class="header" href="#standard-string-and-input-library">Standard string and input library</a></h2>
+<p>YLang includes byte-oriented string helpers and a line reader for simple command-line programs:</p>
+<pre><code class="language-ylang">let string name = io.read_line();
+let string greeting = string.concat("Hello, ", name);
+print(greeting);
+print(string.length(name));
+print(string.contains(name, "lang"));
+print(string.starts_with(name, "Y"));
+print(string.ends_with(name, "n"));
+</code></pre>
+<ul>
+<li><code>string.length(value)</code> returns the number of bytes, not Unicode characters.</li>
+<li><code>string.contains(value, needle)</code>, <code>string.starts_with(value, prefix)</code>, and <code>string.ends_with(value, suffix)</code> return <code>bool</code>.</li>
+<li><code>string.concat(left, right)</code> returns a new string.</li>
+<li><code>string.replace(value, needle, replacement)</code> returns a new string with every non-overlapping occurrence of <code>needle</code> replaced. An empty <code>needle</code> leaves the original string unchanged.</li>
+<li><code>string.upper(value)</code> and <code>string.lower(value)</code> return case-converted copies using the C locale’s byte-oriented character mapping; they are not Unicode-aware.</li>
+<li>Strings support lexicographic ordering with <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, and <code>&gt;=</code>, using bytewise C-string ordering. Equality remains case-sensitive.</li>
+<li>The generated runtime tracks allocated strings until process exit, so repeated concatenation or case conversion in a long-running loop can increase memory use.</li>
+<li><code>io.read_line()</code> reads one line from standard input and removes its trailing newline. At end-of-file it returns an empty string.</li>
+<li><code>io.read_file(path)</code> reads an entire UTF-8/ASCII-compatible text file into a string. A file-open/read failure or embedded NUL byte terminates the program with a runtime error; binary files are not supported by the string API.</li>
+<li><code>io.write_file(path, content)</code> overwrites or creates a text file and returns <code>true</code> on success or <code>false</code> if it cannot open/write the file. It does not create missing parent directories.</li>
+<li>File paths are interpreted relative to the process working directory. File I/O is synchronous and currently has no structured error/exception type.</li>
+<li><code>path.exists(path)</code> returns whether a path can be inspected with <code>stat</code>; it may return true for files, directories, or other filesystem objects.</li>
+<li><code>path.basename(path)</code> returns the final path component, and <code>path.extension(path)</code> returns the suffix after the final dot (without the dot); a leading dot alone is not treated as an extension. These helpers use POSIX path separators.</li>
+<li><code>image.open(path)</code> launches the platform default opener (<code>xdg-open</code> on Linux, <code>open</code> on macOS) without invoking a shell and returns whether the launcher exits successfully. It requires a desktop session and a registered handler; it opens the file in an external application and does not decode or draw the image in a YLang window.</li>
+</ul>
+<h2 id="terminal-input-and-output"><a class="header" href="#terminal-input-and-output">Terminal input and output</a></h2>
+<p>The C runtime exposes synchronous command-line helpers through <code>terminal.*</code>. <code>terminal.read_line(prompt)</code> returns an <code>owned_string</code>; <code>terminal.read_int(prompt)</code>, <code>terminal.read_float(prompt)</code>, and <code>terminal.read_bool(prompt)</code> parse one line and terminate with a runtime error on invalid input. Boolean input accepts <code>true/false</code>, <code>yes/no</code>, and <code>1/0</code>. <code>terminal.write(text)</code> and <code>terminal.write_line(text)</code> return a boolean write status and flush stdout. <code>terminal.clear()</code> emits ANSI clear-screen sequences, while <code>terminal.is_interactive()</code> checks whether stdin is attached to a terminal. EOF in line input returns an empty string. Raw key events and password input are not supported. See <a href="TERMINAL.html">std.terminal</a>.</p>
+<h2 id="experimental-owned-strings"><a class="header" href="#experimental-owned-strings">Experimental owned strings</a></h2>
+<p>The C backend has an experimental <code>owned_string</code> type. Unlike legacy <code>string</code>, an <code>owned_string</code> local owns its tracked heap allocation and is released automatically when its scope ends. This feature is not part of the stable 2.0.0 core compatibility contract and does not provide full Rust-style borrowing or lifetime checking.</p>
+<pre><code class="language-yl">let string text = "YLang";
+let owned_string owner = string.own(text); // clones text into owned storage
+let owned_string next = owned_string.concat(owner, "!");
+let owned_string transferred = move(next); // next is unavailable until reinitialized
+print(owner, transferred);
+</code></pre>
+<p>Use <code>string.own(value)</code> to clone borrowed text into owned storage. <code>owned_string.concat</code>, <code>owned_string.replace</code>, <code>owned_string.upper</code>, <code>owned_string.lower</code>, <code>io.read_line_owned()</code>, and <code>io.read_file_owned(path)</code> produce owned strings. Use <code>move(name)</code> to transfer one owner into another local, an owned-string function parameter, or an owned return value. A function that returns an owned value should return <code>move(name)</code> for a local binding. Implicit copying of an owned binding is rejected; use <code>string.own(value)</code> when a separate owned copy is required.</p>
+<p>The compiler emits releases on normal scope exit and before <code>return</code>, <code>break</code>, and <code>continue</code>. Reassigning an owned variable releases its previous value. For allocation diagnostics, run the resulting program with <code>YLANG_MEMORY_STATS=1</code>; if all owned values have been released and the program created no other retained legacy strings, live tracked allocations and bytes should be zero at process exit.</p>
+<p>The experimental <code>borrowed_string</code> type can be used for function parameters that read text without taking ownership:</p>
+<pre><code class="language-yl">function report(borrowed_string text) -&gt; int {
+    print(text);
+    print(string.length(text));
+    return 0;
+}
+
+function main() -&gt; int {
+    let owned_string message = string.own("hello");
+    report(message); // message remains owned by main
+    return 0;
+}
+</code></pre>
+<p>A <code>borrowed_string</code> parameter is read-only. The type is rejected for local/global variables, struct fields, array parameters, and function return values. It does not free the passed value; the caller must keep the owner alive for the duration of the call. Passing an unbound <code>owned_string</code> temporary to a borrowed parameter is rejected. This is a limited immutable call-parameter view, not full lifetime inference or a general borrow checker.</p>
+<p>Current limits: owned strings require the C backend. Global owned strings, arrays of owned strings, and owned-string struct fields are rejected until cleanup for those storage forms exists. Mutable borrows (<code>&amp;mut T</code>), lifetime annotations, escaping borrows, and general alias checking are not implemented. Legacy <code>string</code> remains a borrowed C-string representation, and allocations produced by legacy string helpers may live until process exit. Do not treat this experimental feature as a security boundary or a claim of complete Rust-level memory safety.</p>
+<h2 id="path-and-desktop-integration"><a class="header" href="#path-and-desktop-integration">Path and desktop integration</a></h2>
+<pre><code class="language-ylang">let string file = io.read_line();
+if (path.exists(file)) {
+    print(path.basename(file), path.extension(file));
+    let bool opened = image.open(file);
+    if (not opened) { print("Could not launch the default image/file viewer."); }
+}
+</code></pre>
+<p>The <code>path</code> namespace exposes <code>exists</code>, <code>basename</code>, and <code>extension</code>. The <code>image.open(path)</code> convenience API starts the operating system’s default file handler without passing the path through a shell, avoiding shell-metacharacter interpretation. This is OS integration rather than a built-in image decoder or a custom GUI image widget; native GUI bindings and in-process image decoding remain future work. These APIs currently target the POSIX systems supported by YLang.</p>
+<h2 id="standard-math-library"><a class="header" href="#standard-math-library">Standard math library</a></h2>
+<p>YLang provides a built-in <code>math</code> namespace for common floating-point operations. These calls are checked by the compiler and emitted as native C math-library calls.</p>
+<pre><code class="language-ylang">let float root = math.sqrt(81.0);
+let float power = math.pow(2.0, 8.0);
+let float angle = math.sin(0.0);
+let float bounded = math.clamp(12.0, 0.0, 10.0);
+</code></pre>
+<p>Available functions (all arguments must be <code>float</code>, and all return <code>float</code>):</p>
+<ul>
+<li>Unary: <code>sqrt</code>, <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>asin</code>, <code>acos</code>, <code>atan</code>, <code>sinh</code>, <code>cosh</code>, <code>tanh</code>, <code>exp</code>, <code>log</code>, <code>log10</code>, <code>floor</code>, <code>ceil</code>, <code>round</code>, <code>abs</code>.</li>
+<li>Binary: <code>pow</code>, <code>atan2</code>, <code>min</code>, <code>max</code>, <code>hypot</code>.</li>
+<li>Three arguments: <code>clamp(value, low, high)</code>; a lower bound greater than the upper bound triggers a runtime error.</li>
+</ul>
+<p>YLang does not implicitly convert integers to floats, so use float literals such as <code>9.0</code>. Domain errors and non-finite results follow the platform C math library behavior.</p>
+<h2 id="8-conditions-and-loops"><a class="header" href="#8-conditions-and-loops">8. Conditions and loops</a></h2>
+<pre><code class="language-ylang">if (age &gt;= 18) {
+    print("Adult");
+} else if (age &gt;= 13) {
+    print("Teenager");
+} else {
+    print("Child");
+}
+
+loop() {
+    if (done) {
+        break;
+    }
+    continue;
+}
+</code></pre>
+<p>Conditions must be boolean. <code>loop()</code> repeats indefinitely until <code>break</code> executes. <code>while</code> repeats while its condition is true, and <code>for</code> supports initializer, condition, and increment clauses. <code>continue</code> skips to the next iteration. <code>break</code> and <code>continue</code> are only valid inside a loop.</p>
+<h2 id="9-functions"><a class="header" href="#9-functions">9. Functions</a></h2>
+<pre><code class="language-ylang">function add(int left, int right) -&gt; int {
+    return left + right;
+}
+
+function main() -&gt; int {
+    print(add(20, 22));
+    return 0;
+}
+</code></pre>
+<p>Parameter and return types are explicit. Function overloading is not supported. A non-void function must return a value on supported control-flow paths. <code>main</code> has no parameters and returns <code>int</code> or <code>void</code>.</p>
+<h2 id="10-modules-and-imports"><a class="header" href="#10-modules-and-imports">10. Modules and imports</a></h2>
+<p>A source file can import named functions or global variables from another <code>.yl</code> file:</p>
+<pre><code class="language-ylang">from "./system_data.yl" import system_data, system_prefix;
+
+function main() -&gt; int {
+    print(system_data(), system_prefix);
+    return 0;
+}
+</code></pre>
+<p>Import paths are resolved relative to the file containing the import, not the
+process working directory. Imports are transitive: an imported module may import
+names from another module. Every name used from another module must be imported
+explicitly. Functions and globals declared in a module are visible inside that
+module, but do not become visible to importers unless their names are imported.
+Different modules may define private helpers with the same name.</p>
+<p>The compiler rejects unknown imported names, conflicting or repeated imports,
+imports of the program entry point, missing module files, and circular imports.
+The root source file must define <code>main()</code>; an imported module cannot define it.
+Imports are currently supported by the default C backend. The experimental NASM
+backend rejects multi-file imports explicitly until module-aware assembly
+lowering is implemented.</p>
+<h2 id="11-diagnostics-and-tooling"><a class="header" href="#11-diagnostics-and-tooling">11. Diagnostics and tooling</a></h2>
+<p><code>check</code> reports parse and semantic/type diagnostics without invoking a native compiler. Diagnostics include an error code, file/line/column, source excerpt, caret, and a hint when one is available. <code>build</code> does not produce a successful executable if YLang diagnostics contain errors.</p>
+<p><code>fix input.yl -o output.yl</code> currently implements one high-confidence source transformation: changing a <code>pritn(...)</code> call typo to <code>print(...)</code> when no function named <code>pritn</code> is declared. It requires an output path and does not intentionally modify comment/string text. It is not a general repair engine. Always run <code>check</code> after applying a fix.</p>
+<h2 id="json-documents"><a class="header" href="#json-documents">JSON documents</a></h2>
+<p>The native <code>json.*</code> namespace parses and validates JSON without a third-party dependency. It supports nested objects and arrays, JSON escapes, and UTF-16 surrogate-pair decoding. Input is limited to 16 MiB and nesting to 128 levels.</p>
+<ul>
+<li><code>json.parse(text)</code> validates and retains a JSON document as <code>owned_string</code>.</li>
+<li><code>json.valid(text)</code> checks syntax and returns <code>bool</code>.</li>
+<li><code>json.get(document, key)</code> returns a property as raw JSON; typed accessors include <code>json.get_string</code>, <code>json.get_int</code>, <code>json.get_float</code>, and <code>json.get_bool</code>.</li>
+<li><code>json.has(document, key)</code> checks for an object property; <code>json.array_length</code> and <code>json.at</code> inspect arrays.</li>
+<li><code>json.at</code> uses zero-based indices; a negative or out-of-range index returns an empty string and sets <code>json.last_error()</code>.</li>
+<li><code>json.stringify(raw)</code> validates and copies an already-serialized JSON value. <code>json.pretty(raw)</code> formats one with two-space indentation.</li>
+<li><code>json.escape(text)</code> encodes a YLang string as a JSON string literal; <code>json.last_error()</code> returns the latest diagnostic.</li>
+</ul>
+<p>This remains a raw-document API, not a mutable JSON DOM: it does not construct typed objects or arrays from YLang values. The unreleased 2.3 development line adds immutable raw-text builders (<code>json.object</code>, <code>json.array</code>, <code>json.set</code>, <code>json.remove</code>, and <code>json.push</code>); they accept validated JSON fragments and return new JSON strings, not a dynamic value tree. See <a href="JSON.html">the JSON guide</a> for the current API and release boundary.</p>
+<h2 id="binary-file-io-experimental"><a class="header" href="#binary-file-io-experimental">Binary file I/O (experimental)</a></h2>
+<p>The optional <code>byte</code> scalar type is an unsigned 8-bit integer. <code>byte(value)</code> checks that an <code>int</code> is in the range 0..255 and returns a byte; an out-of-range conversion terminates with a runtime error. Fixed arrays can be declared as <code>let byte data[] = [byte(0), byte(255)];</code>; byte-array parameters also work with the block and stream APIs.</p>
+<p>The binary file API includes <code>io.binary_size</code>, <code>io.read_u8</code>, <code>io.write_u8</code>, <code>io.read_bytes</code>, <code>io.write_bytes</code>, <code>io.read_binary_hex</code>, and <code>io.write_binary_hex</code>. Buffer functions accept a named byte array and return a byte count, or <code>-1</code> on error. Hex helpers remain limited to 16 MiB per call.</p>
+<p>Dynamic byte buffers are available through opaque integer handles: <code>io.buffer_new</code>, <code>io.buffer_slice</code>, <code>io.buffer_length</code>, <code>io.buffer_capacity</code>, <code>io.buffer_get</code>, <code>io.buffer_set</code>, <code>io.buffer_push</code>, <code>io.buffer_resize</code>, <code>io.buffer_clear</code>, <code>io.buffer_free</code>, <code>io.buffer_load</code>, and <code>io.buffer_save</code>. Buffers grow automatically, are limited to 256 MiB each, and at most 64 may be live. Resizing to a larger length zero-fills new bytes. Invalid handles or indices return documented sentinel values/false. Slices are non-owning views that share parent storage and cannot be resized. Freeing a buffer invalidates that buffer and every nested descendant slice. Buffers not explicitly freed are released during normal runtime cleanup.</p>
+<p>Endian-aware scalar helpers are available for unsigned 16-, 32-, and 64-bit values in both little- and big-endian forms: <code>io.read_u16_le/be</code>, <code>io.read_u32_le/be</code>, <code>io.read_u64_le/be</code> and matching <code>io.write_u16_le/be</code>, <code>io.write_u32_le/be</code>, <code>io.write_u64_le/be</code>. 64-bit reads return the raw bit pattern through signed <code>int</code>, so values with the high bit set appear negative; <code>-1</code> is also the failure sentinel.</p>
+<p>Streaming uses <code>io.stream_open_read(path)</code>, <code>io.stream_open_write(path)</code>, <code>io.stream_read(handle, byte_array)</code>, <code>io.stream_write(handle, byte_array)</code>, and <code>io.stream_close(handle)</code>. Stream reads return zero at EOF and <code>-1</code> on error. The runtime supports up to 64 simultaneous streams and closes remaining handles during normal cleanup. Streaming is synchronous and currently has no seek or async operation.</p>
+<p>All these facilities are experimental, synchronous, and supported by the C backend only. They do not yet provide memory-mapped files or asynchronous streams. Text file APIs remain separate.</p>
+<h2 id="12-unsupported-features-and-implementation-limits"><a class="header" href="#12-unsupported-features-and-implementation-limits">12. Unsupported features and implementation limits</a></h2>
+<p>The following are not supported by the current language subset: classes, methods on structs, inheritance, payload enums, generic <code>Option&lt;T&gt;</code>/<code>Result&lt;T, E&gt;</code>, exception syntax (<code>try</code>/<code>catch</code>), generics, raw pointers/references, returning arrays, nested/const arrays, and a dedicated LLVM/native backend. Typed structs and enums are implemented as experimental extensions described in <a href="STRUCTS.html">the struct reference</a> and <a href="ENUMS.html">the enum reference</a>; they are not part of the stable-core compatibility guarantee. <code>class</code>, <code>try</code>, and <code>catch</code> may be tokenized as reserved words but are not valid executable constructs.</p>
+<p>The compiler generates C, so native code inherits ordinary process privileges and is not sandboxed. Some formatted string values are stored until process exit; creating many such values in a long-running loop can increase memory consumption. The language does not define ownership/borrowing or a garbage collector in this release. Do not assume Rust-like memory-safety guarantees.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../editor-support.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../reference/MODULE-SYSTEM-SPEC.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../editor-support.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../reference/MODULE-SYSTEM-SPEC.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-09f2665d.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/ylang-nav-ef95f0ee.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

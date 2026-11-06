@@ -46,7 +46,7 @@ The Voice runtime can take ownership of an HTTP stream and pass its bytes to SDL
 
 ```yl
 function main() -> int {
-    let string url = terminal.read_line("HTTPS audio URL: ");
+    let owned_string url = terminal.read_line("HTTPS audio URL: ");
     let http_stream stream = http.stream_open("GET", url, "", "");
 
     if (!voice.play_stream(stream)) {

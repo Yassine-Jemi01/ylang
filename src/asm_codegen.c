@@ -772,6 +772,8 @@ static bool emit_print_value(AsmContext *ctx, Expr *expr)
             return asm_reject(ctx, expr->token, "owned strings (use the C backend)");
         case TYPE_HTTP_TASK:
             return asm_reject(ctx, expr->token, "HTTP task handles (use the C backend)");
+        case TYPE_HTTP_STREAM:
+            return asm_reject(ctx, expr->token, "HTTP streams (use the C backend)");
         case TYPE_FLOAT:
         case TYPE_VOID:
         case TYPE_ERROR:

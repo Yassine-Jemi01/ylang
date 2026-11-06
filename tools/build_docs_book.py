@@ -45,6 +45,7 @@ REFERENCE_DOCS = (
     "ROADMAP-2.3.0.md",
     "PERFORMANCE.md",
     "CLI.md",
+    "TERMINAL.md",
     "SECURITY.md",
     "DEBUGGER.md",
     "DEBUGGER-SPEC.md",

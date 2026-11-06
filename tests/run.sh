@@ -1790,6 +1790,7 @@ true
 true
 72623859790382856
 578437695752307201
+true
 4
 true
 4
@@ -1841,6 +1842,7 @@ false
 true
 0
 true
+true
 -1
 -1
 -1
@@ -1853,7 +1855,7 @@ rm -f build/buffer-append.bin
 ./build/ylang check tests/binary-buffer-append.yl >/dev/null
 ./build/ylang build tests/binary-buffer-append.yl -o build/test-binary-buffer-append >/dev/null
 ./build/test-binary-buffer-append > build/binary-buffer-append.stdout
-printf '2\\n2\\n4\\n' > build/binary-buffer-append.expected
+printf '2\n2\n4\n' > build/binary-buffer-append.expected
 diff -u build/binary-buffer-append.expected build/binary-buffer-append.stdout
 
 
@@ -1964,7 +1966,7 @@ grep -q 'JSON output exceeds the 16 MiB limit' build/json-escape-limit/control-o
 # std.terminal line input, typed parsing, flushing, and redirected stdin detection.
 ./build/ylang check tests/terminal-input.yl >/dev/null
 ./build/ylang build tests/terminal-input.yl -o build/test-terminal-input >/dev/null
-printf 'Ada\\n42\\n1.5\\nyes\\n' | ./build/test-terminal-input > build/terminal-input.stdout
+printf 'Ada\n42\n1.5\nyes\n' | ./build/test-terminal-input > build/terminal-input.stdout
 diff -u tests/expected-terminal-input.txt build/terminal-input.stdout
 
 # Module loading must stop at the documented recursion-depth limit.
@@ -2078,11 +2080,13 @@ grep -q 'E1018' build/statement-depth/unbraced.out
 
 # Diagnostic output is capped while the compiler still returns a failure.
 {
+    printf 'function main() -> int {\n'
     i=0
     while [ "$i" -lt 110 ]; do
         printf 'print(missing_value);\n'
         i=$((i + 1))
     done
+    printf 'return 0; }\n'
 } > build/statement-depth/diagnostic-flood.yl
 if ./build/ylang check build/statement-depth/diagnostic-flood.yl > build/statement-depth/diagnostic-flood.out 2>&1; then
     echo "FAIL: a program with 110 unresolved names was accepted" >&2

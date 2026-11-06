@@ -1,0 +1,48 @@
+# Security Model and Safe Defaults
+
+**YLang is a compiled toolchain, not a sandbox.** A YLang executable runs with the privileges of the user who starts it. The compiler does not isolate file access, processes, network access, or imported native code.
+
+## Compiler resource limits
+
+The compiler bounds several input-driven resources to keep malformed or unexpectedly large projects from consuming unbounded memory or call-stack depth:
+
+- At most 100 diagnostics are printed for one compilation; source-line excerpts are limited to 160 bytes and non-printable/non-ASCII bytes are escaped in diagnostic output. When a diagnostic token belongs to a source buffer, its line excerpt is located from the token offset rather than rescanning from the start of the file.
+- A program may load at most 1,024 source modules.
+- The root source and all imported source files together are limited to 64 MiB. The root file is size-checked before allocating its contents; imported files are size-checked before each allocation. Embedded NUL bytes are rejected in both root and imported source files rather than being treated as end-of-file.
+- Module import recursion is limited to 256 levels.
+- Parser statement nesting is limited to 256 levels, and code generation has a defensive 512-level statement-depth guard.
+- JSON input and generated JSON output are each limited to 16 MiB; JSON nesting is limited to 128 levels.
+
+The compiler reports the module limits with E1027, E1028, and E1029, and statement-depth violations with E1018/E1019. These limits are compiler safeguards, not a sandbox; native programs still run with the user's permissions.
+
+## HTTP/HTTPS client
+
+The experimental C-backend client uses libcurl and applies these defaults:
+
+- Only `http://` and `https://` URLs are accepted. TLS certificate and hostname verification remain enabled; there is no insecure verification bypass.
+- Connection attempts time out after 5 seconds and the entire request after 15 seconds.
+- Response bodies are capped at 8 MiB, and request/response header text is bounded to 16 KiB.
+- Automatic redirects are limited to five and allowed only for HTTP/HTTPS. The built-in JSON `Content-Type` header is permitted through redirects, but if the request includes any other header, a 3xx response is returned directly rather than forwarding arbitrary headers such as `X-API-Key` to a new target.
+- HTTP status codes such as 401, 404, and 500 are response statuses, not transport errors. Check `http.status()` and `http.last_error()` separately.
+- At most 32 HTTP task handles may be in flight. `http_task` values are process-local, single-consumption handles; cancellation does not undo a request already received by the server.
+- HTTP streaming uses a separate pull-based API with at most 16 active streams and a fixed 64 KiB response buffer. It has a 5-second connection timeout but intentionally no whole-transfer timeout, so long-lived streams are possible. A program must close streams it no longer needs; process shutdown also releases them.
+- Buffered synchronous and task-based HTTP response APIs return text strings. If a response body contains NUL, they return an empty string and expose an error directing the caller to binary-safe streaming.
+- YLang strings are NUL-terminated. Escaped NUL bytes in string/f-string literals, NUL bytes from line input, and NUL bytes produced by string formatting are rejected instead of being silently truncated; binary data belongs in byte buffers.
+- `http.stream_read()` is text-oriented and rejects chunks containing embedded NUL bytes through `http.stream_error()`. Use `http.stream_read_buffer()` with a root `io.buffer` for binary data, and free that buffer when finished.
+
+These safeguards reduce common accidental leaks and resource exhaustion, but they do **not** make a caller-supplied URL safe in every deployment. In server-side applications, validate URLs against an application-specific hostname/IP allow-list and consider access to loopback, private, link-local, and metadata addresses before making a request.
+
+## API keys and environment variables
+
+Use `env.get("SERVICE_API_KEY")` to read a credential supplied by the parent process. Missing variables return an empty string. The helper does not invoke a shell and does not grant additional permissions.
+
+Do not commit real API keys, print them in diagnostic output, or include them in generated source files. Use the credential mechanism supported by the host or CI environment, restrict keys to the minimum permissions required, and rotate leaked credentials.
+
+## Native execution and debugging
+
+- `ylang build`, `ylang debug`, and the native executable run code on the host with the invoking user's normal permissions.
+- Debugging is not a privilege boundary or sandbox. GDB/LLDB can inspect process state according to the user's operating-system permissions.
+- The experimental debugger is implemented for the C backend on Linux (GDB) and macOS (LLDB). Windows interactive debugging and the NASM source-debugging path are not implemented.
+- Generated C and compiler diagnostics are developer tools, not a guarantee that arbitrary programs are memory-safe. YLang does not claim Rust-level memory safety; continue running regression tests, sanitizers, and fuzzing on supported environments.
+
+For a security report, include the affected commit, OS/toolchain, exact compiler command, minimal reproducible source, and whether the issue reproduces with a non-privileged account. Do not post live credentials or private user data in an issue.

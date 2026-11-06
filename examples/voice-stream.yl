@@ -2,7 +2,7 @@
 // Build with: ylang build examples/voice-stream.yl -o voice-stream
 
 function main() -> int {
-    let string url = terminal.read_line("HTTPS audio URL: ");
+    let owned_string url = terminal.read_line("HTTPS audio URL: ");
     if (string.length(url) == 0) {
         print("A URL is required.");
         return 1;
@@ -22,7 +22,9 @@ function main() -> int {
     }
 
     let string error = voice.last_error();
-    if (error != "No error") print(error);
+    if (error != "No error") {
+        print(error);
+    }
     voice.shutdown();
     return 0;
 }

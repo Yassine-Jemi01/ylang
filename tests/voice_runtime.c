@@ -205,7 +205,7 @@ int main(void)
 
     /* A snapshot returned on one thread must not be overwritten when another
        thread updates the shared latest-error message. */
-    if (!ylvoice_set_volume(101)) return fail("invalid volume was accepted before snapshot test");
+    if (ylvoice_set_volume(101)) return fail("invalid volume was accepted before snapshot test");
     ErrorSnapshotContext snapshot_context = {
         SDL_CreateSemaphore(0U), SDL_CreateSemaphore(0U), false
     };

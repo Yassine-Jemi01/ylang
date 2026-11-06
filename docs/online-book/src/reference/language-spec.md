@@ -1,0 +1,362 @@
+# YLang Core Language Specification — 2.0.0
+
+This document defines the stable core language contract for YLang 2.0.0. Named imports, structs, enums, GUI/Game2D APIs, the NASM backend, native Windows support, and YSPM packaging are documented separately and remain experimental; their behavior is not covered by the stable-core compatibility guarantee. Syntax not listed here is not part of the stable core contract.
+
+## Explicit conversions
+
+YLang does not implicitly convert values between types. Use explicit conversion functions:
+
+- `to_float(integer)` converts a signed 64-bit integer to a double-precision float.
+- `to_int(float)` truncates toward zero and terminates with a runtime error if the input is non-finite or outside the signed 64-bit range.
+- `to_string(value)` supports `int`, `float`, `bool`, `char`, and `string`. A string input is returned unchanged.
+- `string.is_int(text)` returns whether the entire string is a valid base-10 signed 64-bit integer.
+- `string.parse_int(text)` converts a valid integer string; invalid or out-of-range input produces a runtime error. Check with `string.is_int` first when parsing untrusted input.
+
+## 1. Compilation model
+
+YLang is a compiled language. `ylang check` parses and performs semantic checks. `ylang build` generates C and invokes GCC or Clang to produce a native executable. `ylang emit-c` writes C for inspection. There is no interpreter in this release.
+
+## 2. Source form and statements
+
+Statements end with `;`, blocks use `{` and `}`, and comments use `//` through the end of a line or `/* ... */` across lines. Block comments cannot be nested and must be closed. Keywords are lowercase and case-sensitive. Source files are text and embedded NUL bytes are rejected before lexing. Each source file passed to the CLI is compiled as one program. A program must define `function main() -> int` or `function main() -> void`, with no parameters.
+
+## 3. Variables and constants
+
+```ylang
+let int age;
+let int score = 100;
+let string name = "YLang";
+let bool enabled = true;
+let const int LIMIT = 100;
+```
+
+- Mutable declaration: `let type name;` or `let type name = expression;`.
+- Constant declaration: `let const type name = expression;`. Constants must be initialized and cannot be reassigned.
+- A local variable must be assigned on every path before it is read. The checker rejects a read it cannot prove initialized.
+- Global variables without explicit initializers receive a type-appropriate zero/empty default. Explicit initialization is preferred.
+- A declaration can shadow a name in an outer block, but duplicate names within one scope are errors.
+- Assignment is a statement, not a general nested expression.
+
+## 4. Types
+
+| Type | Meaning |
+| --- | --- |
+| `int` | Signed 64-bit integer |
+| `float` | 64-bit floating-point value |
+| `bool` | `true` or `false` |
+| `char` | One byte; ASCII-oriented character value |
+| `byte` | Unsigned 8-bit integer (0–255); experimental Binary I/O type |
+| `string` | Immutable string data represented as a C string by the current backend |
+| `void` | Function return type only; cannot be used as a variable type |
+
+No implicit numeric conversions are performed. Arithmetic operands must have compatible matching types. `%` is available only for `int`. Conditions must have type `bool`. Strings support equality and lexicographic ordering comparisons. String values are immutable.
+
+### User-defined enums (experimental)
+
+Unit enums are supported as named, distinct types:
+
+```yl
+enum Direction { North, East, South, West }
+
+function is_east(Direction direction) -> bool {
+    return direction == Direction.East;
+}
+
+function main() -> int {
+    let Direction facing = Direction.North;
+    if (is_east(Direction.East)) { print("east"); }
+    if (facing == Direction.North) { print("north"); }
+    return 0;
+}
+```
+
+Declare an enum before using its type. Refer to variants with `EnumName.Variant`. Values of different enum types cannot be mixed, and a variant can be passed to or returned from a function with the same enum type. Variants currently have no payloads. A statement `match (value) { EnumName.Variant -> { ... } }` must contain exactly one arm for every variant; missing and duplicate arms are errors. For this milestone, the matched expression must not contain calls or assignments. Enum formatting with `print`, importing enum types across module boundaries, payload variants, and explicit numeric discriminants are not implemented yet. The C backend and the experimental NASM backend represent these unit variants as integer values while semantic analysis preserves their distinct YLang types.
+
+## 5. Literals and strings
+
+```ylang
+let int n = 42;
+let float ratio = 1.25;
+let bool ready = true;
+let char initial = 'Y';
+let string message = "Hello
+";
+let string greeting = f"Hello {message}";
+```
+
+`char` is one byte, not a Unicode scalar. Integer literals support decimal notation and hexadecimal notation such as `0xFF`; floating-point literals support decimal notation and scientific notation such as `1e3` or `2.5e-4`. A string literal must be terminated. F-strings begin with `f"` and interpolate expressions inside `{}`. Supported interpolations include variables and operators. Function calls and assignments are not allowed inside interpolation expressions; compute the value in a preceding statement. Quoted string and character literals decode `
+Character literals must decode to exactly one byte and may contain zero. String literals and f-string text reject zero bytes (`\0` or `\x00`) because YLang strings are NUL-terminated; use the byte-buffer API for binary data. F-strings apply the other supported escapes to literal text. Literal braces can also be escaped with doubled braces (`{{` and `}}`).
+
+## 6. Output
+
+`print(expression, ...)` writes values separated by one space and appends a newline:
+
+```ylang
+print("answer:", 42);
+print(f"Count: {n}");
+```
+
+Supported printable values are `int`, `float`, `bool`, `char`, and `string`. `print` is a statement in this release.
+
+## 7. Expressions and operators
+
+- Unary: `-`, `not`
+- Arithmetic: `+`, `-`, `*`, `/`, `%`
+- Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
+- Boolean: `and`, `or`
+- Assignment: `=` and `+=` as statements; postfix `++` increments a mutable numeric variable by one
+- Grouping: `(expression)`
+- Calls: `name(argument, ...)`
+
+Operator precedence is conventional: unary operators, multiplication/division/modulo, addition/subtraction, comparisons/equality, `and`, then `or`. Parentheses may be used to make grouping explicit. Evaluations with observable side effects are sequenced from left to right: function-call arguments, eager binary operands, struct initializer fields, and array initializer elements. For assignment, the target location is evaluated before the right-hand side. Boolean `and` and `or` short-circuit from left to right.
+
+Signed integer overflow, integer division/modulo by zero, and floating-point division by zero are handled by generated runtime helpers and terminate the program with a runtime-error message and status 70. This does not mean every possible C-level issue is guarded or that the language is memory-safe.
+
+## Loops
+
+Three loop forms are supported:
+
+```ylang
+loop() {
+    // Repeat until break.
+    break;
+}
+
+while (count < limit) {
+    count += 1; or count++;
+}
+
+for (let int i = 0; i < limit; i = i + 1) {
+    print(i);
+}
+```
+
+- `loop()` is an unconditional loop.
+- `while (condition)` repeats while a boolean condition is true.
+- `for (initializer; condition; increment)` uses C-style clauses. The initializer may be a `let` declaration or expression; condition and increment may be omitted.
+- `break;` exits the innermost loop and `continue;` starts its next iteration.
+- A `for` initializer declaration is scoped to the loop and its body.
+
+## Fixed-size arrays
+
+YLang supports fixed-size arrays with an explicit element type and an initializer. The length is inferred from the initializer. Arrays may be local or global, must contain at least one element, and all elements must have the same type.
+
+```ylang
+let int scores[] = [10, 20, 30];
+
+function main() -> int {
+    scores[1] = 42;
+    print(scores[0], scores[1], scores[2]);
+    return 0;
+}
+```
+
+- Indexing starts at zero.
+- Array indices must be `int`; every access performs a runtime bounds check and exits with status 70 on an invalid index.
+- Element assignment is supported, such as `scores[1] = 42;`.
+- Whole-array assignment, returning arrays, nested arrays, and `const` arrays are not supported yet. Array parameters use `type name[]`; the generated native ABI passes a pointer and a separate length value.
+- Arrays must be initialized at declaration; their size cannot change at runtime.
+
+## Standard string and input library
+
+YLang includes byte-oriented string helpers and a line reader for simple command-line programs:
+
+```ylang
+let string name = io.read_line();
+let string greeting = string.concat("Hello, ", name);
+print(greeting);
+print(string.length(name));
+print(string.contains(name, "lang"));
+print(string.starts_with(name, "Y"));
+print(string.ends_with(name, "n"));
+```
+
+- `string.length(value)` returns the number of bytes, not Unicode characters.
+- `string.contains(value, needle)`, `string.starts_with(value, prefix)`, and `string.ends_with(value, suffix)` return `bool`.
+- `string.concat(left, right)` returns a new string.
+- `string.replace(value, needle, replacement)` returns a new string with every non-overlapping occurrence of `needle` replaced. An empty `needle` leaves the original string unchanged.
+- `string.upper(value)` and `string.lower(value)` return case-converted copies using the C locale's byte-oriented character mapping; they are not Unicode-aware.
+- Strings support lexicographic ordering with `<`, `<=`, `>`, and `>=`, using bytewise C-string ordering. Equality remains case-sensitive.
+- The generated runtime tracks allocated strings until process exit, so repeated concatenation or case conversion in a long-running loop can increase memory use.
+- `io.read_line()` reads one line from standard input and removes its trailing newline. At end-of-file it returns an empty string.
+- `io.read_file(path)` reads an entire UTF-8/ASCII-compatible text file into a string. A file-open/read failure or embedded NUL byte terminates the program with a runtime error; binary files are not supported by the string API.
+- `io.write_file(path, content)` overwrites or creates a text file and returns `true` on success or `false` if it cannot open/write the file. It does not create missing parent directories.
+- File paths are interpreted relative to the process working directory. File I/O is synchronous and currently has no structured error/exception type.
+- `path.exists(path)` returns whether a path can be inspected with `stat`; it may return true for files, directories, or other filesystem objects.
+- `path.basename(path)` returns the final path component, and `path.extension(path)` returns the suffix after the final dot (without the dot); a leading dot alone is not treated as an extension. These helpers use POSIX path separators.
+- `image.open(path)` launches the platform default opener (`xdg-open` on Linux, `open` on macOS) without invoking a shell and returns whether the launcher exits successfully. It requires a desktop session and a registered handler; it opens the file in an external application and does not decode or draw the image in a YLang window.
+
+## Terminal input and output
+
+The C runtime exposes synchronous command-line helpers through `terminal.*`. `terminal.read_line(prompt)` returns an `owned_string`; `terminal.read_int(prompt)`, `terminal.read_float(prompt)`, and `terminal.read_bool(prompt)` parse one line and terminate with a runtime error on invalid input. Boolean input accepts `true/false`, `yes/no`, and `1/0`. `terminal.write(text)` and `terminal.write_line(text)` return a boolean write status and flush stdout. `terminal.clear()` emits ANSI clear-screen sequences, while `terminal.is_interactive()` checks whether stdin is attached to a terminal. EOF in line input returns an empty string. Raw key events and password input are not supported. See [std.terminal](TERMINAL.md).
+
+## Experimental owned strings
+
+The C backend has an experimental `owned_string` type. Unlike legacy `string`, an `owned_string` local owns its tracked heap allocation and is released automatically when its scope ends. This feature is not part of the stable 2.0.0 core compatibility contract and does not provide full Rust-style borrowing or lifetime checking.
+
+```yl
+let string text = "YLang";
+let owned_string owner = string.own(text); // clones text into owned storage
+let owned_string next = owned_string.concat(owner, "!");
+let owned_string transferred = move(next); // next is unavailable until reinitialized
+print(owner, transferred);
+```
+
+Use `string.own(value)` to clone borrowed text into owned storage. `owned_string.concat`, `owned_string.replace`, `owned_string.upper`, `owned_string.lower`, `io.read_line_owned()`, and `io.read_file_owned(path)` produce owned strings. Use `move(name)` to transfer one owner into another local, an owned-string function parameter, or an owned return value. A function that returns an owned value should return `move(name)` for a local binding. Implicit copying of an owned binding is rejected; use `string.own(value)` when a separate owned copy is required.
+
+The compiler emits releases on normal scope exit and before `return`, `break`, and `continue`. Reassigning an owned variable releases its previous value. For allocation diagnostics, run the resulting program with `YLANG_MEMORY_STATS=1`; if all owned values have been released and the program created no other retained legacy strings, live tracked allocations and bytes should be zero at process exit.
+
+The experimental `borrowed_string` type can be used for function parameters that read text without taking ownership:
+
+```yl
+function report(borrowed_string text) -> int {
+    print(text);
+    print(string.length(text));
+    return 0;
+}
+
+function main() -> int {
+    let owned_string message = string.own("hello");
+    report(message); // message remains owned by main
+    return 0;
+}
+```
+
+A `borrowed_string` parameter is read-only. The type is rejected for local/global variables, struct fields, array parameters, and function return values. It does not free the passed value; the caller must keep the owner alive for the duration of the call. Passing an unbound `owned_string` temporary to a borrowed parameter is rejected. This is a limited immutable call-parameter view, not full lifetime inference or a general borrow checker.
+
+Current limits: owned strings require the C backend. Global owned strings, arrays of owned strings, and owned-string struct fields are rejected until cleanup for those storage forms exists. Mutable borrows (`&mut T`), lifetime annotations, escaping borrows, and general alias checking are not implemented. Legacy `string` remains a borrowed C-string representation, and allocations produced by legacy string helpers may live until process exit. Do not treat this experimental feature as a security boundary or a claim of complete Rust-level memory safety.
+
+## Path and desktop integration
+
+```ylang
+let string file = io.read_line();
+if (path.exists(file)) {
+    print(path.basename(file), path.extension(file));
+    let bool opened = image.open(file);
+    if (not opened) { print("Could not launch the default image/file viewer."); }
+}
+```
+
+The `path` namespace exposes `exists`, `basename`, and `extension`. The `image.open(path)` convenience API starts the operating system's default file handler without passing the path through a shell, avoiding shell-metacharacter interpretation. This is OS integration rather than a built-in image decoder or a custom GUI image widget; native GUI bindings and in-process image decoding remain future work. These APIs currently target the POSIX systems supported by YLang.
+
+## Standard math library
+
+YLang provides a built-in `math` namespace for common floating-point operations. These calls are checked by the compiler and emitted as native C math-library calls.
+
+```ylang
+let float root = math.sqrt(81.0);
+let float power = math.pow(2.0, 8.0);
+let float angle = math.sin(0.0);
+let float bounded = math.clamp(12.0, 0.0, 10.0);
+```
+
+Available functions (all arguments must be `float`, and all return `float`):
+
+- Unary: `sqrt`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `sinh`, `cosh`, `tanh`, `exp`, `log`, `log10`, `floor`, `ceil`, `round`, `abs`.
+- Binary: `pow`, `atan2`, `min`, `max`, `hypot`.
+- Three arguments: `clamp(value, low, high)`; a lower bound greater than the upper bound triggers a runtime error.
+
+YLang does not implicitly convert integers to floats, so use float literals such as `9.0`. Domain errors and non-finite results follow the platform C math library behavior.
+
+## 8. Conditions and loops
+
+```ylang
+if (age >= 18) {
+    print("Adult");
+} else if (age >= 13) {
+    print("Teenager");
+} else {
+    print("Child");
+}
+
+loop() {
+    if (done) {
+        break;
+    }
+    continue;
+}
+```
+
+Conditions must be boolean. `loop()` repeats indefinitely until `break` executes. `while` repeats while its condition is true, and `for` supports initializer, condition, and increment clauses. `continue` skips to the next iteration. `break` and `continue` are only valid inside a loop.
+
+## 9. Functions
+
+```ylang
+function add(int left, int right) -> int {
+    return left + right;
+}
+
+function main() -> int {
+    print(add(20, 22));
+    return 0;
+}
+```
+
+Parameter and return types are explicit. Function overloading is not supported. A non-void function must return a value on supported control-flow paths. `main` has no parameters and returns `int` or `void`.
+
+## 10. Modules and imports
+
+A source file can import named functions or global variables from another `.yl` file:
+
+```ylang
+from "./system_data.yl" import system_data, system_prefix;
+
+function main() -> int {
+    print(system_data(), system_prefix);
+    return 0;
+}
+```
+
+Import paths are resolved relative to the file containing the import, not the
+process working directory. Imports are transitive: an imported module may import
+names from another module. Every name used from another module must be imported
+explicitly. Functions and globals declared in a module are visible inside that
+module, but do not become visible to importers unless their names are imported.
+Different modules may define private helpers with the same name.
+
+The compiler rejects unknown imported names, conflicting or repeated imports,
+imports of the program entry point, missing module files, and circular imports.
+The root source file must define `main()`; an imported module cannot define it.
+Imports are currently supported by the default C backend. The experimental NASM
+backend rejects multi-file imports explicitly until module-aware assembly
+lowering is implemented.
+
+## 11. Diagnostics and tooling
+
+`check` reports parse and semantic/type diagnostics without invoking a native compiler. Diagnostics include an error code, file/line/column, source excerpt, caret, and a hint when one is available. `build` does not produce a successful executable if YLang diagnostics contain errors.
+
+`fix input.yl -o output.yl` currently implements one high-confidence source transformation: changing a `pritn(...)` call typo to `print(...)` when no function named `pritn` is declared. It requires an output path and does not intentionally modify comment/string text. It is not a general repair engine. Always run `check` after applying a fix.
+
+## JSON documents
+
+The native `json.*` namespace parses and validates JSON without a third-party dependency. It supports nested objects and arrays, JSON escapes, and UTF-16 surrogate-pair decoding. Input is limited to 16 MiB and nesting to 128 levels.
+
+- `json.parse(text)` validates and retains a JSON document as `owned_string`.
+- `json.valid(text)` checks syntax and returns `bool`.
+- `json.get(document, key)` returns a property as raw JSON; typed accessors include `json.get_string`, `json.get_int`, `json.get_float`, and `json.get_bool`.
+- `json.has(document, key)` checks for an object property; `json.array_length` and `json.at` inspect arrays.
+- `json.at` uses zero-based indices; a negative or out-of-range index returns an empty string and sets `json.last_error()`.
+- `json.stringify(raw)` validates and copies an already-serialized JSON value. `json.pretty(raw)` formats one with two-space indentation.
+- `json.escape(text)` encodes a YLang string as a JSON string literal; `json.last_error()` returns the latest diagnostic.
+
+This remains a raw-document API, not a mutable JSON DOM: it does not construct typed objects or arrays from YLang values. The unreleased 2.3 development line adds immutable raw-text builders (`json.object`, `json.array`, `json.set`, `json.remove`, and `json.push`); they accept validated JSON fragments and return new JSON strings, not a dynamic value tree. See [the JSON guide](JSON.md) for the current API and release boundary.
+
+## Binary file I/O (experimental)
+
+The optional `byte` scalar type is an unsigned 8-bit integer. `byte(value)` checks that an `int` is in the range 0..255 and returns a byte; an out-of-range conversion terminates with a runtime error. Fixed arrays can be declared as `let byte data[] = [byte(0), byte(255)];`; byte-array parameters also work with the block and stream APIs.
+
+The binary file API includes `io.binary_size`, `io.read_u8`, `io.write_u8`, `io.read_bytes`, `io.write_bytes`, `io.read_binary_hex`, and `io.write_binary_hex`. Buffer functions accept a named byte array and return a byte count, or `-1` on error. Hex helpers remain limited to 16 MiB per call.
+
+Dynamic byte buffers are available through opaque integer handles: `io.buffer_new`, `io.buffer_slice`, `io.buffer_length`, `io.buffer_capacity`, `io.buffer_get`, `io.buffer_set`, `io.buffer_push`, `io.buffer_resize`, `io.buffer_clear`, `io.buffer_free`, `io.buffer_load`, and `io.buffer_save`. Buffers grow automatically, are limited to 256 MiB each, and at most 64 may be live. Resizing to a larger length zero-fills new bytes. Invalid handles or indices return documented sentinel values/false. Slices are non-owning views that share parent storage and cannot be resized. Freeing a buffer invalidates that buffer and every nested descendant slice. Buffers not explicitly freed are released during normal runtime cleanup.
+
+Endian-aware scalar helpers are available for unsigned 16-, 32-, and 64-bit values in both little- and big-endian forms: `io.read_u16_le/be`, `io.read_u32_le/be`, `io.read_u64_le/be` and matching `io.write_u16_le/be`, `io.write_u32_le/be`, `io.write_u64_le/be`. 64-bit reads return the raw bit pattern through signed `int`, so values with the high bit set appear negative; `-1` is also the failure sentinel.
+
+Streaming uses `io.stream_open_read(path)`, `io.stream_open_write(path)`, `io.stream_read(handle, byte_array)`, `io.stream_write(handle, byte_array)`, and `io.stream_close(handle)`. Stream reads return zero at EOF and `-1` on error. The runtime supports up to 64 simultaneous streams and closes remaining handles during normal cleanup. Streaming is synchronous and currently has no seek or async operation.
+
+All these facilities are experimental, synchronous, and supported by the C backend only. They do not yet provide memory-mapped files or asynchronous streams. Text file APIs remain separate.
+ 
+## 12. Unsupported features and implementation limits
+
+The following are not supported by the current language subset: classes, methods on structs, inheritance, payload enums, generic `Option<T>`/`Result<T, E>`, exception syntax (`try`/`catch`), generics, raw pointers/references, returning arrays, nested/const arrays, and a dedicated LLVM/native backend. Typed structs and enums are implemented as experimental extensions described in [the struct reference](STRUCTS.md) and [the enum reference](ENUMS.md); they are not part of the stable-core compatibility guarantee. `class`, `try`, and `catch` may be tokenized as reserved words but are not valid executable constructs.
+
+The compiler generates C, so native code inherits ordinary process privileges and is not sandboxed. Some formatted string values are stored until process exit; creating many such values in a long-running loop can increase memory consumption. The language does not define ownership/borrowing or a garbage collector in this release. Do not assume Rust-like memory-safety guarantees.

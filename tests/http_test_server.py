@@ -14,7 +14,7 @@ def make_test_wav():
         wav_file.setnchannels(1)
         wav_file.setsampwidth(2)
         wav_file.setframerate(44100)
-        wav_file.writeframes(b"\\x00\\x00" * (44100 // 4))
+        wav_file.writeframes(b"\x00\x00" * (44100 // 4))
     return output.getvalue()
 
 
@@ -94,10 +94,10 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 for offset in range(0, len(payload), 2048):
                     chunk = payload[offset:offset + 2048]
-                    self.wfile.write(("%X\\r\\n" % len(chunk)).encode("ascii"))
-                    self.wfile.write(chunk + b"\\r\\n")
+                    self.wfile.write(("%X\r\n" % len(chunk)).encode("ascii"))
+                    self.wfile.write(chunk + b"\r\n")
                     self.wfile.flush()
-                self.wfile.write(b"0\\r\\n\\r\\n")
+                self.wfile.write(b"0\r\n\r\n")
                 self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 pass

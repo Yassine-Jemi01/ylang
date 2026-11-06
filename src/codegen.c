@@ -1001,7 +1001,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     if (i) sb_append(sb, ", ");
                     emit_expr(sb, expr->as.call.args[i]);
                 }
-                if (!stream) sb_append(sb, ", ");
+                sb_append(sb, ", ");
                 emit_expr(sb, buffer_arg);
                 sb_append(sb, ", ");
                 if (buffer && buffer->array_length > 0U)
@@ -1252,7 +1252,20 @@ static void emit_fstring_print(FILE *out, Expr *expr, unsigned indent)
             fprintf(out, "fputs(%s, stdout);\n", quoted.data ? quoted.data : "\"\"");
             sb_destroy(&quoted);
         } else if (part->expression) {
-            emit_print_value(out, part->expression, indent);
+            if (part->expression->type == TYPE_CHAR) {
+                /* Route char interpolation through yl_format so a NUL character
+                   fails instead of being written as a silent terminator. */
+                StringBuilder formatted;
+                sb_init(&formatted);
+                sb_append(&formatted, "fputs(yl_format(\"%c\", (int)(");
+                emit_expr(&formatted, part->expression);
+                sb_append(&formatted, ")), stdout);\n");
+                emit_indent(out, indent);
+                if (formatted.data) fputs(formatted.data, out);
+                sb_destroy(&formatted);
+            } else {
+                emit_print_value(out, part->expression, indent);
+            }
         }
     }
 }
