@@ -98,7 +98,7 @@ body { font-feature-settings: "kern"; }
 .ylang-ar .content main {
   direction: rtl;
   text-align: right;
-  font-family: "Noto Sans Arabic", "Noto Naskh Arabic", sans-serif;
+  font-family: "Noto Naskh Arabic", sans-serif;
 }
 .ylang-ar .content main h1,
 .ylang-ar .content main h2,

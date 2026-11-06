@@ -6,6 +6,10 @@ This book is organized as a guided course and a technical reference. You can rea
 
 The online edition is the canonical book. It is maintained alongside the compiler and its reference documents, so corrections can be published without maintaining a separate PDF edition. The tutorial explains how to use YLang; the reference chapters describe exact syntax, supported behavior, and known restrictions.
 
+## العربية
+
+يمكنك قراءة [المسار التعليمي العربي](ar/start-here.html). يغطي حالياً مقدمة اللغة والتثبيت وأول برنامج وأساسيات اللغة وYLanglings. تبقى رسائل المترجم وأكواد التشخيص بالإنجليزية.
+
 ## Which version does this book describe?
 
 This edition documents **YLang 2.2.0**, the current stable release at the time of writing. The project is also developing YLang 2.3.0; its [development notes](reference/CHANGELOG-2.3.0.md), [release gates](reference/ROADMAP-2.3.0.md), and [pre-release checklist](reference/RELEASE-CHECKLIST-2.3.0.md) describe unreleased work and do not change the stable version.

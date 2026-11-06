@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static checks for the English-only YLang website; no third-party packages required."""
+"""Check the English marketing site and bilingual mdBook output; no third-party packages required."""
 
 from __future__ import annotations
 
@@ -16,8 +16,6 @@ ARABIC = re.compile(r"[\u0600-\u06FF]")
 LEGACY_MARKERS = (
     "lang-toggle",
     "IBM Plex Sans Arabic",
-    "Noto Sans Arabic",
-    "العربية",
 )
 
 
@@ -134,8 +132,11 @@ def check_site() -> list[str]:
 
     for path in files:
         text = path.read_text(encoding="utf-8")
-        if ARABIC.search(text):
-            errors.append(f"{path.relative_to(ROOT)} contains Arabic-script text.")
+        relative = path.relative_to(SITE)
+        # The marketing site remains English-only. The generated online book
+        # intentionally includes a scoped Arabic learning path under /learn/ar/.
+        if ARABIC.search(text) and relative.parts[:1] != ("learn",):
+            errors.append(f"{path.relative_to(ROOT)} contains Arabic-script text outside the online book.")
         if path.suffix.lower() in {".html", ".js", ".css"}:
             for marker in LEGACY_MARKERS:
                 if marker in text:
@@ -171,7 +172,7 @@ def check_site() -> list[str]:
             print(f"ERROR: {error}", file=sys.stderr)
         return errors
 
-    print("PASS: English-only website, navigation anchors, local assets, and links.")
+    print("PASS: English marketing site, bilingual book, navigation anchors, local assets, and links.")
     return []
 
 
