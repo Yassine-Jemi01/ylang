@@ -1025,7 +1025,7 @@ int ylang_run(const char *command, const char *input_path,
                 result = 64;
 #elif defined(__APPLE__)
                 if (!executable_in_path("lldb")) {
-                    fputs("ylang: LLDB was not found in PATH; install Xcode Command Line Tools to use 'ylang debug'.\\n", stderr);
+                    fputs("ylang: LLDB was not found in PATH; install Xcode Command Line Tools to use 'ylang debug'.\n", stderr);
                     result = 127;
                 } else {
                     char *debugger_args[] = { "lldb", "--", (char *)target, NULL };
@@ -1039,7 +1039,7 @@ int ylang_run(const char *command, const char *input_path,
                     char *debugger_args[] = { "lldb", "--", (char *)target, NULL };
                     result = run_external(debugger_args);
                 } else {
-                    fputs("ylang: neither GDB nor LLDB was found in PATH; install one to use 'ylang debug'.\\n", stderr);
+                    fputs("ylang: neither GDB nor LLDB was found in PATH; install one to use 'ylang debug'.\n", stderr);
                     result = 127;
                 }
 #endif
