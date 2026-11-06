@@ -2122,6 +2122,35 @@ static bool yl_tui_read_byte_timeout(unsigned char *value, int timeout_ms) {
     yl_tui_exit_for_pending_signal();
     return count == 1;
 }
+
+static bool yl_tui_read_byte_blocking(unsigned char *value) {
+    if (!value) return false;
+    for (;;) {
+        yl_tui_exit_for_pending_signal();
+        fd_set read_set;
+        FD_ZERO(&read_set);
+        FD_SET(STDIN_FILENO, &read_set);
+        struct timeval timeout = { .tv_sec = 0, .tv_usec = 100000 };
+        int ready = select(STDIN_FILENO + 1, &read_set, NULL, NULL, &timeout);
+        if (ready < 0) {
+            if (errno == EINTR) {
+                yl_tui_exit_for_pending_signal();
+                continue;
+            }
+            return false;
+        }
+        yl_tui_exit_for_pending_signal();
+        if (ready == 0) continue;
+
+        ssize_t count = read(STDIN_FILENO, value, 1U);
+        if (count < 0 && errno == EINTR) {
+            yl_tui_exit_for_pending_signal();
+            continue;
+        }
+        yl_tui_exit_for_pending_signal();
+        return count == 1;
+    }
+}
 #endif
 
 static int64_t yl_tui_read_key_internal(bool blocking) {
@@ -2152,11 +2181,7 @@ static int64_t yl_tui_read_key_internal(bool blocking) {
     unsigned char first = 0U;
     ssize_t count = 0;
     if (blocking) {
-        do {
-            count = read(STDIN_FILENO, &first, 1U);
-            if (count < 0 && errno == EINTR) yl_tui_exit_for_pending_signal();
-        } while (count < 0 && errno == EINTR);
-        yl_tui_exit_for_pending_signal();
+        count = yl_tui_read_byte_blocking(&first) ? 1 : 0;
     } else {
         count = yl_tui_read_byte_timeout(&first, 0) ? 1 : 0;
     }
