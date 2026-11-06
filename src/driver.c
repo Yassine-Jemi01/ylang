@@ -404,7 +404,8 @@ static bool remove_staging_tree(const char *path)
             strcmp(entry->d_name, "..") == 0) continue;
         size_t path_length = strlen(path);
         size_t name_length = strlen(entry->d_name);
-        if (path_length > SIZE_MAX - name_length - 2U) {
+        if (name_length > SIZE_MAX - 2U ||
+            path_length > SIZE_MAX - name_length - 2U) {
             errno = ENAMETOOLONG;
             okay = false;
             continue;
