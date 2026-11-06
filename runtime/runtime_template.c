@@ -1999,7 +1999,7 @@ static void yl_tui_restore(void) {
             (void)SetConsoleMode(yl_tui_output_handle, yl_tui_saved_output_mode);
         yl_tui_output_mode_saved = false;
 #else
-        (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &yl_tui_saved_termios);
+        (void)tcsetattr(STDIN_FILENO, TCSANOW, &yl_tui_saved_termios);
 #endif
         (void)fputs("\033[?25h", stdout);
         (void)fflush(stdout);
@@ -2015,11 +2015,7 @@ static void yl_tui_exit_for_pending_signal(void) {
     sig_atomic_t signal_number = yl_tui_pending_signal;
     if (signal_number == 0) return;
     yl_tui_pending_signal = 0;
-    static const char entered = 'E';
-    (void)write(STDERR_FILENO, &entered, 1U);
     yl_tui_restore();
-    static const char restored = 'R';
-    (void)write(STDERR_FILENO, &restored, 1U);
     _exit(128 + (int)signal_number);
 }
 #endif
