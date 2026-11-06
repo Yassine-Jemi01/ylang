@@ -623,6 +623,41 @@ static int run_native_compiler(const char *cc, const char *c_path,
 #endif
 }
 
+#ifndef _WIN32
+static bool executable_in_path(const char *name)
+{
+    const char *path = getenv("PATH");
+    if (!path || !*path || !name || !*name) return false;
+
+    const size_t name_length = strlen(name);
+    const char *component = path;
+    for (;;) {
+        const char *separator = strchr(component, ':');
+        size_t directory_length = separator
+            ? (size_t)(separator - component) : strlen(component);
+        const char *directory = component;
+        if (directory_length == 0U) {
+            directory = ".";
+            directory_length = 1U;
+        }
+        if (directory_length <= SIZE_MAX - name_length - 2U) {
+            size_t candidate_length = directory_length + 1U + name_length + 1U;
+            char *candidate = malloc(candidate_length);
+            if (!candidate) return false;
+            memcpy(candidate, directory, directory_length);
+            candidate[directory_length] = '/';
+            memcpy(candidate + directory_length + 1U, name, name_length + 1U);
+            bool available = access(candidate, X_OK) == 0;
+            free(candidate);
+            if (available) return true;
+        }
+        if (!separator) break;
+        component = separator + 1U;
+    }
+    return false;
+}
+#endif
+
 static int run_external(char *const argv[])
 {
 #ifdef _WIN32
@@ -989,11 +1024,24 @@ int ylang_run(const char *command, const char *input_path,
                 fputs("ylang: the interactive debug command is not yet supported on Windows; use a Linux GDB or macOS LLDB build.\n", stderr);
                 result = 64;
 #elif defined(__APPLE__)
-                char *debugger_args[] = { "lldb", "--", (char *)target, NULL };
-                result = run_external(debugger_args);
+                if (!executable_in_path("lldb")) {
+                    fputs("ylang: LLDB was not found in PATH; install Xcode Command Line Tools to use 'ylang debug'.\\n", stderr);
+                    result = 127;
+                } else {
+                    char *debugger_args[] = { "lldb", "--", (char *)target, NULL };
+                    result = run_external(debugger_args);
+                }
 #else
-                char *debugger_args[] = { "gdb", "-q", "--args", (char *)target, NULL };
-                result = run_external(debugger_args);
+                if (executable_in_path("gdb")) {
+                    char *debugger_args[] = { "gdb", "-q", "--args", (char *)target, NULL };
+                    result = run_external(debugger_args);
+                } else if (executable_in_path("lldb")) {
+                    char *debugger_args[] = { "lldb", "--", (char *)target, NULL };
+                    result = run_external(debugger_args);
+                } else {
+                    fputs("ylang: neither GDB nor LLDB was found in PATH; install one to use 'ylang debug'.\\n", stderr);
+                    result = 127;
+                }
 #endif
             }
         } else if (can_compile) {
