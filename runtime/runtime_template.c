@@ -1943,19 +1943,17 @@ static struct sigaction yl_tui_previous_actions[
     sizeof(yl_tui_signals) / sizeof(yl_tui_signals[0])
 ];
 static size_t yl_tui_installed_signal_count;
+static volatile sig_atomic_t yl_tui_pending_signal;
 
-static void yl_tui_signal_exit(int signal_number) {
-    (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &yl_tui_saved_termios);
-    static const char cursor_restore[] = "\033[?25h";
-    ssize_t write_result = write(STDOUT_FILENO, cursor_restore, sizeof(cursor_restore) - 1U);
-    (void)write_result;
-    _exit(128 + signal_number);
+static void yl_tui_signal_notice(int signal_number) {
+    /* Signal handlers may only record the event; terminal I/O is deferred. */
+    yl_tui_pending_signal = (sig_atomic_t)signal_number;
 }
 
 static bool yl_tui_install_signal_handlers(void) {
     struct sigaction action;
     memset(&action, 0, sizeof(action));
-    action.sa_handler = yl_tui_signal_exit;
+    action.sa_handler = yl_tui_signal_notice;
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
     const size_t signal_count = sizeof(yl_tui_signals) / sizeof(yl_tui_signals[0]);
@@ -2012,6 +2010,16 @@ static void yl_tui_restore(void) {
 #endif
 }
 
+#ifndef _WIN32
+static void yl_tui_exit_for_pending_signal(void) {
+    sig_atomic_t signal_number = yl_tui_pending_signal;
+    if (signal_number == 0) return;
+    yl_tui_pending_signal = 0;
+    yl_tui_restore();
+    _exit(128 + (int)signal_number);
+}
+#endif
+
 static bool yl_tui_init(void) {
     if (yl_tui_active) return true;
     if (!yl_tui_terminal_ready()) {
@@ -2066,6 +2074,7 @@ static bool yl_tui_init(void) {
     raw.c_iflag &= (tcflag_t)~(IXON | ICRNL);
     raw.c_cc[VMIN] = 1;
     raw.c_cc[VTIME] = 0;
+    yl_tui_pending_signal = 0;
     if (!yl_tui_install_signal_handlers()) {
         yl_tui_set_error("could not install terminal restoration signal handlers");
         return false;
@@ -2099,18 +2108,27 @@ static bool yl_tui_read_byte_timeout(unsigned char *value, int timeout_ms) {
     timeout.tv_sec = timeout_ms / 1000;
     timeout.tv_usec = (timeout_ms % 1000) * 1000;
     int ready;
-    do { ready = select(STDIN_FILENO + 1, &read_set, NULL, NULL, &timeout); }
-    while (ready < 0 && errno == EINTR);
+    do {
+        ready = select(STDIN_FILENO + 1, &read_set, NULL, NULL, &timeout);
+        if (ready < 0 && errno == EINTR) yl_tui_exit_for_pending_signal();
+    } while (ready < 0 && errno == EINTR);
+    yl_tui_exit_for_pending_signal();
     if (ready <= 0) return false;
     ssize_t count;
-    do { count = read(STDIN_FILENO, value, 1U); }
-    while (count < 0 && errno == EINTR);
+    do {
+        count = read(STDIN_FILENO, value, 1U);
+        if (count < 0 && errno == EINTR) yl_tui_exit_for_pending_signal();
+    } while (count < 0 && errno == EINTR);
+    yl_tui_exit_for_pending_signal();
     return count == 1;
 }
 #endif
 
 static int64_t yl_tui_read_key_internal(bool blocking) {
     if (!yl_tui_active && !yl_tui_init()) return -1;
+#ifndef _WIN32
+    yl_tui_exit_for_pending_signal();
+#endif
 #ifdef _WIN32
     if (!blocking && !_kbhit()) return -1;
     int key = _getch();
@@ -2134,8 +2152,11 @@ static int64_t yl_tui_read_key_internal(bool blocking) {
     unsigned char first = 0U;
     ssize_t count = 0;
     if (blocking) {
-        do { count = read(STDIN_FILENO, &first, 1U); }
-        while (count < 0 && errno == EINTR);
+        do {
+            count = read(STDIN_FILENO, &first, 1U);
+            if (count < 0 && errno == EINTR) yl_tui_exit_for_pending_signal();
+        } while (count < 0 && errno == EINTR);
+        yl_tui_exit_for_pending_signal();
     } else {
         count = yl_tui_read_byte_timeout(&first, 0) ? 1 : 0;
     }
