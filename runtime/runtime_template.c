@@ -1564,9 +1564,15 @@ static int64_t yl_json_array_length(const char *text) {
     p.i=a; if(p.s[p.i++]!='['){yl_json_error("JSON value is not an array");return 0;}
     yl_json_ws(&p); if(p.i<p.n && p.s[p.i]==']') return 0;
     int64_t count=0;
-    for(;;){size_t x,y;if(!yl_json_value(&p,&x,&y))return count;count++;yl_json_ws(&p);
-        if(p.i<p.n && p.s[p.i]==']') return count;
-        if(p.i>=p.n || p.s[p.i++]!=',') break;yl_json_ws(&p);}
+    for (;;) {
+        size_t x, y;
+        if (!yl_json_value(&p, &x, &y)) return count;
+        count++;
+        yl_json_ws(&p);
+        if (p.i < p.n && p.s[p.i] == ']') return count;
+        if (p.i >= p.n || p.s[p.i++] != ',') break;
+        yl_json_ws(&p);
+    }
     yl_json_error("Invalid JSON array"); return count;
 }
 static const char *yl_json_at(const char *text,int64_t index) {
@@ -1941,7 +1947,8 @@ static size_t yl_tui_installed_signal_count;
 static void yl_tui_signal_exit(int signal_number) {
     (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &yl_tui_saved_termios);
     static const char cursor_restore[] = "\033[?25h";
-    (void)write(STDOUT_FILENO, cursor_restore, sizeof(cursor_restore) - 1U);
+    ssize_t write_result = write(STDOUT_FILENO, cursor_restore, sizeof(cursor_restore) - 1U);
+    (void)write_result;
     _exit(128 + signal_number);
 }
 
