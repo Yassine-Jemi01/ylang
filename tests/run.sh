@@ -49,6 +49,7 @@ diff -u tests/expected-type-conversions.txt build/atomic-c-preserved.out
 for staging_directory in build/atomic-c-output-dir/.ylang-tmp-*; do
     if [ -d "$staging_directory" ]; then
         echo "FAIL: native build left a private staging directory: $staging_directory" >&2
+        find "$staging_directory" -maxdepth 3 -print >&2
         exit 1
     fi
 done
