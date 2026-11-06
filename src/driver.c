@@ -573,9 +573,7 @@ static int run_native_compiler(const char *cc, const char *c_path,
     for (size_t i = 0U; i < sdl_flag_count; i++) args[n++] = sdl_flags[i];
     for (size_t i = 0U; i < voice_flag_count; i++) args[n++] = voice_flags[i];
     for (size_t i = 0U; i < http_flag_count; i++) args[n++] = http_flags[i];
-#if defined(__APPLE__)
-    args[n++] = "-pie";
-#elif !defined(_WIN32)
+#if !defined(__APPLE__) && !defined(_WIN32)
     args[n++] = "-pie";
     args[n++] = "-Wl,-z,relro,-z,now";
 #endif
