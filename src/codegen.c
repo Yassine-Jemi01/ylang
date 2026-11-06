@@ -1778,6 +1778,12 @@ bool generate_c(Compiler *c, const char *path)
             first_param = false;
         }
         fputs(") {\n", out);
+        /* Generated C is compiled with -Wextra; explicitly consume parameters
+           so valid YLang code does not leak C-only unused-parameter warnings. */
+        for (size_t j = 0; j < fn->param_count; j++) {
+            emit_indent(out, 1U);
+            fprintf(out, "(void)%s;\n", fn->params[j]->c_name);
+        }
         emit_temp_declarations_stmt(c, out, fn->body, 1U);
         CodegenContext context = {
             .compiler = c,
