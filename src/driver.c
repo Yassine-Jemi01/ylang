@@ -909,13 +909,12 @@ int ylang_run(const char *command, const char *input_path,
 
         (void)unlink(asm_path);
         (void)unlink(object_path);
-        free(staged_target);
+        if (staged_target) {
+            (void)unlink(staged_target);
+            free(staged_target);
+        }
         if (staging_directory) {
-            if (!remove_staging_tree(staging_directory)) {
-                fprintf(stderr, "ylang: could not fully remove private staging directory '%s': %s\n",
-                        staging_directory, strerror(errno));
-                if (result == 0) result = 1;
-            }
+            (void)rmdir(staging_directory);
             free(staging_directory);
         }
         (void)rmdir(temporary_directory);
@@ -1092,12 +1091,13 @@ int ylang_run(const char *command, const char *input_path,
             fprintf(stderr, "ylang: native compilation failed (exit %d).\n", result);
         }
 #ifndef _WIN32
-        if (staged_target) {
-            (void)unlink(staged_target);
-            free(staged_target);
-        }
+        free(staged_target);
         if (staging_directory) {
-            (void)rmdir(staging_directory);
+            if (!remove_staging_tree(staging_directory)) {
+                fprintf(stderr, "ylang: could not fully remove private staging directory '%s': %s\n",
+                        staging_directory, strerror(errno));
+                if (result == 0) result = 1;
+            }
             free(staging_directory);
         }
 #endif
