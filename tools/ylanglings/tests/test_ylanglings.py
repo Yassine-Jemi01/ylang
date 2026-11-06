@@ -182,7 +182,7 @@ class ReferenceSolutionTests(unittest.TestCase):
             ):
                 self.assertEqual(
                     ylanglings.solution_path({"title": "Valid", "solution": "valid.yl"}),
-                    root / "valid.yl",
+                    (root / "valid.yl").resolve(),
                 )
                 with self.assertRaisesRegex(SystemExit, "Unsafe solution path"):
                     ylanglings.solution_path({"title": "Escape", "solution": "../outside.yl"})
