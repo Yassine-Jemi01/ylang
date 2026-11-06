@@ -6,25 +6,25 @@ It provides helpers for window lifecycle, event polling, keyboard and mouse inpu
 
 ## Before you start
 
-You need a working YLang compiler, a supported C toolchain, SDL2 development files, and \`pkg-config\`. Runtime testing also requires a graphical desktop session. The SDL2 runtime alone may not provide the headers and metadata needed to compile the example.
+You need a working YLang compiler, a supported C toolchain, SDL2 development files, and `pkg-config`. Runtime testing also requires a graphical desktop session. The SDL2 runtime alone may not provide the headers and metadata needed to compile the example.
 
 On Fedora, install the development dependencies with:
 
-\`\`\`sh
+```sh
 sudo dnf install SDL2-devel pkgconf-pkg-config
-\`\`\`
+```
 
 On Debian or Ubuntu:
 
-\`\`\`sh
+```sh
 sudo apt install libsdl2-dev pkg-config
-\`\`\`
+```
 
 On macOS with Homebrew:
 
-\`\`\`sh
+```sh
 brew install sdl2 pkg-config
-\`\`\`
+```
 
 For Windows, follow the dedicated [Windows Setup](reference/WINDOWS.md) instructions; the native path has additional toolchain and packaging restrictions.
 
@@ -32,19 +32,19 @@ For Windows, follow the dedicated [Windows Setup](reference/WINDOWS.md) instruct
 
 From the repository root, run:
 
-\`\`\`sh
+```sh
 make game2d-example
-\`\`\`
+```
 
-This builds the example as \`build/dodge\` on Linux and macOS, or \`build/dodge.exe\` on Windows. Run it from a graphical desktop session:
+This builds the example as `build/dodge` on Linux and macOS, or `build/dodge.exe` on Windows. Run it from a graphical desktop session:
 
-\`\`\`sh
+```sh
 ./build/dodge
-\`\`\`
+```
 
-On Windows, run \`build/dodge.exe\` from the appropriate MSYS2 environment.
+On Windows, run `build/dodge.exe` from the appropriate MSYS2 environment.
 
-If the build cannot find SDL2, check that its development files are installed and that \`pkg-config\` can locate them. If the program compiles but no window appears, confirm that you are running it in a graphical session rather than a headless terminal or CI environment.
+If the build cannot find SDL2, check that its development files are installed and that `pkg-config` can locate them. If the program compiles but no window appears, confirm that you are running it in a graphical session rather than a headless terminal or CI environment.
 
 ## What the frame loop does
 
@@ -67,7 +67,7 @@ The library does not yet provide sprites, advanced animation, audio, a scene sys
 ## Troubleshooting
 
 - **SDL2 headers or libraries are missing:** install the development package for your platform.
-- **\`pkg-config\` cannot find SDL2:** check the package installation and environment paths.
+- **`pkg-config` cannot find SDL2:** check the package installation and environment paths.
 - **The example builds but no window appears:** run it from an interactive graphical desktop session.
 - **A feature is missing:** check the Game2D reference before assuming it exists.
 - **The behavior differs across operating systems:** record the platform, compiler version, and smallest example, then compare the documented support levels.

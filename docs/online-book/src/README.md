@@ -17,7 +17,7 @@ The stable core uses explicit types and the default C-backend workflow. Some fea
 - Structs, enums, named imports, GUI/Game2D, the NASM backend, native Windows support, and YSPM packaging have feature-specific restrictions.
 - The NASM backend does not support every program accepted by the C backend.
 - YLang does not claim Rust-level memory safety and does not provide a security sandbox.
-- \`Option<T>\` and \`Result<T, E>\` remain design proposals, not supported language constructs.
+- `Option<T>` and `Result<T, E>` remain design proposals, not supported language constructs.
 
 Always check the relevant reference chapter before depending on an experimental feature in a project. A construct being accepted by one compiler stage does not guarantee that every backend supports it.
 
