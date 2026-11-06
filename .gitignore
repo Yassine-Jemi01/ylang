@@ -7,3 +7,11 @@ core
 # Nix build outputs
 /result
 /result-*
+
+# Generated documentation output (built in CI and deployed from artifacts)
+/docs/online-book/book/
+/website/learn/
+
+# Python bytecode and cache directories
+__pycache__/
+*.py[cod]
