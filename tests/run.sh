@@ -154,14 +154,19 @@ case "$(uname -s)" in
     Darwin|MINGW*|MSYS*|CYGWIN*) ;;
     *)
         mkdir -p build/debugger-fallback-bin
-        ln -sf "$(command -v gcc)" build/debugger-fallback-bin/gcc
+        cat > build/debugger-fallback-bin/gcc <<'EOF'
+#!/bin/sh
+PATH="$YLANG_TEST_REAL_PATH" exec "$YLANG_TEST_REAL_GCC" "$@"
+EOF
         cat > build/debugger-fallback-bin/lldb <<'EOF'
 #!/bin/sh
 printf 'YLANG_TEST_FAKE_LLDB\n'
 exit 0
 EOF
-        chmod +x build/debugger-fallback-bin/lldb
-        printf 'quit\n' | PATH="$PWD/build/debugger-fallback-bin" \
+        chmod +x build/debugger-fallback-bin/gcc build/debugger-fallback-bin/lldb
+        printf 'quit\n' | YLANG_TEST_REAL_PATH="$PATH" \
+            YLANG_TEST_REAL_GCC="$(command -v gcc)" \
+            PATH="$PWD/build/debugger-fallback-bin" \
             ./build/ylang debug tests/debug-source-map.yl \
             -o build/debug-lldb-fallback > build/debug-lldb-fallback.out 2>&1
         grep -Fq 'YLANG_TEST_FAKE_LLDB' build/debug-lldb-fallback.out
