@@ -48,7 +48,7 @@ code { font-size: .92em; }
 .nav-actions { display: flex; align-items: center; gap: 12px; }
 
 .language-switcher { position: relative; }
-.language-switcher summary { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; color: var(--navy); background: var(--surface); cursor: pointer; font: 750 .82rem/1 inherit; list-style: none; }
+.language-switcher summary { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; color: var(--navy); background: var(--surface); cursor: pointer; font-family: inherit; font-size: .82rem; font-weight: 750; line-height: 1; list-style: none; }
 .language-switcher summary::-webkit-details-marker { display: none; }
 .language-switcher summary:hover, .language-switcher[open] summary { border-color: var(--blue); color: var(--blue); }
 .language-menu { position: absolute; z-index: 100; top: calc(100% + 8px); right: 0; display: grid; min-width: 155px; padding: 5px; border: 1px solid var(--line); border-radius: 9px; background: #fff; box-shadow: 0 12px 30px rgba(29,59,86,.16); }
