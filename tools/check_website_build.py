@@ -102,7 +102,7 @@ def main() -> int:
     if "relativeBookPath().startsWith('ar/') ? ARABIC_DOCS_URL : HOME_URL" not in nav_source:
         fail("Arabic book home link does not preserve the Arabic documentation route")
 
-    arabic_book_css = (root / "learn" / "theme" / "ylang-book.css")
+    arabic_book_css = (root / "learn" / "css" / "ylang-book.css")
     if not arabic_book_css.is_file():
         fail("the shared book stylesheet is missing")
     arabic_css_source = arabic_book_css.read_text(encoding="utf-8")
