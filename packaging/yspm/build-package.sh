@@ -69,7 +69,7 @@ doc_files=(
 )
 
 # Keep the current version's changelog from the dynamic entry above, and ship
-# both the stable 2.2 notes and the 2.3 development notes exactly once.
+# both the stable 2.2 and 2.3 release notes exactly once.
 if [[ "$VERSION" != "2.2.0" ]]; then
     doc_files+=(docs/CHANGELOG-2.2.0.md)
 fi
