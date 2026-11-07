@@ -19,6 +19,7 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] Clean build with Clang on macOS from a fresh checkout.
 - [ ] Full compiler regression suite passes on the exact candidate commit.
 - [ ] Combined GUI, Voice, and HTTP native builds safely handle the maximum accepted pkg-config flag counts without argument-vector overflow.
+- [ ] Runtime feature flags are discovered across every loaded/imported module: JSON, TUI, Binary I/O, Voice, and HTTP helpers are present when referenced by imported functions and omitted from programs that do not use them.
 - [ ] NASM linker failure preserves an existing destination and removes its private staging directory.
 - [ ] POSIX native compiler failure preserves an existing destination and removes its private staging directory.
 - [ ] Frontend lexer/parser unit tests pass.
