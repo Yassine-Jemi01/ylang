@@ -2,6 +2,7 @@
 """Run the YLang HTTP integration test against an in-process loopback server."""
 from pathlib import Path
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -317,6 +318,45 @@ def main():
                 sys.stderr.write("--- actual HTTP voice output ---\n" + voice_result.stdout)
                 sys.stderr.write(voice_result.stderr)
                 raise SystemExit("HTTP-to-Voice streaming integration test failed")
+            # MP3 is a separate codec gate: generate a deterministic fixture
+            # when ffmpeg is available, then pass it through the same HTTP/Voice bridge.
+            if shutil.which("ffmpeg"):
+                mp3_source = ROOT / "build" / "http-voice-mp3-stream.yl"
+                mp3_source.write_text(
+                    "function main() -> int {\n"
+                    "    let string port = io.read_line();\n"
+                    '    let string base = string.concat("http://127.0.0.1:", port);\n'
+                    '    let http_stream stream = http.stream_open("GET", string.concat(base, "/stream-mp3"), "", "");\n'
+                    "    if (!voice.play_stream(stream)) { print(voice.last_error()); return 1; }\n"
+                    "    while (!voice.is_finished()) { tui.sleep_ms(5); }\n"
+                    "    print(voice.is_finished());\n"
+                    "    print(voice.last_error());\n"
+                    "    voice.shutdown();\n"
+                    "    return 0;\n"
+                    "}\n",
+                    encoding="utf-8",
+                )
+                mp3_output = "build/test-http-voice-mp3-stream.exe" if os.name == "nt" else "build/test-http-voice-mp3-stream"
+                run_checked([compiler, "check", str(mp3_source.relative_to(ROOT))])
+                run_checked([compiler, "build", str(mp3_source.relative_to(ROOT)), "-o", mp3_output])
+                mp3_env = os.environ.copy()
+                mp3_env["SDL_AUDIODRIVER"] = "dummy"
+                mp3_result = subprocess.run(
+                    [str(ROOT / mp3_output)],
+                    cwd=ROOT,
+                    input=f"{port}\n",
+                    text=True,
+                    capture_output=True,
+                    env=mp3_env,
+                    timeout=20,
+                )
+                if mp3_result.returncode != 0 or mp3_result.stdout != expected_voice:
+                    sys.stderr.write("--- expected HTTP MP3 voice output ---\n" + expected_voice)
+                    sys.stderr.write("--- actual HTTP MP3 voice output ---\n" + mp3_result.stdout)
+                    sys.stderr.write(mp3_result.stderr)
+                    raise SystemExit("HTTP-to-Voice MP3 streaming integration test failed")
+            else:
+                print("SKIP: ffmpeg is unavailable; HTTP-to-Voice MP3 integration was not run.")
         else:
             print("SKIP: SDL2_mixer is unavailable; HTTP-to-Voice integration was not run.")
         print("YLang HTTP integration tests passed.")
