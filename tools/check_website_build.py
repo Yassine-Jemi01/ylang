@@ -309,7 +309,10 @@ def main() -> int:
         if urlsplit(reference).path.endswith(".css")
     ]
     arabic_home_css = "\n".join(path.read_text(encoding="utf-8") for path in arabic_home_css_files if path.is_file())
-    if "body.ylang-ar-home main ul" not in arabic_home_css or "padding: 0;" not in arabic_home_css:
+    if not arabic_home_css_files:
+        fail("Arabic homepage does not reference its generated CSS bundle")
+    arabic_home_css_compact = re.sub(r"\s+", "", arabic_home_css)
+    if "padding:0;" not in arabic_home_css_compact or "padding-inline-start:1.75rem" not in arabic_home_css_compact:
         fail("Arabic homepage is missing the physical-padding reset")
 
     sitemap_root = ET.parse(root / "sitemap.xml").getroot()
