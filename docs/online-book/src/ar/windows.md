@@ -30,10 +30,10 @@ make clean all CC=gcc
 ./build/ylang.exe --version
 ```
 
-شغّل الاختبارات التي تتوفر اعتمادياتها:
+شغّل اختبارات Smoke الخاصة بالمنصة عند توفر اعتمادياتها. لا تفترض أن كامل مجموعة `make test` المحمولة على POSIX تعمل على Windows؛ يستخدم CI اختبارات Windows أصلية مركزة، ومنها بناء وتشغيل برنامج واستيراد ملفات واختبار الإدخال وTUI وHTTP وYLanglings.
 
 ```sh
-make test CC=gcc
+make ylanglings-test ylanglings-verify PYTHON=python
 ```
 
 ## 3. بناء برنامج أصلي

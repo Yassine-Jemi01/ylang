@@ -376,6 +376,12 @@ jobs:
           test -s website/learn/ar/voice-audio.html
           test -s website/learn/ar/tui.html
           test -s website/learn/ar/gui-game2d.html
+          test -s website/learn/ar/cli.html
+          test -s website/learn/ar/json.html
+          test -s website/learn/ar/http.html
+          test -s website/learn/ar/diagnostics.html
+          test -s website/learn/ar/security.html
+          test -s website/learn/ar/windows.html
           test -s website/learn/ylanglings.html
           test -s website/docs-ar.html
           test -s website/docs-ar.css
