@@ -92,6 +92,8 @@
     if (!relativeBookPath().startsWith('ar/')) return;
     const labels = new Map([
       ['Toggle Sidebar', 'إظهار قائمة الفصول أو إخفاؤها'],
+      ['Select book language', 'اختيار لغة الكتاب'],
+      ['YLang homepage', 'الصفحة الرئيسية لـ YLang'],
       ['Change theme', 'تغيير المظهر'],
       ['Search', 'البحث في الكتاب'],
       ['Print this book', 'طباعة الكتاب'],
