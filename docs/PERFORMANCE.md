@@ -47,8 +47,7 @@ This final sample shows a modest compile-median regression, a slightly higher
 short-program launch measurement, effectively unchanged binary size, and a
 lower median for the long-loop workload. It is one controlled runner sample,
 not evidence that YLang is generally faster or slower. The complete reports
-and generated executables are attached to [stable publishing workflow #8]
-(https://github.com/Yassine-Jemi01/ylang/actions/runs/42386464514).
+and generated executables are attached to [stable publishing workflow #8](https://github.com/Yassine-Jemi01/ylang/actions/runs/42386464514).
 
 ## Earlier 2.3 development samples (not release measurements)
 
