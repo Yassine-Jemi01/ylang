@@ -105,12 +105,12 @@ def main() -> int:
     candidate_heavy = measure("candidate", ROOT / "build" / "ylang", HEAVY_SOURCE, HEAVY_EXPECTED, "10m-loop")
     baseline_heavy = measure("baseline", baseline_root / "build" / "ylang", HEAVY_SOURCE, HEAVY_EXPECTED, "10m-loop")
     fields = (
-        ("Compile median", "ms", candidate_compact, baseline_compact),
-        ("Compile P95", "ms", candidate_compact, baseline_compact),
-        ("Launch + short run median", "ms", candidate_compact, baseline_compact),
-        ("Run median", "ms", candidate_heavy, baseline_heavy),
-        ("Run P95", "ms", candidate_heavy, baseline_heavy),
-        ("Binary size", "bytes", candidate_compact, baseline_compact),
+        ("Compile median", "Compile median", "ms", candidate_compact, baseline_compact),
+        ("Compile P95", "Compile P95", "ms", candidate_compact, baseline_compact),
+        ("Launch + short run median", "Run median", "ms", candidate_compact, baseline_compact),
+        ("10M loop run median", "Run median", "ms", candidate_heavy, baseline_heavy),
+        ("10M loop run P95", "Run P95", "ms", candidate_heavy, baseline_heavy),
+        ("Binary size", "Binary size", "bytes", candidate_compact, baseline_compact),
     )
     summary = [
         "YLang candidate versus stable baseline",
@@ -124,9 +124,9 @@ def main() -> int:
         "",
         "Ratios are candidate / baseline; below 1.0 means the candidate was lower for that measurement.",
     ]
-    for label, unit, candidate_report, baseline_report in fields:
-        current = metric(candidate_report, label)
-        baseline = metric(baseline_report, label)
+    for label, metric_label, unit, candidate_report, baseline_report in fields:
+        current = metric(candidate_report, metric_label)
+        baseline = metric(baseline_report, metric_label)
         ratio = current / baseline if baseline else float("inf")
         summary.append(
             f"{label}: candidate={current:.3f} {unit}; baseline={baseline:.3f} {unit}; ratio={ratio:.3f}"
