@@ -137,6 +137,8 @@ jobs:
         run: make check-runtime-template PYTHON=python
       - name: Build compiler
         run: make clean all CC=gcc PYTHON=python
+      - name: Verify compiler diagnostics remain English
+        run: python tests/check_english_diagnostics.py
       - name: Build optional SDL2 GUI runtime
         run: make gui gui-example game2d-example CC=gcc PYTHON=python
       - name: Build responsive terminal UI example

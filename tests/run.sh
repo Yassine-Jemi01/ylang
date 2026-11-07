@@ -3,6 +3,7 @@ set -eux
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
+python3 tests/check_english_diagnostics.py
 
 EXPECTED_VERSION=$(cat VERSION)
 ./build/ylang --version | grep -Fq "$EXPECTED_VERSION"
