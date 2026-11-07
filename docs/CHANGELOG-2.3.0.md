@@ -1,5 +1,7 @@
 # YLang 2.3.0 — Development Notes
 
+- Expanded HTTP integration coverage with a deterministic local HTTPS-handshake failure case and a server response that exceeds the documented 15-second buffered-request timeout. The Voice streaming fixture now carries a generated non-silent WAV tone instead of silence, so decoder/playback integration is exercised with actual audio samples.
+
 - Hardened the stable-publication CircleCI gate so it waits for both required job contexts and evaluates the latest result per context, rather than accepting the first completed job or an obsolete failed rerun.
 
 - Applied the 16 MiB generated-output limit to `json.escape`, accounting for quotes and control-byte expansion; added exact-boundary and overflow fixtures.
