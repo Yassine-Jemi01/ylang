@@ -134,13 +134,15 @@ jobs:
             make
             python
       - name: Verify generated runtime template
-        run: make check-runtime-template
+        run: make check-runtime-template PYTHON=python
       - name: Build compiler
-        run: make clean all CC=gcc
+        run: make clean all CC=gcc PYTHON=python
       - name: Build optional SDL2 GUI runtime
-        run: make gui gui-example game2d-example CC=gcc
+        run: make gui gui-example game2d-example CC=gcc PYTHON=python
+      - name: Build responsive terminal UI example
+        run: make tui-example CC=gcc PYTHON=python
       - name: Build optional SDL2_mixer Voice runtime
-        run: make voice voice-example voice-test CC=gcc
+        run: make voice voice-example voice-test CC=gcc PYTHON=python
       - name: Verify YLanglings offline CLI, install lifecycle, and full curriculum
         run: make ylanglings-test ylanglings-verify PYTHON=python
       - name: Check, compile, and run a native Windows program
