@@ -6,9 +6,9 @@ This book is organized as a guided course and a technical reference. You can rea
 
 The online edition is the canonical book. It is maintained alongside the compiler and its reference documents, so corrections can be published without maintaining a separate PDF edition. The tutorial explains how to use YLang; the reference chapters describe exact syntax, supported behavior, and known restrictions.
 
-## العربية
+## Arabic edition
 
-يمكنك قراءة [المسار التعليمي العربي](ar/start-here.html)، كما يمكنك فتح [بوابة الوثائق العربية](https://yassine-jemi01.github.io/ylang/docs-ar.html). الشروحات الأساسية متاحة بالعربية، بينما تبقى أداة YLanglings وتمارينها وتلميحاتها وواجهتها بالإنجليزية. رسائل المترجم وأكواد التشخيص وأسماء API تبقى بالإنجليزية.
+Read the separate [Arabic learning path](ar/start-here.html) or open the [Arabic documentation portal](https://yassine-jemi01.github.io/ylang/docs-ar.html). The Arabic edition has its own navigation and right-to-left layout.
 
 ## Which version does this book describe?
 
