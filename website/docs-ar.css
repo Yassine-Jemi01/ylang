@@ -76,6 +76,19 @@ body {
 }
 
 
+/*
+ * The Arabic actions row stays LTR so the language selector appears before
+ * GitHub. Anchor its menu to the selector's left edge so it opens into the
+ * viewport instead of overflowing beyond the page's left edge.
+ */
+html[dir="rtl"] .nav-actions .language-switcher > .language-menu {
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+  left: 0;
+  right: auto;
+}
+
+
 /* Reset both physical gutters before applying one RTL start-side indent. */
 html[dir="rtl"] main ul,
 html[dir="rtl"] main ol {
