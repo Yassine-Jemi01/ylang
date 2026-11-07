@@ -111,6 +111,7 @@ jobs:
         run: make voice CC=gcc PYTHON=python
       - name: Verify optional runtime flags across imported modules
         run: |
+          mkdir -p build/windows-smoke
           ./build/ylang.exe check tests/optional-feature-imports/main.yl
           ./build/ylang.exe build tests/optional-feature-imports/main.yl -o build/windows-smoke/optional-feature-imports.exe
       - name: Verify YLanglings CLI, install lifecycle, and full curriculum
