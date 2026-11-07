@@ -1,4 +1,4 @@
-/* Shared YLang dark-teal identity for the static Reference & Docs landing page. */
+/* Shared YLang dark-navy identity for the static documentation portals. */
 :root {
   color-scheme: dark;
   --blue: #168bd2;
@@ -6,6 +6,7 @@
   --navy: #eaf2fb;
   --navy-deep: #0b1420;
   --orange: #f28a3d;
+  --yellow: #f28a3d;
   --yellow-soft: #2b201b;
   --page: #0b1420;
   --surface: #14243a;
