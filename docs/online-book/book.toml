@@ -16,6 +16,7 @@ default-theme = "navy"
 preferred-dark-theme = "navy"
 smart-punctuation = true
 git-repository-url = "https://github.com/Yassine-Jemi01/ylang"
+site-url = "/ylang/learn/"
 additional-css = ["theme/ylang-book.css"]
 additional-js = ["theme/ylang-nav.js"]
 
