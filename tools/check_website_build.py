@@ -250,7 +250,7 @@ def main() -> int:
     expected_urls = {
         public_url(page.relative_to(root).as_posix())
         for page in html_pages
-        if page.name != "print.html" and "progress" not in page.relative_to(root).parts
+        if page.name not in {"print.html", "404.html"} and "progress" not in page.relative_to(root).parts
     }
     missing_urls = sorted(expected_urls - sitemap_urls)
     extra_urls = sorted(sitemap_urls - expected_urls)
@@ -260,6 +260,8 @@ def main() -> int:
         fail("sitemap contains non-published pages: " + ", ".join(extra_urls[:10]))
     if any("/progress/" in url for url in sitemap_urls):
         fail("the retired progress page appears in the sitemap")
+    if any(url.endswith("/404.html") for url in sitemap_urls):
+        fail("generated 404 pages must not be indexed in the sitemap")
     robots = (root / "robots.txt").read_text(encoding="utf-8")
     if "Sitemap: " + BASE_URL + "sitemap.xml" not in robots:
         fail("robots.txt does not advertise the generated sitemap")

@@ -31,7 +31,7 @@ def main() -> int:
     urlset = ET.Element(f"{{{SITEMAP_NS}}}urlset")
     pages = sorted(
         page for page in root.rglob("*.html")
-        if page.name != "print.html"
+        if page.name not in {"print.html", "404.html"}
         and "progress" not in page.relative_to(root).parts
     )
 
