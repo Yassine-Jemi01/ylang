@@ -57,9 +57,13 @@ jobs:
           mdbook build docs/online-book
           mkdir -p website/learn website/learn/ar
           cp -a docs/online-book/book/. website/learn/
+          rm -rf website/learn/ar
+          mkdir -p website/learn/ar
           MDBOOK_BOOK__SRC=src/ar \
           MDBOOK_BOOK__LANGUAGE=ar \
           MDBOOK_BOOK__TEXT_DIRECTION=rtl \
+          MDBOOK_BOOK__TITLE="كتاب YLang" \
+          MDBOOK_BOOK__DESCRIPTION="المسار التعليمي العربي للغة YLang." \
           MDBOOK_BUILD__BUILD_DIR=book-ar \
             mdbook build docs/online-book
           cp -a docs/online-book/book-ar/. website/learn/ar/
