@@ -23,7 +23,7 @@ The report shows the YLang version, host platform and architecture, reported CPU
 - **Binary size** is the size of the final executable produced by the last measured build.
 - Warm-up iterations are not included in the reported samples. P95 is the nearest-rank 95th percentile.
 
-The CI smoke test verifies that the harness executes. The release-validation workflow also runs a 30-sample comparison against the latest stable compiler on the same Linux runner, using the same native compiler, optimization setting, workload, and expected output. It uploads both full reports and a ratio summary; it does not enforce a universal speed target. Do not compare measurements from different machines, native compiler versions, optimization settings, power modes, or workloads as if they were a controlled experiment.
+The CI smoke test verifies that the harness executes. The release-validation workflow also runs a 30-sample comparison against the latest stable compiler on the same Linux runner, using the same native compiler, optimization setting, workload, and expected output. It records the CPU model from the host when the Python platform API omits it, uploads both full reports and a ratio summary, and does not enforce a universal speed target. Review material compile-time and binary-size regressions even when execution time is unchanged. Do not compare measurements from different machines, native compiler versions, optimization settings, power modes, or workloads as if they were a controlled experiment.
 
 ## Suggested comparison record
 

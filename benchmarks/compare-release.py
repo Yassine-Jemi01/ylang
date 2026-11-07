@@ -10,6 +10,32 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def host_cpu() -> str:
+    reported = platform.processor().strip()
+    if reported:
+        return reported
+    if sys.platform.startswith("linux"):
+        try:
+            for line in Path("/proc/cpuinfo").read_text(encoding="utf-8").splitlines():
+                if line.lower().startswith("model name") and ":" in line:
+                    return line.split(":", 1)[1].strip()
+        except OSError:
+            pass
+    if sys.platform == "darwin":
+        try:
+            result = subprocess.run(
+                ["sysctl", "-n", "machdep.cpu.brand_string"],
+                text=True, capture_output=True, check=False,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip()
+        except OSError:
+            pass
+    return platform.machine() or "unknown"
+
+
 BENCHMARK = ROOT / "benchmarks" / "bench-native.py"
 SOURCE = ROOT / "benchmarks" / "native-loop.yl"
 EXPECTED = ROOT / "benchmarks" / "expected-native-loop.txt"
@@ -86,7 +112,7 @@ def main() -> int:
         f"Baseline tag: {args.baseline}",
         f"Host: {platform.platform()}",
         f"Architecture: {platform.machine() or 'unknown'}",
-        f"CPU: {platform.processor() or 'unknown'}",
+        f"CPU: {host_cpu()}",
         f"Native C compiler: {args.cc}",
         f"Measured runs: {args.runs}; warm-ups: {args.warmup}",
         "",
