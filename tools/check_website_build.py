@@ -127,6 +127,8 @@ def main() -> int:
         "learn/ylanglings.html",
         "ylang-mark.svg",
         "assets/ylang-mark.svg",
+        "assets/favicon.svg",
+        "assets/favicon-home.svg",
         "assets/site-theme.css",
         "robots.txt",
         "sitemap.xml",
@@ -144,6 +146,8 @@ def main() -> int:
     canonical_mark = (root / "ylang-mark.svg").read_bytes()
     for relative in (
         "assets/ylang-mark.svg",
+        "assets/favicon.svg",
+        "assets/favicon-home.svg",
         "learn/favicon.svg",
         "learn/ar/favicon.svg",
     ):
