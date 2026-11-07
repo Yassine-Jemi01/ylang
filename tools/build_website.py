@@ -89,6 +89,7 @@ def main() -> int:
             "MDBOOK_BOOK__TITLE": "كتاب YLang",
             "MDBOOK_BOOK__DESCRIPTION": "المسار التعليمي العربي للغة YLang.",
             "MDBOOK_BUILD__BUILD_DIR": "book-ar",
+            "MDBOOK_OUTPUT__HTML__SITE_URL": "/ylang/learn/ar/",
         }
     )
     if not ARABIC_BUILD_SOURCE.is_dir():
