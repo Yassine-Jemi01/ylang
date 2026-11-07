@@ -13,7 +13,7 @@ static int fail(const char *m,PROCESS_INFORMATION *p,HANDLE in,HANDLE out){
 int main(int argc,char **argv){
  if(argc!=2)return 2;char cmd[32768];int n=snprintf(cmd,sizeof(cmd),"\"%s\"",argv[1]);if(n<0||(size_t)n>=sizeof(cmd))return 2;
  STARTUPINFOA si;PROCESS_INFORMATION p;ZeroMemory(&si,sizeof(si));ZeroMemory(&p,sizeof(p));si.cb=sizeof(si);
- if(!CreateProcessA(NULL,cmd,NULL,NULL,FALSE,CREATE_NEW_CONSOLE,NULL,NULL,&si,&p)){fprintf(stderr,"CreateProcess failed: %lu\n",(unsigned long)GetLastError());return 1;}
+ if(!CreateProcessA(NULL,cmd,NULL,NULL,FALSE,CREATE_NEW_CONSOLE | CREATE_SUSPENDED,NULL,NULL,&si,&p)){fprintf(stderr,"CreateProcess failed: %lu\n",(unsigned long)GetLastError());return 1;}
  if(!FreeConsole()&&GetLastError()!=ERROR_INVALID_HANDLE)return fail("could not detach from runner console",&p,INVALID_HANDLE_VALUE,INVALID_HANDLE_VALUE);
  bool attached=false;for(unsigned i=0;i<200U;i++){if(AttachConsole(p.dwProcessId)){attached=true;break;}Sleep(25U);}
  if(!attached)return fail("could not attach to child console",&p,INVALID_HANDLE_VALUE,INVALID_HANDLE_VALUE);
@@ -21,6 +21,7 @@ int main(int argc,char **argv){
  HANDLE out=CreateFileA("CONOUT$",GENERIC_READ|GENERIC_WRITE,FILE_SHARE_READ|FILE_SHARE_WRITE,NULL,OPEN_EXISTING,0U,NULL);
  if(in==INVALID_HANDLE_VALUE||out==INVALID_HANDLE_VALUE)return fail("could not open console handles",&p,in,out);
  DWORD saved_in=0U,saved_out=0U;if(!GetConsoleMode(in,&saved_in)||!GetConsoleMode(out,&saved_out))return fail("could not read original console modes",&p,in,out);
+ if(ResumeThread(p.hThread)==(DWORD)-1)return fail("could not resume the suspended TUI process",&p,in,out);
  bool ready=false;for(unsigned i=0;i<300U;i++){
   if(WaitForSingleObject(p.hProcess,10U)==WAIT_OBJECT_0)break;
   DWORD im=0U,om=0U;CONSOLE_CURSOR_INFO cursor;CONSOLE_SCREEN_BUFFER_INFO info;
@@ -36,7 +37,7 @@ int main(int argc,char **argv){
  if(WaitForSingleObject(p.hProcess,5000U)!=WAIT_OBJECT_0)return fail("TUI did not return after key input",&p,in,out);
  DWORD exit_code=1U;if(!GetExitCodeProcess(p.hProcess,&exit_code)||exit_code!=0U)return fail("TUI did not receive the expected key",&p,in,out);
  DWORD restored_in=0U,restored_out=0U;if(!GetConsoleMode(in,&restored_in)||!GetConsoleMode(out,&restored_out))return fail("could not read restored console modes",&p,in,out);
- if(restored_in!=saved_in||restored_out!=saved_out)return fail("console modes were not restored exactly",&p,in,out);
+ if(restored_in!=saved_in||restored_out!=saved_out){fprintf(stderr,"console modes: input 0x%08lx -> 0x%08lx; output 0x%08lx -> 0x%08lx\\n",(unsigned long)saved_in,(unsigned long)restored_in,(unsigned long)saved_out,(unsigned long)restored_out);return fail("console modes were not restored exactly",&p,in,out);}
  CONSOLE_CURSOR_INFO cursor;if(!GetConsoleCursorInfo(out,&cursor)||!cursor.bVisible)return fail("cursor was not shown after TUI",&p,in,out);
  CloseHandle(in);CloseHandle(out);(void)FreeConsole();CloseHandle(p.hThread);CloseHandle(p.hProcess);
  puts("PASS: Windows TUI raw input, ANSI output, cursor control, and console restoration.");return 0;
