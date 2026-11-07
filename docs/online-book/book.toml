@@ -2,6 +2,7 @@
 title = "The YLang Book"
 authors = ["YLang contributors"]
 language = "en"
+text-direction = "ltr"
 src = "src"
 description = "Learn YLang from your first program to its compiler, libraries, and platform guides."
 
@@ -10,6 +11,7 @@ build-dir = "book"
 create-missing = false
 
 [output.html]
+favicon = "ylang-mark.svg"
 default-theme = "navy"
 preferred-dark-theme = "navy"
 smart-punctuation = true
