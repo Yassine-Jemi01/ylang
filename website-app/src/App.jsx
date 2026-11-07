@@ -83,7 +83,7 @@ function Header() {
       <div className="container nav-wrap">
         <a className="brand" href="#top" aria-label="YLang home">
           <img className="brand-wordmark" src="./ylang-logo-dark.svg" alt="YLang" width="112" height="37" />
-          <span className="brand-version">2.3</span>
+          <span className="brand-version">2.3.0</span>
         </a>
         <button className="mobile-menu" type="button" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen} onClick={() => setMenuOpen(v => !v)}>
           {menuOpen ? <FiX /> : <FiMenu />}
