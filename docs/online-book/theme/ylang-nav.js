@@ -3,6 +3,7 @@
   'use strict';
   const HOME_URL = 'https://yassine-jemi01.github.io/ylang/';
   const BOOK_URL = HOME_URL + 'learn/';
+  const ARABIC_DOCS_URL = HOME_URL + 'docs-ar.html';
   const AR_TO_EN = {
     'index.html': 'index.html',
     'start-here.html': 'index.html',
@@ -147,9 +148,9 @@
     if (!toolbar) return;
     const link = document.createElement('a');
     link.className = 'ylang-home-link';
-    link.href = HOME_URL;
-    link.setAttribute('aria-label', 'YLang homepage');
-    link.title = 'YLang homepage';
+    link.href = relativeBookPath().startsWith('ar/') ? ARABIC_DOCS_URL : HOME_URL;
+    link.setAttribute('aria-label', relativeBookPath().startsWith('ar/') ? 'بوابة وثائق YLang العربية' : 'YLang homepage');
+    link.title = relativeBookPath().startsWith('ar/') ? 'بوابة وثائق YLang العربية' : 'YLang homepage';
     const mark = document.createElement('img');
     mark.src = HOME_URL + 'ylang-mark.svg';
     mark.alt = '';
