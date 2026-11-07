@@ -3,7 +3,10 @@
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import io
+import math
+import struct
 import sys
+import time
 import wave
 
 
@@ -14,7 +17,11 @@ def make_test_wav():
         wav_file.setnchannels(1)
         wav_file.setsampwidth(2)
         wav_file.setframerate(44100)
-        wav_file.writeframes(b"\x00\x00" * (44100 // 4))
+        samples = (
+            struct.pack("<h", int(8000 * math.sin(2 * math.pi * 440 * index / 44100)))
+            for index in range(44100 // 4)
+        )
+        wav_file.writeframes(b"".join(samples))
     return output.getvalue()
 
 
@@ -129,9 +136,12 @@ class Handler(BaseHTTPRequestHandler):
             except (BrokenPipeError, ConnectionResetError):
                 pass
         elif self.path == "/slow":
-            import time
             time.sleep(0.2)
             self.send_bytes(200, "slow-response")
+        elif self.path == "/timeout":
+            # Buffered HTTP requests have a documented 15-second total timeout.
+            time.sleep(16.0)
+            self.send_bytes(200, "too-late")
         elif self.path == "/headers-underflow":
             # Reach the exact 16 KiB accumulated-header boundary, then send
             # one more header. The client must reject it without underflowing.
