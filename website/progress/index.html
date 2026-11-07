@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0d1718">
+  <meta name="theme-color" content="#0b1420">
   <meta name="description" content="Follow YLang 3.0 development: implementation progress, compiler architecture, current work, and planned release features.">
   <meta property="og:type" content="website">
   <meta property="og:title" content="YLang 3.0 — Development Progress">
@@ -14,21 +14,21 @@
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0d1718;
-      --bg-2: #101d1e;
-      --surface: #142223;
-      --surface-raised: #182b2c;
-      --surface-soft: #1b3031;
-      --text: #e8f1ee;
-      --muted: #9db1ad;
-      --muted-2: #748d87;
-      --line: #29413f;
-      --line-strong: #3a5b57;
-      --teal: #167d8d;
-      --teal-soft: #93d4c8;
+      --bg: #0b1420;
+      --bg-2: #101d2d;
+      --surface: #14243a;
+      --surface-raised: #1a2d46;
+      --surface-soft: #203752;
+      --text: #eaf2fb;
+      --muted: #a6b8ca;
+      --muted-2: #7e96ad;
+      --line: #293f59;
+      --line-strong: #3b5878;
+      --teal: #168bd2;
+      --teal-soft: #80c8f0;
       --teal-light: #c4e8df;
       --rust: #8d3816;
-      --rust-soft: #d79a73;
+      --rust-soft: #ffb27a;
       --container: 1160px;
       --mono: 'DM Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
       --sans: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -41,7 +41,7 @@
     img { display: block; max-width: 100%; }
     .container { width: min(var(--container), calc(100% - 48px)); margin-inline: auto; }
     :focus-visible { outline: 2px solid var(--teal-soft); outline-offset: 4px; }
-    ::selection { color: #081312; background: var(--teal-soft); }
+    ::selection { color: #0b1420; background: var(--teal-soft); }
 
     .site-header { position: sticky; z-index: 80; top: 0; background: rgb(13 23 24 / 90%); border-bottom: 1px solid rgb(147 212 200 / 10%); backdrop-filter: blur(16px); }
     .nav-wrap { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 26px; }
@@ -131,7 +131,7 @@
     .source-links { display: flex; flex-wrap: wrap; gap: 11px 18px; margin-top: 15px; font: 600 11px/1.5 var(--mono); }
     .source-links a { color: var(--teal-soft); }
     .source-links a:hover { color: var(--rust-soft); }
-    .site-footer { margin-top: 76px; border-top: 1px solid var(--line); background: #101d1e; }
+    .site-footer { margin-top: 76px; border-top: 1px solid var(--line); background: #101d2d; }
     .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding-block: 23px 29px; color: var(--muted-2); font-size: 11px; }
     .footer-brand { display: inline-flex; align-items: center; gap: 9px; color: var(--muted); font-weight: 700; }
     .footer-brand img { width: 20px; height: 20px; }
