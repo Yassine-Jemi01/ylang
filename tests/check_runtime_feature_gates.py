@@ -15,6 +15,8 @@ OPTIONAL_SYMBOLS = (
     "yl_tui_init",
     "yl_binary_buffer_new",
     "yl_binary_stream_open",
+    "ylvoice_init",
+    "ylvoice_play",
 )
 SHARED_SYMBOLS = ("yl_to_byte", "yl_binary_seek")
 
