@@ -8,6 +8,7 @@ on:
       - "website-app/**"
       - "docs/**"
       - "tools/build_docs_book.py"
+      - "tools/check_website_build.py"
       - ".github/workflows/deploy-website.yml"
   workflow_dispatch:
 
@@ -74,6 +75,9 @@ jobs:
           mkdir -p site-dist
           cp -a website/. site-dist/
           cp -a website-app/dist/. site-dist/
+
+      - name: Verify the assembled website
+        run: python3 tools/check_website_build.py site-dist
 
       - name: Upload website
         uses: actions/upload-pages-artifact@v3
