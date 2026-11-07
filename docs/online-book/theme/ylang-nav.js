@@ -5,7 +5,7 @@
   const BOOK_URL = HOME_URL + 'learn/';
   const AR_TO_EN = {
     'index.html': 'index.html',
-    'start-here.html': 'getting-started.html',
+    'start-here.html': 'index.html',
     'introduction.html': 'introduction.html',
     'getting-started.html': 'getting-started.html',
     'hello-world.html': 'hello-world.html',
