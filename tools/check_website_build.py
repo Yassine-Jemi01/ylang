@@ -303,6 +303,24 @@ def main() -> int:
     if 'html[dir="rtl"] main ul' not in docs_ar_css or "padding: 0;" not in docs_ar_css:
         fail("Arabic documentation portal is missing the physical-padding reset")
 
+    rtl_language_menu = re.search(
+        r'html\\[dir="rtl"\\]\\s+\\.nav-actions\\s+\\.language-switcher\\s*>\\s*\\.language-menu\\s*\\{([^}]*)\\}',
+        docs_ar_css,
+    )
+    if rtl_language_menu is None:
+        fail("Arabic documentation portal is missing its viewport-safe language-menu alignment")
+    language_menu_rules = rtl_language_menu.group(1)
+    if any(
+        declaration not in language_menu_rules
+        for declaration in (
+            "inset-inline-start: 0;",
+            "inset-inline-end: auto;",
+            "left: 0;",
+            "right: auto;",
+        )
+    ):
+        fail("Arabic documentation language menu can still overflow beyond the left viewport edge")
+
     arabic_home_css_references = [
         reference for reference in arabic_homepage_parser.references
         if urlsplit(reference).path.endswith(".css")
