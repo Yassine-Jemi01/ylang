@@ -8,6 +8,7 @@
 
 ## Work integrated so far
 - Generated C now includes JSON, TUI, and Binary I/O runtime sections only when semantic analysis finds the corresponding built-ins in the program. Shared byte conversion and HTTP streaming helpers remain available where required.
+- Added runtime-feature-gate checks to `make test`: minimal programs exclude unused JSON/HTTP/TUI/Binary/Voice sections, while imported modules retain every runtime feature required by their functions.
 - Linked the Arabic documentation portal from the homepage and English docs portal; website checks enforce reciprocal navigation, Arabic language/direction metadata, and RTL prose with LTR code.
 - Added native Windows interactive TUI acceptance coverage for raw key input, virtual-terminal output, cursor control, and console-mode restoration.
 - Fixed Windows TUI shutdown so the cursor-show sequence is emitted before virtual-terminal processing is disabled, including automatic restoration when the caller does not explicitly show the cursor.
