@@ -55,8 +55,14 @@ jobs:
         run: |
           python3 tools/build_docs_book.py
           mdbook build docs/online-book
-          mkdir -p website/learn
+          mkdir -p website/learn website/learn/ar
           cp -a docs/online-book/book/. website/learn/
+          MDBOOK_BOOK__SRC=src/ar \
+          MDBOOK_BOOK__LANGUAGE=ar \
+          MDBOOK_BOOK__TEXT_DIRECTION=rtl \
+          MDBOOK_BUILD__BUILD_DIR=book-ar \
+            mdbook build docs/online-book
+          cp -a docs/online-book/book-ar/. website/learn/ar/
 
       - name: Assemble the deployed site
         run: |
