@@ -2189,4 +2189,12 @@ diff -u build/cli-version.out build/cli-version-option.out
 diff -u build/cli-version.out build/cli-version-short.out
 grep -Fq "$(cat VERSION)" build/cli-version.out
 
+# A standalone build that omits Makefile's -DYLANG_VERSION must still report
+# the same stable version as VERSION instead of an obsolete hard-coded value.
+fallback_version="$("${CC:-gcc}" -E -dM -Iinclude src/main.c | awk '$2 == "YLANG_VERSION" { gsub(/"/, "", $3); print $3; exit }')"
+if [ "$fallback_version" != "$(cat VERSION)" ]; then
+    echo "FAIL: standalone compiler version fallback is $fallback_version, expected $(cat VERSION)" >&2
+    exit 1
+fi
+
 echo "All YLang tests passed."
