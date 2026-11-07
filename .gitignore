@@ -10,7 +10,10 @@ core
 
 # Generated documentation output (built in CI and deployed from artifacts)
 /docs/online-book/book/
+/docs/online-book/book-ar/
+/docs/online-book/build-src/
 /website/learn/
+/site-dist/
 
 # Python bytecode and cache directories
 __pycache__/

@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Prepare mdBook reference pages from the canonical YLang docs.
+"""Prepare mdBook sources from canonical YLang documentation.
 
-The repository keeps documentation in docs/*.md as the single source of truth.
-This script copies the public reference set into the mdBook source tree before
-rendering, and rewrites repository-root-relative Markdown links to GitHub links
-so source links remain useful from the generated book.
+The repository keeps technical references in docs/*.md as the single source
+of truth. Arabic cross-language links are rewritten in an ignored build copy,
+never in the canonical Arabic chapter sources.
 """
 
 from __future__ import annotations
@@ -15,8 +14,10 @@ import shutil
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
-BOOK_SRC = DOCS / "online-book" / "src"
+BOOK_ROOT = DOCS / "online-book"
+BOOK_SRC = BOOK_ROOT / "src"
 REFERENCE_DIR = BOOK_SRC / "reference"
+ARABIC_BUILD_SRC = BOOK_ROOT / "build-src" / "ar"
 REPOSITORY_URL = "https://github.com/Yassine-Jemi01/ylang"
 
 REFERENCE_DOCS = (
@@ -87,16 +88,24 @@ def rewrite_repo_relative_links(content: str) -> str:
     return LINK.sub(replace, content)
 
 
-def rewrite_arabic_cross_language_links() -> int:
-    """Keep Arabic chapters self-contained and link English-only references explicitly."""
-    arabic_src = BOOK_SRC / "ar"
+def prepare_arabic_build_source() -> int:
+    """Create a normalized Arabic build tree without modifying canonical chapters."""
+    arabic_source = BOOK_SRC / "ar"
+    if not arabic_source.is_dir():
+        raise SystemExit(f"required Arabic book source is missing: {arabic_source.relative_to(ROOT)}")
+
+    if ARABIC_BUILD_SRC.exists():
+        shutil.rmtree(ARABIC_BUILD_SRC)
+    ARABIC_BUILD_SRC.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(arabic_source, ARABIC_BUILD_SRC)
+
     base = "https://yassine-jemi01.github.io/ylang/learn"
     replacements = {
         "../index.html": f"{base}/index.html",
         "../ylanglings.md": f"{base}/ylanglings.html",
     }
     changed = 0
-    for chapter in arabic_src.glob("*.md"):
+    for chapter in ARABIC_BUILD_SRC.glob("*.md"):
         original = chapter.read_text(encoding="utf-8")
         content = original
         for old, new in replacements.items():
@@ -124,7 +133,11 @@ def main() -> int:
         destination.write_text(rewrite_repo_relative_links(content), encoding="utf-8")
 
     print(f"Prepared {len(REFERENCE_DOCS)} canonical English reference chapters for mdBook.")
-    print(f"Normalized cross-language links in {rewrite_arabic_cross_language_links()} Arabic chapters.")
+    changed = prepare_arabic_build_source()
+    print(
+        f"Prepared the Arabic build copy and normalized cross-language links in {changed} chapters; "
+        "canonical Arabic source files were left unchanged."
+    )
     return 0
 
 

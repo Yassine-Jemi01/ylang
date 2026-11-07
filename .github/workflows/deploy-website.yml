@@ -8,6 +8,8 @@ on:
       - "website-app/**"
       - "docs/**"
       - "tools/build_docs_book.py"
+      - "tools/build_website.py"
+      - "tools/check_website.py"
       - "tools/check_website_build.py"
       - "tools/build_sitemap.py"
       - ".github/workflows/deploy-website.yml"
@@ -53,45 +55,8 @@ jobs:
         with:
           mdbook-version: "0.5.4"
 
-      - name: Build the online HTML book
-        run: |
-          python3 tools/build_docs_book.py
-          mdbook build docs/online-book
-          mkdir -p website/learn website/learn/ar
-          cp -a docs/online-book/book/. website/learn/
-          rm -rf website/learn/ar
-          mkdir -p website/learn/ar
-          MDBOOK_BOOK__SRC=src/ar \
-          MDBOOK_BOOK__LANGUAGE=ar \
-          MDBOOK_BOOK__TEXT_DIRECTION=rtl \
-          MDBOOK_BOOK__TITLE="كتاب YLang" \
-          MDBOOK_BOOK__DESCRIPTION="المسار التعليمي العربي للغة YLang." \
-          MDBOOK_BUILD__BUILD_DIR=book-ar \
-            mdbook build docs/online-book
-          cp -a docs/online-book/book-ar/. website/learn/ar/
-          # mdBook keeps custom theme assets in its theme directory; publish the shared favicon explicitly.
-          cp docs/online-book/theme/favicon.svg website/learn/favicon.svg
-          cp docs/online-book/theme/favicon.svg website/learn/ar/favicon.svg
-          # Keep the custom book navigation script at the URL referenced by mdBook output.
-          mkdir -p website/learn/theme website/learn/ar/theme
-          cp docs/online-book/theme/ylang-nav.js website/learn/theme/ylang-nav.js
-          cp docs/online-book/theme/ylang-nav.js website/learn/ar/theme/ylang-nav.js
-          # mdBook does not copy nested additional CSS assets into the output; publish them explicitly.
-          cp docs/online-book/theme/ylang-book.css website/learn/theme/ylang-book.css
-          cp docs/online-book/theme/ylang-book.css website/learn/ar/theme/ylang-book.css
-
-      - name: Assemble the deployed site
-        run: |
-          rm -rf site-dist
-          mkdir -p site-dist
-          cp -a website/. site-dist/
-          cp -a website-app/dist/. site-dist/
-
-      - name: Generate the public sitemap
-        run: python3 tools/build_sitemap.py site-dist
-
-      - name: Verify the assembled website
-        run: python3 tools/check_website_build.py site-dist
+      - name: Build, assemble, and verify the complete bilingual website
+        run: python3 tools/build_website.py site-dist
 
       - name: Upload website
         uses: actions/upload-pages-artifact@v3

@@ -207,7 +207,7 @@ jobs:
     name: Build and inspect YLang .yspkg package
     runs-on: ubuntu-latest
     steps:
-      - name: Check out YLang
+      - name: Check out source
         uses: actions/checkout@v4
       - name: Install C build tools
         run: sudo apt-get update && sudo apt-get install -y build-essential binutils
@@ -269,8 +269,6 @@ jobs:
             test "$count" -eq 1
           done
           tar -xzOf "$package_path" metadata.json | python3 -c 'import json,sys; p=json.load(sys.stdin); version=open("VERSION", encoding="utf-8").read().strip(); assert p["name"] == "ylang"; assert p["version"] == version; assert p["architecture"] == "x86_64"; assert p["abi"] == "yspm-abi-1"'
-          # Compare the archived payload with the built compiler byte-for-byte.
-          # The following YSPM install/remove smoke test separately exercises package extraction and permissions.
           tar -xzOf "$package_path" root/usr/bin/ylang > build/ylang-packaged-binary
           if ! cmp -s build/ylang-packaged-binary build/ylang; then
             echo "FAIL: packaged compiler bytes differ from the build output." >&2
@@ -316,8 +314,6 @@ jobs:
       - name: Test Neovim syntax highlighting
         run: nvim --headless -u NONE +'luafile editors/nvim/tests/syntax.lua'
 
-
-
   zed-tree-sitter:
     name: Zed Tree-sitter grammar
     runs-on: ubuntu-latest
@@ -333,8 +329,8 @@ jobs:
       - name: Generate and test YLang parser in isolation
         run: python3 tools/check_tree_sitter.py
 
-  website-app-build:
-    name: Homepage build and asset checks
+  website-integrity:
+    name: Full bilingual website build and integrity
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
@@ -342,74 +338,17 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: "22"
           cache: npm
           cache-dependency-path: website-app/package-lock.json
-      - name: Install locked homepage dependencies
+      - name: Build the official homepage
         working-directory: website-app
-        run: npm ci --no-audit --no-fund
-      - name: Build the React homepage
-        working-directory: website-app
-        run: npm run build
-      - name: Verify homepage and official logo are included
         run: |
-          test -s website-app/dist/index.html
-          test -s website-app/dist/ylang-mark.svg
-          grep -q "YLang" website-app/dist/index.html
-
-  website-integrity:
-    name: Online book and website integrity
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v4
+          npm ci --no-audit --no-fund
+          npm run build
       - name: Set up mdBook
         uses: peaceiris/actions-mdbook@v2
         with:
           mdbook-version: "0.5.4"
-      - name: Build and inspect the online book
-        run: |
-          python3 tools/build_docs_book.py
-          mdbook build docs/online-book
-          mkdir -p website/learn
-          cp -a docs/online-book/book/. website/learn/
-          test -s website/learn/index.html
-          test -s website/learn/ar/start-here.html
-          test -s website/learn/ar/introduction.html
-          test -s website/learn/ar/getting-started.html
-          test -s website/learn/ar/hello-world.html
-          test -s website/learn/ar/language-basics.html
-          test -s website/learn/ar/compiler-workflow.html
-          test -s website/learn/ar/types.html
-          test -s website/learn/ar/modules.html
-          test -s website/learn/ar/standard-library.html
-          test -s website/learn/ar/platform-support.html
-          test -s website/learn/ar/binary-io.html
-          test -s website/learn/ar/voice-audio.html
-          test -s website/learn/ar/tui.html
-          test -s website/learn/ar/gui-game2d.html
-          test -s website/learn/ar/cli.html
-          test -s website/learn/ar/json.html
-          test -s website/learn/ar/http.html
-          test -s website/learn/ar/diagnostics.html
-          test -s website/learn/ar/security.html
-          test -s website/learn/ar/windows.html
-          test -s website/learn/ylanglings.html
-          test -s website/docs-ar.html
-          test -s website/docs-ar.css
-          test -s website/learn/reference/language-spec.html
-          test -s website/learn/reference/MEMORY-MODEL.html
-          test -s website/learn/reference/CHANGELOG-2.1.0.html
-          test -s website/learn/reference/CHANGELOG-2.2.0.html
-          test -s website/learn/reference/CHANGELOG-2.3.0.html
-          test -s website/learn/reference/ROADMAP-2.3.0.html
-          test -s website/learn/reference/RELEASE-CHECKLIST-2.3.0.html
-          test -s website/learn/reference/POST-RELEASE-CHECKLIST-2.3.0.html
-          test -s website/learn/reference/JSON.html
-          test -s website/learn/reference/HTTP-STREAMING.html
-          test -s website/learn/reference/CLI.html
-          test -s website/learn/reference/ACCEPTANCE-2.2.0.html
-          test -s website/learn/reference/PERFORMANCE.html
-          test -s website/learn/reference/SECURITY.html
-      - name: Validate website
-        run: python3 tools/check_website.py
+      - name: Build, assemble, and validate the complete website
+        run: python3 tools/build_website.py site-dist

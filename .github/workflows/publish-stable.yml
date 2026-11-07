@@ -15,7 +15,6 @@ on:
         default: "2.3.0"
         type: string
 
-# Build and test jobs only need read access; release publishing opts into write.
 permissions:
   contents: write
 
@@ -124,8 +123,6 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
       - name: Set up MinGW-w64 toolchain
         uses: msys2/setup-msys2@v2
         with:
@@ -244,7 +241,6 @@ jobs:
           grep -q "interactive debugging is not implemented on Windows" build/windows-smoke/debug.out
           test ! -e build/windows-smoke/debug-unsupported.exe
 
-
   editor-diagnostics:
     permissions:
       contents: read
@@ -308,46 +304,8 @@ jobs:
         uses: peaceiris/actions-mdbook@v2
         with:
           mdbook-version: "0.5.4"
-      - name: Build bilingual book and validate website
-        run: |
-          python3 tools/build_docs_book.py
-          mdbook build docs/online-book
-          mkdir -p website/learn
-          cp -a docs/online-book/book/. website/learn/
-          test -s website/learn/index.html
-          test -s website/learn/ylanglings.html
-          test ! -e website/learn/ar/ylanglings.html
-          test -s website/learn/ar/start-here.html
-          test -s website/learn/ar/introduction.html
-          test -s website/learn/ar/getting-started.html
-          test -s website/learn/ar/hello-world.html
-          test -s website/learn/ar/language-basics.html
-          test -s website/learn/ar/compiler-workflow.html
-          test -s website/learn/ar/types.html
-          test -s website/learn/ar/modules.html
-          test -s website/learn/ar/standard-library.html
-          test -s website/learn/ar/platform-support.html
-          test -s website/learn/ar/binary-io.html
-          test -s website/learn/ar/voice-audio.html
-          test -s website/learn/ar/tui.html
-          test -s website/learn/ar/gui-game2d.html
-          test -s website/learn/ar/cli.html
-          test -s website/learn/ar/json.html
-          test -s website/learn/ar/http.html
-          test -s website/learn/ar/diagnostics.html
-          test -s website/learn/ar/security.html
-          test -s website/learn/ar/windows.html
-          test -s website/docs-ar.html
-          test -s website/docs-ar.css
-          test -s website/learn/reference/CHANGELOG-2.0.0.html
-          test -s website/learn/reference/CHANGELOG-2.3.0.html
-          test -s website/learn/reference/ROADMAP-2.3.0.html
-          test -s website/learn/reference/JSON.html
-          test -s website/learn/reference/CLI.html
-          test -s website/learn/reference/RELEASE-CHECKLIST-2.3.0.html
-          test -s website/learn/reference/POST-RELEASE-CHECKLIST-2.3.0.html
-          test -s website/learn/reference/STABLE-RELEASE-CHECKLIST.html
-          python3 tools/check_website.py
+      - name: Build, assemble, and validate the complete bilingual website
+        run: python3 tools/build_website.py site-dist
 
   zed-tree-sitter:
     permissions:
@@ -440,13 +398,9 @@ jobs:
         run: |
           set -euo pipefail
           expected_prefix="ci/circleci:"
-          # CircleCI config defines two required jobs. Do not treat the first
-          # completed job as a green workflow while the other has not reported.
           expected_contexts=2
           for attempt in $(seq 1 60); do
             response="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status")"
-            # A rerun may leave older failed statuses in history. Evaluate only
-            # the newest status for each CircleCI context.
             matching="$(jq -c --arg prefix "$expected_prefix" '
               [.statuses[] | select((.context // "") | startswith($prefix))]
               | sort_by(.created_at // "")
