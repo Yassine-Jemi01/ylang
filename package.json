@@ -12,6 +12,6 @@
     }
   ],
   "scripts": {
-    "test": "tree-sitter test"
+    "test": "python3 tools/check_tree_sitter.py"
   }
 }

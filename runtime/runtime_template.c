@@ -89,15 +89,23 @@ static size_t yl_saturating_add_size(size_t left, size_t right) {
     return SIZE_MAX - left < right ? SIZE_MAX : left + right;
 }
 
+#ifdef YLANG_USE_BINARY
 static void yl_binary_stream_shutdown(void);
+#endif
+#if defined(YLANG_USE_BINARY) || defined(YLANG_USE_HTTP)
 static void yl_binary_buffer_shutdown(void);
+#endif
 
 static void yl_cleanup(void) {
 #ifdef YLANG_USE_VOICE
     ylvoice_shutdown();
 #endif
+#ifdef YLANG_USE_BINARY
     yl_binary_stream_shutdown();
+#endif
+#if defined(YLANG_USE_BINARY) || defined(YLANG_USE_HTTP)
     yl_binary_buffer_shutdown();
+#endif
     if (yl_memory_stats_enabled()) {
         fprintf(stderr,
                 "YLang memory stats: tracked_allocations=%zu tracked_bytes=%zu\n",
@@ -1047,6 +1055,7 @@ static bool yl_voice_play_stream(int64_t id) {
 
 
 /* Bounded JSON parser used by the std.json built-ins. */
+#ifdef YLANG_USE_JSON
 #define YL_JSON_MAX_INPUT (16U * 1024U * 1024U)
 #define YL_JSON_MAX_DEPTH 128U
 static char yl_json_error_text[192];
@@ -1530,7 +1539,8 @@ static const char *yl_json_decode_string(const char *s, size_t a, size_t b) {
     out[n]='\0'; return (const char *)yl_track(out,n+1U);
 }
 static const char *yl_json_get_string(const char *text,const char *key) {
-    size_t a,b; if(!yl_json_lookup(text,key,&a,&b) || text[a]!='"') {yl_json_error("JSON property is not a string");return "";}
+    size_t a,b; if(!yl_json_lookup(text,key,&a,&b)) return "";
+    if(text[a]!='"') {yl_json_error("JSON property is not a string");return "";}
     YLJson p={text,strlen(text),a,0U}; size_t x,y;
     if(!yl_json_string_end(&p,&x,&y)) return "";
     return yl_json_decode_string(text,x,y);
@@ -1564,9 +1574,15 @@ static int64_t yl_json_array_length(const char *text) {
     p.i=a; if(p.s[p.i++]!='['){yl_json_error("JSON value is not an array");return 0;}
     yl_json_ws(&p); if(p.i<p.n && p.s[p.i]==']') return 0;
     int64_t count=0;
-    for(;;){size_t x,y;if(!yl_json_value(&p,&x,&y))return count;count++;yl_json_ws(&p);
-        if(p.i<p.n && p.s[p.i]==']') return count;
-        if(p.i>=p.n || p.s[p.i++]!=',') break;yl_json_ws(&p);}
+    for (;;) {
+        size_t x, y;
+        if (!yl_json_value(&p, &x, &y)) return count;
+        count++;
+        yl_json_ws(&p);
+        if (p.i < p.n && p.s[p.i] == ']') return count;
+        if (p.i >= p.n || p.s[p.i++] != ',') break;
+        yl_json_ws(&p);
+    }
     yl_json_error("Invalid JSON array"); return count;
 }
 static const char *yl_json_at(const char *text,int64_t index) {
@@ -1634,6 +1650,7 @@ static const char *yl_json_escape(const char *value) {
     o[j++]='"';o[j]='\0';return (const char *)yl_track(o,j+1U);
 }
 static const char *yl_json_last_error(void) { return yl_json_error_text; }
+#endif /* YLANG_USE_JSON */
 
 static const char *yl_env_get(const char *name) {
     if (!name || !*name) return "";
@@ -1912,6 +1929,8 @@ static bool yl_terminal_is_interactive(void) {
 #endif
 }
 
+/* std.tui is emitted only when a program calls a tui.* built-in. */
+#ifdef YLANG_USE_TUI
 static bool yl_tui_terminal_ready(void) {
 #ifdef _WIN32
     return _isatty(_fileno(stdin)) != 0 && _isatty(_fileno(stdout)) != 0;
@@ -1930,6 +1949,7 @@ static HANDLE yl_tui_output_handle;
 static DWORD yl_tui_saved_input_mode;
 static DWORD yl_tui_saved_output_mode;
 static bool yl_tui_output_mode_saved;
+static bool yl_tui_vt_output_enabled;
 #else
 static struct termios yl_tui_saved_termios;
 static const int yl_tui_signals[] = { SIGINT, SIGTERM, SIGHUP, SIGQUIT };
@@ -1937,18 +1957,17 @@ static struct sigaction yl_tui_previous_actions[
     sizeof(yl_tui_signals) / sizeof(yl_tui_signals[0])
 ];
 static size_t yl_tui_installed_signal_count;
+static volatile sig_atomic_t yl_tui_pending_signal;
 
-static void yl_tui_signal_exit(int signal_number) {
-    (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &yl_tui_saved_termios);
-    static const char cursor_restore[] = "\033[?25h";
-    (void)write(STDOUT_FILENO, cursor_restore, sizeof(cursor_restore) - 1U);
-    _exit(128 + signal_number);
+static void yl_tui_signal_notice(int signal_number) {
+    /* Signal handlers may only record the event; terminal I/O is deferred. */
+    yl_tui_pending_signal = (sig_atomic_t)signal_number;
 }
 
 static bool yl_tui_install_signal_handlers(void) {
     struct sigaction action;
     memset(&action, 0, sizeof(action));
-    action.sa_handler = yl_tui_signal_exit;
+    action.sa_handler = yl_tui_signal_notice;
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
     const size_t signal_count = sizeof(yl_tui_signals) / sizeof(yl_tui_signals[0]);
@@ -1988,22 +2007,38 @@ static void yl_tui_restore(void) {
         if (yl_tui_input_handle != NULL &&
             yl_tui_input_handle != INVALID_HANDLE_VALUE)
             (void)SetConsoleMode(yl_tui_input_handle, yl_tui_saved_input_mode);
+        /* Show the cursor while VT processing is still enabled. */
+        if (yl_tui_vt_output_enabled) {
+            (void)fputs("\033[?25h", stdout);
+            (void)fflush(stdout);
+            yl_tui_vt_output_enabled = false;
+        }
         if (yl_tui_output_mode_saved &&
             yl_tui_output_handle != NULL &&
             yl_tui_output_handle != INVALID_HANDLE_VALUE)
             (void)SetConsoleMode(yl_tui_output_handle, yl_tui_saved_output_mode);
         yl_tui_output_mode_saved = false;
 #else
-        (void)tcsetattr(STDIN_FILENO, TCSAFLUSH, &yl_tui_saved_termios);
-#endif
+        (void)tcsetattr(STDIN_FILENO, TCSANOW, &yl_tui_saved_termios);
         (void)fputs("\033[?25h", stdout);
         (void)fflush(stdout);
+#endif
         yl_tui_active = false;
     }
 #ifndef _WIN32
     yl_tui_restore_signal_handlers();
 #endif
 }
+
+#ifndef _WIN32
+static void yl_tui_exit_for_pending_signal(void) {
+    sig_atomic_t signal_number = yl_tui_pending_signal;
+    if (signal_number == 0) return;
+    yl_tui_pending_signal = 0;
+    yl_tui_restore();
+    _exit(128 + (int)signal_number);
+}
+#endif
 
 static bool yl_tui_init(void) {
     if (yl_tui_active) return true;
@@ -2044,6 +2079,7 @@ static bool yl_tui_init(void) {
         yl_tui_set_error("could not enable ANSI output for the Windows console");
         return false;
     }
+    yl_tui_vt_output_enabled = true;
 #else
     yl_tui_restore();
     yl_tui_set_error("this Windows SDK does not expose virtual-terminal output support");
@@ -2059,6 +2095,7 @@ static bool yl_tui_init(void) {
     raw.c_iflag &= (tcflag_t)~(IXON | ICRNL);
     raw.c_cc[VMIN] = 1;
     raw.c_cc[VTIME] = 0;
+    yl_tui_pending_signal = 0;
     if (!yl_tui_install_signal_handlers()) {
         yl_tui_set_error("could not install terminal restoration signal handlers");
         return false;
@@ -2092,18 +2129,56 @@ static bool yl_tui_read_byte_timeout(unsigned char *value, int timeout_ms) {
     timeout.tv_sec = timeout_ms / 1000;
     timeout.tv_usec = (timeout_ms % 1000) * 1000;
     int ready;
-    do { ready = select(STDIN_FILENO + 1, &read_set, NULL, NULL, &timeout); }
-    while (ready < 0 && errno == EINTR);
+    do {
+        ready = select(STDIN_FILENO + 1, &read_set, NULL, NULL, &timeout);
+        if (ready < 0 && errno == EINTR) yl_tui_exit_for_pending_signal();
+    } while (ready < 0 && errno == EINTR);
+    yl_tui_exit_for_pending_signal();
     if (ready <= 0) return false;
     ssize_t count;
-    do { count = read(STDIN_FILENO, value, 1U); }
-    while (count < 0 && errno == EINTR);
+    do {
+        count = read(STDIN_FILENO, value, 1U);
+        if (count < 0 && errno == EINTR) yl_tui_exit_for_pending_signal();
+    } while (count < 0 && errno == EINTR);
+    yl_tui_exit_for_pending_signal();
     return count == 1;
+}
+
+static bool yl_tui_read_byte_blocking(unsigned char *value) {
+    if (!value) return false;
+    for (;;) {
+        yl_tui_exit_for_pending_signal();
+        fd_set read_set;
+        FD_ZERO(&read_set);
+        FD_SET(STDIN_FILENO, &read_set);
+        struct timeval timeout = { .tv_sec = 0, .tv_usec = 100000 };
+        int ready = select(STDIN_FILENO + 1, &read_set, NULL, NULL, &timeout);
+        if (ready < 0) {
+            if (errno == EINTR) {
+                yl_tui_exit_for_pending_signal();
+                continue;
+            }
+            return false;
+        }
+        yl_tui_exit_for_pending_signal();
+        if (ready == 0) continue;
+
+        ssize_t count = read(STDIN_FILENO, value, 1U);
+        if (count < 0 && errno == EINTR) {
+            yl_tui_exit_for_pending_signal();
+            continue;
+        }
+        yl_tui_exit_for_pending_signal();
+        return count == 1;
+    }
 }
 #endif
 
 static int64_t yl_tui_read_key_internal(bool blocking) {
     if (!yl_tui_active && !yl_tui_init()) return -1;
+#ifndef _WIN32
+    yl_tui_exit_for_pending_signal();
+#endif
 #ifdef _WIN32
     if (!blocking && !_kbhit()) return -1;
     int key = _getch();
@@ -2127,8 +2202,7 @@ static int64_t yl_tui_read_key_internal(bool blocking) {
     unsigned char first = 0U;
     ssize_t count = 0;
     if (blocking) {
-        do { count = read(STDIN_FILENO, &first, 1U); }
-        while (count < 0 && errno == EINTR);
+        count = yl_tui_read_byte_blocking(&first) ? 1 : 0;
     } else {
         count = yl_tui_read_byte_timeout(&first, 0) ? 1 : 0;
     }
@@ -2255,6 +2329,7 @@ static void yl_tui_shutdown(void) {
 static const char *yl_tui_last_error(void) {
     return yl_tui_error_text[0] ? yl_tui_error_text : "No error";
 }
+#endif /* YLANG_USE_TUI */
 static const char *yl_read_file(const char *path) {
     FILE *file = fopen(path, "rb");
     if (!file) yl_runtime_error("cannot open file for reading");
@@ -2296,11 +2371,20 @@ static bool yl_write_file(const char *path, const char *content) {
     if (fclose(file) != 0) ok = false;
     return ok;
 }
-#define YL_BINARY_MAX_READ (16U * 1024U * 1024U)
+/* Shared by core byte conversion and Binary/HTTP buffer paths; keep outside the optional Binary I/O section. */
+static uint8_t yl_to_byte(int64_t value) {
+    if (value < 0 || value > 255) yl_runtime_error("byte conversion is outside the range 0..255");
+    return (uint8_t)value;
+}
+
 static bool yl_binary_seek(FILE *file, int64_t offset) {
     return file && offset >= 0 && (uint64_t)offset <= (uint64_t)LONG_MAX &&
            fseek(file, (long)offset, SEEK_SET) == 0;
 }
+
+/* Binary file and stream functions are opt-in. */
+#ifdef YLANG_USE_BINARY
+#define YL_BINARY_MAX_READ (16U * 1024U * 1024U)
 static int64_t yl_binary_size(const char *path) {
     if (!path) return -1;
     FILE *file = fopen(path, "rb");
@@ -2382,10 +2466,6 @@ static bool yl_binary_write_hex(const char *path, int64_t offset, const char *he
     return ok;
 }
 
-static uint8_t yl_to_byte(int64_t value) {
-    if (value < 0 || value > 255) yl_runtime_error("byte conversion is outside the range 0..255");
-    return (uint8_t)value;
-}
 static int64_t yl_binary_read_bytes(const char *path, int64_t offset,
                                     uint8_t *buffer, size_t capacity) {
     if (!path || (!buffer && capacity != 0U) || offset < 0 ||
@@ -2533,6 +2613,7 @@ static void yl_binary_stream_shutdown(void) {
         }
     }
 }
+#endif /* YLANG_USE_BINARY */
 static bool yl_path_exists(const char *path) {
     struct stat info;
     return path && stat(path, &info) == 0;
@@ -2590,6 +2671,8 @@ static bool yl_image_open(const char *path) {
 #endif
 
 
+/* Byte buffers also back HTTP stream_read_buffer. */
+#if defined(YLANG_USE_BINARY) || defined(YLANG_USE_HTTP)
 #define YL_BINARY_BUFFER_SLOTS 64U
 #define YL_BINARY_BUFFER_MAX (256U * 1024U * 1024U)
 typedef struct {
@@ -2847,3 +2930,4 @@ static void yl_binary_buffer_shutdown(void) {
         memset(&yl_binary_buffers[i], 0, sizeof(yl_binary_buffers[i]));
     }
 }
+#endif /* YLANG_USE_BINARY || YLANG_USE_HTTP */

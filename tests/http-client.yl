@@ -149,5 +149,18 @@ function main() -> int {
     print(oversized_headers);
     print(string.length(http.last_error()) > 0);
     print(string.contains(http.last_error(), "16 KiB"));
+
+    // A plaintext loopback server must never be accepted as a valid HTTPS peer.
+    let string tls_url = string.concat("https://127.0.0.1:", port);
+    let owned_string tls_failure = http.get(string.concat(tls_url, "/hello"));
+    print(string.length(tls_failure) == 0);
+    print(http.status() == 0);
+    print(string.length(http.last_error()) > 0);
+
+    // The fixture responds after the documented 15-second total request timeout.
+    let owned_string timed_out = http.get(string.concat(base, "/timeout"));
+    print(string.length(timed_out) == 0);
+    print(http.status() == 0);
+    print(string.length(http.last_error()) > 0);
     return 0;
 }

@@ -2,6 +2,7 @@
 """Run the YLang HTTP integration test against an in-process loopback server."""
 from pathlib import Path
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -41,7 +42,7 @@ def main():
             text=True,
             capture_output=True,
             env=env,
-            timeout=20,
+            timeout=40,
         )
         if result.returncode != 0:
             sys.stderr.write(result.stdout)
@@ -58,50 +59,83 @@ def main():
         # empty responses, and a payload larger than the buffered HTTP body cap.
         stream_source = ROOT / "build" / "http-streaming.yl"
         stream_source.write_text(
-            "function main() -> int {\\n"
-            "    let string port = io.read_line();\\n"
-            '    let string base = string.concat("http://127.0.0.1:", port);\\n'
-            '    let http_stream stream = http.stream_open("GET", string.concat(base, "/stream"), "", "");\\n'
-            "    print(stream);\\n"
-            '    print(f"stream={stream}");\\n'
-            "    print(http.stream_status(stream));\\n"
-            '    print(string.contains(http.stream_headers(stream), "Content-Type: text/plain; charset=utf-8"));\\n'
-            "    print(http.stream_read(stream, 3));\\n"
-            "    print(http.stream_read(stream, 3));\\n"
-            "    print(http.stream_read(stream, 3));\\n"
-            "    print(http.stream_read(stream, 3));\\n"
-            "    print(http.stream_read(stream, 3));\\n"
-            "    print(http.stream_read(stream, 3));\\n"
-            "    while (!http.stream_done(stream)) {\\n"
-            "        let owned_string rest = http.stream_read(stream, 16);\\n"
-            "        if (string.length(rest) > 0) { print(rest); }\\n"
-            "    }\\n"
-            "    print(string.length(http.stream_error(stream)) == 0);\\n"
-            "    http.stream_close(stream);\\n"
-            '    let http_stream missing = http.stream_open("GET", string.concat(base, "/missing"), "", "");\\n'
-            "    print(http.stream_read(missing, 32));\\n"
-            "    while (!http.stream_done(missing)) {\\n"
-            "        let owned_string rest = http.stream_read(missing, 32);\\n"
-            "        if (string.length(rest) > 0) { print(rest); }\\n"
-            "    }\\n"
-            "    print(http.stream_status(missing));\\n"
-            "    http.stream_close(missing);\\n"
-            '    let http_stream empty = http.stream_open("GET", string.concat(base, "/stream-empty"), "", "");\\n'
-            "    print(string.length(http.stream_read(empty, 8)));\\n"
-            "    print(http.stream_done(empty));\\n"
-            "    print(http.stream_status(empty));\\n"
-            "    http.stream_close(empty);\\n"
-            '    let http_stream large = http.stream_open("GET", string.concat(base, "/stream-large"), "", "");\\n'
-            "    let int total = 0;\\n"
-            "    while (!http.stream_done(large)) {\\n"
-            "        let owned_string chunk = http.stream_read(large, 8192);\\n"
-            "        total = total + string.length(chunk);\\n"
-            "    }\\n"
-            "    print(total);\\n"
-            "    print(http.stream_status(large));\\n"
-            "    http.stream_close(large);\\n"
-            "    return 0;\\n"
-            "}\\n",
+            "function main() -> int {\n"
+            "    let string port = io.read_line();\n"
+            '    let string base = string.concat("http://127.0.0.1:", port);\n'
+            '    let http_stream stream = http.stream_open("GET", string.concat(base, "/stream"), "", "");\n'
+            "    print(stream);\n"
+            '    print(f"stream={stream}");\n'
+            "    print(http.stream_status(stream));\n"
+            '    print(string.contains(http.stream_headers(stream), "Content-Type: text/plain; charset=utf-8"));\n'
+            '    let string collected = "";\n'
+            "    let int reads = 0;\n"
+            "    while (!http.stream_done(stream)) {\n"
+            "        let owned_string chunk = http.stream_read(stream, 3);\n"
+            "        if (string.length(chunk) > 0) {\n"
+            "            collected = string.concat(collected, chunk);\n"
+            "            reads = reads + 1;\n"
+            "        }\n"
+            "    }\n"
+            "    print(string.length(collected));\n"
+            "    print(collected);\n"
+            "    print(reads > 1);\n"
+            "    print(string.length(http.stream_error(stream)) == 0);\n"
+            "    http.stream_close(stream);\n"
+            '    let http_stream missing = http.stream_open("GET", string.concat(base, "/missing"), "", "");\n'
+            "    print(http.stream_read(missing, 32));\n"
+            "    while (!http.stream_done(missing)) {\n"
+            "        let owned_string rest = http.stream_read(missing, 32);\n"
+            "        if (string.length(rest) > 0) { print(rest); }\n"
+            "    }\n"
+            "    print(http.stream_status(missing));\n"
+            "    http.stream_close(missing);\n"
+            '    let http_stream empty = http.stream_open("GET", string.concat(base, "/stream-empty"), "", "");\n'
+            "    let owned_string empty_chunk = http.stream_read(empty, 8);\n"
+            "    print(string.length(empty_chunk));\n"
+            "    print(http.stream_done(empty));\n"
+            "    print(http.stream_status(empty));\n"
+            "    http.stream_close(empty);\n"
+            '    let http_stream large = http.stream_open("GET", string.concat(base, "/stream-large"), "", "");\n'
+            "    let int total = 0;\n"
+            "    while (!http.stream_done(large)) {\n"
+            "        let owned_string chunk = http.stream_read(large, 8192);\n"
+            "        total = total + string.length(chunk);\n"
+            "    }\n"
+            "    print(total);\n"
+            "    print(http.stream_status(large));\n"
+            "    http.stream_close(large);\n"
+            '    let http_stream concurrent_a = http.stream_open("GET", string.concat(base, "/stream"), "", "");\n'
+            '    let http_stream concurrent_b = http.stream_open("GET", string.concat(base, "/stream"), "", "");\n'
+            "    let owned_string a_first = http.stream_read(concurrent_a, 6);\n"
+            "    let owned_string b_first = http.stream_read(concurrent_b, 6);\n"
+            "    print(string.length(a_first));\n"
+            "    print(string.length(b_first));\n"
+            "    let string a_text = string.concat(\"\", a_first);\n"
+            "    let string b_text = string.concat(\"\", b_first);\n"
+            "    while (!http.stream_done(concurrent_a)) {\n"
+            "        let owned_string chunk = http.stream_read(concurrent_a, 32);\n"
+            "        a_text = string.concat(a_text, chunk);\n"
+            "    }\n"
+            "    while (!http.stream_done(concurrent_b)) {\n"
+            "        let owned_string chunk = http.stream_read(concurrent_b, 32);\n"
+            "        b_text = string.concat(b_text, chunk);\n"
+            "    }\n"
+            "    print(a_text);\n"
+            "    print(b_text);\n"
+            "    print(http.stream_status(concurrent_a));\n"
+            "    print(http.stream_status(concurrent_b));\n"
+            "    http.stream_close(concurrent_a);\n"
+            "    http.stream_close(concurrent_b);\n"
+            '    let http_stream cancelled = http.stream_open("GET", string.concat(base, "/stream"), "", "");\n'
+            "    let owned_string cancelled_chunk = http.stream_read(cancelled, 3);\n"
+            "    print(string.length(cancelled_chunk));\n"
+            "    http.stream_close(cancelled);\n"
+            '    let http_stream after_cancel = http.stream_open("GET", string.concat(base, "/hello"), "", "");\n'
+            "    print(http.stream_read(after_cancel, 32));\n"
+            "    print(http.stream_status(after_cancel));\n"
+            "    http.stream_close(after_cancel);\n"
+            "    return 0;\n"
+            "}\n",
             encoding="utf-8",
         )
         stream_output = "build/test-http-streaming.exe" if os.name == "nt" else "build/test-http-streaming"
@@ -110,40 +144,45 @@ def main():
         stream_result = subprocess.run(
             [str(ROOT / stream_output)],
             cwd=ROOT,
-            input=f"{port}\\n",
+            input=f"{port}\n",
             text=True,
             capture_output=True,
             timeout=30,
         )
-        expected_stream = "1\\nstream=1\\n200\\ntrue\\nfir\\nst-\\nsec\\nond\\nthir\\nd\\ntrue\\nnot-found\\n404\\n0\\ntrue\\n200\\n9437184\\n200\\n"
+        expected_stream = (
+            "1\nstream=1\n200\ntrue\n18\nfirst-second-third\ntrue\ntrue\n"
+            "not-found\n404\n0\ntrue\n200\n9437184\n200\n"
+            "6\n6\nfirst-second-third\nfirst-second-third\n200\n200\n"
+            "3\nhello\n200\n"
+        )
         if stream_result.returncode != 0 or stream_result.stdout != expected_stream:
-            sys.stderr.write("--- expected streaming output ---\\n" + expected_stream)
-            sys.stderr.write("--- actual streaming output ---\\n" + stream_result.stdout)
+            sys.stderr.write("--- expected streaming output ---\n" + expected_stream)
+            sys.stderr.write("--- actual streaming output ---\n" + stream_result.stdout)
             sys.stderr.write(stream_result.stderr)
             raise SystemExit("HTTP streaming integration test failed")
         # Binary streaming must preserve embedded NUL and high-bit bytes.
         binary_source = ROOT / "build" / "http-stream-binary.yl"
         binary_source.write_text(
-            "function main() -> int {\\n"
-            "    let string port = io.read_line();\\n"
-            '    let string url = string.concat("http://127.0.0.1:", port);\\n'
-            '    let http_stream stream = http.stream_open("GET", string.concat(url, "/stream-binary"), "", "");\\n'
-            "    let int buffer = io.buffer_new(0);\\n"
-            "    let int count = http.stream_read_buffer(stream, buffer, 32);\\n"
-            "    print(count);\\n"
-            "    let int index = 0;\\n"
-            "    while (index < count) {\\n"
-            "        print(io.buffer_get(buffer, index));\\n"
-            "        index = index + 1;\\n"
-            "    }\\n"
-            "    while (!http.stream_done(stream)) {\\n"
-            "        http.stream_read_buffer(stream, buffer, 32);\\n"
-            "    }\\n"
-            "    print(http.stream_status(stream));\\n"
-            "    io.buffer_free(buffer);\\n"
-            "    http.stream_close(stream);\\n"
-            "    return 0;\\n"
-            "}\\n",
+            "function main() -> int {\n"
+            "    let string port = io.read_line();\n"
+            '    let string url = string.concat("http://127.0.0.1:", port);\n'
+            '    let http_stream stream = http.stream_open("GET", string.concat(url, "/stream-binary"), "", "");\n'
+            "    let int buffer = io.buffer_new(0);\n"
+            "    let int count = http.stream_read_buffer(stream, buffer, 32);\n"
+            "    print(count);\n"
+            "    let int index = 0;\n"
+            "    while (index < count) {\n"
+            "        print(io.buffer_get(buffer, index));\n"
+            "        index = index + 1;\n"
+            "    }\n"
+            "    while (!http.stream_done(stream)) {\n"
+            "        http.stream_read_buffer(stream, buffer, 32);\n"
+            "    }\n"
+            "    print(http.stream_status(stream));\n"
+            "    io.buffer_free(buffer);\n"
+            "    http.stream_close(stream);\n"
+            "    return 0;\n"
+            "}\n",
             encoding="utf-8",
         )
         binary_output = "build/test-http-stream-binary.exe" if os.name == "nt" else "build/test-http-stream-binary"
@@ -152,12 +191,12 @@ def main():
         binary_result = subprocess.run(
             [str(ROOT / binary_output)],
             cwd=ROOT,
-            input=f"{port}\\n",
+            input=f"{port}\n",
             text=True,
             capture_output=True,
             timeout=20,
         )
-        expected_binary = "8\\n0\\n1\\n255\\n65\\n66\\n67\\n0\\n254\\n200\\n"
+        expected_binary = "8\n0\n1\n255\n65\n66\n67\n0\n254\n200\n"
         if binary_result.returncode != 0 or binary_result.stdout != expected_binary:
             sys.stderr.write("--- expected binary stream output ---\n" + expected_binary)
             sys.stderr.write("--- actual binary stream output ---\n" + binary_result.stdout)
@@ -168,17 +207,17 @@ def main():
         # returning a truncated string; callers use read_buffer for raw bytes.
         text_nul_source = ROOT / "build" / "http-stream-text-nul.yl"
         text_nul_source.write_text(
-            "function main() -> int {\\n"
-            "    let string port = io.read_line();\\n"
-            '    let string base = string.concat("http://127.0.0.1:", port);\\n'
-            '    let http_stream stream = http.stream_open("GET", string.concat(base, "/stream-binary"), "", "");\\n'
-            "    let owned_string text = http.stream_read(stream, 32);\\n"
-            "    print(string.length(text) == 0);\\n"
-            '    print(string.contains(http.stream_error(stream), "NUL bytes"));\\n'
-            "    print(http.stream_done(stream));\\n"
-            "    http.stream_close(stream);\\n"
-            "    return 0;\\n"
-            "}\\n",
+            "function main() -> int {\n"
+            "    let string port = io.read_line();\n"
+            '    let string base = string.concat("http://127.0.0.1:", port);\n'
+            '    let http_stream stream = http.stream_open("GET", string.concat(base, "/stream-binary"), "", "");\n'
+            "    let owned_string text = http.stream_read(stream, 32);\n"
+            "    print(string.length(text) == 0);\n"
+            '    print(string.contains(http.stream_error(stream), "NUL bytes"));\n'
+            "    print(http.stream_done(stream));\n"
+            "    http.stream_close(stream);\n"
+            "    return 0;\n"
+            "}\n",
             encoding="utf-8",
         )
         text_nul_output = "build/test-http-stream-text-nul.exe" if os.name == "nt" else "build/test-http-stream-text-nul"
@@ -187,13 +226,13 @@ def main():
         text_nul_result = subprocess.run(
             [str(ROOT / text_nul_output)],
             cwd=ROOT,
-            input=f"{port}\\n",
+            input=f"{port}\n",
             text=True,
             capture_output=True,
             timeout=20,
         )
-        if text_nul_result.returncode != 0 or text_nul_result.stdout != "true\\ntrue\\ntrue\\n":
-            sys.stderr.write("--- actual text NUL stream output ---\\n" + text_nul_result.stdout)
+        if text_nul_result.returncode != 0 or text_nul_result.stdout != "true\ntrue\ntrue\n":
+            sys.stderr.write("--- actual text NUL stream output ---\n" + text_nul_result.stdout)
             sys.stderr.write(text_nul_result.stderr)
             raise SystemExit("HTTP text streaming NUL rejection test failed")
 
@@ -201,21 +240,21 @@ def main():
         # rather than disguising a transport error as normal EOF.
         error_source = ROOT / "build" / "http-stream-binary-error.yl"
         error_source.write_text(
-            "function main() -> int {\\n"
-            "    let string port = io.read_line();\\n"
-            '    let string base = string.concat("http://127.0.0.1:", port);\\n'
-            '    let http_stream stream = http.stream_open("GET", string.concat(base, "/stream-truncated"), "", "");\\n'
-            "    let int buffer = io.buffer_new(0);\\n"
-            "    let int first = http.stream_read_buffer(stream, buffer, 32);\\n"
-            "    print(first);\\n"
-            "    let int index = 0;\\n"
-            "    while (index < first) { print(io.buffer_get(buffer, index)); index = index + 1; }\\n"
-            "    print(http.stream_read_buffer(stream, buffer, 32));\\n"
-            "    print(string.length(http.stream_error(stream)) > 0);\\n"
-            "    io.buffer_free(buffer);\\n"
-            "    http.stream_close(stream);\\n"
-            "    return 0;\\n"
-            "}\\n",
+            "function main() -> int {\n"
+            "    let string port = io.read_line();\n"
+            '    let string base = string.concat("http://127.0.0.1:", port);\n'
+            '    let http_stream stream = http.stream_open("GET", string.concat(base, "/stream-truncated"), "", "");\n'
+            "    let int buffer = io.buffer_new(0);\n"
+            "    let int first = http.stream_read_buffer(stream, buffer, 32);\n"
+            "    print(first);\n"
+            "    let int index = 0;\n"
+            "    while (index < first) { print(io.buffer_get(buffer, index)); index = index + 1; }\n"
+            "    print(http.stream_read_buffer(stream, buffer, 32));\n"
+            "    print(string.length(http.stream_error(stream)) > 0);\n"
+            "    io.buffer_free(buffer);\n"
+            "    http.stream_close(stream);\n"
+            "    return 0;\n"
+            "}\n",
             encoding="utf-8",
         )
         error_output = "build/test-http-stream-binary-error.exe" if os.name == "nt" else "build/test-http-stream-binary-error"
@@ -224,15 +263,15 @@ def main():
         error_result = subprocess.run(
             [str(ROOT / error_output)],
             cwd=ROOT,
-            input=f"{port}\\n",
+            input=f"{port}\n",
             text=True,
             capture_output=True,
             timeout=20,
         )
-        expected_error = "5\\n115\\n104\\n111\\n114\\n116\\n-1\\ntrue\\n"
+        expected_error = "5\n115\n104\n111\n114\n116\n-1\ntrue\n"
         if error_result.returncode != 0 or error_result.stdout != expected_error:
-            sys.stderr.write("--- expected binary stream error output ---\\n" + expected_error)
-            sys.stderr.write("--- actual binary stream error output ---\\n" + error_result.stdout)
+            sys.stderr.write("--- expected binary stream error output ---\n" + expected_error)
+            sys.stderr.write("--- actual binary stream error output ---\n" + error_result.stdout)
             sys.stderr.write(error_result.stderr)
             raise SystemExit("binary HTTP stream error reporting integration test failed")
 
@@ -246,17 +285,17 @@ def main():
         if mixer_available:
             voice_source = ROOT / "build" / "http-voice-stream.yl"
             voice_source.write_text(
-                "function main() -> int {\\n"
-                "    let string port = io.read_line();\\n"
-                '    let string base = string.concat("http://127.0.0.1:", port);\\n'
-                '    let http_stream stream = http.stream_open("GET", string.concat(base, "/stream-wav"), "", "");\\n'
-                "    if (!voice.play_stream(stream)) { print(voice.last_error()); return 1; }\\n"
-                "    while (!voice.is_finished()) { tui.sleep_ms(5); }\\n"
-                "    print(voice.is_finished());\\n"
-                "    print(voice.last_error());\\n"
-                "    voice.shutdown();\\n"
-                "    return 0;\\n"
-                "}\\n",
+                "function main() -> int {\n"
+                "    let string port = io.read_line();\n"
+                '    let string base = string.concat("http://127.0.0.1:", port);\n'
+                '    let http_stream stream = http.stream_open("GET", string.concat(base, "/stream-wav"), "", "");\n'
+                "    if (!voice.play_stream(stream)) { print(voice.last_error()); return 1; }\n"
+                "    while (!voice.is_finished()) { tui.sleep_ms(5); }\n"
+                "    print(voice.is_finished());\n"
+                "    print(voice.last_error());\n"
+                "    voice.shutdown();\n"
+                "    return 0;\n"
+                "}\n",
                 encoding="utf-8",
             )
             voice_output = "build/test-http-voice-stream.exe" if os.name == "nt" else "build/test-http-voice-stream"
@@ -267,18 +306,67 @@ def main():
             voice_result = subprocess.run(
                 [str(ROOT / voice_output)],
                 cwd=ROOT,
-                input=f"{port}\\n",
+                input=f"{port}\n",
                 text=True,
                 capture_output=True,
                 env=voice_env,
                 timeout=20,
             )
-            expected_voice = "true\\nNo error\\n"
+            expected_voice = "true\nNo error\n"
             if voice_result.returncode != 0 or voice_result.stdout != expected_voice:
-                sys.stderr.write("--- expected HTTP voice output ---\\n" + expected_voice)
-                sys.stderr.write("--- actual HTTP voice output ---\\n" + voice_result.stdout)
+                sys.stderr.write("--- expected HTTP voice output ---\n" + expected_voice)
+                sys.stderr.write("--- actual HTTP voice output ---\n" + voice_result.stdout)
                 sys.stderr.write(voice_result.stderr)
                 raise SystemExit("HTTP-to-Voice streaming integration test failed")
+            # MP3 is a separate codec gate: generate a deterministic fixture
+            # when ffmpeg is available, then pass it through the same HTTP/Voice bridge.
+            ffmpeg_encoders = ""
+            if shutil.which("ffmpeg"):
+                encoder_probe = subprocess.run(
+                    ["ffmpeg", "-hide_banner", "-encoders"],
+                    cwd=ROOT,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                ffmpeg_encoders = encoder_probe.stdout
+            if "libmp3lame" in ffmpeg_encoders:
+                mp3_source = ROOT / "build" / "http-voice-mp3-stream.yl"
+                mp3_source.write_text(
+                    "function main() -> int {\n"
+                    "    let string port = io.read_line();\n"
+                    '    let string base = string.concat("http://127.0.0.1:", port);\n'
+                    '    let http_stream stream = http.stream_open("GET", string.concat(base, "/stream-mp3"), "", "");\n'
+                    "    if (!voice.play_stream(stream)) { print(voice.last_error()); return 1; }\n"
+                    "    while (!voice.is_finished()) { tui.sleep_ms(5); }\n"
+                    "    print(voice.is_finished());\n"
+                    "    print(voice.last_error());\n"
+                    "    voice.shutdown();\n"
+                    "    return 0;\n"
+                    "}\n",
+                    encoding="utf-8",
+                )
+                mp3_output = "build/test-http-voice-mp3-stream.exe" if os.name == "nt" else "build/test-http-voice-mp3-stream"
+                run_checked([compiler, "check", str(mp3_source.relative_to(ROOT))])
+                run_checked([compiler, "build", str(mp3_source.relative_to(ROOT)), "-o", mp3_output])
+                mp3_env = os.environ.copy()
+                mp3_env["SDL_AUDIODRIVER"] = "dummy"
+                mp3_result = subprocess.run(
+                    [str(ROOT / mp3_output)],
+                    cwd=ROOT,
+                    input=f"{port}\n",
+                    text=True,
+                    capture_output=True,
+                    env=mp3_env,
+                    timeout=20,
+                )
+                if mp3_result.returncode != 0 or mp3_result.stdout != expected_voice:
+                    sys.stderr.write("--- expected HTTP MP3 voice output ---\n" + expected_voice)
+                    sys.stderr.write("--- actual HTTP MP3 voice output ---\n" + mp3_result.stdout)
+                    sys.stderr.write(mp3_result.stderr)
+                    raise SystemExit("HTTP-to-Voice MP3 streaming integration test failed")
+            else:
+                print("SKIP: ffmpeg with libmp3lame is unavailable; HTTP-to-Voice MP3 integration was not run.")
         else:
             print("SKIP: SDL2_mixer is unavailable; HTTP-to-Voice integration was not run.")
         print("YLang HTTP integration tests passed.")

@@ -6,9 +6,13 @@ This book is organized as a guided course and a technical reference. You can rea
 
 The online edition is the canonical book. It is maintained alongside the compiler and its reference documents, so corrections can be published without maintaining a separate PDF edition. The tutorial explains how to use YLang; the reference chapters describe exact syntax, supported behavior, and known restrictions.
 
+## العربية
+
+يمكنك قراءة [المسار التعليمي العربي](ar/start-here.html)، كما يمكنك فتح [بوابة الوثائق العربية](https://yassine-jemi01.github.io/ylang/docs-ar.html). الشروحات الأساسية متاحة بالعربية، بينما تبقى أداة YLanglings وتمارينها وتلميحاتها وواجهتها بالإنجليزية. رسائل المترجم وأكواد التشخيص وأسماء API تبقى بالإنجليزية.
+
 ## Which version does this book describe?
 
-This edition documents **YLang 2.2.0**, the current stable release at the time of writing. The project is also developing YLang 2.3.0; its [development notes](reference/CHANGELOG-2.3.0.md), [release gates](reference/ROADMAP-2.3.0.md), and [pre-release checklist](reference/RELEASE-CHECKLIST-2.3.0.md) describe unreleased work and do not change the stable version.
+This edition documents **YLang 2.3.0**, the current stable release. Its [release notes](reference/CHANGELOG-2.3.0.md) summarize the compiler, standard-library, tooling, and documentation changes in this version. The [release roadmap](reference/ROADMAP-2.3.0.md) records the scope and explicit exclusions of the milestone.
 
 The stable core uses explicit types and the default C-backend workflow. Some features added around the core are experimental and have narrower support:
 
@@ -17,7 +21,7 @@ The stable core uses explicit types and the default C-backend workflow. Some fea
 - Structs, enums, named imports, GUI/Game2D, the NASM backend, native Windows support, and YSPM packaging have feature-specific restrictions.
 - The NASM backend does not support every program accepted by the C backend.
 - YLang does not claim Rust-level memory safety and does not provide a security sandbox.
-- \`Option<T>\` and \`Result<T, E>\` remain design proposals, not supported language constructs.
+- `Option<T>` and `Result<T, E>` remain design proposals, not supported language constructs.
 
 Always check the relevant reference chapter before depending on an experimental feature in a project. A construct being accepted by one compiler stage does not guarantee that every backend supports it.
 

@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#1d3b56">
-  <meta name="description" content="YLang 2.2.0 stable documentation, experimental references, and the unreleased 2.3.0 development roadmap.">
+  <meta name="description" content="YLang 2.3.0 stable documentation, experimental references, and release notes.">
   <meta property="og:title" content="YLang Documentation">
-  <meta property="og:description" content="Find the stable core language guide, compiler instructions, and clearly marked experimental and 2.3 development references.">
+  <meta property="og:description" content="Find the stable core language guide, compiler instructions, and clearly marked experimental references and YLang 2.3.0 release notes.">
   <title>YLang Documentation</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
@@ -24,10 +24,11 @@
         <a href="learn/index.html">Online book</a>
         <a href="#stable-guide">Reference docs</a>
         <a href="#experimental-reference">Experimental</a>
-        <a href="#development-23">2.3 roadmap</a>
+        <a href="#release-23">2.3 release</a>
         <a href="#compiler">Build</a>
       </nav>
       <div class="nav-actions">
+        <a class="nav-github" href="docs-ar.html" hreflang="ar">Arabic</a>
         <a class="nav-github" href="https://github.com/Yassine-Jemi01/ylang">GitHub ↗</a>
         <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open navigation"><span></span><span></span></button>
       </div>
@@ -39,10 +40,10 @@
       <div class="container">
         <p class="eyebrow">DOCUMENTATION</p>
         <h1>Find the right <span>reference.</span></h1>
-        <p class="docs-lede">Start with the YLang 2.2.0 online book, then use the technical references for the stable language, experimental extensions, and 2.3 development work.</p>
+        <p class="docs-lede">Start with the YLang 2.3.0 online book, then use the technical references for the stable language and experimental extensions.</p>
         <div class="docs-version-row">
-          <span><i class="version-mark" aria-hidden="true"></i> Current release <strong>2.2.0</strong></span>
-          <a href="https://github.com/Yassine-Jemi01/ylang/releases/tag/v2.2.0">2.2.0 release notes ↗</a>
+          <span><i class="version-mark" aria-hidden="true"></i> Current release <strong>2.3.0</strong></span>
+          <a href="https://github.com/Yassine-Jemi01/ylang/releases/tag/v2.3.0">2.3.0 release notes ↗</a>
         </div>
       </div>
     </section>
@@ -127,7 +128,7 @@
           <a class="docs-card" href="learn/reference/CHANGELOG-2.2.0.html">
             <span class="docs-card-kicker">RELEASE NOTES</span><h3>YLang 2.2.0 release notes</h3>
             <p>Review changes and known limitations for the published release.</p>
-            <span class="docs-card-link">Read development notes ↗</span>
+            <span class="docs-card-link">Read release notes ↗</span>
           </a>
           <a class="docs-card" href="learn/reference/PERFORMANCE.html">
             <span class="docs-card-kicker">MEASURED PERFORMANCE</span><h3>Native benchmark guide</h3>
@@ -143,26 +144,26 @@
       </div>
     </section>
 
-    <section class="docs-section docs-section-alt" id="development-23">
+    <section class="docs-section docs-section-alt" id="release-23">
       <div class="container">
         <div class="docs-section-head">
-          <div><p class="eyebrow">03 / IN DEVELOPMENT</p><h2>Follow YLang 2.3.0</h2></div>
-          <p>YLang 2.2.0 remains the latest stable release. These documents describe unreleased 2.3 work; validation and release gates are still pending.</p>
+          <div><p class="eyebrow">03 / RELEASE 2.3.0</p><h2>YLang 2.3.0 release</h2></div>
+          <p>YLang 2.3.0 is the latest stable release. Read the final release notes and compatibility boundaries below.</p>
         </div>
         <div class="docs-resource-grid">
           <a class="docs-card docs-card-featured" href="learn/reference/ROADMAP-2.3.0.html">
-            <span class="docs-card-kicker">RELEASE SCOPE</span><h3>YLang 2.3.0 roadmap</h3>
-            <p>See the accepted scope, explicit exclusions, and the checklist required before a stable release.</p>
+            <span class="docs-card-kicker">STABLE RELEASE</span><h3>YLang 2.3.0 roadmap</h3>
+            <p>Review the shipped scope, compatibility boundaries, and known limitations.</p>
             <span class="docs-card-link">Read the roadmap ↗</span>
           </a>
           <a class="docs-card" href="learn/reference/CHANGELOG-2.3.0.html">
-            <span class="docs-card-kicker">DEVELOPMENT NOTES</span><h3>YLang 2.3.0 changes</h3>
-            <p>Review the compiler hardening, JSON builders, CLI updates, and design work integrated so far.</p>
-            <span class="docs-card-link">Read development notes ↗</span>
+            <span class="docs-card-kicker">RELEASE NOTES</span><h3>YLang 2.3.0 changes</h3>
+            <p>Review the compiler hardening, JSON builders, CLI updates, and standard-library improvements included in 2.3.0.</p>
+            <span class="docs-card-link">Read release notes ↗</span>
           </a>
           <a class="docs-card" href="learn/reference/JSON.html">
-            <span class="docs-card-kicker">2.2 API / 2.3 BUILDERS</span><h3>JSON standard library</h3>
-            <p>Use the stable parser and accessors, then explore the unreleased immutable raw-text builders and their limits.</p>
+            <span class="docs-card-kicker">2.3 JSON BUILDERS</span><h3>JSON standard library</h3>
+            <p>Use the JSON parser, accessors, and immutable raw-text builders with their documented limits.</p>
             <span class="docs-card-link">Read JSON reference ↗</span>
           </a>
           <a class="docs-card" href="learn/reference/CLI.html">
@@ -177,7 +178,7 @@
           </a>
           <a class="docs-card" href="learn/reference/RELEASE-CHECKLIST-2.3.0.html">
             <span class="docs-card-kicker">PRE-PUBLICATION GATES</span><h3>2.3 release checklist</h3>
-            <p>Track the exact build, sanitizer, platform, documentation, packaging, and benchmark evidence required before publication.</p>
+            <p>Review the recorded build, sanitizer, platform, documentation, packaging, and benchmark evidence for the 2.3.0 release.</p>
             <span class="docs-card-link">Review release gates ↗</span>
           </a>
           <a class="docs-card" href="learn/reference/POST-RELEASE-CHECKLIST-2.3.0.html">

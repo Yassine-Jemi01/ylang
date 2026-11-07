@@ -42,4 +42,4 @@ The script copies `website-app/` into the target repository and backs up the exi
 
 ## Claims and release status
 
-The homepage describes YLang 2.2.0 as the current stable release and the C backend as the default workflow. The NASM backend, GUI/Game2D APIs, and native Windows path remain labelled experimental.
+The homepage describes YLang 2.3.0 as the current stable release and the C backend as the default workflow. The NASM backend, GUI/Game2D APIs, and native Windows path remain labelled experimental.

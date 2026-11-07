@@ -16,58 +16,58 @@ function main() -> int {
         width = tui.width();
         tui.clear();
 
-        tui.write("\\x1b[38;2;147;212;200mYLANG\\x1b[0m");
+        tui.write("\x1b[38;2;147;212;200mYLANG\x1b[0m");
         tui.write("  /  WORKSPACE\n");
-        tui.write("\\x1b[38;2;116;141;135mA small, native terminal interface\\x1b[0m\n");
+        tui.write("\x1b[38;2;116;141;135mA small, native terminal interface\x1b[0m\n");
 
         if (width >= 62) {
-            tui.write("\\n\\x1b[38;2;215;154;115m+--------------------------------------------------+\\x1b[0m\n");
-            tui.write("\\x1b[38;2;215;154;115m|\\x1b[0m  GET STARTED                                       \\x1b[38;2;215;154;115m|\\x1b[0m\n");
-            tui.write("\\x1b[38;2;215;154;115m+--------------------------------------------------+\\x1b[0m\n");
+            tui.write("\n\x1b[38;2;215;154;115m+--------------------------------------------------+\x1b[0m\n");
+            tui.write("\x1b[38;2;215;154;115m|\x1b[0m  GET STARTED                                       \x1b[38;2;215;154;115m|\x1b[0m\n");
+            tui.write("\x1b[38;2;215;154;115m+--------------------------------------------------+\x1b[0m\n");
         } else {
-            tui.write("\\n\\x1b[38;2;215;154;115mGET STARTED\\x1b[0m\n");
-            tui.write("\\x1b[38;2;116;141;135m------------------------------------\\x1b[0m\n");
+            tui.write("\n\x1b[38;2;215;154;115mGET STARTED\x1b[0m\n");
+            tui.write("\x1b[38;2;116;141;135m------------------------------------\x1b[0m\n");
         }
 
         if (selected == 0) {
-            tui.write("\\x1b[48;2;22;125;141m\\x1b[97m  >  New project\\x1b[0m\\n");
+            tui.write("\x1b[48;2;22;125;141m\x1b[97m  >  New project\x1b[0m\n");
         }
         else {
-            tui.write("\\x1b[38;2;200;220;213m     New project\\x1b[0m\\n");
+            tui.write("\x1b[38;2;200;220;213m     New project\x1b[0m\n");
         }
         if (selected == 1) {
-            tui.write("\\x1b[48;2;22;125;141m\\x1b[97m  >  Open workspace\\x1b[0m\\n");
+            tui.write("\x1b[48;2;22;125;141m\x1b[97m  >  Open workspace\x1b[0m\n");
         }
         else {
-            tui.write("\\x1b[38;2;200;220;213m     Open workspace\\x1b[0m\\n");
+            tui.write("\x1b[38;2;200;220;213m     Open workspace\x1b[0m\n");
         }
         if (selected == 2) {
-            tui.write("\\x1b[48;2;22;125;141m\\x1b[97m  >  Settings\\x1b[0m\\n");
+            tui.write("\x1b[48;2;22;125;141m\x1b[97m  >  Settings\x1b[0m\n");
         }
         else {
-            tui.write("\\x1b[38;2;200;220;213m     Settings\\x1b[0m\\n");
+            tui.write("\x1b[38;2;200;220;213m     Settings\x1b[0m\n");
         }
         if (selected == 3) {
-            tui.write("\\x1b[48;2;22;125;141m\\x1b[97m  >  Quit\\x1b[0m\\n");
+            tui.write("\x1b[48;2;22;125;141m\x1b[97m  >  Quit\x1b[0m\n");
         }
         else {
-            tui.write("\\x1b[38;2;200;220;213m     Quit\\x1b[0m\\n");
+            tui.write("\x1b[38;2;200;220;213m     Quit\x1b[0m\n");
         }
 
         if (width >= 62) {
-            tui.write("\\x1b[38;2;215;154;115m+--------------------------------------------------+\\x1b[0m\\n");
+            tui.write("\x1b[38;2;215;154;115m+--------------------------------------------------+\x1b[0m\n");
         } else {
-            tui.write("\\x1b[38;2;116;141;135m------------------------------------\\x1b[0m\\n");
+            tui.write("\x1b[38;2;116;141;135m------------------------------------\x1b[0m\n");
         }
 
         if (width >= 44) {
-            tui.write("\\n\\x1b[38;2;147;212;200mUP / DOWN\\x1b[0m  Navigate   ");
-            tui.write("\\x1b[38;2;147;212;200mENTER\\x1b[0m  Select   ");
-            tui.write("\\x1b[38;2;147;212;200mESC\\x1b[0m  Exit\\n");
+            tui.write("\n\x1b[38;2;147;212;200mUP / DOWN\x1b[0m  Navigate   ");
+            tui.write("\x1b[38;2;147;212;200mENTER\x1b[0m  Select   ");
+            tui.write("\x1b[38;2;147;212;200mESC\x1b[0m  Exit\n");
         } else {
-            tui.write("\\n\\x1b[38;2;147;212;200mUP/DOWN\\x1b[0m Move  ");
-            tui.write("\\x1b[38;2;147;212;200mENTER\\x1b[0m Choose\\n");
-            tui.write("\\x1b[38;2;147;212;200mESC\\x1b[0m Exit\\n");
+            tui.write("\n\x1b[38;2;147;212;200mUP/DOWN\x1b[0m Move  ");
+            tui.write("\x1b[38;2;147;212;200mENTER\x1b[0m Choose\n");
+            tui.write("\x1b[38;2;147;212;200mESC\x1b[0m Exit\n");
         }
 
         let int key = tui.poll_key();
@@ -94,18 +94,18 @@ function main() -> int {
 
     tui.clear();
     tui.show_cursor();
-    tui.write("\\x1b[38;2;147;212;200mYLANG\\x1b[0m  ");
+    tui.write("\x1b[38;2;147;212;200mYLANG\x1b[0m  ");
     if (selected == 0) {
-        tui.write("New project selected.\\n");
+        tui.write("New project selected.\n");
     }
     else if (selected == 1) {
-        tui.write("Open workspace selected.\\n");
+        tui.write("Open workspace selected.\n");
     }
     else if (selected == 2) {
-        tui.write("Settings selected.\\n");
+        tui.write("Settings selected.\n");
     }
     else {
-        tui.write("Goodbye.\\n");
+        tui.write("Goodbye.\n");
     }
     tui.shutdown();
     return 0;

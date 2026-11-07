@@ -47,6 +47,9 @@ struct Compiler {
     bool uses_gui;
     bool uses_http;
     bool uses_voice;
+    bool uses_json;
+    bool uses_binary;
+    bool uses_tui;
     bool quiet_diagnostics;
 };
 

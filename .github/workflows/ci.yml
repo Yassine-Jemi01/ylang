@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Install toolchain (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y build-essential clang libclang-rt-dev nasm gdb libsdl2-dev libsdl2-mixer-dev libcurl4-openssl-dev pkg-config
+        run: sudo apt-get update && sudo apt-get install -y build-essential clang libclang-rt-dev nasm gdb ffmpeg libsdl2-dev libsdl2-mixer-dev libcurl4-openssl-dev pkg-config
       - name: Install toolchain (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -33,6 +33,7 @@ jobs:
           brew list sdl2_mixer >/dev/null 2>&1 || brew install sdl2_mixer
           brew list curl >/dev/null 2>&1 || brew install curl
           brew list pkg-config >/dev/null 2>&1 || brew install pkg-config
+          brew list ffmpeg >/dev/null 2>&1 || brew install ffmpeg
           echo "PKG_CONFIG_PATH=$(brew --prefix curl)/lib/pkgconfig:${PKG_CONFIG_PATH:-}" >> "$GITHUB_ENV"
       - name: Select compiler
         id: compiler
@@ -55,8 +56,22 @@ jobs:
         run: ${{ steps.compiler.outputs.make }} tui-example CC="${{ steps.compiler.outputs.cc }}"
       - name: Build optional Voice runtime and YLang example
         run: ${{ steps.compiler.outputs.make }} voice voice-example voice-test CC="${{ steps.compiler.outputs.cc }}"
+      - name: Verify optional runtime flags across imported modules
+        run: |
+          ./build/ylang check tests/optional-feature-imports/main.yl
+          ./build/ylang build tests/optional-feature-imports/main.yl -o build/optional-feature-imports
       - name: Run regression tests
         run: ${{ steps.compiler.outputs.make }} test CC="${{ steps.compiler.outputs.cc }}"
+      - name: Record native benchmark against stable baseline
+        if: runner.os == 'Linux' && matrix.compiler == 'gcc'
+        run: python3 benchmarks/compare-release.py --baseline v2.2.0 --cc gcc --runs 30 --warmup 3
+      - name: Upload reproducible benchmark comparison
+        if: runner.os == 'Linux' && matrix.compiler == 'gcc'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ylang-2.3-benchmark
+          path: build/release-benchmark/
+          if-no-files-found: error
       - name: Fuzz lexer/parser smoke test
         if: runner.os == 'Linux' && matrix.compiler == 'clang'
         run: make fuzz-smoke FUZZ_CC=clang
@@ -89,10 +104,19 @@ jobs:
         run: make check-runtime-template PYTHON=python
       - name: Build compiler
         run: make clean all CC=gcc PYTHON=python
+      - name: Verify compiler diagnostics remain English
+        run: python tests/check_english_diagnostics.py
+      - name: Verify unused optional runtime sections are excluded
+        run: python tests/check_runtime_feature_gates.py --cc gcc
       - name: Build optional SDL2 GUI runtime
         run: make gui gui-example game2d-example CC=gcc PYTHON=python
       - name: Build optional SDL2_mixer Voice runtime
         run: make voice CC=gcc PYTHON=python
+      - name: Verify optional runtime flags across imported modules
+        run: |
+          mkdir -p build/windows-smoke
+          ./build/ylang.exe check tests/optional-feature-imports/main.yl
+          ./build/ylang.exe build tests/optional-feature-imports/main.yl -o build/windows-smoke/optional-feature-imports.exe
       - name: Verify YLanglings CLI, install lifecycle, and full curriculum
         run: make ylanglings-test ylanglings-verify PYTHON=python
       - name: Check, compile, and run a native Windows program
@@ -145,6 +169,28 @@ jobs:
         run: |
           ./build/ylang check tests/tui-builtins.yl
           ./build/ylang build tests/tui-builtins.yl -o build/windows-smoke/tui-builtins.exe
+      - name: Exercise interactive Windows TUI input and console restoration
+        run: |
+          cat > build/windows-smoke/tui-interactive.yl <<'EOF'
+          function main() -> int {
+              print("BOOT");
+              let string gate = io.read_line();
+              if (gate != "go") { return 9; }
+              if (!tui.init()) { return 10; }
+              if (!tui.clear()) { tui.shutdown(); return 11; }
+              if (!tui.set_cursor(1, 1)) { tui.shutdown(); return 12; }
+              if (!tui.hide_cursor()) { tui.shutdown(); return 13; }
+              if (!tui.write("READY")) { tui.shutdown(); return 14; }
+              let int key = tui.read_key();
+              tui.shutdown();
+              if (key != 120) { return 15; }
+              return 0;
+          }
+          EOF
+          ./build/ylang.exe check build/windows-smoke/tui-interactive.yl
+          ./build/ylang.exe build build/windows-smoke/tui-interactive.yl -o build/windows-smoke/tui-interactive.exe
+          gcc tests/tui_windows_console_test.c -o build/windows-smoke/tui-windows-console-test.exe
+          ./build/windows-smoke/tui-windows-console-test.exe ./build/windows-smoke/tui-interactive.exe
       - name: Reject unsupported Windows interactive debugger cleanly
         run: |
           if ./build/ylang.exe debug tests/debug-source-map.yl -o build/windows-smoke/debug-unsupported.exe > build/windows-smoke/debug.out 2>&1; then
@@ -222,7 +268,7 @@ jobs:
             count="$(grep -Fc "$changelog" build/ylang-yspm/package-files.txt)"
             test "$count" -eq 1
           done
-          tar -xzOf "$package_path" metadata.json | python3 -c 'import json,sys; p=json.load(sys.stdin); assert p["name"] == "ylang"; assert p["architecture"] == "x86_64"; assert p["abi"] == "yspm-abi-1"'
+          tar -xzOf "$package_path" metadata.json | python3 -c 'import json,sys; p=json.load(sys.stdin); version=open("VERSION", encoding="utf-8").read().strip(); assert p["name"] == "ylang"; assert p["version"] == version; assert p["architecture"] == "x86_64"; assert p["abi"] == "yspm-abi-1"'
           # Compare the archived payload with the built compiler byte-for-byte.
           # The following YSPM install/remove smoke test separately exercises package extraction and permissions.
           tar -xzOf "$package_path" root/usr/bin/ylang > build/ylang-packaged-binary
@@ -284,10 +330,8 @@ jobs:
           node-version: 22
       - name: Install Tree-sitter CLI
         run: npm install --global tree-sitter-cli
-      - name: Generate YLang parser
-        run: tree-sitter generate
-      - name: Run grammar corpus tests
-        run: tree-sitter test
+      - name: Generate and test YLang parser in isolation
+        run: python3 tools/check_tree_sitter.py
 
   website-app-build:
     name: Homepage build and asset checks
@@ -314,7 +358,7 @@ jobs:
           grep -q "YLang" website-app/dist/index.html
 
   website-integrity:
-    name: English-only website integrity
+    name: Online book and website integrity
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
@@ -330,7 +374,29 @@ jobs:
           mkdir -p website/learn
           cp -a docs/online-book/book/. website/learn/
           test -s website/learn/index.html
+          test -s website/learn/ar/start-here.html
+          test -s website/learn/ar/introduction.html
+          test -s website/learn/ar/getting-started.html
+          test -s website/learn/ar/hello-world.html
+          test -s website/learn/ar/language-basics.html
+          test -s website/learn/ar/compiler-workflow.html
+          test -s website/learn/ar/types.html
+          test -s website/learn/ar/modules.html
+          test -s website/learn/ar/standard-library.html
+          test -s website/learn/ar/platform-support.html
+          test -s website/learn/ar/binary-io.html
+          test -s website/learn/ar/voice-audio.html
+          test -s website/learn/ar/tui.html
+          test -s website/learn/ar/gui-game2d.html
+          test -s website/learn/ar/cli.html
+          test -s website/learn/ar/json.html
+          test -s website/learn/ar/http.html
+          test -s website/learn/ar/diagnostics.html
+          test -s website/learn/ar/security.html
+          test -s website/learn/ar/windows.html
           test -s website/learn/ylanglings.html
+          test -s website/docs-ar.html
+          test -s website/docs-ar.css
           test -s website/learn/reference/language-spec.html
           test -s website/learn/reference/MEMORY-MODEL.html
           test -s website/learn/reference/CHANGELOG-2.1.0.html

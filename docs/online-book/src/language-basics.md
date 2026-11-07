@@ -1,12 +1,12 @@
 # Program Structure
 
-A YLang source file uses the \`.yl\` extension. The language makes types visible in declarations and function signatures, and most command-line programs define a \`main\` function that returns an integer status.
+A YLang source file uses the `.yl` extension. The language makes types visible in declarations and function signatures, and most command-line programs define a `main` function that returns an integer status.
 
 This chapter introduces the pieces that appear in many programs: functions, local variables, constants, expressions, control flow, and user-defined data. For exact grammar and compiler-specific restrictions, use the [Complete Language Specification](reference/language-spec.md).
 
 ## A complete small program
 
-\`\`\`ylang
+```ylang
 function add(int left, int right) -> int {
     return left + right;
 }
@@ -16,21 +16,21 @@ function main() -> int {
     print(total);
     return 0;
 }
-\`\`\`
+```
 
-The first function accepts two integer parameters and returns their sum. The \`main\` function calls it, stores the returned value, prints it, and returns a status code. Breaking behavior into small functions makes it easier to name the purpose of each operation and test it separately.
+The first function accepts two integer parameters and returns their sum. The `main` function calls it, stores the returned value, prints it, and returns a status code. Breaking behavior into small functions makes it easier to name the purpose of each operation and test it separately.
 
 ## Functions and signatures
 
 A function declaration includes its name, parameter list, return type, and body:
 
-\`\`\`ylang
+```ylang
 function is_positive(int value) -> bool {
     return value > 0;
 }
-\`\`\`
+```
 
-The parameter's type describes what the function expects. The return type after \`->\` describes the value callers receive. When changing a function signature, check every call site: callers must pass compatible arguments and use the returned value correctly.
+The parameter's type describes what the function expects. The return type after `->` describes the value callers receive. When changing a function signature, check every call site: callers must pass compatible arguments and use the returned value correctly.
 
 Use the compiler to confirm the exact syntax accepted by your version. Do not assume that a feature from C, Python, Rust, or another language is available merely because its syntax looks familiar.
 
@@ -38,24 +38,24 @@ Use the compiler to confirm the exact syntax accepted by your version. Do not as
 
 A mutable local uses a declaration such as:
 
-\`\`\`ylang
+```ylang
 let int score = 10;
 score = score + 1;
-\`\`\`
+```
 
-The declared type is \`int\`; the next statement reads the current value, adds one, and assigns the result back to the same binding.
+The declared type is `int`; the next statement reads the current value, adds one, and assigns the result back to the same binding.
 
-A constant declaration uses \`const\`:
+A constant declaration uses `const`:
 
-\`\`\`ylang
+```ylang
 let const string language = "YLang";
-\`\`\`
+```
 
 Initialize a local before reading it. A constant cannot be reassigned after its declaration. Prefer constants when a value should not change, because this communicates intent to readers and prevents accidental reassignment.
 
 ## Expressions and statements
 
-An expression computes a value. Examples include an integer literal such as \`42\`, a variable name such as \`score\`, and an arithmetic expression such as \`score + 1\`. A statement performs an action, such as declaring a variable, assigning a value, calling a function, or returning from a function.
+An expression computes a value. Examples include an integer literal such as `42`, a variable name such as `score`, and an arithmetic expression such as `score + 1`. A statement performs an action, such as declaring a variable, assigning a value, calling a function, or returning from a function.
 
 Keep expressions small while learning. If a diagnostic points to a long expression, split the calculation into named intermediate values; that makes the types and the source of a mismatch easier to see.
 
@@ -88,7 +88,7 @@ Continue to [Structs](reference/STRUCTS.md) and [Enums and Matching](reference/E
 
 ## Practice
 
-1. Change the example so that \`add\` adds different integer values, then check and run it.
+1. Change the example so that `add` adds different integer values, then check and run it.
 2. Add a constant string describing the result and print it alongside the total.
 3. Deliberately assign a value of the wrong type, read the complete compiler diagnostic, and then correct the declaration or expression.
 

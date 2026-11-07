@@ -4,11 +4,11 @@ The normal YLang workflow separates source checking from native compilation. A u
 
 ## 1. Check before building
 
-\`\`\`sh
+```sh
 ./build/ylang check hello.yl
-\`\`\`
+```
 
-Use \`check\` while editing. It asks the YLang compiler to validate the source and reports issues such as syntax, name, initialization, and type errors without building the final executable.
+Use `check` while editing. It asks the YLang compiler to validate the source and reports issues such as syntax, name, initialization, and type errors without building the final executable.
 
 When a check fails, start with the first diagnostic. Record the file, line, column, error code, and complete message. Fix one cause at a time and run the check again; changing several unrelated things at once makes it harder to tell which change mattered.
 
@@ -16,33 +16,33 @@ A successful check means the source passed this compiler stage. It does not prov
 
 ## 2. Build a native executable
 
-\`\`\`sh
+```sh
 ./build/ylang build hello.yl -o hello
-\`\`\`
+```
 
-The \`-o hello\` argument chooses the output path. The default backend emits C and invokes GCC or Clang. To select Clang explicitly:
+The `-o hello` argument chooses the output path. The default backend emits C and invokes GCC or Clang. To select Clang explicitly:
 
-\`\`\`sh
+```sh
 ./build/ylang build hello.yl -o hello --cc clang
-\`\`\`
+```
 
 The C compiler is part of this route: YLang does not yet have a complete general-purpose native backend independent of GCC/Clang. If the source check succeeds but the build fails, read the native compiler or linker output as well as the YLang diagnostic.
 
 ## 3. Run and verify the result
 
-On Linux or macOS, run an executable named \`hello\` from the current directory with:
+On Linux or macOS, run an executable named `hello` from the current directory with:
 
-\`\`\`sh
+```sh
 ./hello
-\`\`\`
+```
 
 Compare the actual output with the behavior you intended. For nontrivial programs, test normal input, boundary values, and failure cases. A successful build only confirms that the compilation steps completed; it does not guarantee that the program is logically correct.
 
 ## 4. Inspect generated C
 
-\`\`\`sh
+```sh
 ./build/ylang emit-c hello.yl -o build/hello.c
-\`\`\`
+```
 
 Generated C can help you understand the compilation pipeline or investigate a compiler issue. Use it as a debugging aid, not as a stable public interface unless a specific release explicitly guarantees the generated representation.
 
@@ -52,10 +52,10 @@ When inspecting output, ask a focused question: Was the source expression transl
 
 On supported Linux x86-64 systems, the compiler can emit assembly or build a program from the restricted NASM subset:
 
-\`\`\`sh
+```sh
 ./build/ylang emit-asm examples/your-program.yl -o build/your-program.asm
 ./build/ylang build-asm examples/your-program.yl -o build/your-program
-\`\`\`
+```
 
 NASM is experimental. It does not support every construct accepted by the C backend, and unsupported combinations should be rejected explicitly. Do not assume that a successful C-backend build means the same source will build with NASM. Read the [Backend Roadmap](reference/BACKEND-ROADMAP.md) before choosing the assembly route for a project.
 
@@ -65,9 +65,9 @@ If a feature works with one backend but not the other, reduce the source to a mi
 
 When working on the compiler itself, run the relevant tests after each change. The repository's main regression target is:
 
-\`\`\`sh
+```sh
 make test
-\`\`\`
+```
 
 For changes that affect code generation, backend parity, parsing, or runtime behavior, run the focused test as well as the broad suite when one is available. A test run is only a pass if it completes and reports success; a command that stopped early or skipped tests should not be described as a full pass.
 
@@ -86,4 +86,4 @@ These are starting points, not guaranteed diagnoses. Read the full error and rep
 
 ## Summary
 
-Use \`check\` for fast source feedback, \`build\` for the default native executable, \`emit-c\` to inspect the C translation, and the experimental assembly commands only when their limitations fit your project. For deeper implementation details, continue to [Compiler Architecture](reference/architecture.md).
+Use `check` for fast source feedback, `build` for the default native executable, `emit-c` to inspect the C translation, and the experimental assembly commands only when their limitations fit your project. For deeper implementation details, continue to [Compiler Architecture](reference/architecture.md).

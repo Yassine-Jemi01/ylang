@@ -174,13 +174,15 @@ class ReferenceSolutionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "solutions"
             root.mkdir()
-            (root / "valid.yl").write_text("fn main() -> int { return 0; }\\n", encoding="utf-8")
+            (root / "valid.yl").write_text("fn main() -> int { return 0; }\n", encoding="utf-8")
             outside = Path(directory) / "outside.yl"
-            outside.write_text("not a solution\\n", encoding="utf-8")
-            with mock.patch.object(ylanglings, "SOLUTIONS", root):
+            outside.write_text("not a solution\n", encoding="utf-8")
+            with mock.patch.object(ylanglings, "ROOT", Path(directory)), mock.patch.object(
+                ylanglings, "SOLUTIONS", root
+            ):
                 self.assertEqual(
                     ylanglings.solution_path({"title": "Valid", "solution": "valid.yl"}),
-                    root / "valid.yl",
+                    (root / "valid.yl").resolve(),
                 )
                 with self.assertRaisesRegex(SystemExit, "Unsafe solution path"):
                     ylanglings.solution_path({"title": "Escape", "solution": "../outside.yl"})
@@ -190,7 +192,7 @@ class ReferenceSolutionTests(unittest.TestCase):
             tool_root = Path(directory) / "tool"
             outside = Path(directory) / "outside-solutions"
             outside.mkdir()
-            (outside / "valid.yl").write_text("fn main() -> int { return 0; }\\n", encoding="utf-8")
+            (outside / "valid.yl").write_text("fn main() -> int { return 0; }\n", encoding="utf-8")
             with mock.patch.object(ylanglings, "ROOT", tool_root), mock.patch.object(
                 ylanglings, "SOLUTIONS", outside
             ):
@@ -198,15 +200,20 @@ class ReferenceSolutionTests(unittest.TestCase):
                     ylanglings.solution_path({"title": "External", "solution": "valid.yl"})
 
     def test_missing_reference_solution_has_actionable_error(self):
-        with tempfile.TemporaryDirectory() as directory, mock.patch.object(
-            ylanglings, "SOLUTIONS", Path(directory)
-        ):
-            with self.assertRaisesRegex(SystemExit, "missing solution for Missing"):
-                ylanglings.solution_path({"title": "Missing", "solution": "missing.yl"})
+        with tempfile.TemporaryDirectory() as directory:
+            tool_root = Path(directory)
+            with mock.patch.object(ylanglings, "ROOT", tool_root), mock.patch.object(
+                ylanglings, "SOLUTIONS", tool_root
+            ):
+                with self.assertRaisesRegex(SystemExit, "missing solution for Missing"):
+                    ylanglings.solution_path({"title": "Missing", "solution": "missing.yl"})
 
 
 
 class CliStateTests(unittest.TestCase):
+    def setUp(self):
+        self.manifest = ylanglings.load_manifest()
+
     def test_corrupt_progress_recovers_to_empty_state(self):
         with tempfile.TemporaryDirectory() as directory:
             progress_path = Path(directory) / "progress.json"
@@ -262,13 +269,15 @@ class CliStateTests(unittest.TestCase):
             (root / "starter").mkdir()
             exercise = root / "exercise.yl"
             starter = root / "starter" / "exercise.yl"
-            exercise.write_text("learner changes\\n", encoding="utf-8")
-            starter.write_text("original starter\\n", encoding="utf-8")
+            exercise.write_text("learner changes\n", encoding="utf-8")
+            starter.write_text("original starter\n", encoding="utf-8")
             config = Path(directory) / "config"
             progress_path = config / "progress.json"
-            with mock.patch.object(ylanglings, "EXERCISES", root), mock.patch.object(
-                ylanglings, "CONFIG", config
-            ), mock.patch.object(ylanglings, "PROGRESS", progress_path):
+            with mock.patch.object(ylanglings, "ROOT", Path(directory)), mock.patch.object(
+                ylanglings, "EXERCISES", root
+            ), mock.patch.object(ylanglings, "CONFIG", config), mock.patch.object(
+                ylanglings, "PROGRESS", progress_path
+            ):
                 ylanglings.save_progress({"completed": [1]})
                 with contextlib.redirect_stdout(io.StringIO()):
                     ylanglings.command_reset(1, [{
@@ -276,7 +285,7 @@ class CliStateTests(unittest.TestCase):
                         "file": "exercise.yl",
                         "starter": "starter/exercise.yl",
                     }])
-                self.assertEqual(exercise.read_text(encoding="utf-8"), "original starter\\n")
+                self.assertEqual(exercise.read_text(encoding="utf-8"), "original starter\n")
                 self.assertEqual(ylanglings.load_progress(), {"completed": []})
                 self.assertEqual(list(root.glob(".ylanglings-reset-*.tmp")), [])
 

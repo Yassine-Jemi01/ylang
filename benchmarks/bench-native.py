@@ -21,6 +21,30 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def host_cpu() -> str:
+    reported = platform.processor().strip()
+    if reported:
+        return reported
+    if sys.platform.startswith("linux"):
+        try:
+            for line in Path("/proc/cpuinfo").read_text(encoding="utf-8").splitlines():
+                if line.lower().startswith("model name") and ":" in line:
+                    return line.split(":", 1)[1].strip()
+        except OSError:
+            pass
+    if sys.platform == "darwin":
+        try:
+            result = subprocess.run(
+                ["sysctl", "-n", "machdep.cpu.brand_string"],
+                text=True, capture_output=True, check=False,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip()
+        except OSError:
+            pass
+    return platform.machine() or "unknown"
+
+
 def percentile(values: list[int], fraction: float) -> int:
     return sorted(values)[max(0, math.ceil(fraction * len(values)) - 1)]
 
@@ -116,7 +140,7 @@ def main() -> int:
         print(f"YLang version: {version_output}")
         print(f"Host: {platform.platform()}")
         print(f"Host architecture: {platform.machine() or 'unknown'}")
-        print(f"Host CPU: {platform.processor() or 'unknown'}")
+        print(f"Host CPU: {host_cpu()}")
         print(f"Native C compiler: {native_cc_version}")
         requested_opt = os.environ.get("YLANG_OPT_LEVEL", "").strip()
         optimization = {

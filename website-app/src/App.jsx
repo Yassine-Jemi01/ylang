@@ -83,7 +83,7 @@ function Header() {
       <div className="container nav-wrap">
         <a className="brand" href="#top" aria-label="YLang home">
           <img className="brand-wordmark" src="./ylang-logo-dark.svg" alt="YLang" width="112" height="37" />
-          <span className="brand-version">2.2</span>
+          <span className="brand-version">2.3</span>
         </a>
         <button className="mobile-menu" type="button" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen} onClick={() => setMenuOpen(v => !v)}>
           {menuOpen ? <FiX /> : <FiMenu />}
@@ -122,7 +122,7 @@ function Header() {
                   <a href={`${SITE}learn/reference/JSON.html`}><FiCode /> JSON support <FiArrowUpRight className="menu-external" /></a>
                 </DropdownMenu.Item>
                 <DropdownMenu.Item className="resource-menu-item" asChild>
-                  <a href={`${SITE}learn/reference/ROADMAP-2.3.0.html`}><FiLayers /> 2.3 development roadmap <FiArrowUpRight className="menu-external" /></a>
+                  <a href={`${SITE}learn/reference/CHANGELOG-2.3.0.html`}><FiLayers /> 2.3 release notes <FiArrowUpRight className="menu-external" /></a>
                 </DropdownMenu.Item>
                 <DropdownMenu.Item className="resource-menu-item" asChild>
                   <a href={`${SITE}classic.html`}><FiLayers /> Classic homepage <FiArrowUpRight className="menu-external" /></a>
@@ -177,7 +177,7 @@ function Hero() {
       <div className="container hero-grid">
         <div className="hero-copy">
           <p className="eyebrow"><span className="eyebrow-mark" /> OPEN SOURCE · BUILT IN THE OPEN</p>
-          <div className="release-pill"><span className="release-dot" /> Stable release <span className="pill-divider" /> v2.2.0</div>
+          <div className="release-pill"><span className="release-dot" /> Stable release <span className="pill-divider" /> v2.3.0</div>
           <h1>Readable code.<br /><span>Native programs.</span></h1>
           <p className="hero-lede">A compiled programming language with explicit types, helpful diagnostics, and a compiler you can explore. Clear syntax in your editor; a native executable at the end.</p>
           <div className="hero-actions">
@@ -186,9 +186,9 @@ function Hero() {
             <a className="button button-secondary" href={BOOK}>Read the book <FiBookOpen aria-hidden="true" /></a>
           </div>
           <p className="hero-footnote"><FiCode aria-hidden="true" /> Small language. Real compiler. Open source.</p>
-          <a className="hero-dev-link" href={`${SITE}learn/reference/ROADMAP-2.3.0.html`}>
+          <a className="hero-dev-link" href={`${SITE}learn/reference/CHANGELOG-2.3.0.html`}>
             <span className="hero-dev-dot" aria-hidden="true" />
-            YLang 2.3 is in development
+            Read the YLang 2.3 release notes
             <FiArrowUpRight aria-hidden="true" />
           </a>
         </div>
@@ -425,7 +425,7 @@ function Footer() {
           <a href={BOOK}>Book</a><a href={DOCS}>Docs</a><a href={REPO} target="_blank" rel="noreferrer">GitHub <FiArrowUpRight aria-hidden="true" /></a>
         </div>
       </div>
-      <div className="container footer-bottom"><span>Open-source programming language project.</span><span>Stable release: 2.2.0</span></div>
+      <div className="container footer-bottom"><span>Open-source programming language project.</span><span>Stable release: 2.3.0</span></div>
     </footer>
   );
 }

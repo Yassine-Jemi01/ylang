@@ -2,7 +2,10 @@ enum Direction { North, East, South, West }
 
 function main() -> int {
     let Direction facing = Direction.Up;
-    if (facing == Direction.East) print("east");
-    else print("other");
+    if (facing == Direction.East) {
+        print("east");
+    } else {
+        print("other");
+    }
     return 0;
 }

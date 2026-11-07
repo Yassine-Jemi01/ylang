@@ -1001,7 +1001,7 @@ static void emit_expr(StringBuilder *sb, Expr *expr)
                     if (i) sb_append(sb, ", ");
                     emit_expr(sb, expr->as.call.args[i]);
                 }
-                if (!stream) sb_append(sb, ", ");
+                sb_append(sb, ", ");
                 emit_expr(sb, buffer_arg);
                 sb_append(sb, ", ");
                 if (buffer && buffer->array_length > 0U)
@@ -1165,6 +1165,19 @@ static void emit_expr_to_file(FILE *out, Expr *expr)
     sb_destroy(&sb);
 }
 
+/* Binary expressions already carry their own grouping parentheses. Avoid
+   wrapping them twice in control-flow conditions, which Clang diagnoses. */
+static void emit_condition_to_file(FILE *out, Expr *condition)
+{
+    if (condition && condition->kind == EXPR_BINARY) {
+        emit_expr_to_file(out, condition);
+        return;
+    }
+    fputc('(', out);
+    emit_expr_to_file(out, condition);
+    fputc(')', out);
+}
+
 /* Global initializers must stay within C's constant-expression rules.
    Runtime checked arithmetic helpers such as yl_neg_i64() are not valid here. */
 static void emit_constant_initializer(StringBuilder *sb, Expr *expr)
@@ -1252,7 +1265,20 @@ static void emit_fstring_print(FILE *out, Expr *expr, unsigned indent)
             fprintf(out, "fputs(%s, stdout);\n", quoted.data ? quoted.data : "\"\"");
             sb_destroy(&quoted);
         } else if (part->expression) {
-            emit_print_value(out, part->expression, indent);
+            if (part->expression->type == TYPE_CHAR) {
+                /* Route char interpolation through yl_format so a NUL character
+                   fails instead of being written as a silent terminator. */
+                StringBuilder formatted;
+                sb_init(&formatted);
+                sb_append(&formatted, "fputs(yl_format(\"%c\", (int)(");
+                emit_expr(&formatted, part->expression);
+                sb_append(&formatted, ")), stdout);\n");
+                emit_indent(out, indent);
+                if (formatted.data) fputs(formatted.data, out);
+                sb_destroy(&formatted);
+            } else {
+                emit_print_value(out, part->expression, indent);
+            }
         }
     }
 }
@@ -1525,9 +1551,9 @@ static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
             emit_indent(out, indent); fputs("putchar('\\n');\n", out);
             break;
         case STMT_IF:
-            emit_indent(out, indent); fputs("if (", out);
-            emit_expr_to_file(out, stmt->as.if_stmt.condition);
-            fputs(")\n", out);
+            emit_indent(out, indent); fputs("if ", out);
+            emit_condition_to_file(out, stmt->as.if_stmt.condition);
+            fputc('\n', out);
             emit_control_body(ctx, stmt->as.if_stmt.then_branch, indent);
             if (stmt->as.if_stmt.else_branch) {
                 emit_indent(out, indent); fputs("else\n", out);
@@ -1541,9 +1567,9 @@ static void emit_stmt(CodegenContext *ctx, Stmt *stmt, unsigned indent)
             pop_loop_mark(ctx);
             break;
         case STMT_WHILE:
-            emit_indent(out, indent); fputs("while (", out);
-            emit_expr_to_file(out, stmt->as.while_stmt.condition);
-            fputs(")\n", out);
+            emit_indent(out, indent); fputs("while ", out);
+            emit_condition_to_file(out, stmt->as.while_stmt.condition);
+            fputc('\n', out);
             push_loop_mark(ctx);
             emit_control_body(ctx, stmt->as.while_stmt.body, indent);
             pop_loop_mark(ctx);
@@ -1752,6 +1778,12 @@ bool generate_c(Compiler *c, const char *path)
             first_param = false;
         }
         fputs(") {\n", out);
+        /* Generated C is compiled with -Wextra; explicitly consume parameters
+           so valid YLang code does not leak C-only unused-parameter warnings. */
+        for (size_t j = 0; j < fn->param_count; j++) {
+            emit_indent(out, 1U);
+            fprintf(out, "(void)%s;\n", fn->params[j]->c_name);
+        }
         emit_temp_declarations_stmt(c, out, fn->body, 1U);
         CodegenContext context = {
             .compiler = c,

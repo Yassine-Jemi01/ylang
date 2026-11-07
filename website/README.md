@@ -10,10 +10,12 @@ The design uses a clear blue-and-yellow palette inspired by the way Python prese
 
 - \`index.html\` — concise overview, feature links, compiler flow, and quick start.
 - \`docs.html\` — entry point for the canonical online book and technical reference pages.
+- `docs-ar.html` — the Arabic documentation portal, with RTL layout and links into the Arabic learning path; the marketing homepage remains English.
 - \`learn/\` — generated mdBook HTML output, including the chapter sidebar, search, theme selector, and navigation.
 - \`../docs/online-book/\` — mdBook configuration and tutorial source.
 - \`../tools/build_docs_book.py\` — syncs canonical \`docs/*.md\` reference files into the book before a build.
 - \`styles.css\` and \`docs.css\` — shared responsive styles and documentation layouts.
+- `docs-ar.css` — scoped right-to-left presentation for the Arabic documentation portal.
 - \`script.js\` — mobile navigation, copy-to-clipboard controls, and current footer year.
 - \`assets/\` — YLang mark and favicon.
 

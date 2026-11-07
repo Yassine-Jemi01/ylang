@@ -3,7 +3,11 @@
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import io
+import math
+import struct
+import subprocess
 import sys
+import time
 import wave
 
 
@@ -14,8 +18,25 @@ def make_test_wav():
         wav_file.setnchannels(1)
         wav_file.setsampwidth(2)
         wav_file.setframerate(44100)
-        wav_file.writeframes(b"\\x00\\x00" * (44100 // 4))
+        samples = (
+            struct.pack("<h", int(8000 * math.sin(2 * math.pi * 440 * index / 44100)))
+            for index in range(44100 // 4)
+        )
+        wav_file.writeframes(b"".join(samples))
     return output.getvalue()
+
+
+def make_test_mp3():
+    result = subprocess.run(
+        [
+            "ffmpeg", "-hide_banner", "-loglevel", "error",
+            "-f", "lavfi", "-i", "sine=frequency=440:duration=0.5",
+            "-codec:a", "libmp3lame", "-b:a", "64k", "-f", "mp3", "pipe:1",
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return result.stdout
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -52,7 +73,6 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/stream":
             # Chunked transfer with delays: clients must be able to consume each
             # piece before the complete response has been sent.
-            import time
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.send_header("Transfer-Encoding", "chunked")
@@ -94,10 +114,27 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 for offset in range(0, len(payload), 2048):
                     chunk = payload[offset:offset + 2048]
-                    self.wfile.write(("%X\\r\\n" % len(chunk)).encode("ascii"))
-                    self.wfile.write(chunk + b"\\r\\n")
+                    self.wfile.write(("%X\r\n" % len(chunk)).encode("ascii"))
+                    self.wfile.write(chunk + b"\r\n")
                     self.wfile.flush()
-                self.wfile.write(b"0\\r\\n\\r\\n")
+                self.wfile.write(b"0\r\n\r\n")
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+        elif self.path == "/stream-mp3":
+            payload = make_test_mp3()
+            self.send_response(200)
+            self.send_header("Content-Type", "audio/mpeg")
+            self.send_header("Transfer-Encoding", "chunked")
+            self.send_connection_close()
+            self.end_headers()
+            try:
+                for offset in range(0, len(payload), 1024):
+                    chunk = payload[offset:offset + 1024]
+                    self.wfile.write(("%X\r\n" % len(chunk)).encode("ascii"))
+                    self.wfile.write(chunk + b"\r\n")
+                    self.wfile.flush()
+                self.wfile.write(b"0\r\n\r\n")
                 self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 pass
@@ -129,9 +166,12 @@ class Handler(BaseHTTPRequestHandler):
             except (BrokenPipeError, ConnectionResetError):
                 pass
         elif self.path == "/slow":
-            import time
             time.sleep(0.2)
             self.send_bytes(200, "slow-response")
+        elif self.path == "/timeout":
+            # Buffered HTTP requests have a documented 15-second total timeout.
+            time.sleep(16.0)
+            self.send_bytes(200, "too-late")
         elif self.path == "/headers-underflow":
             # Reach the exact 16 KiB accumulated-header boundary, then send
             # one more header. The client must reject it without underflowing.

@@ -3,6 +3,7 @@ set -eux
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
+python3 tests/check_english_diagnostics.py
 
 EXPECTED_VERSION=$(cat VERSION)
 ./build/ylang --version | grep -Fq "$EXPECTED_VERSION"
@@ -49,6 +50,7 @@ diff -u tests/expected-type-conversions.txt build/atomic-c-preserved.out
 for staging_directory in build/atomic-c-output-dir/.ylang-tmp-*; do
     if [ -d "$staging_directory" ]; then
         echo "FAIL: native build left a private staging directory: $staging_directory" >&2
+        find "$staging_directory" -maxdepth 3 -print >&2
         exit 1
     fi
 done
@@ -86,6 +88,37 @@ PATH="$PWD/build/fake-native-tools:$PATH" ./build/ylang build tests/native-flags
 test -s build/native-flags-combined
 test "$(cat build/native-argv-count)" -gt 200
 grep -q 'Build succeeded: build/native-flags-combined' build/native-flags-combined.out
+
+# Optional runtime flags must be discovered in imported modules, not only the root file.
+# The fake tools record the driver's native compiler arguments without linking anything.
+mkdir -p build/fake-feature-tools
+cat > build/fake-feature-tools/pkg-config <<'EOF'
+#!/bin/sh
+printf '%s\n' '-lfake-optional'
+EOF
+cat > build/fake-feature-tools/gcc <<'EOF'
+#!/bin/sh
+{
+    for argument in "$@"; do
+        printf '%s\n' "$argument"
+    done
+} > build/optional-feature-imports-argv
+while [ "$#" -gt 0 ]; do
+    if [ "$1" = "-o" ]; then
+        shift
+        printf 'fake imported-feature artifact\n' > "$1"
+        chmod 755 "$1"
+        exit 0
+    fi
+    shift
+done
+exit 2
+EOF
+chmod +x build/fake-feature-tools/pkg-config build/fake-feature-tools/gcc
+PATH="$PWD/build/fake-feature-tools:$PATH" ./build/ylang build tests/optional-feature-imports/main.yl -o build/optional-feature-imports-argv-probe --cc gcc >/dev/null
+for feature_flag in YLANG_USE_JSON YLANG_USE_BINARY YLANG_USE_TUI YLANG_USE_VOICE YLANG_USE_HTTP; do
+    grep -Fxq -- "-D${feature_flag}=1" build/optional-feature-imports-argv
+done
 
 # String and character escapes must have the same byte semantics in generated C.
 ./build/ylang check tests/escape-parity.yl >/dev/null
@@ -148,6 +181,30 @@ fi
 if [ -f build/debug-launch.out ]; then
     grep -Fq "Build succeeded: build/debug-launch-test" build/debug-launch.out
 fi
+
+# On Linux, verify that the driver selects LLDB when GDB is absent from PATH.
+case "$(uname -s)" in
+    Darwin|MINGW*|MSYS*|CYGWIN*) ;;
+    *)
+        mkdir -p build/debugger-fallback-bin
+        cat > build/debugger-fallback-bin/gcc <<'EOF'
+#!/bin/sh
+PATH="$YLANG_TEST_REAL_PATH" exec "$YLANG_TEST_REAL_GCC" "$@"
+EOF
+        cat > build/debugger-fallback-bin/lldb <<'EOF'
+#!/bin/sh
+printf 'YLANG_TEST_FAKE_LLDB\n'
+exit 0
+EOF
+        chmod +x build/debugger-fallback-bin/gcc build/debugger-fallback-bin/lldb
+        printf 'quit\n' | YLANG_TEST_REAL_PATH="$PATH" \
+            YLANG_TEST_REAL_GCC="$(command -v gcc)" \
+            PATH="$PWD/build/debugger-fallback-bin" \
+            ./build/ylang debug tests/debug-source-map.yl \
+            -o build/debug-lldb-fallback > build/debug-lldb-fallback.out 2>&1
+        grep -Fq 'YLANG_TEST_FAKE_LLDB' build/debug-lldb-fallback.out
+        ;;
+esac
 
 if ./build/ylang check tests/await-type-error.yl > build/await-type-error.out 2>&1; then
     echo "FAIL: await accepted an integer instead of an http_task" >&2
@@ -1790,6 +1847,7 @@ true
 true
 72623859790382856
 578437695752307201
+true
 4
 true
 4
@@ -1841,6 +1899,7 @@ false
 true
 0
 true
+true
 -1
 -1
 -1
@@ -1853,7 +1912,7 @@ rm -f build/buffer-append.bin
 ./build/ylang check tests/binary-buffer-append.yl >/dev/null
 ./build/ylang build tests/binary-buffer-append.yl -o build/test-binary-buffer-append >/dev/null
 ./build/test-binary-buffer-append > build/binary-buffer-append.stdout
-printf '2\\n2\\n4\\n' > build/binary-buffer-append.expected
+printf '2\n2\n4\n' > build/binary-buffer-append.expected
 diff -u build/binary-buffer-append.expected build/binary-buffer-append.stdout
 
 
@@ -1964,7 +2023,7 @@ grep -q 'JSON output exceeds the 16 MiB limit' build/json-escape-limit/control-o
 # std.terminal line input, typed parsing, flushing, and redirected stdin detection.
 ./build/ylang check tests/terminal-input.yl >/dev/null
 ./build/ylang build tests/terminal-input.yl -o build/test-terminal-input >/dev/null
-printf 'Ada\\n42\\n1.5\\nyes\\n' | ./build/test-terminal-input > build/terminal-input.stdout
+printf 'Ada\n42\n1.5\nyes\n' | ./build/test-terminal-input > build/terminal-input.stdout
 diff -u tests/expected-terminal-input.txt build/terminal-input.stdout
 
 # Module loading must stop at the documented recursion-depth limit.
@@ -2078,11 +2137,13 @@ grep -q 'E1018' build/statement-depth/unbraced.out
 
 # Diagnostic output is capped while the compiler still returns a failure.
 {
+    printf 'function main() -> int {\n'
     i=0
     while [ "$i" -lt 110 ]; do
         printf 'print(missing_value);\n'
         i=$((i + 1))
     done
+    printf 'return 0; }\n'
 } > build/statement-depth/diagnostic-flood.yl
 if ./build/ylang check build/statement-depth/diagnostic-flood.yl > build/statement-depth/diagnostic-flood.out 2>&1; then
     echo "FAIL: a program with 110 unresolved names was accepted" >&2

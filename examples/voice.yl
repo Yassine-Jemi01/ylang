@@ -1,6 +1,6 @@
-# YLang Voice example
-# Build with SDL2_mixer installed:
-#   ylang build examples/voice.yl -o voice-demo
+// YLang Voice example
+// Build with SDL2_mixer installed:
+//   ylang build examples/voice.yl -o voice-demo
 
 function main() -> int {
     if (!voice.init()) {

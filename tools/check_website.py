@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static checks for the English-only YLang website; no third-party packages required."""
+"""Check the English homepage, bilingual documentation portal, and mdBook output."""
 
 from __future__ import annotations
 
@@ -16,8 +16,6 @@ ARABIC = re.compile(r"[\u0600-\u06FF]")
 LEGACY_MARKERS = (
     "lang-toggle",
     "IBM Plex Sans Arabic",
-    "Noto Sans Arabic",
-    "العربية",
 )
 
 
@@ -31,11 +29,17 @@ class PageLinks(HTMLParser):
         self.local_paths: list[str] = []
         self.targets: list[str] = []
         self.lang_ok = False
+        self.language: str | None = None
+        self.direction: str | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
         if tag == "html":
-            self.lang_ok = values.get("lang") == "en" and values.get("dir") == "ltr"
+            self.language = values.get("lang")
+            self.direction = values.get("dir")
+            self.lang_ok = (self.language == "en" and self.direction == "ltr") or (
+                self.language == "ar" and self.direction == "rtl"
+            )
         if values.get("id"):
             self.ids.append(str(values["id"]))
 
@@ -128,27 +132,67 @@ def check_book_links(errors: list[str]) -> None:
                     )
 
 
+def check_bilingual_rendering(errors: list[str]) -> None:
+    """Guard Arabic RTL prose and LTR code presentation in both documentation surfaces."""
+    book_css = (ROOT / "docs" / "online-book" / "theme" / "ylang-book.css").read_text(encoding="utf-8")
+    book_js = (ROOT / "docs" / "online-book" / "theme" / "ylang-nav.js").read_text(encoding="utf-8")
+    portal_css = (SITE / "docs-ar.css").read_text(encoding="utf-8")
+
+    if ".ylang-ar .content main" not in book_css or "direction: rtl" not in book_css:
+        errors.append("Arabic book prose must retain its RTL reading direction.")
+    if ".ylang-ar .content main pre" not in book_css or "direction: ltr" not in book_css:
+        errors.append("Arabic book code blocks must retain their LTR direction.")
+    if "document.documentElement.lang = 'ar'" not in book_js:
+        errors.append("Arabic book navigation must set the document language to Arabic.")
+    if "document.documentElement.dir = 'rtl'" not in book_js:
+        errors.append("Arabic book navigation must set the document direction to RTL.")
+    if 'html[dir="rtl"]' not in portal_css or "direction:rtl" not in portal_css:
+        errors.append("Arabic docs portal must retain RTL layout styles.")
+    if ".terminal-card pre" not in portal_css or "direction:ltr" not in portal_css:
+        errors.append("Arabic docs portal code samples must retain LTR layout styles.")
+
+
 def check_site() -> list[str]:
     errors: list[str] = []
     files = sorted(p for p in SITE.rglob("*") if p.is_file() and p.suffix.lower() in TEXT_SUFFIXES)
 
     for path in files:
         text = path.read_text(encoding="utf-8")
-        if ARABIC.search(text):
-            errors.append(f"{path.relative_to(ROOT)} contains Arabic-script text.")
+        relative = path.relative_to(SITE)
+        # Marketing pages remain English-only; Arabic is scoped to the book
+        # and the dedicated docs-ar.html portal.
+        if ARABIC.search(text) and relative.parts[:1] != ("learn",) and relative.name != "docs-ar.html":
+            errors.append(f"{path.relative_to(ROOT)} contains Arabic-script text outside the online book.")
         if path.suffix.lower() in {".html", ".js", ".css"}:
             for marker in LEGACY_MARKERS:
                 if marker in text:
                     errors.append(f"{path.relative_to(ROOT)} contains legacy localization marker {marker!r}.")
                     break
 
-    for relative in ("website/index.html", "website/docs.html"):
+    # Keep both language entry points discoverable from the homepage and docs portal.
+    homepage = (SITE / "index.html").read_text(encoding="utf-8")
+    english_docs = (SITE / "docs.html").read_text(encoding="utf-8")
+    arabic_docs = (SITE / "docs-ar.html").read_text(encoding="utf-8")
+    for source, label in (
+        (homepage, "homepage"),
+        (english_docs, "English docs portal"),
+    ):
+        if 'href="docs-ar.html"' not in source:
+            errors.append(f"{label} must link to the Arabic documentation portal.")
+    if 'href="docs.html"' not in arabic_docs:
+        errors.append("Arabic docs portal must link back to the English documentation portal.")
+
+    expected_pages = (
+        ("website/index.html", "en", "ltr"),
+        ("website/docs.html", "en", "ltr"),
+        ("website/docs-ar.html", "ar", "rtl"),
+    )
+    for relative, expected_language, expected_direction in expected_pages:
         page_path = ROOT / relative
         parser = PageLinks()
         parser.feed(page_path.read_text(encoding="utf-8"))
-
-        if not parser.lang_ok:
-            errors.append(f"{relative} must declare <html lang=\"en\" dir=\"ltr\">.")
+        if parser.language != expected_language or parser.direction != expected_direction:
+            errors.append(f"{relative} must declare lang={expected_language} dir={expected_direction}.")
 
         duplicates = sorted({item for item in parser.ids if parser.ids.count(item) > 1})
         if duplicates:
@@ -164,6 +208,7 @@ def check_site() -> list[str]:
                 continue
             errors.append(f"{relative} refers to missing local file: {target}.")
 
+    check_bilingual_rendering(errors)
     check_book_links(errors)
 
     if errors:
@@ -171,7 +216,7 @@ def check_site() -> list[str]:
             print(f"ERROR: {error}", file=sys.stderr)
         return errors
 
-    print("PASS: English-only website, navigation anchors, local assets, and links.")
+    print("PASS: English homepage, bilingual docs portal and book, navigation anchors, local assets, and links.")
     return []
 
 

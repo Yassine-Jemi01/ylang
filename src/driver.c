@@ -24,6 +24,7 @@
 #define rmdir _rmdir
 #define ylang_mkdir(path, mode) _mkdir(path)
 #else
+#include <dirent.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #define ylang_mkdir(path, mode) mkdir(path, mode)
@@ -154,21 +155,42 @@ static int run_safe_fixes(const char *source, const char *input_path,
 /* -------------------------------- driver ------------------------------- */
 static char *read_source_file(const char *path, size_t *length)
 {
+    errno = 0;
     FILE *file = fopen(path, "rb");
     if (!file) return NULL;
-    if (fseek(file, 0, SEEK_END) != 0) { fclose(file); return NULL; }
+    if (fseek(file, 0, SEEK_END) != 0) {
+        int error = errno ? errno : EIO;
+        fclose(file);
+        errno = error;
+        return NULL;
+    }
+    errno = 0;
     long size = ftell(file);
-    if (size < 0 || fseek(file, 0, SEEK_SET) != 0) { fclose(file); return NULL; }
+    if (size < 0 || fseek(file, 0, SEEK_SET) != 0) {
+        int error = errno ? errno : EIO;
+        fclose(file);
+        errno = error;
+        return NULL;
+    }
     if ((uintmax_t)size > (uintmax_t)YLANG_MAX_PROJECT_SOURCE_BYTES) {
         (void)fclose(file);
         errno = EFBIG;
         return NULL;
     }
     char *data = malloc((size_t)size + 1U);
-    if (!data) { fclose(file); return NULL; }
+    if (!data) {
+        int error = errno ? errno : ENOMEM;
+        fclose(file);
+        errno = error;
+        return NULL;
+    }
     size_t got = fread(data, 1, (size_t)size, file);
     if (got != (size_t)size || ferror(file)) {
-        free(data); fclose(file); return NULL;
+        int error = errno ? errno : EIO;
+        free(data);
+        fclose(file);
+        errno = error;
+        return NULL;
     }
     data[got] = '\0';
     fclose(file);
@@ -380,6 +402,50 @@ static char *create_staged_executable_path(const char *directory)
     (void)snprintf(path, capacity, "%s/executable", directory);
     return path;
 }
+
+/* Clang on macOS creates an executable.dSYM bundle beside the staged binary.
+   Remove the whole private staging tree without following symlinks. */
+static bool remove_staging_tree(const char *path)
+{
+    struct stat status;
+    if (lstat(path, &status) != 0) return errno == ENOENT;
+    if (!S_ISDIR(status.st_mode)) return unlink(path) == 0 || errno == ENOENT;
+
+    DIR *directory = opendir(path);
+    if (!directory) return false;
+    bool okay = true;
+    for (;;) {
+        errno = 0;
+        struct dirent *entry = readdir(directory);
+        if (!entry) {
+            if (errno != 0) okay = false;
+            break;
+        }
+        if (strcmp(entry->d_name, ".") == 0 ||
+            strcmp(entry->d_name, "..") == 0) continue;
+        size_t path_length = strlen(path);
+        size_t name_length = strlen(entry->d_name);
+        if (name_length > SIZE_MAX - 2U ||
+            path_length > SIZE_MAX - name_length - 2U) {
+            errno = ENAMETOOLONG;
+            okay = false;
+            continue;
+        }
+        size_t capacity = path_length + name_length + 2U;
+        char *child = malloc(capacity);
+        if (!child) {
+            errno = ENOMEM;
+            okay = false;
+            continue;
+        }
+        (void)snprintf(child, capacity, "%s/%s", path, entry->d_name);
+        if (!remove_staging_tree(child)) okay = false;
+        free(child);
+    }
+    if (closedir(directory) != 0) okay = false;
+    if (okay && rmdir(path) != 0 && errno != ENOENT) okay = false;
+    return okay;
+}
 #endif
 
 static bool read_sdl2_flags(char *storage, size_t capacity,
@@ -460,7 +526,8 @@ static bool read_http_flags(char *storage, size_t capacity,
 
 static int run_native_compiler(const char *cc, const char *c_path,
                                const char *output_path, bool uses_gui,
-                               bool debug_mode, bool uses_http, bool uses_voice)
+                               bool debug_mode, bool uses_http, bool uses_voice,
+                               bool uses_json, bool uses_binary, bool uses_tui)
 {
     const char *requested_opt = getenv("YLANG_OPT_LEVEL");
     const char *optimization = debug_mode ? "-O0" : "-O2";
@@ -545,6 +612,9 @@ static int run_native_compiler(const char *cc, const char *c_path,
     args[n++] = (char *)cc;
     if (uses_http) args[n++] = "-DYLANG_USE_HTTP=1";
     if (uses_voice) args[n++] = "-DYLANG_USE_VOICE=1";
+    if (uses_json) args[n++] = "-DYLANG_USE_JSON=1";
+    if (uses_binary) args[n++] = "-DYLANG_USE_BINARY=1";
+    if (uses_tui) args[n++] = "-DYLANG_USE_TUI=1";
     args[n++] = "-std=c17";
     args[n++] = "-Wall";
     args[n++] = "-Wextra";
@@ -573,9 +643,7 @@ static int run_native_compiler(const char *cc, const char *c_path,
     for (size_t i = 0U; i < sdl_flag_count; i++) args[n++] = sdl_flags[i];
     for (size_t i = 0U; i < voice_flag_count; i++) args[n++] = voice_flags[i];
     for (size_t i = 0U; i < http_flag_count; i++) args[n++] = http_flags[i];
-#if defined(__APPLE__)
-    args[n++] = "-pie";
-#elif !defined(_WIN32)
+#if !defined(__APPLE__) && !defined(_WIN32)
     args[n++] = "-pie";
     args[n++] = "-Wl,-z,relro,-z,now";
 #endif
@@ -622,6 +690,41 @@ static int run_native_compiler(const char *cc, const char *c_path,
     return result;
 #endif
 }
+
+#ifndef _WIN32
+static bool executable_in_path(const char *name)
+{
+    const char *path = getenv("PATH");
+    if (!path || !*path || !name || !*name) return false;
+
+    const size_t name_length = strlen(name);
+    const char *component = path;
+    for (;;) {
+        const char *separator = strchr(component, ':');
+        size_t directory_length = separator
+            ? (size_t)(separator - component) : strlen(component);
+        const char *directory = component;
+        if (directory_length == 0U) {
+            directory = ".";
+            directory_length = 1U;
+        }
+        if (directory_length <= SIZE_MAX - name_length - 2U) {
+            size_t candidate_length = directory_length + 1U + name_length + 1U;
+            char *candidate = malloc(candidate_length);
+            if (!candidate) return false;
+            memcpy(candidate, directory, directory_length);
+            candidate[directory_length] = '/';
+            memcpy(candidate + directory_length + 1U, name, name_length + 1U);
+            bool available = access(candidate, X_OK) == 0;
+            free(candidate);
+            if (available) return true;
+        }
+        if (!separator) break;
+        component = separator + 1U;
+    }
+    return false;
+}
+#endif
 
 static int run_external(char *const argv[])
 {
@@ -973,7 +1076,8 @@ int ylang_run(const char *command, const char *input_path,
         if (can_compile) {
             result = run_native_compiler(cc ? cc : "gcc", c_path, build_target,
                                          compiler.uses_gui, debug_mode, compiler.uses_http,
-                                         compiler.uses_voice);
+                                         compiler.uses_voice, compiler.uses_json,
+                                         compiler.uses_binary, compiler.uses_tui);
 #ifndef _WIN32
             if (result == 0 && rename(staged_target, target) != 0) {
                 fprintf(stderr, "ylang: cannot publish executable '%s': %s\n",
@@ -989,23 +1093,37 @@ int ylang_run(const char *command, const char *input_path,
                 fputs("ylang: the interactive debug command is not yet supported on Windows; use a Linux GDB or macOS LLDB build.\n", stderr);
                 result = 64;
 #elif defined(__APPLE__)
-                char *debugger_args[] = { "lldb", "--", (char *)target, NULL };
-                result = run_external(debugger_args);
+                if (!executable_in_path("lldb")) {
+                    fputs("ylang: LLDB was not found in PATH; install Xcode Command Line Tools to use 'ylang debug'.\n", stderr);
+                    result = 127;
+                } else {
+                    char *debugger_args[] = { "lldb", "--", (char *)target, NULL };
+                    result = run_external(debugger_args);
+                }
 #else
-                char *debugger_args[] = { "gdb", "-q", "--args", (char *)target, NULL };
-                result = run_external(debugger_args);
+                if (executable_in_path("gdb")) {
+                    char *debugger_args[] = { "gdb", "-q", "--args", (char *)target, NULL };
+                    result = run_external(debugger_args);
+                } else if (executable_in_path("lldb")) {
+                    char *debugger_args[] = { "lldb", "--", (char *)target, NULL };
+                    result = run_external(debugger_args);
+                } else {
+                    fputs("ylang: neither GDB nor LLDB was found in PATH; install one to use 'ylang debug'.\n", stderr);
+                    result = 127;
+                }
 #endif
             }
         } else if (can_compile) {
             fprintf(stderr, "ylang: native compilation failed (exit %d).\n", result);
         }
 #ifndef _WIN32
-        if (staged_target) {
-            (void)unlink(staged_target);
-            free(staged_target);
-        }
+        free(staged_target);
         if (staging_directory) {
-            (void)rmdir(staging_directory);
+            if (!remove_staging_tree(staging_directory)) {
+                fprintf(stderr, "ylang: could not fully remove private staging directory '%s': %s\n",
+                        staging_directory, strerror(errno));
+                if (result == 0) result = 1;
+            }
             free(staging_directory);
         }
 #endif

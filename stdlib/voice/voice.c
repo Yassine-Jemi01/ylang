@@ -29,15 +29,22 @@ static void voice_set_error_if_empty(const char *message)
     }
     SDL_AtomicUnlock(&voice_error_lock);
 }
+#define VOICE_STREAM_CACHE_LIMIT (256U * 1024U * 1024U)
+#define VOICE_STREAM_READ_CHUNK (64U * 1024U)
+
 typedef struct {
     int64_t stream_id;
     YLVoiceStreamRead read_callback;
     YLVoiceStreamError error_callback;
     YLVoiceStreamClose close_callback;
-    unsigned char *pending;
-    size_t pending_length;
-    size_t pending_capacity;
+    /* SDL_mixer decoders such as WAV seek past the data chunk while parsing
+       headers and then rewind before playback. Keep fetched bytes so those
+       decoders work with a forward-only HTTP callback without losing audio. */
+    unsigned char *cache;
+    size_t cache_length;
+    size_t cache_capacity;
     uint64_t position;
+    bool reached_eof;
 } YLVoiceStreamSource;
 
 static void voice_set_error(const char *message)
@@ -60,10 +67,74 @@ static void voice_release_music(void)
     }
 }
 
+static bool voice_stream_cache_reserve(YLVoiceStreamSource *source, size_t extra)
+{
+    if (extra > SIZE_MAX - source->cache_length) {
+        voice_set_error("audio stream size overflow");
+        return false;
+    }
+    size_t needed = source->cache_length + extra;
+    if (needed > VOICE_STREAM_CACHE_LIMIT) {
+        voice_set_error("audio stream exceeds the 256 MiB seek buffer limit");
+        return false;
+    }
+    if (needed <= source->cache_capacity) return true;
+    size_t grown = source->cache_capacity ? source->cache_capacity : VOICE_STREAM_READ_CHUNK;
+    while (grown < needed) {
+        if (grown > VOICE_STREAM_CACHE_LIMIT / 2U) {
+            grown = VOICE_STREAM_CACHE_LIMIT;
+            break;
+        }
+        grown *= 2U;
+    }
+    unsigned char *cache = realloc(source->cache, grown);
+    if (!cache) {
+        voice_set_error("out of memory buffering an audio stream");
+        return false;
+    }
+    source->cache = cache;
+    source->cache_capacity = grown;
+    return true;
+}
+
+/* Fetch at least `wanted` bytes when possible. Returns the number of newly
+   buffered bytes, or 0 at EOF/on failure after recording the diagnostic. */
+static size_t voice_stream_fill(YLVoiceStreamSource *source, size_t wanted)
+{
+    size_t added = 0U;
+    while (added < wanted) {
+        size_t chunk = wanted - added;
+        if (chunk > VOICE_STREAM_READ_CHUNK) chunk = VOICE_STREAM_READ_CHUNK;
+        if (!voice_stream_cache_reserve(source, chunk)) break;
+        int64_t received = source->read_callback(
+            source->stream_id, source->cache + source->cache_length, chunk);
+        if (received < 0) {
+            const char *detail = source->error_callback
+                ? source->error_callback(source->stream_id) : NULL;
+            voice_set_error(detail && *detail ? detail : "HTTP audio stream read failed");
+            break;
+        }
+        if ((uint64_t)received > (uint64_t)chunk) {
+            voice_set_error("HTTP audio stream returned an invalid byte count");
+            break;
+        }
+        if (received == 0) {
+            source->reached_eof = true;
+            break;
+        }
+        source->cache_length += (size_t)received;
+        added += (size_t)received;
+    }
+    return added;
+}
+
 static Sint64 SDLCALL voice_stream_size(SDL_RWops *context)
 {
-    (void)context;
-    return -1;
+    if (!context) return -1;
+    YLVoiceStreamSource *source =
+        (YLVoiceStreamSource *)context->hidden.unknown.data1;
+    if (!source || !source->reached_eof) return -1;
+    return (Sint64)source->cache_length;
 }
 
 static Sint64 SDLCALL voice_stream_seek(SDL_RWops *context, Sint64 offset, int whence)
@@ -71,12 +142,48 @@ static Sint64 SDLCALL voice_stream_seek(SDL_RWops *context, Sint64 offset, int w
     if (!context) return -1;
     YLVoiceStreamSource *source =
         (YLVoiceStreamSource *)context->hidden.unknown.data1;
-    if (!source) return -1;
-    if ((whence == RW_SEEK_CUR && offset == 0) ||
-        (whence == RW_SEEK_SET && offset >= 0 &&
-         (uint64_t)offset == source->position))
-        return (Sint64)source->position;
-    return -1;
+    if (!source || !source->read_callback) return -1;
+
+    uint64_t base;
+    switch (whence) {
+        case RW_SEEK_SET:
+            base = 0U;
+            break;
+        case RW_SEEK_CUR:
+            base = source->position;
+            break;
+        case RW_SEEK_END:
+            /* Streaming sources have no declared length. Drain once so decoders
+               that measure before playback still see a stable end position. */
+            while (!source->reached_eof) {
+                if (voice_stream_fill(source, VOICE_STREAM_READ_CHUNK) == 0U)
+                    break;
+            }
+            if (!source->reached_eof) return -1;
+            base = (uint64_t)source->cache_length;
+            break;
+        default:
+            return -1;
+    }
+
+    uint64_t target;
+    if (offset < 0) {
+        uint64_t magnitude = (uint64_t)(-(offset + 1)) + 1U;
+        if (magnitude > base) return -1;
+        target = base - magnitude;
+    } else {
+        uint64_t magnitude = (uint64_t)offset;
+        if (magnitude > UINT64_MAX - base) return -1;
+        target = base + magnitude;
+    }
+
+    if (target > source->cache_length) {
+        size_t wanted = (size_t)(target - source->cache_length);
+        (void)voice_stream_fill(source, wanted);
+        if (target > source->cache_length) return -1;
+    }
+    source->position = target;
+    return (Sint64)target;
 }
 
 static size_t SDLCALL voice_stream_read(SDL_RWops *context, void *destination,
@@ -90,68 +197,26 @@ static size_t SDLCALL voice_stream_read(SDL_RWops *context, void *destination,
 
     size_t requested = size * maxnum;
     size_t total = 0U;
-    if (source->pending_length) {
-        size_t take = source->pending_length < requested
-            ? source->pending_length : requested;
-        memcpy(destination, source->pending, take);
-        total += take;
-        source->pending_length -= take;
-        if (source->pending_length)
-            memmove(source->pending, source->pending + take, source->pending_length);
-    }
-
-    if (size == 1U) {
-        if (total < requested) {
-            int64_t received = source->read_callback(
-                source->stream_id, (unsigned char *)destination + total, requested - total);
-            if (received < 0) {
-                const char *detail = source->error_callback
-                    ? source->error_callback(source->stream_id) : NULL;
-                voice_set_error(detail && *detail ? detail : "HTTP audio stream read failed");
-            } else if ((uint64_t)received > (uint64_t)(requested - total)) {
-                voice_set_error("HTTP audio stream returned an invalid byte count");
-            } else {
-                total += (size_t)received;
-            }
-        }
-        source->position += (uint64_t)total;
-        return total;
-    }
-
+    uint64_t start = source->position;
     while (total < requested) {
-        int64_t received = source->read_callback(
-            source->stream_id, (unsigned char *)destination + total, requested - total);
-        if (received < 0) {
-            const char *detail = source->error_callback
-                ? source->error_callback(source->stream_id) : NULL;
-            voice_set_error(detail && *detail ? detail : "HTTP audio stream read failed");
-            break;
+        if (source->position < source->cache_length) {
+            size_t available = (size_t)(source->cache_length - source->position);
+            size_t take = available < requested - total ? available : requested - total;
+            memcpy((unsigned char *)destination + total,
+                   source->cache + (size_t)source->position, take);
+            source->position += (uint64_t)take;
+            total += take;
+            continue;
         }
-        if (received == 0) break;
-        if ((uint64_t)received > (uint64_t)(requested - total)) {
-            voice_set_error("HTTP audio stream returned an invalid byte count");
-            break;
-        }
-        total += (size_t)received;
+        if (source->reached_eof) break;
+        if (voice_stream_fill(source, requested - total) == 0U) break;
     }
 
+    /* SDL_RWread returns whole objects. Rewind any trailing partial object so
+       the next call can complete it from the cache. */
     size_t complete = total / size;
     size_t consumed = complete * size;
-    source->position += (uint64_t)consumed;
-    size_t remainder = total - consumed;
-    if (remainder) {
-        if (source->pending_capacity < remainder) {
-            unsigned char *grown = realloc(source->pending, remainder);
-            if (!grown) {
-                voice_set_error("out of memory buffering an audio stream read");
-                return complete;
-            }
-            source->pending = grown;
-            source->pending_capacity = remainder;
-        }
-        memcpy(source->pending, (unsigned char *)destination + consumed, remainder);
-        source->pending_length = remainder;
-    }
+    source->position = start + (uint64_t)consumed;
     return complete;
 }
 
@@ -173,7 +238,7 @@ static int SDLCALL voice_stream_close(SDL_RWops *context)
     if (source) {
         if (source->close_callback)
             source->close_callback(source->stream_id);
-        free(source->pending);
+        free(source->cache);
         free(source);
     }
     SDL_FreeRW(context);

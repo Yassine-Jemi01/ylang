@@ -8,16 +8,16 @@ This chapter is an orientation guide. For exact function signatures, accepted ar
 
 The current documentation covers namespaces such as:
 
-- \`math\` for supported mathematical operations.
-- \`string\` for string inspection and explicit parsing/conversion helpers.
-- \`io\` for console and file-related operations.
-- \`path\` for path-related checks.
-- \`image\` for supported image-related operations.
+- `math` for supported mathematical operations.
+- `string` for string inspection and explicit parsing/conversion helpers.
+- `io` for console and file-related operations.
+- `path` for path-related checks.
+- `image` for supported image-related operations.
 - `json` for parsing, validation, typed field access, escaping, and formatting. The immutable raw-text builders are additions in the unreleased 2.3 development line; see [JSON support](reference/JSON.md).
-- \`env.get(name)\` for reading a process environment variable without launching a shell.
-- \`http\` for optional synchronous requests and bounded pull-based streaming through libcurl; see [HTTP and API Requests](reference/HTTP.md) and [HTTP Streaming](reference/HTTP-STREAMING.md).
-- \`terminal\` for line-oriented console input/output, and \`tui\` for raw-key terminal applications; see [Terminal UI](tui.md).
-- \`voice\` for local audio playback and callback-backed HTTP stream playback through SDL2_mixer; see [Voice and Audio Playback](voice-audio.md).
+- `env.get(name)` for reading a process environment variable without launching a shell.
+- `http` for optional synchronous requests and bounded pull-based streaming through libcurl; see [HTTP and API Requests](reference/HTTP.md) and [HTTP Streaming](reference/HTTP-STREAMING.md).
+- `terminal` for line-oriented console input/output, and `tui` for raw-key terminal applications; see [Terminal UI](tui.md).
+- `voice` for local audio playback and callback-backed HTTP stream playback through SDL2_mixer; see [Voice and Audio Playback](voice-audio.md).
 
 The namespaces do not all have the same maturity. Basic language operations and experimental additions should be evaluated separately. HTTP streaming, environment access, Voice/audio, and raw-key TUI are optional additions and are outside the stable-core compatibility guarantee.
 
@@ -25,15 +25,15 @@ The namespaces do not all have the same maturity. Basic language operations and 
 
 Text values often arrive from files, console input, or network responses. Do not treat text as a number simply because it contains digits. Use the documented parsing and validation helpers when converting text into a numeric value.
 
-The documented helpers include \`string.is_int(text)\`, which checks whether the full text is a valid signed integer representation, and \`string.parse_int(text)\`, which parses integer text with failure handling. Consult the specification for exact accepted formats and failure behavior.
+The documented helpers include `string.is_int(text)`, which checks whether the full text is a valid signed integer representation, and `string.parse_int(text)`, which parses integer text with failure handling. Consult the specification for exact accepted formats and failure behavior.
 
 When handling untrusted or user-provided text, validate the result before using it in arithmetic or as an index, path, or other control value. For JSON, use `json.parse`, typed getters, and `json.last_error`; use `json.escape` when inserting user-provided text into a JSON string. The immutable `json.object`, `json.array`, `json.set`, `json.remove`, and `json.push` helpers build raw JSON text without introducing a dynamic JSON value tree.
 
 ## Files, paths, and environment
 
-Use the documented \`io\` and \`path\` operations for file-related work instead of relying on the current working directory or hand-built path assumptions. Paths can be interpreted differently across platforms, so test the same operation on every platform your application claims to support.
+Use the documented `io` and `path` operations for file-related work instead of relying on the current working directory or hand-built path assumptions. Paths can be interpreted differently across platforms, so test the same operation on every platform your application claims to support.
 
-The \`env.get(name)\` helper reads a process environment variable without launching a shell. Environment variables may contain missing, empty, or unexpected values; check the documented return behavior and validate the value before depending on it. Avoid storing secrets in source code or printing sensitive environment values to logs.
+The `env.get(name)` helper reads a process environment variable without launching a shell. Environment variables may contain missing, empty, or unexpected values; check the documented return behavior and validate the value before depending on it. Avoid storing secrets in source code or printing sensitive environment values to logs.
 
 See [Binary I/O](binary-io.md) for byte-oriented file access and its current limits. HTTP streaming can copy raw response chunks into reusable byte buffers with `http.stream_read_buffer`; do not use the text-only `http.stream_read` API for binary payloads. If a text chunk contains an embedded NUL byte, `http.stream_read` records a stream error, terminates that stream, and discards queued text bytes.
 

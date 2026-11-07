@@ -70,7 +70,7 @@ function main() -> int {
 }
 ```
 
-A runnable source example is available at [examples/voice.yl](../../examples/voice.yl).
+A runnable source example is available at [examples/voice.yl](https://github.com/Yassine-Jemi01/ylang/blob/main/examples/voice.yl).
 
 ## Formats and limitations
 

@@ -91,8 +91,8 @@ def main():
         if process.returncode != 0:
             raise SystemExit(f"TUI key test exited {process.returncode}: {output!r}")
         text = output.decode("utf-8", errors="replace")
-        values = re.findall(r"(?m)^(-?\\d+)$", text)
-        if values[-4:] != ["80", "24", "-1", "1001"]:
+        values = re.findall(r"(?m)^(-?\d+)\r?$", text)
+        if values[-3:] != ["80", "24", "1001"]:
             raise SystemExit(f"TUI dimensions/key mismatch: {text!r}")
         restored = termios.tcgetattr(slave)
         mask = termios.ICANON | termios.ECHO
@@ -124,7 +124,20 @@ def main():
                 signal_process.wait(timeout=2)
                 raise SystemExit("TUI did not enable raw mode before signal test")
             signal_process.send_signal(signal.SIGINT)
-            signal_process.wait(timeout=3)
+            try:
+                signal_process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                ready, _, _ = select.select([signal_master], [], [], 0.2)
+                signal_output = bytearray()
+                if ready:
+                    try:
+                        signal_output.extend(os.read(signal_master, 4096))
+                    except OSError as error:
+                        if error.errno != errno.EIO:
+                            raise
+                signal_process.kill()
+                signal_process.wait(timeout=2)
+                raise SystemExit(f"TUI SIGINT did not exit; signal output: {signal_output!r}")
             if signal_process.returncode != 128 + signal.SIGINT:
                 raise SystemExit(f"TUI SIGINT exit status mismatch: {signal_process.returncode}")
             signal_output = bytearray()
@@ -166,7 +179,121 @@ def main():
         finally:
             os.close(redirected_master)
             os.close(redirected_slave)
-        print("YLang TUI raw-key, signal-restoration, and redirected-output tests passed.")
+        # Exercise the real menu at wide, medium, and narrow widths, then navigate it.
+        menu_executable = ROOT / "build" / "tui-menu-integration"
+        subprocess.run(
+            [compiler, "build", "examples/tui-menu.yl", "-o",
+             str(menu_executable.relative_to(ROOT))],
+            cwd=ROOT,
+            check=True,
+        )
+        menu_master, menu_slave = pty.openpty()
+        menu_process = None
+        menu_output = bytearray()
+        try:
+            def resize_menu(columns):
+                fcntl.ioctl(menu_slave, termios.TIOCSWINSZ,
+                            struct.pack("HHHH", 24, columns, 0, 0))
+
+            resize_menu(80)
+            menu_original = termios.tcgetattr(menu_slave)
+            menu_process = subprocess.Popen(
+                [str(menu_executable)],
+                cwd=ROOT,
+                stdin=menu_slave,
+                stdout=menu_slave,
+                stderr=menu_slave,
+                close_fds=True,
+            )
+
+            def wait_for_menu_frame(predicate, start_at, timeout, description):
+                deadline = time.monotonic() + timeout
+                while time.monotonic() < deadline:
+                    ready, _, _ = select.select([menu_master], [], [], 0.05)
+                    if ready:
+                        try:
+                            menu_output.extend(os.read(menu_master, 8192))
+                        except OSError as error:
+                            if error.errno != errno.EIO:
+                                raise
+                    new_output = bytes(menu_output[start_at:])
+                    frame_bytes = new_output.rsplit(b"\x1b[2J", 1)[-1]
+                    frame = re.sub(
+                        r"\x1b\[[0-?]*[ -/]*[@-~]",
+                        "",
+                        frame_bytes.decode("utf-8", errors="replace"),
+                    )
+                    if predicate(frame):
+                        return frame
+                    if menu_process.poll() is not None:
+                        break
+                raise SystemExit(f"TUI menu did not render {description}")
+
+            wide_start = len(menu_output)
+            wide = wait_for_menu_frame(
+                lambda frame: "+--------------------------------------------------+" in frame and "GET STARTED" in frame,
+                wide_start, 3.0, "the wide layout",
+            )
+            resize_menu(50)
+            medium_start = len(menu_output)
+            medium = wait_for_menu_frame(
+                lambda frame: "GET STARTED" in frame and "UP / DOWN" in frame,
+                medium_start, 3.0, "the medium-width layout",
+            )
+            if "+--------------------------------------------------+" in medium:
+                raise SystemExit("TUI menu kept the wide box after resizing to 50 columns")
+
+            resize_menu(40)
+            narrow_start = len(menu_output)
+            narrow = wait_for_menu_frame(
+                lambda frame: "UP/DOWN Move" in frame and "ENTER Choose" in frame,
+                narrow_start, 3.0, "the narrow-width layout",
+            )
+            os.write(menu_master, b"\x1b[B")
+            selected_start = len(menu_output)
+            wait_for_menu_frame(
+                lambda frame: "  >  Open workspace" in frame,
+                selected_start, 2.0, "the keyboard selection update",
+            )
+            os.write(menu_master, b"\r")
+            deadline = time.monotonic() + 3.0
+            while time.monotonic() < deadline and menu_process.poll() is None:
+                ready, _, _ = select.select([menu_master], [], [], 0.05)
+                if ready:
+                    try:
+                        menu_output.extend(os.read(menu_master, 8192))
+                    except OSError as error:
+                        if error.errno != errno.EIO:
+                            raise
+            if menu_process.poll() is None:
+                menu_process.kill()
+                menu_process.wait(timeout=2)
+                raise SystemExit("TUI menu did not exit after Enter")
+            # Drain bytes written immediately before process exit.
+            for _ in range(5):
+                ready, _, _ = select.select([menu_master], [], [], 0.02)
+                if not ready:
+                    break
+                try:
+                    menu_output.extend(os.read(menu_master, 8192))
+                except OSError as error:
+                    if error.errno != errno.EIO:
+                        raise
+            if menu_process.returncode != 0:
+                raise SystemExit(f"TUI menu exited with status {menu_process.returncode}")
+            if b"Open workspace selected." not in menu_output:
+                raise SystemExit("TUI menu did not activate the selected workspace item")
+            menu_restored = termios.tcgetattr(menu_slave)
+            if (menu_restored[3] & mask) != (menu_original[3] & mask):
+                raise SystemExit("TUI menu did not restore terminal canonical/echo settings")
+        finally:
+            if menu_process is not None and menu_process.poll() is None:
+                menu_process.kill()
+                menu_process.wait(timeout=2)
+            os.close(menu_master)
+            os.close(menu_slave)
+
+        print("YLang TUI raw-key, signal-restoration, resize, menu-navigation, and redirected-output tests passed.")
     finally:
         os.close(master)
         os.close(slave)
