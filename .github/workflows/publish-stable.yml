@@ -82,6 +82,8 @@ jobs:
         run: make check-runtime-template
       - name: Build compiler
         run: ${{ steps.compiler.outputs.make }} clean all CC="${{ steps.compiler.outputs.cc }}"
+      - name: Verify unused optional runtime sections are excluded
+        run: python3 tests/check_runtime_feature_gates.py --cc "${{ steps.compiler.outputs.cc }}"
       - name: Build optional GUI runtime
         run: ${{ steps.compiler.outputs.make }} gui gui-example game2d-example CC="${{ steps.compiler.outputs.cc }}"
       - name: Build terminal UI example
@@ -143,6 +145,8 @@ jobs:
         run: make clean all CC=gcc PYTHON=python
       - name: Verify compiler diagnostics remain English
         run: python tests/check_english_diagnostics.py
+      - name: Verify unused optional runtime sections are excluded
+        run: python tests/check_runtime_feature_gates.py --cc gcc
       - name: Build optional SDL2 GUI runtime
         run: make gui gui-example game2d-example CC=gcc PYTHON=python
       - name: Build responsive terminal UI example

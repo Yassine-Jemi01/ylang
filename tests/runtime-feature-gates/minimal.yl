@@ -1,0 +1,4 @@
+function main() -> int {
+    print("minimal runtime feature-gate test");
+    return 0;
+}
