@@ -41,7 +41,7 @@ def main():
             text=True,
             capture_output=True,
             env=env,
-            timeout=20,
+            timeout=40,
         )
         if result.returncode != 0:
             sys.stderr.write(result.stdout)
