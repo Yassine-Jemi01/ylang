@@ -28,7 +28,7 @@ These distinctions are important when deciding whether a feature is appropriate 
 
 ## Stable core and experimental extensions
 
-YLang 2.2.0 is the release described by this edition. The stable core and its default C-backend workflow form the compatibility baseline. Extensions may change or have restrictions that do not apply to the stable core.
+YLang 2.3.0 is the stable release described by this edition. The stable core and its default C-backend workflow form the compatibility baseline. Extensions may change or have restrictions that do not apply to the stable core.
 
 When choosing a feature, follow this checklist:
 
