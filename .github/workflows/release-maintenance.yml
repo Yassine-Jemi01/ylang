@@ -189,7 +189,6 @@ jobs:
 
   synchronize-release-description:
     name: Synchronize published v2.3.0 release description
-    needs: verify-source-archives
     runs-on: ubuntu-latest
     permissions:
       contents: write
