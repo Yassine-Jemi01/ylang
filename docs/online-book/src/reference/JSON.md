@@ -37,7 +37,7 @@ function main() -> int {
 | json.escape(text) | owned_string | Encode a string as a JSON string literal |
 | json.last_error() | string | Read the most recent JSON diagnostic |
 
-## Immutable builders (YLang 2.3 development)
+## Immutable builders (YLang 2.3.0)
 
 The following example uses only validated raw JSON fragments. It creates a profile, adds a numeric field, builds a string array with `json.escape`, and removes a property by returning a new object.
 
