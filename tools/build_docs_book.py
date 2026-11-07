@@ -92,7 +92,7 @@ def rewrite_arabic_cross_language_links() -> int:
     arabic_src = BOOK_SRC / "ar"
     base = "https://yassine-jemi01.github.io/ylang/learn"
     replacements = {
-        "../index.html": f"{base}/getting-started.html",
+        "../index.html": f"{base}/index.html",
         "../ylanglings.md": f"{base}/ylanglings.html",
     }
     changed = 0
