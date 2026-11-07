@@ -99,8 +99,10 @@ def main() -> int:
         if required_mapping not in nav_source:
             fail(f"book language switching is missing its home-page mapping: {required_mapping}")
 
-    if "relativeBookPath().startsWith('ar/') ? ARABIC_BOOK_URL : HOME_URL" not in nav_source:
-        fail("Arabic book home link does not preserve the Arabic book route")
+    if "const ARABIC_PORTAL_URL = HOME_URL + 'docs-ar.html';" not in nav_source:
+        fail("the Arabic book does not define its documentation portal destination")
+    if "relativeBookPath().startsWith('ar/') ? ARABIC_PORTAL_URL : HOME_URL" not in nav_source:
+        fail("Arabic book home link does not return to the Arabic documentation portal")
 
     arabic_book_css_candidates = (
         root / "learn" / "theme" / "ylang-book.css",
@@ -131,8 +133,10 @@ def main() -> int:
     for script_path in homepage_scripts:
         if script_path.is_file():
             app_bundle_sources.append(script_path.read_text(encoding="utf-8"))
-    if not any("learn/ar/index.html" in source for source in app_bundle_sources):
-        fail("the homepage application bundle does not link to the Arabic YLang Book")
+    if not any("docs-ar.html" in source for source in app_bundle_sources):
+        fail("the homepage Arabic language selector does not link to the Arabic documentation portal")
+    if any("learn/ar/index.html" in source for source in app_bundle_sources):
+        fail("the homepage Arabic language selector still routes directly to the Arabic book index")
 
     for relative in ("docs.html", "docs-ar.html"):
         page = (root / relative).read_text(encoding="utf-8")
