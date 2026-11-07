@@ -199,6 +199,9 @@ jobs:
         run: |
           cat > build/windows-smoke/tui-interactive.yl <<'EOF'
           function main() -> int {
+              print("BOOT");
+              let string gate = io.read_line();
+              if (gate != "go") { return 9; }
               if (!tui.init()) { return 10; }
               if (!tui.clear()) { tui.shutdown(); return 11; }
               if (!tui.set_cursor(1, 1)) { tui.shutdown(); return 12; }
