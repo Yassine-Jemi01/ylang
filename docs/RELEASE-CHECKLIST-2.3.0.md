@@ -67,7 +67,7 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] YSPM package builds from the candidate commit, contains one copy of each versioned changelog, and includes the required source-level library and documentation files.
 - [ ] YSPM package install and removal smoke tests pass in an isolated root.
 - [ ] Package metadata version and architecture match the release candidate.
-- [ ] Benchmarks are run with recorded OS, CPU, compiler, flags, and baseline; only reproducible measurements are published.
+- [ ] Benchmarks are run with recorded OS, CPU model, native compiler/version, optimization and C flags, workload, run count, and stable baseline; review candidate/baseline compile-time, runtime, and binary-size ratios, fix or explicitly accept material regressions, and publish only reproducible measurements.
 
 ## Final publication authorization
 
