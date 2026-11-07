@@ -149,6 +149,19 @@ def check_site() -> list[str]:
                     errors.append(f"{path.relative_to(ROOT)} contains legacy localization marker {marker!r}.")
                     break
 
+    # Keep both language entry points discoverable from the homepage and docs portal.
+    homepage = (SITE / "index.html").read_text(encoding="utf-8")
+    english_docs = (SITE / "docs.html").read_text(encoding="utf-8")
+    arabic_docs = (SITE / "docs-ar.html").read_text(encoding="utf-8")
+    for source, label in (
+        (homepage, "homepage"),
+        (english_docs, "English docs portal"),
+    ):
+        if 'href="docs-ar.html"' not in source:
+            errors.append(f"{label} must link to the Arabic documentation portal.")
+    if 'href="docs.html"' not in arabic_docs:
+        errors.append("Arabic docs portal must link back to the English documentation portal.")
+
     expected_pages = (
         ("website/index.html", "en", "ltr"),
         ("website/docs.html", "en", "ltr"),
