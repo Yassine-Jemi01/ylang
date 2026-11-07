@@ -2375,13 +2375,14 @@ static uint8_t yl_to_byte(int64_t value) {
     return (uint8_t)value;
 }
 
-/* Binary file and stream functions are opt-in. */
-#ifdef YLANG_USE_BINARY
-#define YL_BINARY_MAX_READ (16U * 1024U * 1024U)
 static bool yl_binary_seek(FILE *file, int64_t offset) {
     return file && offset >= 0 && (uint64_t)offset <= (uint64_t)LONG_MAX &&
            fseek(file, (long)offset, SEEK_SET) == 0;
 }
+
+/* Binary file and stream functions are opt-in. */
+#ifdef YLANG_USE_BINARY
+#define YL_BINARY_MAX_READ (16U * 1024U * 1024U)
 static int64_t yl_binary_size(const char *path) {
     if (!path) return -1;
     FILE *file = fopen(path, "rb");
