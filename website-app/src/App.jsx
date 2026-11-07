@@ -132,7 +132,7 @@ function Header() {
           <summary aria-label="Select site language">EN <FiChevronDown aria-hidden="true" /></summary>
           <div className="language-menu">
             <a href={SITE} lang="en" hreflang="en" aria-current="page">English (EN)</a>
-            <a href={`${SITE}docs-ar.html?from=home`} lang="ar" hreflang="ar">العربية (AR)</a>
+            <a href={`${SITE}learn/ar/index.html`} lang="ar" hreflang="ar">العربية (AR)</a>
           </div>
         </details>
         <a className="nav-github" href={REPO} target="_blank" rel="noreferrer">
