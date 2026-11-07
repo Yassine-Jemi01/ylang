@@ -5,6 +5,7 @@ from pathlib import Path
 import io
 import math
 import struct
+import subprocess
 import sys
 import time
 import wave
@@ -23,6 +24,19 @@ def make_test_wav():
         )
         wav_file.writeframes(b"".join(samples))
     return output.getvalue()
+
+
+def make_test_mp3():
+    result = subprocess.run(
+        [
+            "ffmpeg", "-hide_banner", "-loglevel", "error",
+            "-f", "lavfi", "-i", "sine=frequency=440:duration=0.5",
+            "-codec:a", "libmp3lame", "-b:a", "64k", "-f", "mp3", "pipe:1",
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return result.stdout
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -105,6 +119,23 @@ class Handler(BaseHTTPRequestHandler):
                     self.wfile.write(chunk + b"\r\n")
                     self.wfile.flush()
                 self.wfile.write(b"0\r\n\r\n")
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+        elif self.path == "/stream-mp3":
+            payload = make_test_mp3()
+            self.send_response(200)
+            self.send_header("Content-Type", "audio/mpeg")
+            self.send_header("Transfer-Encoding", "chunked")
+            self.send_connection_close()
+            self.end_headers()
+            try:
+                for offset in range(0, len(payload), 1024):
+                    chunk = payload[offset:offset + 1024]
+                    self.wfile.write(("%X\\r\\n" % len(chunk)).encode("ascii"))
+                    self.wfile.write(chunk + b"\\r\\n")
+                    self.wfile.flush()
+                self.wfile.write(b"0\\r\\n\\r\\n")
                 self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 pass
