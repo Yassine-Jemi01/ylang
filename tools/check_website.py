@@ -132,6 +132,26 @@ def check_book_links(errors: list[str]) -> None:
                     )
 
 
+def check_bilingual_rendering(errors: list[str]) -> None:
+    """Guard Arabic RTL prose and LTR code presentation in both documentation surfaces."""
+    book_css = (ROOT / "docs" / "online-book" / "theme" / "ylang-book.css").read_text(encoding="utf-8")
+    book_js = (ROOT / "docs" / "online-book" / "theme" / "ylang-nav.js").read_text(encoding="utf-8")
+    portal_css = (SITE / "docs-ar.css").read_text(encoding="utf-8")
+
+    if ".ylang-ar .content main" not in book_css or "direction: rtl" not in book_css:
+        errors.append("Arabic book prose must retain its RTL reading direction.")
+    if ".ylang-ar .content main pre" not in book_css or "direction: ltr" not in book_css:
+        errors.append("Arabic book code blocks must retain their LTR direction.")
+    if "document.documentElement.lang = 'ar'" not in book_js:
+        errors.append("Arabic book navigation must set the document language to Arabic.")
+    if "document.documentElement.dir = 'rtl'" not in book_js:
+        errors.append("Arabic book navigation must set the document direction to RTL.")
+    if 'html[dir="rtl"]' not in portal_css or "direction:rtl" not in portal_css:
+        errors.append("Arabic docs portal must retain RTL layout styles.")
+    if ".terminal-card pre" not in portal_css or "direction:ltr" not in portal_css:
+        errors.append("Arabic docs portal code samples must retain LTR layout styles.")
+
+
 def check_site() -> list[str]:
     errors: list[str] = []
     files = sorted(p for p in SITE.rglob("*") if p.is_file() and p.suffix.lower() in TEXT_SUFFIXES)
@@ -188,6 +208,7 @@ def check_site() -> list[str]:
                 continue
             errors.append(f"{relative} refers to missing local file: {target}.")
 
+    check_bilingual_rendering(errors)
     check_book_links(errors)
 
     if errors:
