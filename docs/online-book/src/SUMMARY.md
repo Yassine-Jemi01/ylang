@@ -70,7 +70,7 @@
 - [Terminal I/O Reference](reference/TERMINAL.md)
 - [Security Model and Safe Defaults](reference/SECURITY.md)
 - [YLang 2.2 Roadmap](reference/ROADMAP-2.2.0.md)
-- [YLang 2.3.0 Development Notes](reference/CHANGELOG-2.3.0.md)
+- [YLang 2.3.0 Release Notes](reference/CHANGELOG-2.3.0.md)
 - [YLang 2.3.0 Release Scope and Acceptance Gates](reference/ROADMAP-2.3.0.md)
 - [Debugger Design](reference/DEBUGGER-SPEC.md)
 - [Option and Result Design](reference/OPTION-RESULT-DESIGN.md)
