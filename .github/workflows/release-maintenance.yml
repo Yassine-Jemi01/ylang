@@ -223,6 +223,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v2.3.0" --jq '.body' > build-release-body.md
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v2.3.0" > build-release.json
+          jq --raw-output --join-output '.body' build-release.json > build-release-body.md
           cmp docs/CHANGELOG-2.3.0.md build-release-body.md
           echo "Verified: GitHub Release description matches docs/CHANGELOG-2.3.0.md."
