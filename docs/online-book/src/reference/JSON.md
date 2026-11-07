@@ -72,7 +72,7 @@ The original strings remain unchanged: each builder returns a new `owned_string`
 
 ## Representation and behavior
 
-The parser, accessors, and formatter are part of the documented 2.2 standard-library surface. Immutable object/array builders are additions in the unreleased 2.3 development line; do not assume they are available in a 2.2.0 installation.
+The parser, accessors, and formatter were introduced in the 2.2 standard-library surface. YLang 2.3.0 adds immutable object/array builders; they are not available in a 2.2.0 installation.
 
 JSON documents and extracted raw values are represented as owned strings, not as a dynamic YLang value tree. This keeps the first implementation compatible with the current type system and makes it useful for HTTP responses and configuration files. json.get and json.at return an empty string on lookup failure; typed getters return their zero value and set json.last_error(). Check json.has before accessing optional object properties.
 
