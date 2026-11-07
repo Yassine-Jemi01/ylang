@@ -6,7 +6,7 @@
 
 - [x] Confirm GitHub Release `v2.3.0` exists, is not a draft or prerelease, and is marked as the latest stable release.
 - [x] Confirm tag `v2.3.0` points to the exact release-authorization commit tested by the stable publishing workflow: `31e30605a08b068cf4c3a81256464c3a72666112`.
-- [ ] Confirm the *currently published GitHub Release description* contains the corrected final validation notes. The release description was created from the pre-audit file and still contains stale statements about an unfrozen working tree and unverified 2.3.0 gates. The corrected notes are now on `main` and in the online book; the published description itself still needs a safe edit. Do not rewrite the tag or its assets.
+- [ ] Resolve the release-documentation mismatch through a safe release-maintenance path. The published GitHub Release description and the documentation embedded in the original `v2.3.0` YSPM asset still contain pre-audit validation statements and older "unreleased 2.3" wording. The repository and online-book copies are corrected on `main`; do not rewrite the tag or silently replace the existing release asset.
 - [x] Download the published YSPM package artifact, inspect its archive and metadata, and verify its SHA-256 against the GitHub Release asset digest.
 - [x] Confirm package metadata: version `2.3.0`, architecture `x86_64`, ABI `yspm-abi-1`; published file size is 588,979 bytes.
 - [x] Run the package's compiler directly: `--version`, `--help`, source check, native build, and execution of a smoke program all pass.
