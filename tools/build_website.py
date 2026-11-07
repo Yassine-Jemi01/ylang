@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -39,6 +40,32 @@ def copy_theme_assets(destination: Path) -> None:
     shutil.copy2(BOOK_ROOT / "theme" / "favicon.svg", destination / "favicon.svg")
     shutil.copy2(BOOK_ROOT / "theme" / "ylang-nav.js", theme / "ylang-nav.js")
     shutil.copy2(BOOK_ROOT / "theme" / "ylang-book.css", theme / "ylang-book.css")
+
+
+def ensure_book_favicons(learn_root: Path) -> None:
+    """Give every generated mdBook HTML page the same local project favicon.
+
+    mdBook's special toc.html template does not include the ordinary page head
+    partial, so its icon declaration is added after rendering. The path is
+    relative to each page, keeping both books usable below GitHub project Pages.
+    """
+    favicon_pattern = re.compile(
+        r"<link\b(?=[^>]*\brel\s*=\s*['\"][^'\"]*\bicon\b[^'\"]*['\"])[^>]*>",
+        re.IGNORECASE,
+    )
+    for page in learn_root.rglob("*.html"):
+        relative = page.relative_to(learn_root)
+        book_root = learn_root / "ar" if relative.parts[0] == "ar" else learn_root
+        content = page.read_text(encoding="utf-8")
+        if favicon_pattern.search(content):
+            continue
+        closing_head = re.search(r"</head\s*>", content, re.IGNORECASE)
+        if closing_head is None:
+            raise SystemExit(f"generated book page has no </head>: {page.relative_to(learn_root)}")
+        favicon = os.path.relpath(book_root / "favicon.svg", page.parent).replace(os.sep, "/")
+        tag = f'<link rel="icon" href="{favicon}" type="image/svg+xml">\n'
+        content = content[:closing_head.start()] + tag + content[closing_head.start():]
+        page.write_text(content, encoding="utf-8")
 
 
 def main() -> int:
@@ -102,6 +129,7 @@ def main() -> int:
     shutil.copytree(ARABIC_BOOK, learn_root / "ar")
     copy_theme_assets(learn_root)
     copy_theme_assets(learn_root / "ar")
+    ensure_book_favicons(learn_root)
 
     run([sys.executable, "tools/build_sitemap.py", str(output)])
     run([sys.executable, "tools/check_website_build.py", str(output)])
