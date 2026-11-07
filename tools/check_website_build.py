@@ -13,14 +13,20 @@ from xml.etree import ElementTree as ET
 class LinkParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
-        self.hrefs: list[str] = []
+        self.references: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag not in {"a", "link", "area"}:
-            return
-        for key, value in attrs:
-            if key == "href" and value:
-                self.hrefs.append(value)
+        values = dict(attrs)
+        for attribute in ("href", "src", "poster"):
+            value = values.get(attribute)
+            if value:
+                self.references.append(value)
+        srcset = values.get("srcset")
+        if srcset:
+            for candidate in srcset.split(","):
+                url = candidate.strip().split()
+                if url:
+                    self.references.append(url[0])
 
 
 BASE_URL = "https://yassine-jemi01.github.io/ylang/"
@@ -72,12 +78,26 @@ def main() -> int:
     if "Sitemap: " + BASE_URL + "sitemap.xml" not in (root / "robots.txt").read_text(encoding="utf-8"):
         fail("robots.txt does not advertise the generated sitemap")
 
-    english_book = (root / "learn" / "index.html").read_text(encoding="utf-8")
-    arabic_book = (root / "learn" / "ar" / "index.html").read_text(encoding="utf-8")
+    english_book_path = root / "learn" / "index.html"
+    arabic_book_path = root / "learn" / "ar" / "index.html"
+    english_book = english_book_path.read_text(encoding="utf-8")
+    arabic_book = arabic_book_path.read_text(encoding="utf-8")
+    if 'lang="en"' not in english_book or 'dir="ltr"' not in english_book:
+        fail("English book root language or direction is incorrect")
+    if 'lang="ar"' not in arabic_book or 'dir="rtl"' not in arabic_book:
+        fail("Arabic book root language or direction is incorrect")
     if "المسار العربي — تعلّم YLang" in english_book:
         fail("Arabic chapters leaked into the English book navigation")
     if "Part I — Start Here" in arabic_book:
         fail("English chapters leaked into the Arabic book navigation")
+
+    nav_script = (root / "learn" / "theme" / "ylang-nav.js")
+    if not nav_script.is_file():
+        fail("the shared book navigation script is missing")
+    nav_source = nav_script.read_text(encoding="utf-8")
+    for required_mapping in ("'start-here.html': 'index.html'", "'index.html': 'start-here.html'"):
+        if required_mapping not in nav_source:
+            fail(f"book language switching is missing its home-page mapping: {required_mapping}")
 
     for relative in ("docs.html", "docs-ar.html"):
         page = (root / relative).read_text(encoding="utf-8")
@@ -91,17 +111,19 @@ def main() -> int:
             parser.feed(page_path.read_text(encoding="utf-8"))
         except UnicodeDecodeError:
             fail(f"HTML is not UTF-8: {page_path.relative_to(root)}")
-        for href in parser.hrefs:
-            parsed = urlsplit(href)
+        for reference in parser.references:
+            parsed = urlsplit(reference)
             if parsed.scheme or parsed.netloc or not parsed.path:
                 continue
             target_path = unquote(parsed.path)
+            if not target_path:
+                continue
             target = (root / target_path.lstrip("/")) if target_path.startswith("/") else (page_path.parent / target_path)
             target = target.resolve()
             if target.is_dir():
                 target = target / "index.html"
             if not target.exists():
-                broken.append(f"{page_path.relative_to(root)} -> {href}")
+                broken.append(f"{page_path.relative_to(root)} -> {reference}")
                 if len(broken) >= 25:
                     break
         if len(broken) >= 25:
