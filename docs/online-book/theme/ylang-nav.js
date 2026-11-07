@@ -88,6 +88,28 @@
     if (isArabic) document.body.classList.add('ylang-ar');
   }
 
+  function localizeArabicChrome() {
+    if (!relativeBookPath().startsWith('ar/')) return;
+    const labels = new Map([
+      ['Toggle Sidebar', 'إظهار قائمة الفصول أو إخفاؤها'],
+      ['Change theme', 'تغيير المظهر'],
+      ['Search', 'البحث في الكتاب'],
+      ['Print this book', 'طباعة الكتاب'],
+      ['Copy to clipboard', 'نسخ إلى الحافظة'],
+      ['Edit this page', 'تعديل هذه الصفحة'],
+      ['Previous chapter', 'الفصل السابق'],
+      ['Next chapter', 'الفصل التالي']
+    ]);
+    document.querySelectorAll('[title], [aria-label]').forEach((element) => {
+      for (const attribute of ['title', 'aria-label']) {
+        const value = element.getAttribute(attribute);
+        if (value && labels.has(value)) element.setAttribute(attribute, labels.get(value));
+      }
+    });
+    const search = document.querySelector('#searchbar');
+    if (search) search.setAttribute('placeholder', 'ابحث في الكتاب...');
+  }
+
   function addLanguageSwitcher() {
     if (document.querySelector('.language-switcher')) return;
     const toolbar = document.querySelector('#menu-bar .left-buttons') || document.querySelector('#menu-bar');
@@ -141,6 +163,7 @@
   function initialize() {
     addSharedTheme();
     setBookLanguage();
+    localizeArabicChrome();
     addHomeLink();
     addLanguageSwitcher();
   }
