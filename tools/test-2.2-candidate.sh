@@ -72,18 +72,15 @@ else
   echo "SKIP: Neovim is not installed; its tests still run in GitHub Actions."
 fi
 
-step "Build the online book and validate documentation links"
-python3 tools/build_docs_book.py
-mdbook build docs/online-book
-mkdir -p website/learn
-cp -a docs/online-book/book/. website/learn/
-python3 tools/check_website.py
-
-step "Build the refreshed React homepage"
+step "Build the homepage and validate the complete bilingual website"
 npm ci --prefix website-app --no-audit --no-fund
 npm run build --prefix website-app
 test -s website-app/dist/index.html
 test -s website-app/dist/ylang-mark.svg
+python3 tools/build_website.py site-dist
+test -s site-dist/index.html
+test -s site-dist/docs-ar.html
+test -s site-dist/learn/ar/start-here.html
 
 step "Candidate acceptance checks passed"
 echo "Candidate version: $(cat VERSION)"
