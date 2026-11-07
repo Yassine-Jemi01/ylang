@@ -1,11 +1,11 @@
-/* YLang Book theme: dark-teal identity shared with the homepage. */
+/* Shared YLang site identity: dark navy, blue, orange, and homepage typography. */
 :root {
   --content-max-width: 900px;
   --sidebar-width: 292px;
   --menu-bar-height: 60px;
   --font-size: 0.96rem;
 }
-body { font-feature-settings: "kern"; }
+body { font-family: "Manrope", system-ui, sans-serif; font-feature-settings: "kern"; }
 #menu-bar {
   background: #0b1420;
   border-bottom: 1px solid #293f59;
@@ -98,7 +98,7 @@ body { font-feature-settings: "kern"; }
 .ylang-ar .content main {
   direction: rtl;
   text-align: right;
-  font-family: "Noto Naskh Arabic", sans-serif;
+  font-family: "Noto Naskh Arabic", "Manrope", sans-serif;
 }
 .ylang-ar .content main h1,
 .ylang-ar .content main h2,
@@ -126,7 +126,7 @@ body { font-feature-settings: "kern"; }
   min-height: 34px;
   align-items: center;
   gap: 8px;
-  margin-right: 8px;
+  margin-inline-end: 8px;
   padding: 4px 9px 4px 5px;
   border: 1px solid #293f59;
   border-radius: 7px;
@@ -160,12 +160,17 @@ body { font-feature-settings: "kern"; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
 
 /* Language selector shared by every generated book chapter. */
-.ylang-language-switcher { position: relative; display: inline-flex; margin-left: 8px; vertical-align: middle; }
+.ylang-language-switcher { position: relative; display: inline-flex; margin-inline-start: 8px; vertical-align: middle; }
 .ylang-language-switcher summary { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; padding: 4px 10px; border: 1px solid #3b5878; border-radius: 7px; color: #eaf2fb; background: #14243a; font-size: .76rem; font-weight: 750; cursor: pointer; list-style: none; }
 .ylang-language-switcher summary::-webkit-details-marker { display: none; }
 .ylang-language-switcher summary:hover,
 .ylang-language-switcher[open] summary { border-color: #80c8f0; color: #80c8f0; }
-.ylang-language-menu { position: absolute; z-index: 1000; top: calc(100% + 7px); right: 0; display: grid; min-width: 150px; padding: 5px; border: 1px solid #3b5878; border-radius: 8px; background: #14243a; box-shadow: 0 16px 36px rgb(0 0 0 / 35%); }
+.ylang-language-menu { position: absolute; z-index: 1000; top: calc(100% + 7px); inset-inline-end: 0; display: grid; min-width: 150px; padding: 5px; border: 1px solid #3b5878; border-radius: 8px; background: #14243a; box-shadow: 0 16px 36px rgb(0 0 0 / 35%); }
 .ylang-language-menu a { display: block; padding: 8px 10px; border-radius: 5px; color: #a6b8ca !important; font-size: .78rem; text-decoration: none !important; white-space: nowrap; }
 .ylang-language-menu a:hover,
 .ylang-language-menu a[aria-current="page"] { color: #80c8f0 !important; background: #203752; }
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap');
+.ylang-home-link img { display: block; width: 25px; height: 25px; object-fit: contain; }
+.ylang-ar .ylang-language-menu { inset-inline-end: auto; inset-inline-start: 0; }
+.ylang-ar #menu-bar, .ylang-ar #menu-bar .left-buttons { direction: rtl; }
