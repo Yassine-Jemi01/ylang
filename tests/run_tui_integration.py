@@ -269,6 +269,16 @@ def main():
                 menu_process.kill()
                 menu_process.wait(timeout=2)
                 raise SystemExit("TUI menu did not exit after Enter")
+            # Drain bytes written immediately before process exit.
+            for _ in range(5):
+                ready, _, _ = select.select([menu_master], [], [], 0.02)
+                if not ready:
+                    break
+                try:
+                    menu_output.extend(os.read(menu_master, 8192))
+                except OSError as error:
+                    if error.errno != errno.EIO:
+                        raise
             if menu_process.returncode != 0:
                 raise SystemExit(f"TUI menu exited with status {menu_process.returncode}")
             if b"Open workspace selected." not in menu_output:
