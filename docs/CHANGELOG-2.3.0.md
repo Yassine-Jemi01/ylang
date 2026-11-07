@@ -8,6 +8,7 @@
 
 ## Work integrated so far
 - Added native Windows interactive TUI acceptance coverage for raw key input, virtual-terminal output, cursor control, and console-mode restoration.
+- Fixed Windows TUI shutdown so the cursor-show sequence is emitted before virtual-terminal processing is disabled, including automatic restoration when the caller does not explicitly show the cursor.
 - Added an Arabic documentation portal and expanded the Arabic book path with RTL prose and LTR code. YLanglings, its CLI, exercises, hints, and reference solutions remain English-only; compiler diagnostics and language identifiers also remain in English.
 - Hardened NUL handling across the string boundary: `io.read_line` and formatting reject embedded zero bytes at runtime, while buffered synchronous and task-based HTTP string results reject binary NUL bodies with a clear error and direct users to binary-safe streaming.
 - The text-oriented `http.stream_read` now also rejects NUL-containing chunks with a stream error instead of returning a silently truncated string; `http.stream_read_buffer` remains the binary-safe path.

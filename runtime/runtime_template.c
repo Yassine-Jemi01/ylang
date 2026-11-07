@@ -1936,6 +1936,7 @@ static HANDLE yl_tui_output_handle;
 static DWORD yl_tui_saved_input_mode;
 static DWORD yl_tui_saved_output_mode;
 static bool yl_tui_output_mode_saved;
+static bool yl_tui_vt_output_enabled;
 #else
 static struct termios yl_tui_saved_termios;
 static const int yl_tui_signals[] = { SIGINT, SIGTERM, SIGHUP, SIGQUIT };
@@ -1993,6 +1994,12 @@ static void yl_tui_restore(void) {
         if (yl_tui_input_handle != NULL &&
             yl_tui_input_handle != INVALID_HANDLE_VALUE)
             (void)SetConsoleMode(yl_tui_input_handle, yl_tui_saved_input_mode);
+        /* Show the cursor while VT processing is still enabled. */
+        if (yl_tui_vt_output_enabled) {
+            (void)fputs("\033[?25h", stdout);
+            (void)fflush(stdout);
+            yl_tui_vt_output_enabled = false;
+        }
         if (yl_tui_output_mode_saved &&
             yl_tui_output_handle != NULL &&
             yl_tui_output_handle != INVALID_HANDLE_VALUE)
@@ -2000,9 +2007,9 @@ static void yl_tui_restore(void) {
         yl_tui_output_mode_saved = false;
 #else
         (void)tcsetattr(STDIN_FILENO, TCSANOW, &yl_tui_saved_termios);
-#endif
         (void)fputs("\033[?25h", stdout);
         (void)fflush(stdout);
+#endif
         yl_tui_active = false;
     }
 #ifndef _WIN32
@@ -2059,6 +2066,7 @@ static bool yl_tui_init(void) {
         yl_tui_set_error("could not enable ANSI output for the Windows console");
         return false;
     }
+    yl_tui_vt_output_enabled = true;
 #else
     yl_tui_restore();
     yl_tui_set_error("this Windows SDK does not expose virtual-terminal output support");

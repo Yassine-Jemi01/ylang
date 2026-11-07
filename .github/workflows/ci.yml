@@ -165,7 +165,6 @@ jobs:
               if (!tui.hide_cursor()) { tui.shutdown(); return 13; }
               if (!tui.write("READY")) { tui.shutdown(); return 14; }
               let int key = tui.read_key();
-              tui.show_cursor();
               tui.shutdown();
               if (key != 120) { return 15; }
               return 0;
