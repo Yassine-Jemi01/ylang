@@ -25,7 +25,38 @@ The report shows the YLang version, host platform and architecture, reported CPU
 
 The CI smoke test verifies that the harness executes. The release-validation workflow runs a 30-sample comparison against the latest stable compiler on the same Linux runner, using the same native compiler, optimization setting, and exact expected output. It measures compile latency and short-program launch cost with a compact loop, then measures runtime separately with a 10-million-iteration loop so process startup is a smaller part of the runtime result. It records the CPU model from the host when the Python platform API omits it, uploads both full reports and a ratio summary, and does not enforce a universal speed target. Review material compile-time and binary-size regressions even when execution time is unchanged. Do not compare measurements from different machines, native compiler versions, optimization settings, power modes, or workloads as if they were a controlled experiment.
 
-## YLang 2.3 development samples
+## YLang 2.3.0 release measurement
+
+The final release workflow recorded a 30-sample paired comparison of the exact
+`v2.3.0` authorization commit `31e30605a08b068cf4c3a81256464c3a72666112`
+against stable tag `v2.2.0`. Both compilers ran on the same GitHub-hosted
+Linux x86-64 runner with GCC 15.2.0, `-O2`, and three warm-up runs. The host
+reported an Intel Xeon Platinum 8573C.
+
+| Measurement | YLang 2.3.0 | YLang 2.2.0 | Difference |
+|---|---:|---:|---:|
+| Compile median | 58.805 ms | 56.046 ms | +4.9% |
+| Compile P95 | 61.056 ms | 61.134 ms | -0.1% |
+| Launch + short run median | 0.566 ms | 0.555 ms | +2.0% |
+| 10M-loop run median | 4.850 ms | 5.097 ms | -4.8% |
+| 10M-loop run P95 | 5.351 ms | 5.457 ms | -1.9% |
+| Compact executable size | 22,840 bytes | 22,840 bytes | unchanged |
+| 10M-loop executable size | 22,848 bytes | 22,848 bytes | unchanged |
+
+This final sample shows a modest compile-median regression, a slightly higher
+short-program launch measurement, effectively unchanged binary size, and a
+lower median for the long-loop workload. It is one controlled runner sample,
+not evidence that YLang is generally faster or slower. The complete reports
+and generated executables are attached to [stable publishing workflow #8](https://github.com/Yassine-Jemi01/ylang/actions/runs/42386464514).
+
+## Earlier 2.3 development samples (not release measurements)
+
+The two earlier 30-sample comparisons below were run against development
+commits before the stable release authorization commit. Their compiler output
+still reported version `2.2.0`, because the development branch had not yet
+advanced `VERSION`; they must not be mistaken for measurements of the final
+`v2.3.0` tag. They are retained only as development history.
+
 
 Two 30-sample paired comparisons against the 2.2.0 stable baseline were recorded on GitHub-hosted Ubuntu runners. The full reports, including exact compiler versions and flags, are attached to [CI run #5079](https://github.com/Yassine-Jemi01/ylang/actions/runs/42371782216) and [CI run #5088](https://github.com/Yassine-Jemi01/ylang/actions/runs/42372281463).
 
