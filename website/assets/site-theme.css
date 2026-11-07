@@ -67,7 +67,10 @@ html[dir="rtl"] .site-nav { margin-left: 0; margin-right: auto; }
   border-radius: 7px;
   color: var(--ylang-text);
   background: rgb(20 36 58 / 82%);
-  font: 750 .82rem/1 inherit;
+  font-family: inherit;
+  font-size: .82rem;
+  font-weight: 750;
+  line-height: 1;
   cursor: pointer;
   list-style: none;
 }
