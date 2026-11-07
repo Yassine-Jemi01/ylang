@@ -1,6 +1,6 @@
 # HTTP Streaming
 
-**Status: experimental in the YLang 2.3 development tree.** The implementation is present in the current source tree but is not part of a published YLang release. It must pass the HTTP streaming and sanitizer gates in [the 2.3 release checklist](ROADMAP-2.3.0.md) before it is considered release-ready.
+**Status: experimental in YLang 2.3.0.** HTTP streaming is included with explicit lifecycle, buffer, TLS, and platform limitations; it is not a stable compatibility guarantee. See the [2.3 release notes](CHANGELOG-2.3.0.md) and [security model](SECURITY.md).
 
 ## API
 
