@@ -14,7 +14,7 @@ int main(int argc,char **argv){
  if(argc!=2)return 2;char cmd[32768];int n=snprintf(cmd,sizeof(cmd),"\"%s\"",argv[1]);if(n<0||(size_t)n>=sizeof(cmd))return 2;
  STARTUPINFOA si;PROCESS_INFORMATION p;ZeroMemory(&si,sizeof(si));ZeroMemory(&p,sizeof(p));si.cb=sizeof(si);
  if(!CreateProcessA(NULL,cmd,NULL,NULL,FALSE,CREATE_NEW_CONSOLE,NULL,NULL,&si,&p)){fprintf(stderr,"CreateProcess failed: %lu\n",(unsigned long)GetLastError());return 1;}
- if(!FreeConsole())return fail("could not detach from runner console",&p,INVALID_HANDLE_VALUE,INVALID_HANDLE_VALUE);
+ if(!FreeConsole()&&GetLastError()!=ERROR_INVALID_HANDLE)return fail("could not detach from runner console",&p,INVALID_HANDLE_VALUE,INVALID_HANDLE_VALUE);
  bool attached=false;for(unsigned i=0;i<200U;i++){if(AttachConsole(p.dwProcessId)){attached=true;break;}Sleep(25U);}
  if(!attached)return fail("could not attach to child console",&p,INVALID_HANDLE_VALUE,INVALID_HANDLE_VALUE);
  HANDLE in=CreateFileA("CONIN$",GENERIC_READ|GENERIC_WRITE,FILE_SHARE_READ|FILE_SHARE_WRITE,NULL,OPEN_EXISTING,0U,NULL);
