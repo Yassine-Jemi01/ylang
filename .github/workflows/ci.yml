@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Install toolchain (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y build-essential clang libclang-rt-dev nasm gdb libsdl2-dev libsdl2-mixer-dev libcurl4-openssl-dev pkg-config
+        run: sudo apt-get update && sudo apt-get install -y build-essential clang libclang-rt-dev nasm gdb ffmpeg libsdl2-dev libsdl2-mixer-dev libcurl4-openssl-dev pkg-config
       - name: Install toolchain (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -33,6 +33,7 @@ jobs:
           brew list sdl2_mixer >/dev/null 2>&1 || brew install sdl2_mixer
           brew list curl >/dev/null 2>&1 || brew install curl
           brew list pkg-config >/dev/null 2>&1 || brew install pkg-config
+          brew list ffmpeg >/dev/null 2>&1 || brew install ffmpeg
           echo "PKG_CONFIG_PATH=$(brew --prefix curl)/lib/pkgconfig:${PKG_CONFIG_PATH:-}" >> "$GITHUB_ENV"
       - name: Select compiler
         id: compiler
