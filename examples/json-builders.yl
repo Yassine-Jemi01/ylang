@@ -1,4 +1,4 @@
-// Immutable raw-JSON builders added in the YLang 2.3 development line.
+// Immutable raw-JSON builders added in YLang 2.3.0.
 // Build with: ylang build examples/json-builders.yl -o json-builders
 
 function main() -> int {
