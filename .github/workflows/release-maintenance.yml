@@ -1,0 +1,229 @@
+name: YLang stable release maintenance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/release-maintenance.yml"
+      - "docs/CHANGELOG-2.3.0.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-source-archives:
+    name: Verify GitHub-generated v2.3.0 source archives
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the exact published tag
+        uses: actions/checkout@v4
+        with:
+          ref: v2.3.0
+          fetch-depth: 1
+
+      - name: Verify the release tag and version
+        shell: bash
+        run: |
+          expected_sha="31e30605a08b068cf4c3a81256464c3a72666112"
+          actual_sha="$(git rev-parse HEAD)"
+          test "$actual_sha" = "$expected_sha"
+          test "$(tr -d '\r\n' < VERSION)" = "2.3.0"
+          printf 'Verified v2.3.0 source commit: %s\n' "$actual_sha"
+
+      - name: Download GitHub-generated ZIP and tar.gz source archives
+        shell: bash
+        run: |
+          mkdir -p build/release-source
+          curl --fail --location --retry 4 --retry-all-errors --max-time 180 \
+            --user-agent "YLang-release-source-audit" \
+            "https://github.com/Yassine-Jemi01/ylang/archive/refs/tags/v2.3.0.zip" \
+            --output build/release-source/ylang-v2.3.0-source.zip
+          curl --fail --location --retry 4 --retry-all-errors --max-time 180 \
+            --user-agent "YLang-release-source-audit" \
+            "https://github.com/Yassine-Jemi01/ylang/archive/refs/tags/v2.3.0.tar.gz" \
+            --output build/release-source/ylang-v2.3.0-source.tar.gz
+          file build/release-source/ylang-v2.3.0-source.zip
+          file build/release-source/ylang-v2.3.0-source.tar.gz
+          sha256sum build/release-source/ylang-v2.3.0-source.*
+
+      - name: Inspect archive integrity, paths, and matching source contents
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import os
+          import tarfile
+          import zipfile
+          from pathlib import Path, PurePosixPath
+
+          root = Path("build/release-source")
+          required = {
+              "VERSION",
+              "Makefile",
+              "README.md",
+              "src/main.c",
+              "include/ylang/compiler.h",
+              "runtime/runtime_template.c",
+              "examples/demo.yl",
+              "docs/CHANGELOG-2.3.0.md",
+              "docs/RELEASE-CHECKLIST-2.3.0.md",
+              "docs/POST-RELEASE-CHECKLIST-2.3.0.md",
+              "packaging/yspm/smoke-install.sh",
+              ".github/workflows/ci.yml",
+          }
+
+          def safe_relative(name, archive_name):
+              path = PurePosixPath(name)
+              if path.is_absolute() or ".." in path.parts:
+                  raise SystemExit(f"{archive_name}: unsafe member path {name!r}")
+              if len(path.parts) < 2:
+                  raise SystemExit(f"{archive_name}: missing archive root for {name!r}")
+              return Path(*path.parts[1:])
+
+          inventories = {}
+          extracted = {}
+
+          zip_path = root / "ylang-v2.3.0-source.zip"
+          with zipfile.ZipFile(zip_path) as archive:
+              bad = archive.testzip()
+              if bad:
+                  raise SystemExit(f"ZIP CRC failure in {bad}")
+              files = {}
+              for info in archive.infolist():
+                  if info.is_dir():
+                      continue
+                  relative = safe_relative(info.filename, "ZIP")
+                  if relative.as_posix() in files:
+                      raise SystemExit(f"ZIP duplicate path: {relative}")
+                  files[relative.as_posix()] = archive.read(info)
+              missing = required - files.keys()
+              if missing:
+                  raise SystemExit(f"ZIP missing required source files: {sorted(missing)}")
+              inventories["zip"] = files
+              zip_dir = root / "extracted-zip"
+              zip_dir.mkdir()
+              archive.extractall(zip_dir)
+              extracted["zip"] = zip_dir / archive.namelist()[0].split("/", 1)[0]
+
+          tar_path = root / "ylang-v2.3.0-source.tar.gz"
+          with tarfile.open(tar_path, "r:gz") as archive:
+              files = {}
+              for member in archive.getmembers():
+                  if member.isdir():
+                      continue
+                  if not member.isfile():
+                      raise SystemExit(f"tar.gz contains unsupported non-regular entry: {member.name}")
+                  relative = safe_relative(member.name, "tar.gz")
+                  if relative.as_posix() in files:
+                      raise SystemExit(f"tar.gz duplicate path: {relative}")
+                  stream = archive.extractfile(member)
+                  if stream is None:
+                      raise SystemExit(f"tar.gz cannot read {member.name}")
+                  files[relative.as_posix()] = stream.read()
+              missing = required - files.keys()
+              if missing:
+                  raise SystemExit(f"tar.gz missing required source files: {sorted(missing)}")
+              inventories["tar.gz"] = files
+              tar_dir = root / "extracted-tar"
+              tar_dir.mkdir()
+              archive.extractall(tar_dir, filter="data")
+              first = archive.getmembers()[0].name.split("/", 1)[0]
+              extracted["tar.gz"] = tar_dir / first
+
+          if inventories["zip"].keys() != inventories["tar.gz"].keys():
+              only_zip = sorted(inventories["zip"].keys() - inventories["tar.gz"].keys())
+              only_tar = sorted(inventories["tar.gz"].keys() - inventories["zip"].keys())
+              raise SystemExit(f"archive inventories differ; ZIP-only={only_zip}; tar-only={only_tar}")
+
+          for name in inventories["zip"]:
+              if inventories["zip"][name] != inventories["tar.gz"][name]:
+                  raise SystemExit(f"archive content mismatch for {name}")
+
+          report = [
+              "YLang v2.3.0 GitHub-generated source archive audit",
+              "tag=v2.3.0",
+              "commit=31e30605a08b068cf4c3a81256464c3a72666112",
+              f"regular_files={len(inventories['zip'])}",
+              "zip_crc=PASS",
+              "tar_gzip_read=PASS",
+              "zip_tar_inventory=IDENTICAL",
+              "zip_tar_file_contents=IDENTICAL",
+          ]
+          (root / "source-archive-audit.txt").write_text("\n".join(report) + "\n", encoding="utf-8")
+          print("\n".join(report))
+          PY
+
+      - name: Build and run a smoke program from both source archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          for format in zip tar.gz; do
+            case "$format" in
+              zip) source_dir="$(find build/release-source/extracted-zip -mindepth 1 -maxdepth 1 -type d -print -quit)" ;;
+              tar.gz) source_dir="$(find build/release-source/extracted-tar -mindepth 1 -maxdepth 1 -type d -print -quit)" ;;
+            esac
+            test -n "$source_dir"
+            make -C "$source_dir" clean all CC=gcc
+            compiler="$source_dir/build/ylang"
+            version_output="$("$compiler" --version)"
+            printf '%s\n' "$version_output"
+            grep -Fq "YLang compiler 2.3.0 " <<< "$version_output"
+            "$compiler" check "$source_dir/examples/demo.yl"
+            "$compiler" build "$source_dir/examples/demo.yl" -o "$source_dir/build/archive-smoke"
+            output="$("$source_dir/build/archive-smoke")"
+            printf '%s\n' "$output"
+            grep -Fq "Compiler works!" <<< "$output"
+          done
+
+      - name: Upload verified source archives and audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ylang-v2.3.0-verified-source-archives
+          path: |
+            build/release-source/ylang-v2.3.0-source.zip
+            build/release-source/ylang-v2.3.0-source.tar.gz
+            build/release-source/source-archive-audit.txt
+          if-no-files-found: error
+          retention-days: 30
+
+  synchronize-release-description:
+    name: Synchronize published v2.3.0 release description
+    needs: verify-source-archives
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out current release documentation
+        uses: actions/checkout@v4
+
+      - name: Confirm the existing release and immutable tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          expected_sha="31e30605a08b068cf4c3a81256464c3a72666112"
+          actual_sha="$(git ls-remote "https://github.com/$GITHUB_REPOSITORY.git" "refs/tags/v2.3.0" | awk 'NR == 1 { print $1 }')"
+          test "$actual_sha" = "$expected_sha"
+          release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v2.3.0")"
+          test "$(jq -r '.tag_name' <<< "$release_json")" = "v2.3.0"
+          test "$(jq -r '.draft' <<< "$release_json")" = "false"
+          test "$(jq -r '.prerelease' <<< "$release_json")" = "false"
+          if grep -Eiq 'The version file remains.*2\.2\.0|2\.3\.0 candidate package still needs|not been run for this working tree' docs/CHANGELOG-2.3.0.md; then
+            echo "Release notes still contain stale pre-publication validation claims." >&2
+            exit 1
+          fi
+
+      - name: Update only the existing GitHub Release description
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit v2.3.0 --title "YLang 2.3.0 — Stable Release" --notes-file docs/CHANGELOG-2.3.0.md
+
+      - name: Verify the published description exactly matches the reviewed notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v2.3.0" --jq '.body' > build-release-body.md
+          cmp docs/CHANGELOG-2.3.0.md build-release-body.md
+          echo "Verified: GitHub Release description matches docs/CHANGELOG-2.3.0.md."
