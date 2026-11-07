@@ -17,6 +17,12 @@
 - [Voice والصوت](ar/voice-audio.md)
 - [واجهة الطرفية TUI](ar/tui.md)
 - [GUI وGame2D](ar/gui-game2d.md)
+- [مرجع أوامر المترجم](ar/cli.md)
+- [دليل JSON](ar/json.md)
+- [دليل HTTP وStreaming](ar/http.md)
+- [التشخيص وأكواد الأخطاء](ar/diagnostics.md)
+- [نموذج الأمان](ar/security.md)
+- [دليل Windows](ar/windows.md)
 - [أساسيات اللغة](ar/language-basics.md)
 
 # Part I — Start Here

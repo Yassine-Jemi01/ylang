@@ -31,6 +31,12 @@ YLang لغة مترجمة (Compiled). تكتب البرنامج في ملف ين
 - [Voice والصوت](voice-audio.md)
 - [Terminal UI](tui.md)
 - [GUI وGame2D](gui-game2d.md)
+- [أوامر المترجم](cli.md)
+- [JSON](json.md)
+- [HTTP وStreaming](http.md)
+- [التشخيص والأخطاء](diagnostics.md)
+- [الأمان](security.md)
+- [Windows](windows.md)
 
 المراجع التفصيلية لقواعد اللغة وتواقيع الدوال وأكواد الأخطاء ما زالت باللغة الإنجليزية. لا تغيّر أسماء API أو نصوص رسائل المترجم عند نقلها إلى الشرح.
 
