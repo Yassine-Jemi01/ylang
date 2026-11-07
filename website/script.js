@@ -6,6 +6,12 @@
   const menuButton = $(".menu-toggle");
   const nav = $("#site-nav");
 
+  // Preserve the page family when switching back from the Arabic portal.
+  if (new URLSearchParams(window.location.search).get("from") === "home") {
+    const englishChoice = $('.language-menu a[lang="en"]');
+    if (englishChoice) englishChoice.href = "https://yassine-jemi01.github.io/ylang/";
+  }
+
   function setMenu(open) {
     if (!menuButton || !nav) return;
     menuButton.setAttribute("aria-expanded", String(open));
