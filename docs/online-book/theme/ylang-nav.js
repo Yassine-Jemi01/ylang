@@ -89,7 +89,7 @@
   }
 
   function addLanguageSwitcher() {
-    if (document.querySelector('.ylang-language-switcher')) return;
+    if (document.querySelector('.language-switcher')) return;
     const toolbar = document.querySelector('#menu-bar .left-buttons') || document.querySelector('#menu-bar');
     if (!toolbar) return;
     const isArabic = relativeBookPath().startsWith('ar/');
