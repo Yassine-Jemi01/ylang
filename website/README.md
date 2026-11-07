@@ -10,7 +10,7 @@ The documentation portal uses a dark blue palette with blue and orange accents. 
 
 - \`index.html\` — concise overview, feature links, compiler flow, and quick start.
 - \`docs.html\` — entry point for the canonical online book and technical reference pages.
-- `docs-ar.html` — the Arabic documentation portal, with RTL layout and links into the Arabic learning path; the marketing homepage remains English.
+- `docs-ar.html` — the Arabic documentation portal, with RTL layout and links into the Arabic learning path. The marketing homepage remains English, with a direct link to Arabic documentation.
 - \`learn/\` — generated mdBook HTML output, including the chapter sidebar, search, theme selector, and navigation.
 - \`../docs/online-book/\` — mdBook configuration and tutorial source.
 - \`../tools/build_docs_book.py\` — syncs canonical \`docs/*.md\` reference files into the book before a build.
