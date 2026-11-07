@@ -15,11 +15,6 @@ class LinkParser(HTMLParser):
         super().__init__()
         self.references: list[str] = []
 
-def LinkParserReferences(html: str) -> list[str]:
-    parser = LinkParser()
-    parser.feed(html)
-    return parser.references
-
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
         for attribute in ("href", "src", "poster"):
@@ -123,9 +118,11 @@ def main() -> int:
         fail("Arabic documentation portal contains a homepage link that switches to English")
 
     homepage = (root / "index.html").read_text(encoding="utf-8")
+    homepage_parser = LinkParser()
+    homepage_parser.feed(homepage)
     homepage_scripts = [
         (root / reference.split("?", 1)[0].lstrip("/")).resolve()
-        for reference in LinkParserReferences(homepage)
+        for reference in homepage_parser.references
         if reference.endswith(".js") or ".js?" in reference
     ]
     if not homepage_scripts:
