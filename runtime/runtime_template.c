@@ -89,15 +89,23 @@ static size_t yl_saturating_add_size(size_t left, size_t right) {
     return SIZE_MAX - left < right ? SIZE_MAX : left + right;
 }
 
+#ifdef YLANG_USE_BINARY
 static void yl_binary_stream_shutdown(void);
+#endif
+#if defined(YLANG_USE_BINARY) || defined(YLANG_USE_HTTP)
 static void yl_binary_buffer_shutdown(void);
+#endif
 
 static void yl_cleanup(void) {
 #ifdef YLANG_USE_VOICE
     ylvoice_shutdown();
 #endif
+#ifdef YLANG_USE_BINARY
     yl_binary_stream_shutdown();
+#endif
+#if defined(YLANG_USE_BINARY) || defined(YLANG_USE_HTTP)
     yl_binary_buffer_shutdown();
+#endif
     if (yl_memory_stats_enabled()) {
         fprintf(stderr,
                 "YLang memory stats: tracked_allocations=%zu tracked_bytes=%zu\n",
@@ -1047,6 +1055,7 @@ static bool yl_voice_play_stream(int64_t id) {
 
 
 /* Bounded JSON parser used by the std.json built-ins. */
+#ifdef YLANG_USE_JSON
 #define YL_JSON_MAX_INPUT (16U * 1024U * 1024U)
 #define YL_JSON_MAX_DEPTH 128U
 static char yl_json_error_text[192];
@@ -1640,6 +1649,7 @@ static const char *yl_json_escape(const char *value) {
     o[j++]='"';o[j]='\0';return (const char *)yl_track(o,j+1U);
 }
 static const char *yl_json_last_error(void) { return yl_json_error_text; }
+#endif /* YLANG_USE_JSON */
 
 static const char *yl_env_get(const char *name) {
     if (!name || !*name) return "";
@@ -1918,6 +1928,8 @@ static bool yl_terminal_is_interactive(void) {
 #endif
 }
 
+/* std.tui is emitted only when a program calls a tui.* built-in. */
+#ifdef YLANG_USE_TUI
 static bool yl_tui_terminal_ready(void) {
 #ifdef _WIN32
     return _isatty(_fileno(stdin)) != 0 && _isatty(_fileno(stdout)) != 0;
@@ -2316,6 +2328,7 @@ static void yl_tui_shutdown(void) {
 static const char *yl_tui_last_error(void) {
     return yl_tui_error_text[0] ? yl_tui_error_text : "No error";
 }
+#endif /* YLANG_USE_TUI */
 static const char *yl_read_file(const char *path) {
     FILE *file = fopen(path, "rb");
     if (!file) yl_runtime_error("cannot open file for reading");
@@ -2357,6 +2370,8 @@ static bool yl_write_file(const char *path, const char *content) {
     if (fclose(file) != 0) ok = false;
     return ok;
 }
+/* Binary file and stream functions are opt-in. */
+#ifdef YLANG_USE_BINARY
 #define YL_BINARY_MAX_READ (16U * 1024U * 1024U)
 static bool yl_binary_seek(FILE *file, int64_t offset) {
     return file && offset >= 0 && (uint64_t)offset <= (uint64_t)LONG_MAX &&
@@ -2594,6 +2609,7 @@ static void yl_binary_stream_shutdown(void) {
         }
     }
 }
+#endif /* YLANG_USE_BINARY */
 static bool yl_path_exists(const char *path) {
     struct stat info;
     return path && stat(path, &info) == 0;
@@ -2651,6 +2667,8 @@ static bool yl_image_open(const char *path) {
 #endif
 
 
+/* Byte buffers also back HTTP stream_read_buffer. */
+#if defined(YLANG_USE_BINARY) || defined(YLANG_USE_HTTP)
 #define YL_BINARY_BUFFER_SLOTS 64U
 #define YL_BINARY_BUFFER_MAX (256U * 1024U * 1024U)
 typedef struct {
@@ -2908,3 +2926,4 @@ static void yl_binary_buffer_shutdown(void) {
         memset(&yl_binary_buffers[i], 0, sizeof(yl_binary_buffers[i]));
     }
 }
+#endif /* YLANG_USE_BINARY || YLANG_USE_HTTP */
