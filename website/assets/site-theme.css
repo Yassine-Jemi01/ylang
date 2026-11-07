@@ -126,3 +126,14 @@ html[dir="rtl"] .site-nav { margin-left: 0; margin-right: auto; }
   .site-nav { background: var(--ylang-bg); border-bottom: 1px solid var(--ylang-border); }
   .language-menu { max-width: calc(100vw - 28px); }
 }
+
+
+/* Language dropdown: closed by default, opens on hover, focus, or click without a pointer gap. */
+.language-switcher { position: relative; }
+.language-switcher:not([open]):not(:hover):not(:focus-within) > .language-menu { display: none; }
+.language-switcher > .language-menu { top: 100%; padding-top: 8px; background-clip: padding-box; }
+.language-switcher > .language-menu::before { content: ""; position: absolute; left: 0; right: 0; top: -8px; height: 8px; }
+.language-switcher:hover > .language-menu,
+.language-switcher:focus-within > .language-menu,
+.language-switcher[open] > .language-menu { display: grid; }
+.language-switcher > summary { position: relative; z-index: 1; }
