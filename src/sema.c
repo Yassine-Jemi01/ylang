@@ -1055,6 +1055,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 return expr->type;
             }
             if (strncmp(expr->as.call.name, "tui.", 4) == 0) {
+                c->uses_tui = true;
                 const TuiBuiltin *builtin = find_tui_builtin(expr->as.call.name);
                 if (!builtin) {
                     diagnostic(c, expr->token, "error", "E2152",
@@ -1285,6 +1286,7 @@ static YType check_expr(Checker *checker, Expr *expr)
                 strcmp(expr->as.call.name, "io.write_bytes") == 0 ||
                 strcmp(expr->as.call.name, "io.stream_read") == 0 ||
                 strcmp(expr->as.call.name, "io.stream_write") == 0) {
+                c->uses_binary = true;
                 bool stream = strncmp(expr->as.call.name, "io.stream_", 10U) == 0;
                 size_t expected = stream ? 2U : 3U;
                 if (expr->as.call.count != expected)
@@ -1319,6 +1321,7 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             const BinaryBuiltin *binary_builtin = find_binary_builtin(expr->as.call.name);
             if (binary_builtin) {
+                c->uses_binary = true;
                 if (expr->as.call.count != binary_builtin->arity) {
                     char suggestion[256];
                     (void)snprintf(suggestion, sizeof(suggestion),
@@ -1349,6 +1352,7 @@ static YType check_expr(Checker *checker, Expr *expr)
             }
             const JsonBuiltin *json_builtin = find_json_builtin(expr->as.call.name);
             if (json_builtin) {
+                c->uses_json = true;
                 if (expr->as.call.count != json_builtin->arity) {
                     char suggestion[256];
                     (void)snprintf(suggestion,sizeof(suggestion),"%s expects %zu argument(s), but received %zu.",

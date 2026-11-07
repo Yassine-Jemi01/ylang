@@ -505,7 +505,8 @@ static bool read_http_flags(char *storage, size_t capacity,
 
 static int run_native_compiler(const char *cc, const char *c_path,
                                const char *output_path, bool uses_gui,
-                               bool debug_mode, bool uses_http, bool uses_voice)
+                               bool debug_mode, bool uses_http, bool uses_voice,
+                               bool uses_json, bool uses_binary, bool uses_tui)
 {
     const char *requested_opt = getenv("YLANG_OPT_LEVEL");
     const char *optimization = debug_mode ? "-O0" : "-O2";
@@ -590,6 +591,9 @@ static int run_native_compiler(const char *cc, const char *c_path,
     args[n++] = (char *)cc;
     if (uses_http) args[n++] = "-DYLANG_USE_HTTP=1";
     if (uses_voice) args[n++] = "-DYLANG_USE_VOICE=1";
+    if (uses_json) args[n++] = "-DYLANG_USE_JSON=1";
+    if (uses_binary || uses_http) args[n++] = "-DYLANG_USE_BINARY=1";
+    if (uses_tui) args[n++] = "-DYLANG_USE_TUI=1";
     args[n++] = "-std=c17";
     args[n++] = "-Wall";
     args[n++] = "-Wextra";
@@ -1051,7 +1055,8 @@ int ylang_run(const char *command, const char *input_path,
         if (can_compile) {
             result = run_native_compiler(cc ? cc : "gcc", c_path, build_target,
                                          compiler.uses_gui, debug_mode, compiler.uses_http,
-                                         compiler.uses_voice);
+                                         compiler.uses_voice, compiler.uses_json,
+                                         compiler.uses_binary, compiler.uses_tui);
 #ifndef _WIN32
             if (result == 0 && rename(staged_target, target) != 0) {
                 fprintf(stderr, "ylang: cannot publish executable '%s': %s\n",
