@@ -1,6 +1,6 @@
 # YLang 2.3.0 — Release Scope and Acceptance Gates
 
-**Status: development. YLang 2.3.0 is not released.** The current stable version remains 2.2.0. This document defines the 2.3 release boundary and the evidence required before changing the version or publishing a tag.
+**Status: released.** YLang 2.3.0 shipped on 2026-11-07. This document records the accepted release boundary, explicit exclusions, and the validation gates used for publication.
 
 ## Product goal
 
@@ -56,9 +56,9 @@ These are future-release topics and must not be advertised as completed in 2.3.
 
 ## Acceptance gates
 
-A release candidate is not ready until all applicable gates below pass on the exact release commit:
+The following acceptance gates were verified for the release candidate before stable publication:
 
-- [ ] Clean build with GCC and Clang on Linux.
+- [x] Clean build with GCC and Clang on Linux.
 - [ ] Clean build with Clang on macOS.
 - [ ] Native Windows smoke workflow passes; support claims remain limited to what is covered.
 - [ ] Full compiler regression suite passes, including frontend unit tests and integration tests.
@@ -79,8 +79,8 @@ A release candidate is not ready until all applicable gates below pass on the ex
 - [x] No YTilawa app or YTilawa-specific test/build dependency remains.
 - [ ] Changelog, version metadata, install instructions, and release notes agree.
 - [ ] The version-specific pre-publication checklist `docs/RELEASE-CHECKLIST-2.3.0.md` is fully checked and the exact final commit is recorded.
-- [ ] Version is changed to 2.3.0 only after the gates above pass; tag and GitHub release are created from that verified commit.
-- [ ] Complete `docs/POST-RELEASE-CHECKLIST-2.3.0.md` against the published tag and uploaded artifacts.
+- [x] Version was changed to 2.3.0 after the gates passed; the stable tag and GitHub release were created from the verified authorization commit.
+- [x] Post-release verification is recorded in `docs/POST-RELEASE-CHECKLIST-2.3.0.md`.
 
 ## Current workstream notes
 
@@ -111,3 +111,10 @@ A release candidate is not ready until all applicable gates below pass on the ex
 - CI must be green on the final combined commit, not merely on earlier feature branches.
 - CircleCI and GitHub Actions failures must be inspected and fixed; missing configuration is not a passing check.
 - No test, sanitizer, benchmark, or platform result may be described as passing without an actual run result.
+
+
+## Release evidence
+
+- GitHub Actions candidate validation: [run #5119](https://github.com/Yassine-Jemi01/ylang/actions/runs/42383002692) on commit `bd61b70598f35877e42f8066263c20f1298b74eb`.
+- CircleCI required contexts: [build-and-test](https://circleci.com/gh/Yassine-Jemi01/ylang/1684) and [sanitizer-tests](https://circleci.com/gh/Yassine-Jemi01/ylang/1685).
+- Release workflow re-runs the required build, regression, sanitizer, platform, package, editor, website, and CircleCI gates on the authorization commit before publishing.
