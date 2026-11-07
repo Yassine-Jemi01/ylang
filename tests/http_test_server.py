@@ -132,10 +132,10 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 for offset in range(0, len(payload), 1024):
                     chunk = payload[offset:offset + 1024]
-                    self.wfile.write(("%X\\r\\n" % len(chunk)).encode("ascii"))
-                    self.wfile.write(chunk + b"\\r\\n")
+                    self.wfile.write(("%X\r\n" % len(chunk)).encode("ascii"))
+                    self.wfile.write(chunk + b"\r\n")
                     self.wfile.flush()
-                self.wfile.write(b"0\\r\\n\\r\\n")
+                self.wfile.write(b"0\r\n\r\n")
                 self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 pass
