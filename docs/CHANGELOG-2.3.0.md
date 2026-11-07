@@ -8,6 +8,7 @@
 
 ## Work integrated so far
 - Generated C now includes JSON, TUI, and Binary I/O runtime sections only when semantic analysis finds the corresponding built-ins in the program. Shared byte conversion and HTTP streaming helpers remain available where required.
+- Linked the Arabic documentation portal from the homepage and English docs portal; website checks enforce reciprocal navigation, Arabic language/direction metadata, and RTL prose with LTR code.
 - Added native Windows interactive TUI acceptance coverage for raw key input, virtual-terminal output, cursor control, and console-mode restoration.
 - Fixed Windows TUI shutdown so the cursor-show sequence is emitted before virtual-terminal processing is disabled, including automatic restoration when the caller does not explicitly show the cursor.
 - Added an Arabic documentation portal and expanded the book with Arabic guides for compiler workflow, types, modules, CLI, JSON, HTTP/streaming, Binary I/O, Voice, TUI, GUI/Game2D, security, diagnostics, and Windows. Arabic prose uses RTL layout while code remains LTR. YLanglings, its CLI, exercises, hints, reference solutions, and book chapter remain English-only; compiler diagnostics, syntax, and API identifiers also remain in English.
