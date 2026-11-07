@@ -329,10 +329,8 @@ jobs:
           node-version: 22
       - name: Install Tree-sitter CLI
         run: npm install --global tree-sitter-cli
-      - name: Generate YLang parser
-        run: tree-sitter generate
-      - name: Run grammar corpus tests
-        run: tree-sitter test
+      - name: Generate and test YLang parser in isolation
+        run: python3 tools/check_tree_sitter.py
 
   website-app-build:
     name: Homepage build and asset checks

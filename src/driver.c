@@ -155,21 +155,42 @@ static int run_safe_fixes(const char *source, const char *input_path,
 /* -------------------------------- driver ------------------------------- */
 static char *read_source_file(const char *path, size_t *length)
 {
+    errno = 0;
     FILE *file = fopen(path, "rb");
     if (!file) return NULL;
-    if (fseek(file, 0, SEEK_END) != 0) { fclose(file); return NULL; }
+    if (fseek(file, 0, SEEK_END) != 0) {
+        int error = errno ? errno : EIO;
+        fclose(file);
+        errno = error;
+        return NULL;
+    }
+    errno = 0;
     long size = ftell(file);
-    if (size < 0 || fseek(file, 0, SEEK_SET) != 0) { fclose(file); return NULL; }
+    if (size < 0 || fseek(file, 0, SEEK_SET) != 0) {
+        int error = errno ? errno : EIO;
+        fclose(file);
+        errno = error;
+        return NULL;
+    }
     if ((uintmax_t)size > (uintmax_t)YLANG_MAX_PROJECT_SOURCE_BYTES) {
         (void)fclose(file);
         errno = EFBIG;
         return NULL;
     }
     char *data = malloc((size_t)size + 1U);
-    if (!data) { fclose(file); return NULL; }
+    if (!data) {
+        int error = errno ? errno : ENOMEM;
+        fclose(file);
+        errno = error;
+        return NULL;
+    }
     size_t got = fread(data, 1, (size_t)size, file);
     if (got != (size_t)size || ferror(file)) {
-        free(data); fclose(file); return NULL;
+        int error = errno ? errno : EIO;
+        free(data);
+        fclose(file);
+        errno = error;
+        return NULL;
     }
     data[got] = '\0';
     fclose(file);

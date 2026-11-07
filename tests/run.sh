@@ -89,6 +89,37 @@ test -s build/native-flags-combined
 test "$(cat build/native-argv-count)" -gt 200
 grep -q 'Build succeeded: build/native-flags-combined' build/native-flags-combined.out
 
+# Optional runtime flags must be discovered in imported modules, not only the root file.
+# The fake tools record the driver's native compiler arguments without linking anything.
+mkdir -p build/fake-feature-tools
+cat > build/fake-feature-tools/pkg-config <<'EOF'
+#!/bin/sh
+printf '%s\n' '-lfake-optional'
+EOF
+cat > build/fake-feature-tools/gcc <<'EOF'
+#!/bin/sh
+{
+    for argument in "$@"; do
+        printf '%s\n' "$argument"
+    done
+} > build/optional-feature-imports-argv
+while [ "$#" -gt 0 ]; do
+    if [ "$1" = "-o" ]; then
+        shift
+        printf 'fake imported-feature artifact\n' > "$1"
+        chmod 755 "$1"
+        exit 0
+    fi
+    shift
+done
+exit 2
+EOF
+chmod +x build/fake-feature-tools/pkg-config build/fake-feature-tools/gcc
+PATH="$PWD/build/fake-feature-tools:$PATH" ./build/ylang build tests/optional-feature-imports/main.yl -o build/optional-feature-imports-argv-probe --cc gcc >/dev/null
+for feature_flag in YLANG_USE_JSON YLANG_USE_BINARY YLANG_USE_TUI YLANG_USE_VOICE YLANG_USE_HTTP; do
+    grep -Fxq -- "-D${feature_flag}=1" build/optional-feature-imports-argv
+done
+
 # String and character escapes must have the same byte semantics in generated C.
 ./build/ylang check tests/escape-parity.yl >/dev/null
 ./build/ylang build tests/escape-parity.yl -o build/test-escape-parity >/dev/null

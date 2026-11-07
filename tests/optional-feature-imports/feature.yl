@@ -3,11 +3,14 @@ function feature_probe() -> int {
     let int buffer = io.buffer_new(1);
     let int terminal_width = tui.width();
     let bool audio_playing = voice.is_playing();
+    let int http_code = http.status();
     io.buffer_free(buffer);
     if (json_ok) {
         if (terminal_width >= 0) {
             if (audio_playing) {
-                return 1;
+                if (http_code >= 0) {
+                    return 1;
+                }
             }
         }
     }

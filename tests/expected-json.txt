@@ -6,6 +6,10 @@ YLang
 😀
 true
 false
+true
+true
+true
+true
 3
 2
 true

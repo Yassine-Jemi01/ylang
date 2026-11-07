@@ -1539,7 +1539,8 @@ static const char *yl_json_decode_string(const char *s, size_t a, size_t b) {
     out[n]='\0'; return (const char *)yl_track(out,n+1U);
 }
 static const char *yl_json_get_string(const char *text,const char *key) {
-    size_t a,b; if(!yl_json_lookup(text,key,&a,&b) || text[a]!='"') {yl_json_error("JSON property is not a string");return "";}
+    size_t a,b; if(!yl_json_lookup(text,key,&a,&b)) return "";
+    if(text[a]!='"') {yl_json_error("JSON property is not a string");return "";}
     YLJson p={text,strlen(text),a,0U}; size_t x,y;
     if(!yl_json_string_end(&p,&x,&y)) return "";
     return yl_json_decode_string(text,x,y);

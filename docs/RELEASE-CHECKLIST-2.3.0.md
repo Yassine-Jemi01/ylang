@@ -86,3 +86,12 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] Review the publishing workflow to confirm it checks out, tests, and publishes the exact authorization commit. The workflow creates the tag itself and refuses to overwrite or reuse an existing tag.
 
 When every gate is complete, the stable release workflow may create `v2.3.0`. Follow [the post-release checklist](POST-RELEASE-CHECKLIST-2.3.0.md) afterward.
+
+## Local evidence log (not release authorization)
+
+Recorded on 2026-11-07 against a working tree based on commit `e63ae70a`. This is not a frozen candidate commit, this log does not check any gate above, and it does not authorize publication. Every item must be re-run and reviewed on the exact release-authorization commit.
+
+- Passed locally: clean GCC and Clang builds on Linux; full `make test` with GCC and Clang; `make sanitize`; 1,000-run Clang frontend fuzz smoke; isolated Tree-sitter generation and 2/2 corpus parses; VS Code and Neovim diagnostic/syntax checks; VS Code `.vsix` packaging; YLanglings unit tests and `verify-all`; online book build; website production build and `tools/check_website.py`; YSPM package build and archive-content inspection using a dynamic-link workaround.
+- Added regression coverage: `json.get_string` now keeps the missing-key diagnostic and the JSON fixture checks missing and wrong-type lookups; imported-module runtime feature flags (JSON, Binary I/O, TUI, Voice, HTTP) are asserted through the recorded native compiler argument vector during `make test`.
+- Blocked locally: YSPM install/removal smoke because this host lacks static libc and the local YSPM repository has no matching dynamic `libc.so.6` candidate; the static release package therefore remains unverified here. macOS builds, native Windows smoke, and release-runner benchmarks were not run.
+- Benchmark note: local paired runs against `v2.2.0` were highly variable on shared laptop hardware and are not release evidence. CI runs #5079/#5088 remain the recorded 30-sample paired samples in [PERFORMANCE](PERFORMANCE.md).

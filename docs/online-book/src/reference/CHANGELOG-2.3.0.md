@@ -7,6 +7,17 @@
 **Status: unreleased development notes.** YLang 2.2.0 remains the latest stable release. This document records work merged into the 2.3 development branch; it is not a release announcement and does not imply that validation gates have passed.
 
 ## Work integrated so far
+- Fixed `json.get_string` so a missing property keeps the precise "JSON object key was not found" diagnostic instead of replacing it with "JSON property is not a string"; added success and wrong-type lookup regression cases to the JSON fixture.
+- Hardened source-file reading so a stale `errno` value cannot make an unrelated read failure look like the 64 MiB source-limit error; read, seek, allocation, and short-read failures now preserve or synthesize an accurate error.
+- Added `tools/check_tree_sitter.py` to generate and corpus-test the Zed Tree-sitter grammar in an isolated temporary directory. CI and `npm test` now use it so grammar generation cannot overwrite the compiler's hand-written `src/parser.c`.
+- Extended `make test` to verify that optional JSON, Binary I/O, TUI, Voice, and HTTP runtime flags are discovered in imported modules by recording the native compiler argument vector with fake `pkg-config`/`gcc` tools; the imported fixture also exercises `http.status()` directly.
+- Removed a duplicated YSPM metadata assertion from the stable publishing workflow.
+- Generated C now includes JSON, TUI, and Binary I/O runtime sections only when semantic analysis finds the corresponding built-ins in the program. Shared byte conversion and HTTP streaming helpers remain available where required.
+- Added runtime-feature-gate checks to `make test`: minimal programs exclude unused JSON/HTTP/TUI/Binary/Voice sections, while imported modules retain every runtime feature required by their functions.
+- Linked the Arabic documentation portal from the homepage and English docs portal; website checks enforce reciprocal navigation, Arabic language/direction metadata, and RTL prose with LTR code.
+- Added native Windows interactive TUI acceptance coverage for raw key input, virtual-terminal output, cursor control, and console-mode restoration.
+- Fixed Windows TUI shutdown so the cursor-show sequence is emitted before virtual-terminal processing is disabled, including automatic restoration when the caller does not explicitly show the cursor.
+- Added an Arabic documentation portal and expanded the book with Arabic guides for compiler workflow, types, modules, CLI, JSON, HTTP/streaming, Binary I/O, Voice, TUI, GUI/Game2D, security, diagnostics, and Windows. Arabic prose uses RTL layout while code remains LTR. YLanglings, its CLI, exercises, hints, reference solutions, and book chapter remain English-only; compiler diagnostics, syntax, and API identifiers also remain in English.
 - Hardened NUL handling across the string boundary: `io.read_line` and formatting reject embedded zero bytes at runtime, while buffered synchronous and task-based HTTP string results reject binary NUL bodies with a clear error and direct users to binary-safe streaming.
 - The text-oriented `http.stream_read` now also rejects NUL-containing chunks with a stream error instead of returning a silently truncated string; `http.stream_read_buffer` remains the binary-safe path.
 - Rejected escaped NUL bytes in string literals and f-string text instead of silently truncating NUL-terminated values; the one-byte `char` type retains its zero-byte support. Added compiler regression fixtures and editor diagnostic labels.
@@ -59,6 +70,8 @@ LLVM completion, Typed IR expansion, complete ownership/borrowing and lifetime a
 
 ## Validation status
 
-The implementation work is still in progress. Builds, regression tests, parser fuzzing, AddressSanitizer/UndefinedBehaviorSanitizer, cross-platform checks, website/book production builds, editor packaging, YSPM install/remove checks, and reproducible benchmarks must be run against the final combined release candidate. No passing result is claimed here.
+Local verification was run on 2026-11-07 against a working tree based on commit `e63ae70a` (not a frozen release commit). The following passed: clean GCC and Clang builds on Linux; the full `make test` suite with GCC and Clang; `make sanitize` (AddressSanitizer and UndefinedBehaviorSanitizer); a 1,000-run Clang frontend fuzz smoke test; isolated Tree-sitter generation and corpus tests; VS Code and Neovim diagnostic/syntax checks; VS Code `.vsix` packaging; YLanglings unit tests and `verify-all`; the online book build; the website production build and integrity check; and YSPM package build plus archive-content inspection using a dynamic-link workaround. GitHub CI 30-sample benchmark runs #5079 and #5088 remain the recorded paired measurements.
+
+YSPM install/removal smoke could not complete locally because this host has no static libc and the local YSPM repository has no candidate for the dynamic `libc.so.6` dependency; the static release package path remains unverified here. macOS builds, native Windows smoke, and the release-runner benchmark comparison have not been run for this working tree. These gates, and all remaining acceptance gates in [the release roadmap](ROADMAP-2.3.0.md), must be run against the exact final release candidate. No passing result is claimed for unverified gates.
 
 The version file remains `2.2.0` until the 2.3 acceptance gates in [the release roadmap](ROADMAP-2.3.0.md) are complete.

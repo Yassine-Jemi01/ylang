@@ -415,7 +415,6 @@ jobs:
           tar -tzf "$package_path" | grep -Fxq "root/usr/share/doc/ylang/CLI.md"
           tar -tzf "$package_path" | grep -Fxq "root/usr/share/doc/ylang/error-codes.md"
           tar -xzOf "$package_path" metadata.json | python3 -c 'import json,sys; p=json.load(sys.stdin); version=open("VERSION", encoding="utf-8").read().strip(); assert p["name"] == "ylang"; assert p["version"] == version; assert p["architecture"] == "x86_64"; assert p["abi"] == "yspm-abi-1"'
-          tar -xzOf "$package_path" metadata.json | python3 -c 'import json,sys; p=json.load(sys.stdin); version=open("VERSION", encoding="utf-8").read().strip(); assert p["name"] == "ylang"; assert p["version"] == version; assert p["architecture"] == "x86_64"; assert p["abi"] == "yspm-abi-1"'
           YSPM_BIN="$GITHUB_WORKSPACE/tools/yspm-source/build/yspm" \
             bash packaging/yspm/smoke-install.sh "$package_path"
       - name: Upload YSPM package

@@ -9,6 +9,12 @@ function main() -> int {
     print(json.get_string(document, "unicode"));
     print(json.get_bool(document, "enabled"));
     print(json.has(document, "missing"));
+    let owned_string missing_string = json.get_string(document, "missing");
+    print(string.length(missing_string) == 0);
+    print(string.contains(json.last_error(), "was not found"));
+    let owned_string wrong_type_string = json.get_string(document, "version");
+    print(string.length(wrong_type_string) == 0);
+    print(string.contains(json.last_error(), "not a string"));
     print(json.array_length(items));
     print(json.at(items, 1));
     let owned_string negative_index = json.at(items, -1);

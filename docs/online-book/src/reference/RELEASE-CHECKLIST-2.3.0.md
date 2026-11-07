@@ -19,6 +19,8 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] Clean build with Clang on macOS from a fresh checkout.
 - [ ] Full compiler regression suite passes on the exact candidate commit.
 - [ ] Combined GUI, Voice, and HTTP native builds safely handle the maximum accepted pkg-config flag counts without argument-vector overflow.
+- [ ] Optional runtime flags for JSON, Binary I/O, TUI, HTTP, and Voice propagate correctly when their built-ins are used from imported modules.
+- [ ] Runtime feature flags are discovered across every loaded/imported module: JSON, TUI, Binary I/O, Voice, and HTTP helpers are present when referenced by imported functions and omitted from programs that do not use them.
 - [ ] NASM linker failure preserves an existing destination and removes its private staging directory.
 - [ ] POSIX native compiler failure preserves an existing destination and removes its private staging directory.
 - [ ] Frontend lexer/parser unit tests pass.
@@ -61,11 +63,13 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] VS Code extension packages successfully as a `.vsix` from the release candidate.
 - [ ] Zed Tree-sitter grammar generation and corpus tests pass; documentation clearly labels current LSP limitations.
 - [ ] Online book builds; every Summary entry, internal anchor, reference page, and example link is checked.
+- [ ] Arabic docs portal and beginner path are linked from the English docs, declare the correct RTL language metadata, render Arabic prose with LTR code, and clearly state that compiler diagnostics remain in English; the compiler-source language guard passes.
+- [ ] YLanglings remains English-only: CLI output, exercise titles and source, hints, reference solutions, and its book chapter are not translated; Arabic documentation links to the English YLanglings chapter.
 - [ ] Official website production build succeeds; navigation, mobile layout, stable release labels, 2.3 development links, and local assets pass integrity checks.
 - [ ] YSPM package builds from the candidate commit, contains one copy of each versioned changelog, and includes the required source-level library and documentation files.
 - [ ] YSPM package install and removal smoke tests pass in an isolated root.
 - [ ] Package metadata version and architecture match the release candidate.
-- [ ] Benchmarks are run with recorded OS, CPU, compiler, flags, and baseline; only reproducible measurements are published.
+- [ ] Benchmarks are run with recorded OS, CPU model, native compiler/version, optimization and C flags, workload, run count, and stable baseline; review candidate/baseline compile-time, runtime, and binary-size ratios, fix or explicitly accept material regressions, and publish only reproducible measurements.
 
 ## Final publication authorization
 
@@ -82,3 +86,12 @@ Do not change `VERSION`, update `.github/PUBLISH_STABLE`, create the stable tag,
 - [ ] Review the publishing workflow to confirm it checks out, tests, and publishes the exact authorization commit. The workflow creates the tag itself and refuses to overwrite or reuse an existing tag.
 
 When every gate is complete, the stable release workflow may create `v2.3.0`. Follow [the post-release checklist](POST-RELEASE-CHECKLIST-2.3.0.md) afterward.
+
+## Local evidence log (not release authorization)
+
+Recorded on 2026-11-07 against a working tree based on commit `e63ae70a`. This is not a frozen candidate commit, this log does not check any gate above, and it does not authorize publication. Every item must be re-run and reviewed on the exact release-authorization commit.
+
+- Passed locally: clean GCC and Clang builds on Linux; full `make test` with GCC and Clang; `make sanitize`; 1,000-run Clang frontend fuzz smoke; isolated Tree-sitter generation and 2/2 corpus parses; VS Code and Neovim diagnostic/syntax checks; VS Code `.vsix` packaging; YLanglings unit tests and `verify-all`; online book build; website production build and `tools/check_website.py`; YSPM package build and archive-content inspection using a dynamic-link workaround.
+- Added regression coverage: `json.get_string` now keeps the missing-key diagnostic and the JSON fixture checks missing and wrong-type lookups; imported-module runtime feature flags (JSON, Binary I/O, TUI, Voice, HTTP) are asserted through the recorded native compiler argument vector during `make test`.
+- Blocked locally: YSPM install/removal smoke because this host lacks static libc and the local YSPM repository has no matching dynamic `libc.so.6` candidate; the static release package therefore remains unverified here. macOS builds, native Windows smoke, and release-runner benchmarks were not run.
+- Benchmark note: local paired runs against `v2.2.0` were highly variable on shared laptop hardware and are not release evidence. CI runs #5079/#5088 remain the recorded 30-sample paired samples in [PERFORMANCE](PERFORMANCE.md).
