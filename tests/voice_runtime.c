@@ -1,5 +1,6 @@
 #include "ylang/voice.h"
 
+#define SDL_MAIN_HANDLED
 #include <SDL.h>
 
 #include <stdio.h>
@@ -135,6 +136,7 @@ static int SDLCALL test_error_snapshot_thread(void *userdata)
 
 int main(void)
 {
+    SDL_SetMainReady();
     const char *path = "build/voice-test.wav";
     if (!make_test_wave(path)) return fail("could not create the WAV fixture");
     if (!ylvoice_init()) return fail("audio initialization failed");
