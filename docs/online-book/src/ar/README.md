@@ -15,13 +15,13 @@
 ## المكتبة والأدوات
 
 - [المكتبة القياسية](standard-library.md)
-- [Binary I/O](binary-io.md)
-- [Voice والصوت](voice-audio.md)
-- [Terminal UI](tui.md)
-- [GUI وGame2D](gui-game2d.md)
+- [الإدخال والإخراج الثنائي](binary-io.md)
+- [الصوت والملفات الصوتية](voice-audio.md)
+- [واجهة الطرفية](tui.md)
+- [الواجهات الرسومية وGame2D](gui-game2d.md)
 - [أوامر المترجم](cli.md)
 - [JSON](json.md)
-- [HTTP وStreaming](http.md)
+- [HTTP والبث](http.md)
 
 ## المنصات والأمان والتشخيص
 
