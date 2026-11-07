@@ -1,6 +1,6 @@
 # HTTP Streaming
 
-**Status: experimental in the YLang 2.3 development tree.** The implementation is present in the current source tree but is not part of a published YLang release. It must pass the HTTP streaming and sanitizer gates in [the 2.3 release checklist](ROADMAP-2.3.0.md) before it is considered release-ready.
+**Status: experimental in YLang 2.3.0.** HTTP streaming is included with explicit lifecycle, buffer, TLS, and platform limitations; it is not a stable compatibility guarantee. See the [2.3 release notes](CHANGELOG-2.3.0.md) and [security model](SECURITY.md).
 
 ## API
 
@@ -67,7 +67,7 @@ function main() -> int {
 
 Calling `voice.play_stream(stream)` transfers ownership of the stream to Voice, even if playback setup fails. Do not call `http.stream_read`, `http.stream_read_buffer`, `http.stream_done`, or `http.stream_close` on that handle after handoff. Voice closes the HTTP stream when playback is stopped, fails, or reaches EOF. Pause, resume, stop, and volume continue to use the regular `voice.*` functions.
 
-The audio reader is forward-only; seeking is not implemented. Actual MP3 support depends on the installed SDL2_mixer codec build. The callback-backed reader and HTTP bridge require runtime tests before being treated as production-ready.
+The audio reader is forward-only; seeking is not implemented. The automated integration fixture streams a generated non-silent WAV tone through the Voice bridge when SDL2_mixer is available. When `ffmpeg` with the `libmp3lame` encoder is also installed, it generates and streams a short MP3 fixture through the same bridge; this verifies MP3 only when the installed SDL2_mixer build includes its MP3 decoder. The callback-backed reader and HTTP bridge require runtime tests before being treated as production-ready.
 
 ## Current implementation limits
 
