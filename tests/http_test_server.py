@@ -73,7 +73,6 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/stream":
             # Chunked transfer with delays: clients must be able to consume each
             # piece before the complete response has been sent.
-            import time
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.send_header("Transfer-Encoding", "chunked")
