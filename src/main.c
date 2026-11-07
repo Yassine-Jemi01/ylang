@@ -5,7 +5,7 @@
 #include <string.h>
 
 #ifndef YLANG_VERSION
-#define YLANG_VERSION "2.2.0"
+#define YLANG_VERSION "2.3.0"
 #endif
 
 static void usage(FILE *stream)
