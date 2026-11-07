@@ -2370,6 +2370,7 @@ static bool yl_write_file(const char *path, const char *content) {
     if (fclose(file) != 0) ok = false;
     return ok;
 }
+/* Shared by core byte conversion and Binary/HTTP buffer paths; keep outside the optional Binary I/O section. */
 static uint8_t yl_to_byte(int64_t value) {
     if (value < 0 || value > 255) yl_runtime_error("byte conversion is outside the range 0..255");
     return (uint8_t)value;
