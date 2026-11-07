@@ -99,12 +99,16 @@ def main() -> int:
         if required_mapping not in nav_source:
             fail(f"book language switching is missing its home-page mapping: {required_mapping}")
 
-    if "relativeBookPath().startsWith('ar/') ? ARABIC_DOCS_URL : HOME_URL" not in nav_source:
-        fail("Arabic book home link does not preserve the Arabic documentation route")
+    if "relativeBookPath().startsWith('ar/') ? ARABIC_BOOK_URL : HOME_URL" not in nav_source:
+        fail("Arabic book home link does not preserve the Arabic book route")
 
-    arabic_book_css = (root / "learn" / "css" / "ylang-book.css")
-    if not arabic_book_css.is_file():
-        fail("the shared book stylesheet is missing")
+    arabic_book_css_candidates = (
+        root / "learn" / "theme" / "ylang-book.css",
+        root / "learn" / "css" / "ylang-book.css",
+    )
+    arabic_book_css = next((path for path in arabic_book_css_candidates if path.is_file()), None)
+    if arabic_book_css is None:
+        fail("the shared book stylesheet is missing from both supported mdBook output locations")
     arabic_css_source = arabic_book_css.read_text(encoding="utf-8")
     if ".ylang-ar #sidebar .chapter" not in arabic_css_source or "direction: rtl" not in arabic_css_source:
         fail("Arabic chapter navigation is missing its RTL layout rules")
@@ -112,6 +116,10 @@ def main() -> int:
     arabic_portal = (root / "docs-ar.html").read_text(encoding="utf-8")
     if 'href="https://yassine-jemi01.github.io/ylang/"' in arabic_portal:
         fail("Arabic documentation portal contains a homepage link that switches to English")
+
+    homepage = (root / "index.html").read_text(encoding="utf-8")
+    if 'href="https://yassine-jemi01.github.io/ylang/learn/ar/index.html"' not in homepage:
+        fail("the homepage Arabic language option does not open the Arabic YLang Book")
 
     for relative in ("docs.html", "docs-ar.html"):
         page = (root / relative).read_text(encoding="utf-8")
