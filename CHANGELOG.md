@@ -62,9 +62,9 @@ All notable changes to YLang are documented here. This project follows semantic 
 - Added 2.3-specific pre-publication and post-publication checklists, exposed them in the book/docs site, shipped them in YSPM packages, and added CI/release-workflow checks for their presence. Stable publication now waits for CircleCI success on the exact authorization SHA.
 - Expanded regression fixtures for resource limits, diagnostic sanitization, parser nesting, JSON builders, HTTP headers, and CLI aliases; successful `json.escape`, `json.object`, and `json.array` calls clear stale JSON diagnostics.
 
-All build, regression, sanitizer, fuzz, cross-platform, website/book, packaging, and benchmark gates remain pending until the validation phase. Do not change `VERSION` or publish `v2.3.0` before the acceptance checklist is complete.
+YLang 2.3.0 was published as a stable release on 2026-11-07. The `v2.3.0` tag points to release-authorization commit `31e30605a08b068cf4c3a81256464c3a72666112`; the stable publishing workflow and the CI run for that exact commit completed successfully. The post-release checklist tracks the remaining public-artifact and documentation follow-ups separately.
 
-See [the 2.3 development notes](docs/CHANGELOG-2.3.0.md) and [release roadmap](docs/ROADMAP-2.3.0.md).
+See [the 2.3.0 stable release notes](docs/CHANGELOG-2.3.0.md) and [post-release checklist](docs/POST-RELEASE-CHECKLIST-2.3.0.md).
 ## [2.2.0] — stable release
 
 - Added synchronous HTTP/API requests and the first asynchronous HTTP-task API, including request cancellation and response inspection.
