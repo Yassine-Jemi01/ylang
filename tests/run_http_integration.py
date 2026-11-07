@@ -320,7 +320,17 @@ def main():
                 raise SystemExit("HTTP-to-Voice streaming integration test failed")
             # MP3 is a separate codec gate: generate a deterministic fixture
             # when ffmpeg is available, then pass it through the same HTTP/Voice bridge.
+            ffmpeg_encoders = ""
             if shutil.which("ffmpeg"):
+                encoder_probe = subprocess.run(
+                    ["ffmpeg", "-hide_banner", "-encoders"],
+                    cwd=ROOT,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                ffmpeg_encoders = encoder_probe.stdout
+            if "libmp3lame" in ffmpeg_encoders:
                 mp3_source = ROOT / "build" / "http-voice-mp3-stream.yl"
                 mp3_source.write_text(
                     "function main() -> int {\n"
@@ -356,7 +366,7 @@ def main():
                     sys.stderr.write(mp3_result.stderr)
                     raise SystemExit("HTTP-to-Voice MP3 streaming integration test failed")
             else:
-                print("SKIP: ffmpeg is unavailable; HTTP-to-Voice MP3 integration was not run.")
+                print("SKIP: ffmpeg with libmp3lame is unavailable; HTTP-to-Voice MP3 integration was not run.")
         else:
             print("SKIP: SDL2_mixer is unavailable; HTTP-to-Voice integration was not run.")
         print("YLang HTTP integration tests passed.")
