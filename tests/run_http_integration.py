@@ -151,6 +151,8 @@ def main():
         expected_stream = (
             "1\nstream=1\n200\ntrue\n18\nfirst-second-third\ntrue\ntrue\n"
             "not-found\n404\n0\ntrue\n200\n9437184\n200\n"
+            "6\n6\nfirst-second-third\nfirst-second-third\n200\n200\n"
+            "3\nhello\n200\n"
         )
         if stream_result.returncode != 0 or stream_result.stdout != expected_stream:
             sys.stderr.write("--- expected streaming output ---\n" + expected_stream)
