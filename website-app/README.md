@@ -1,6 +1,6 @@
 # YLang website refresh
 
-React/Vite homepage refresh for YLang, with a restrained dark-teal and rust palette. This revision removes the unreliable ASCII background entirely, keeps the moving curved-text marquee, and points Book and Documentation links at the published GitHub Pages pages so they work in local preview as well. The artificial terminal/code-card remains removed from the hero. Curved text uses `requestAnimationFrame`.
+React/Vite homepage refresh for YLang, with a dark-blue palette and blue/orange accents. This revision removes the unreliable ASCII background entirely, keeps the moving curved-text marquee, and points Book and Documentation links at the published GitHub Pages pages so they work in local preview as well. The artificial terminal/code-card remains removed from the hero. Curved text uses `requestAnimationFrame`.
 
 ## Stack
 
