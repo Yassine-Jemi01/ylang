@@ -31,11 +31,11 @@ The package builder defaults to ABI `yspm-abi-1` and architecture `x86_64`. Over
 
 ## Install a published package
 
-When a .yspkg asset is published for a YLang release, download that asset and install it with YSPM:
+For the current stable release, download [YLang 2.3.0 for Linux x86-64](https://github.com/Yassine-Jemi01/ylang/releases/download/v2.3.0/ylang-2.3.0-x86_64.yspkg), then install it with YSPM:
 
-    sudo yspm install ./ylang-<version>-x86_64.yspkg
+    sudo yspm install ./ylang-2.3.0-x86_64.yspkg
 
-The exact package filename depends on the release version. The package can also be built locally using the command above.
+For later releases, use the matching `.yspkg` asset attached to that version's GitHub Release. The package can also be built locally using the command above.
 
 The system package installs the `ylang` executable in `/usr/bin`, source modules in `/usr/share/ylang/stdlib`, the optional GUI runtime source, the GUI public header, and documentation under `/usr/share/doc/ylang`.
 
