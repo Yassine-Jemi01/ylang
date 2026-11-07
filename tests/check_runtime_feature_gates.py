@@ -61,7 +61,7 @@ def main() -> int:
         print("FAIL: shared runtime helpers were unexpectedly removed: " + ", ".join(missing_shared), file=sys.stderr)
         return 1
 
-    print("PASS: unused JSON/HTTP/TUI/Binary sections are excluded; shared byte helpers remain")
+    print("PASS: unused JSON/HTTP/TUI/Binary/Voice sections are excluded; shared byte helpers remain")
     return 0
 
 
