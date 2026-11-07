@@ -2,11 +2,14 @@ function feature_probe() -> int {
     let bool json_ok = json.valid("{}");
     let int buffer = io.buffer_new(1);
     let int terminal_width = tui.width();
-    let owned_string response = http.get("https://example.com");
     let bool audio_playing = voice.is_playing();
     io.buffer_free(buffer);
-    if (json_ok && terminal_width >= 0 && audio_playing && response != "") {
+    if (json_ok && terminal_width >= 0 && audio_playing) {
         return 1;
     }
     return 0;
+}
+
+function stream_probe(http_stream stream) -> bool {
+    return voice.play_stream(stream);
 }
