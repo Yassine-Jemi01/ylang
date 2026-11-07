@@ -1,18 +1,21 @@
 # Changelog
 
+## [Unreleased]
+
+The next development milestone is planned to focus on the LLVM backend; no LLVM completion is included in 2.3.0.
+
+
 All notable changes to YLang are documented here. This project follows semantic versioning for future releases.
 
-## [2.3.0] — development (not released)
+## [2.3.0] — 2026-11-07
 
 - Made HTTP streaming redirect detection honor the case-insensitive HTTP field-name rules for `Location`, including mixed-case header names.
 
 - Aligned the asynchronous HTTP client User-Agent with the 2.3 runtime and removed an unused task-state field that belonged only to streaming metadata.
 
-YLang 2.3.0 is under active development. YLang 2.2.0 remains the latest stable release.
 - Prevented silent NUL truncation in line input, formatted strings, and buffered HTTP/task responses; binary HTTP payloads must use the byte-buffer streaming API.
 - Text HTTP stream reads now reject NUL-containing chunks explicitly and terminate the affected stream, discarding queued text bytes; binary stream reads remain available through `http.stream_read_buffer`.
 - Rejected NUL escapes in string literals and f-string text to prevent silent C-string truncation; byte-valued `char` literals remain supported.
-- Fixed C-backend printing and f-string formatting for `http_stream` handles, with HTTP integration coverage.
 - Fixed C-backend printing and f-string formatting for `http_stream` handles, with HTTP integration coverage.
 - Unified the HTTP client User-Agent at `YLang/2.3` and made redirect allow-list matching for `Content-Type` case-insensitive, with a lowercase-header regression fixture.
 - Confined YLanglings maintainer reference solutions to the tool's own source tree.
