@@ -72,6 +72,15 @@
     return BOOK_URL + 'ar/' + (EN_TO_AR[path] || 'start-here.html');
   }
 
+  function addSharedTheme() {
+    if (document.querySelector('link[data-ylang-shared-theme]')) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = HOME_URL + 'assets/site-theme.css';
+    link.setAttribute('data-ylang-shared-theme', 'true');
+    document.head.append(link);
+  }
+
   function setBookLanguage() {
     const isArabic = relativeBookPath().startsWith('ar/');
     document.documentElement.lang = isArabic ? 'ar' : 'en';
@@ -85,12 +94,12 @@
     if (!toolbar) return;
     const isArabic = relativeBookPath().startsWith('ar/');
     const details = document.createElement('details');
-    details.className = 'ylang-language-switcher';
+    details.className = 'language-switcher';
     const summary = document.createElement('summary');
     summary.textContent = isArabic ? 'AR' : 'EN';
     summary.setAttribute('aria-label', 'Select book language');
     const menu = document.createElement('div');
-    menu.className = 'ylang-language-menu';
+    menu.className = 'language-menu';
     const choices = [
       { label: 'English (EN)', href: languageTarget(true), lang: 'en', current: !isArabic },
       { label: 'العربية (AR)', href: languageTarget(false), lang: 'ar', current: isArabic }
@@ -130,6 +139,7 @@
   }
 
   function initialize() {
+    addSharedTheme();
     setBookLanguage();
     addHomeLink();
     addLanguageSwitcher();
