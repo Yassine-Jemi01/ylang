@@ -304,7 +304,7 @@ def main() -> int:
         fail("Arabic documentation portal is missing the physical-padding reset")
 
     rtl_language_menu = re.search(
-        r'html\\[dir="rtl"\\]\\s+\\.nav-actions\\s+\\.language-switcher\\s*>\\s*\\.language-menu\\s*\\{([^}]*)\\}',
+        r'html\[dir="rtl"\]\s+\.nav-actions\s+\.language-switcher\s*>\s*\.language-menu\s*\{([^}]*)\}',
         docs_ar_css,
     )
     if rtl_language_menu is None:
