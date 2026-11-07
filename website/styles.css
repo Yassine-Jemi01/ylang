@@ -46,6 +46,15 @@ code { font-size: .92em; }
 .site-nav a { color: var(--muted); font-size: .91rem; font-weight: 650; }
 .site-nav a:hover, .nav-github:hover { color: var(--blue); }
 .nav-actions { display: flex; align-items: center; gap: 12px; }
+
+.language-switcher { position: relative; }
+.language-switcher summary { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; color: var(--navy); background: var(--surface); cursor: pointer; font: 750 .82rem/1 inherit; list-style: none; }
+.language-switcher summary::-webkit-details-marker { display: none; }
+.language-switcher summary:hover, .language-switcher[open] summary { border-color: var(--blue); color: var(--blue); }
+.language-menu { position: absolute; z-index: 100; top: calc(100% + 8px); right: 0; display: grid; min-width: 155px; padding: 5px; border: 1px solid var(--line); border-radius: 9px; background: #fff; box-shadow: 0 12px 30px rgba(29,59,86,.16); }
+.language-menu a { display: block; padding: 9px 11px; border-radius: 5px; color: var(--navy); font-size: .84rem; font-weight: 650; white-space: nowrap; }
+.language-menu a:hover, .language-menu a[aria-current="page"] { color: var(--blue); background: var(--surface); }
+
 .nav-github { color: var(--navy); font-weight: 700; font-size: .88rem; white-space: nowrap; }
 .menu-toggle { display: none; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); padding: 7px 9px; cursor: pointer; }
 .menu-toggle span { display: block; width: 20px; height: 2px; margin: 4px 0; background: var(--navy); }
