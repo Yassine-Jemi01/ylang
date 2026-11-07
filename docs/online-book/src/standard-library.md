@@ -13,7 +13,7 @@ The current documentation covers namespaces such as:
 - `io` for console and file-related operations.
 - `path` for path-related checks.
 - `image` for supported image-related operations.
-- `json` for parsing, validation, typed field access, escaping, and formatting. The immutable raw-text builders are additions in the unreleased 2.3 development line; see [JSON support](reference/JSON.md).
+- `json` for parsing, validation, typed field access, escaping, and formatting. YLang 2.3.0 includes immutable raw-text builders; see [JSON support](reference/JSON.md).
 - `env.get(name)` for reading a process environment variable without launching a shell.
 - `http` for optional synchronous requests and bounded pull-based streaming through libcurl; see [HTTP and API Requests](reference/HTTP.md) and [HTTP Streaming](reference/HTTP-STREAMING.md).
 - `terminal` for line-oriented console input/output, and `tui` for raw-key terminal applications; see [Terminal UI](tui.md).
@@ -45,7 +45,7 @@ YLang 2.3 adds immutable raw-text builders. The [JSON reference](reference/JSON.
 
 The JSON API represents a document and extracted values as JSON text held in owned strings; it does not create a dynamic object tree. For input containing duplicate object keys, getters return the first value; `json.set` replaces that key and removes later duplicates, while `json.remove` removes all copies. Use `json.parse` or `json.valid` before trusting input, check optional keys with `json.has`, and inspect `json.last_error()` after a failed lookup or typed conversion.
 
-YLang 2.2.0 provides parsing, accessors, escaping, and pretty-printing. The immutable builders `json.object`, `json.array`, `json.set`, `json.remove`, and `json.push` are additions in the unreleased 2.3 development line. Builder values must be valid raw JSON fragments; use `json.escape` to construct a JSON string literal. Each builder returns a new owned string rather than mutating the original. See the [JSON reference](reference/JSON.md) for limits and exact behavior.
+YLang 2.2.0 introduced parsing, accessors, escaping, and pretty-printing. YLang 2.3.0 adds the immutable builders `json.object`, `json.array`, `json.set`, `json.remove`, and `json.push`. Builder values must be valid raw JSON fragments; use `json.escape` to construct a JSON string literal. Each builder returns a new owned string rather than mutating the original. See the [JSON reference](reference/JSON.md) for limits and exact behavior.
 
 ## HTTP requests
 
