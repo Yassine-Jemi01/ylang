@@ -592,7 +592,7 @@ static int run_native_compiler(const char *cc, const char *c_path,
     if (uses_http) args[n++] = "-DYLANG_USE_HTTP=1";
     if (uses_voice) args[n++] = "-DYLANG_USE_VOICE=1";
     if (uses_json) args[n++] = "-DYLANG_USE_JSON=1";
-    if (uses_binary || uses_http) args[n++] = "-DYLANG_USE_BINARY=1";
+    if (uses_binary) args[n++] = "-DYLANG_USE_BINARY=1";
     if (uses_tui) args[n++] = "-DYLANG_USE_TUI=1";
     args[n++] = "-std=c17";
     args[n++] = "-Wall";
