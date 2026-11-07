@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".github/PUBLISH_STABLE"
+      - "tests/voice_runtime.c"
   workflow_dispatch:
     inputs:
       confirm_version:
