@@ -153,15 +153,30 @@ body.ylang-ar-home .preview-grid.feature-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-body.ylang-ar-home main :where(ul, ol) {
-  margin-block: 1rem;
+body.ylang-ar-home main ul,
+body.ylang-ar-home main ol {
+  direction: rtl;
+  margin: 1em 0;
+  margin-block: 1em;
   margin-inline: 0;
-  padding-inline-start: 1.5rem;
+  padding: 0;
+  padding-inline-start: 1.75rem;
   padding-inline-end: 0;
+  list-style-position: outside;
+  text-align: start;
 }
 
 body.ylang-ar-home main li {
-  margin-block: .35rem;
+  display: list-item;
+  direction: rtl;
+  margin: 0;
+  margin-block: .35em;
+  padding: 0;
+  text-align: start;
+}
+
+body.ylang-ar-home main li::marker {
+  unicode-bidi: isolate;
 }
 
 body.ylang-ar-home .footer-links {

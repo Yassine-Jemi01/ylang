@@ -75,17 +75,32 @@ body {
   left: auto;
 }
 
-main :where(ul, ol) {
-  margin-block: 1rem;
+
+/* Reset both physical gutters before applying one RTL start-side indent. */
+html[dir="rtl"] main ul,
+html[dir="rtl"] main ol {
+  direction: rtl;
+  margin: 1em 0;
+  margin-block: 1em;
   margin-inline: 0;
-  padding-block: 0;
+  padding: 0;
   padding-inline-start: 1.75rem;
   padding-inline-end: 0;
   list-style-position: outside;
+  text-align: start;
 }
 
-main li {
-  margin-block: .35rem;
+html[dir="rtl"] main li {
+  display: list-item;
+  direction: rtl;
+  margin: 0;
+  margin-block: .35em;
+  padding: 0;
+  text-align: start;
+}
+
+html[dir="rtl"] main li::marker {
+  unicode-bidi: isolate;
 }
 
 @media (max-width: 760px) {

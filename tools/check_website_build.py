@@ -291,6 +291,26 @@ def main() -> int:
         fail("Arabic book typography is missing the selected IBM Plex Sans Arabic font")
     if "padding-inline-start: 1.75rem" not in book_css or "margin-inline: 0" not in book_css:
         fail("Arabic book lists are missing direction-safe logical spacing rules")
+    if "padding: 0;" not in book_css or "list-style-position: outside" not in book_css:
+        fail("Arabic book list reset does not clear inherited physical padding")
+
+    shared_theme_css = (root / "assets" / "site-theme.css").read_text(encoding="utf-8")
+    required_rtl_list_rules = ("html[dir=\\"rtl\\"] main ul", "padding-inline-start: 1.75rem", "unicode-bidi: isolate")
+    if any(rule not in shared_theme_css for rule in required_rtl_list_rules):
+        fail("shared theme is missing the cross-page RTL list baseline")
+
+    docs_ar_css = (root / "docs-ar.css").read_text(encoding="utf-8")
+    if "html[dir=\\"rtl\\"] main ul" not in docs_ar_css or "padding: 0;" not in docs_ar_css:
+        fail("Arabic documentation portal is missing the physical-padding reset")
+
+    arabic_home_css_files = [
+        resolve_local_target(urlsplit(reference).path, root / "ar" / "index.html", root)
+        for reference in arabic_homepage_parser.references
+        if urlsplit(reference).path.endswith(".css")
+    ]
+    arabic_home_css = "\\n".join(path.read_text(encoding="utf-8") for path in arabic_home_css_files if path.is_file())
+    if "body.ylang-ar-home main ul" not in arabic_home_css or "padding: 0;" not in arabic_home_css:
+        fail("Arabic homepage is missing the physical-padding reset")
 
     sitemap_root = ET.parse(root / "sitemap.xml").getroot()
     sitemap_urls = {

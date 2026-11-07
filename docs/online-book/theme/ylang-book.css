@@ -248,3 +248,33 @@ body.ylang-ar,
 .ylang-ar #sidebar .chapter li a:before {
   inset-inline: auto 0;
 }
+
+
+/* Final list reset for every Arabic chapter, including nested lists. */
+html[dir="rtl"] .content main ul,
+html[dir="rtl"] .content main ol,
+.ylang-ar .content main ul,
+.ylang-ar .content main ol {
+  direction: rtl;
+  margin: 1em 0;
+  margin-block: 1em;
+  margin-inline: 0;
+  padding: 0;
+  padding-inline-start: 1.75rem;
+  padding-inline-end: 0;
+  list-style-position: outside;
+  text-align: start;
+}
+html[dir="rtl"] .content main li,
+.ylang-ar .content main li {
+  display: list-item;
+  direction: rtl;
+  margin: 0;
+  margin-block: .35em;
+  padding: 0;
+  text-align: start;
+}
+html[dir="rtl"] .content main li::marker,
+.ylang-ar .content main li::marker {
+  unicode-bidi: isolate;
+}

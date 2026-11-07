@@ -137,3 +137,39 @@ html[dir="rtl"] .site-nav { margin-left: 0; margin-right: auto; }
 .language-switcher:focus-within > .language-menu,
 .language-switcher[open] > .language-menu { display: grid; }
 .language-switcher > summary { position: relative; z-index: 1; }
+
+
+/*
+ * Stable RTL list baseline.
+ * Reset physical user-agent/theme offsets before applying the logical start
+ * indent, so inherited left padding cannot leave a second, incorrect gutter.
+ */
+html[dir="rtl"] main ul,
+html[dir="rtl"] main ol,
+html[dir="rtl"] .content main ul,
+html[dir="rtl"] .content main ol {
+  direction: rtl;
+  margin: 1em 0;
+  margin-block: 1em;
+  margin-inline: 0;
+  padding: 0;
+  padding-inline-start: 1.75rem;
+  padding-inline-end: 0;
+  list-style-position: outside;
+  text-align: start;
+}
+
+html[dir="rtl"] main li,
+html[dir="rtl"] .content main li {
+  display: list-item;
+  direction: rtl;
+  margin: 0;
+  margin-block: .35em;
+  padding: 0;
+  text-align: start;
+}
+
+html[dir="rtl"] main li::marker,
+html[dir="rtl"] .content main li::marker {
+  unicode-bidi: isolate;
+}
