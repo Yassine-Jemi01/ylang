@@ -1,0 +1,5 @@
+from "./feature.yl" import feature_probe;
+
+function main() -> int {
+    return feature_probe();
+}

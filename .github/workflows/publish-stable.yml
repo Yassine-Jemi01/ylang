@@ -88,6 +88,10 @@ jobs:
         run: ${{ steps.compiler.outputs.make }} tui-example CC="${{ steps.compiler.outputs.cc }}"
       - name: Build and test optional Voice runtime
         run: ${{ steps.compiler.outputs.make }} voice voice-example voice-test CC="${{ steps.compiler.outputs.cc }}"
+      - name: Verify optional runtime flags across imported modules
+        run: |
+          ./build/ylang check tests/optional-feature-imports/main.yl
+          ./build/ylang build tests/optional-feature-imports/main.yl -o build/optional-feature-imports
       - name: Run regression tests
         run: ${{ steps.compiler.outputs.make }} test CC="${{ steps.compiler.outputs.cc }}"
       - name: Record native benchmark against stable baseline
@@ -145,6 +149,10 @@ jobs:
         run: make tui-example CC=gcc PYTHON=python
       - name: Build optional SDL2_mixer Voice runtime
         run: make voice voice-example voice-test CC=gcc PYTHON=python
+      - name: Verify optional runtime flags across imported modules
+        run: |
+          ./build/ylang.exe check tests/optional-feature-imports/main.yl
+          ./build/ylang.exe build tests/optional-feature-imports/main.yl -o build/windows-smoke/optional-feature-imports.exe
       - name: Verify YLanglings offline CLI, install lifecycle, and full curriculum
         run: make ylanglings-test ylanglings-verify PYTHON=python
       - name: Check, compile, and run a native Windows program
