@@ -304,11 +304,11 @@ Build a native package locally (Linux x86-64, Go, GCC, GNU Make, and a YSPM chec
 
 This creates `build/ylang-yspm/ylang-<version>-x86_64.yspkg`. The package includes the compiler, .yl standard library, GUI runtime source/header, license, and available documentation. The stable release workflow builds and validates a Linux x86-64 package from the exact tested commit before attaching it to the release. Prerelease assets remain separate from the stable release.
 
-When a release includes a .yspkg asset, download it and install it with:
+For the current stable release, download [YLang 2.3.0 for Linux x86-64](https://github.com/Yassine-Jemi01/ylang/releases/download/v2.3.0/ylang-2.3.0-x86_64.yspkg), then install it with:
 
-    sudo yspm install ./ylang-<version>-x86_64.yspkg
+    sudo yspm install ./ylang-2.3.0-x86_64.yspkg
 
-YSPM manages Linux system packages, not project-local YLang module dependencies. The compiler still needs GCC or Clang on the host to compile generated C, and GUI/game builds need SDL2 development files plus pkg-config. See [the YSPM guide](docs/YSPM.md) for the package contents and limits.
+For later releases, use the matching .yspkg asset attached to that version's GitHub Release. YSPM manages Linux system packages, not project-local YLang module dependencies. The compiler still needs GCC or Clang on the host to compile generated C, and GUI/game builds need SDL2 development files plus pkg-config. See [the YSPM guide](docs/YSPM.md) for the package contents and limits.
 
 ## Language overview
 
@@ -460,7 +460,7 @@ YLang is distributed under the MIT License. See [`LICENSE`](LICENSE).
 - [Language specification](docs/language-spec.md)
 - [Architecture](docs/architecture.md)
 - [YLang 2.0 design roadmap](docs/YLANG-2.0-DESIGN.md)
-- [YLang 2.3.0 development roadmap](docs/ROADMAP-2.3.0.md) and [pre-release checklist](docs/RELEASE-CHECKLIST-2.3.0.md)
+- [YLang 2.3.0 release scope](docs/ROADMAP-2.3.0.md), [release checklist](docs/RELEASE-CHECKLIST-2.3.0.md), and [post-release audit](docs/POST-RELEASE-CHECKLIST-2.3.0.md)
 - [YLang 2.0.0 release notes and compatibility policy](docs/CHANGELOG-2.0.0.md)
 - [VS Code YLang 2.0 syntax highlighting, compiler diagnostics, and Code Runner setup](editors/vscode/README.md)
 - [Neovim YLang 2.0 syntax highlighting and native diagnostics integration](editors/nvim/README.md)
