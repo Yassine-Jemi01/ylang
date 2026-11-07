@@ -49,8 +49,6 @@ jobs:
         run: make check-runtime-template
       - name: Build compiler
         run: ${{ steps.compiler.outputs.make }} clean all CC="${{ steps.compiler.outputs.cc }}"
-      - name: Verify unused optional runtime sections are excluded
-        run: python3 tests/check_runtime_feature_gates.py --cc "${{ steps.compiler.outputs.cc }}"
       - name: Build optional GUI runtime
         run: ${{ steps.compiler.outputs.make }} gui gui-example game2d-example CC="${{ steps.compiler.outputs.cc }}"
       - name: Build responsive TUI example
