@@ -40,7 +40,8 @@
   font-weight: 800;
   letter-spacing: -.055em;
 }
-.brand img { width: 34px; height: 34px; object-fit: contain; }
+.brand img:not(.brand-wordmark) { width: 34px; height: 34px; object-fit: contain; }
+.footer-brand img { width: 30px; height: 30px; }
 .site-nav {
   display: flex;
   align-items: center;
