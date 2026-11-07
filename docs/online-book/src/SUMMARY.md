@@ -3,28 +3,6 @@
 [The YLang Book](README.md)
 [Introduction](introduction.md)
 
-# المسار العربي — تعلّم YLang
-- [النسخة العربية: ابدأ من هنا](ar/start-here.md)
-- [مقدمة إلى YLang](ar/introduction.md)
-- [تثبيت YLang](ar/getting-started.md)
-- [برنامجك الأول](ar/hello-world.md)
-- [مسار عمل المترجم](ar/compiler-workflow.md)
-- [أنواع البيانات والتحويلات](ar/types.md)
-- [الدوال والوحدات](ar/modules.md)
-- [المكتبة القياسية](ar/standard-library.md)
-- [دعم الأنظمة والمنصات](ar/platform-support.md)
-- [الإدخال والإخراج الثنائي](ar/binary-io.md)
-- [Voice والصوت](ar/voice-audio.md)
-- [واجهة الطرفية TUI](ar/tui.md)
-- [GUI وGame2D](ar/gui-game2d.md)
-- [مرجع أوامر المترجم](ar/cli.md)
-- [دليل JSON](ar/json.md)
-- [دليل HTTP وStreaming](ar/http.md)
-- [التشخيص وأكواد الأخطاء](ar/diagnostics.md)
-- [نموذج الأمان](ar/security.md)
-- [دليل Windows](ar/windows.md)
-- [أساسيات اللغة](ar/language-basics.md)
-
 # Part I — Start Here
 
 - [Install YLang](getting-started.md)
