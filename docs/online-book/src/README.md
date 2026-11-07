@@ -8,7 +8,7 @@ The online edition is the canonical book. It is maintained alongside the compile
 
 ## العربية
 
-يمكنك قراءة [المسار التعليمي العربي](ar/start-here.html). يغطي حالياً مقدمة اللغة والتثبيت وأول برنامج وأساسيات اللغة وYLanglings. تبقى رسائل المترجم وأكواد التشخيص بالإنجليزية.
+يمكنك قراءة [المسار التعليمي العربي](ar/start-here.html)، كما يمكنك فتح [بوابة الوثائق العربية](https://yassine-jemi01.github.io/ylang/docs-ar.html). الشروحات الأساسية متاحة بالعربية، بينما تبقى أداة YLanglings وتمارينها وتلميحاتها وواجهتها بالإنجليزية. رسائل المترجم وأكواد التشخيص وأسماء API تبقى بالإنجليزية.
 
 ## Which version does this book describe?
 

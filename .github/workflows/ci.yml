@@ -145,6 +145,26 @@ jobs:
         run: |
           ./build/ylang check tests/tui-builtins.yl
           ./build/ylang build tests/tui-builtins.yl -o build/windows-smoke/tui-builtins.exe
+      - name: Exercise interactive Windows TUI input and console restoration
+        run: |
+          cat > build/windows-smoke/tui-interactive.yl <<'EOF'
+          function main() -> int {
+              if (!tui.init()) return 10;
+              if (!tui.clear()) { tui.shutdown(); return 11; }
+              if (!tui.set_cursor(1, 1)) { tui.shutdown(); return 12; }
+              if (!tui.hide_cursor()) { tui.shutdown(); return 13; }
+              if (!tui.write("READY")) { tui.shutdown(); return 14; }
+              let int key = tui.read_key();
+              tui.show_cursor();
+              tui.shutdown();
+              if (key != 120) return 15;
+              return 0;
+          }
+          EOF
+          ./build/ylang.exe check build/windows-smoke/tui-interactive.yl
+          ./build/ylang.exe build build/windows-smoke/tui-interactive.yl -o build/windows-smoke/tui-interactive.exe
+          gcc tests/tui_windows_console_test.c -o build/windows-smoke/tui-windows-console-test.exe
+          ./build/windows-smoke/tui-windows-console-test.exe ./build/windows-smoke/tui-interactive.exe
       - name: Reject unsupported Windows interactive debugger cleanly
         run: |
           if ./build/ylang.exe debug tests/debug-source-map.yl -o build/windows-smoke/debug-unsupported.exe > build/windows-smoke/debug.out 2>&1; then
@@ -222,7 +242,7 @@ jobs:
             count="$(grep -Fc "$changelog" build/ylang-yspm/package-files.txt)"
             test "$count" -eq 1
           done
-          tar -xzOf "$package_path" metadata.json | python3 -c 'import json,sys; p=json.load(sys.stdin); assert p["name"] == "ylang"; assert p["architecture"] == "x86_64"; assert p["abi"] == "yspm-abi-1"'
+          tar -xzOf "$package_path" metadata.json | python3 -c 'import json,sys; p=json.load(sys.stdin); version=open("VERSION", encoding="utf-8").read().strip(); assert p["name"] == "ylang"; assert p["version"] == version; assert p["architecture"] == "x86_64"; assert p["abi"] == "yspm-abi-1"'
           # Compare the archived payload with the built compiler byte-for-byte.
           # The following YSPM install/remove smoke test separately exercises package extraction and permissions.
           tar -xzOf "$package_path" root/usr/bin/ylang > build/ylang-packaged-binary

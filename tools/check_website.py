@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the English marketing site and bilingual mdBook output; no third-party packages required."""
+"""Check the English homepage, bilingual documentation portal, and mdBook output."""
 
 from __future__ import annotations
 
@@ -29,11 +29,17 @@ class PageLinks(HTMLParser):
         self.local_paths: list[str] = []
         self.targets: list[str] = []
         self.lang_ok = False
+        self.language: str | None = None
+        self.direction: str | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
         if tag == "html":
-            self.lang_ok = values.get("lang") == "en" and values.get("dir") == "ltr"
+            self.language = values.get("lang")
+            self.direction = values.get("dir")
+            self.lang_ok = (self.language == "en" and self.direction == "ltr") or (
+                self.language == "ar" and self.direction == "rtl"
+            )
         if values.get("id"):
             self.ids.append(str(values["id"]))
 
@@ -133,9 +139,9 @@ def check_site() -> list[str]:
     for path in files:
         text = path.read_text(encoding="utf-8")
         relative = path.relative_to(SITE)
-        # The marketing site remains English-only. The generated online book
-        # intentionally includes a scoped Arabic learning path under /learn/ar/.
-        if ARABIC.search(text) and relative.parts[:1] != ("learn",):
+        # Marketing pages remain English-only; Arabic is scoped to the book
+        # and the dedicated docs-ar.html portal.
+        if ARABIC.search(text) and relative.parts[:1] != ("learn",) and relative.name != "docs-ar.html":
             errors.append(f"{path.relative_to(ROOT)} contains Arabic-script text outside the online book.")
         if path.suffix.lower() in {".html", ".js", ".css"}:
             for marker in LEGACY_MARKERS:
@@ -143,13 +149,17 @@ def check_site() -> list[str]:
                     errors.append(f"{path.relative_to(ROOT)} contains legacy localization marker {marker!r}.")
                     break
 
-    for relative in ("website/index.html", "website/docs.html"):
+    expected_pages = (
+        ("website/index.html", "en", "ltr"),
+        ("website/docs.html", "en", "ltr"),
+        ("website/docs-ar.html", "ar", "rtl"),
+    )
+    for relative, expected_language, expected_direction in expected_pages:
         page_path = ROOT / relative
         parser = PageLinks()
         parser.feed(page_path.read_text(encoding="utf-8"))
-
-        if not parser.lang_ok:
-            errors.append(f"{relative} must declare <html lang=\"en\" dir=\"ltr\">.")
+        if parser.language != expected_language or parser.direction != expected_direction:
+            errors.append(f"{relative} must declare lang={expected_language} dir={expected_direction}.")
 
         duplicates = sorted({item for item in parser.ids if parser.ids.count(item) > 1})
         if duplicates:
@@ -172,7 +182,7 @@ def check_site() -> list[str]:
             print(f"ERROR: {error}", file=sys.stderr)
         return errors
 
-    print("PASS: English marketing site, bilingual book, navigation anchors, local assets, and links.")
+    print("PASS: English homepage, bilingual docs portal and book, navigation anchors, local assets, and links.")
     return []
 
 

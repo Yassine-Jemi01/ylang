@@ -8,7 +8,11 @@
 - [مقدمة إلى YLang](ar/introduction.md)
 - [تثبيت YLang](ar/getting-started.md)
 - [برنامجك الأول](ar/hello-world.md)
-- [التعلّم بالتطبيق مع YLanglings](ar/ylanglings.md)
+- [مسار عمل المترجم](ar/compiler-workflow.md)
+- [أنواع البيانات والتحويلات](ar/types.md)
+- [الدوال والوحدات](ar/modules.md)
+- [المكتبة القياسية](ar/standard-library.md)
+- [دعم الأنظمة والمنصات](ar/platform-support.md)
 - [أساسيات اللغة](ar/language-basics.md)
 
 # Part I — Start Here
