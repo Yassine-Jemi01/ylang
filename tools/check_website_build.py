@@ -7,6 +7,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 import sys
 from urllib.parse import unquote, urlsplit
+from xml.etree import ElementTree as ET
 
 
 class LinkParser(HTMLParser):
@@ -20,6 +21,9 @@ class LinkParser(HTMLParser):
         for key, value in attrs:
             if key == "href" and value:
                 self.hrefs.append(value)
+
+
+BASE_URL = "https://yassine-jemi01.github.io/ylang/"
 
 
 def fail(message: str) -> None:
@@ -38,6 +42,8 @@ def main() -> int:
         "ylang-mark.svg",
         "assets/ylang-mark.svg",
         "assets/site-theme.css",
+        "robots.txt",
+        "sitemap.xml",
         "learn/favicon.svg",
         "learn/ar/favicon.svg",
     )
@@ -52,6 +58,19 @@ def main() -> int:
 
     if (root / "progress" / "index.html").exists():
         fail("the retired YLang 3.0 progress page is still being published")
+
+    sitemap = ET.parse(root / "sitemap.xml").getroot()
+    sitemap_urls = {
+        element.text for element in sitemap.iter()
+        if element.tag.endswith("}loc") and element.text
+    }
+    for expected in (BASE_URL, BASE_URL + "docs.html", BASE_URL + "docs-ar.html", BASE_URL + "learn/"):
+        if expected not in sitemap_urls:
+            fail(f"sitemap is missing a public page: {expected}")
+    if any("/progress/" in url for url in sitemap_urls):
+        fail("the retired progress page appears in the sitemap")
+    if "Sitemap: " + BASE_URL + "sitemap.xml" not in (root / "robots.txt").read_text(encoding="utf-8"):
+        fail("robots.txt does not advertise the generated sitemap")
 
     english_book = (root / "learn" / "index.html").read_text(encoding="utf-8")
     arabic_book = (root / "learn" / "ar" / "index.html").read_text(encoding="utf-8")
