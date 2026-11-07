@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
 /* Shared YLang site identity: dark navy, blue, orange, and homepage typography. */
 :root {
   --content-max-width: 900px;
@@ -110,7 +110,14 @@ body { font-family: "Manrope", system-ui, sans-serif; font-feature-settings: "ke
   border-radius: 7px 0 0 7px;
 }
 .ylang-ar .content main ul,
-.ylang-ar .content main ol { padding-right: 2rem; padding-left: 0; }
+.ylang-ar .content main ol {
+  margin-block: 1rem;
+  margin-inline: 0;
+  padding-block: 0;
+  padding-inline-start: 1.75rem;
+  padding-inline-end: 0;
+  list-style-position: outside;
+}
 .ylang-ar .content main pre,
 .ylang-ar .content main pre code,
 .ylang-ar .content main :not(pre) > code {
@@ -203,4 +210,41 @@ body { font-family: "Manrope", system-ui, sans-serif; font-feature-settings: "ke
 .ylang-ar #sidebar .chapter li a:before {
   inset-inline-start: auto;
   inset-inline-end: 0;
+}
+
+
+/* Arabic reading typography and direction-safe list/sidebar spacing. */
+body.ylang-ar,
+.ylang-ar #menu-bar,
+.ylang-ar #sidebar,
+.ylang-ar #searchbar,
+.ylang-ar .content main {
+  font-family: "IBM Plex Sans Arabic", "Manrope", system-ui, sans-serif;
+  letter-spacing: 0;
+}
+.ylang-ar .content main {
+  line-height: 1.95;
+}
+.ylang-ar .content main h1,
+.ylang-ar .content main h2,
+.ylang-ar .content main h3 {
+  line-height: 1.55;
+}
+.ylang-ar .content main li {
+  margin-block: .32rem;
+  padding-inline-start: .12rem;
+}
+.ylang-ar #sidebar .chapter,
+.ylang-ar #sidebar .chapter li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ylang-ar #sidebar .chapter li a {
+  margin-inline: 0;
+  padding-inline: 12px 8px;
+  text-align: start;
+}
+.ylang-ar #sidebar .chapter li a:before {
+  inset-inline: auto 0;
 }

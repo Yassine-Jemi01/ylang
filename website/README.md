@@ -4,9 +4,10 @@ The public website combines a React/Vite homepage, bilingual documentation porta
 
 ## Sources
 
-- `website-app/` — the English React homepage, its logos, and the production Vite build.
+- `website-app/` — the English and Arabic React homepages, their shared design system, logos, and production Vite build.
+- `website-app/ar/index.html` and `website-app/src/ArabicHome.jsx` — the standalone Arabic homepage, with RTL navigation and direct routes to Arabic docs and the Arabic book.
 - `website/docs.html` — the English documentation portal.
-- `website/docs-ar.html` — the Arabic documentation portal, with RTL layout and links into the Arabic learning path.
+- `website/docs-ar.html` — the Arabic documentation portal, with RTL layout and a Home link back to the Arabic homepage.
 - `docs/online-book/src/` — the English book chapters and technical references.
 - `docs/online-book/src/ar/` — the canonical Arabic learning-path chapters.
 - `docs/online-book/theme/` — shared book appearance, navigation, and favicon.

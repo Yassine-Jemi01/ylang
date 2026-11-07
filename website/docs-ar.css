@@ -1,11 +1,103 @@
-html[dir="rtl"],html[dir="rtl"] body{direction:rtl;text-align:right}
-body{font-family:"Noto Naskh Arabic","Noto Sans Arabic",system-ui,sans-serif;letter-spacing:0}
-.brand,.docs-hero h1,.docs-section-head h2,.docs-build-grid h2,.docs-card h3,.docs-notice h2{letter-spacing:0}
-.nav-wrap{direction:rtl}.site-nav{margin-left:0;margin-right:auto}.nav-actions{direction:ltr}
-.docs-hero h1{line-height:1.35}.docs-section-head,.docs-card,.docs-notice{text-align:right}
-.docs-card{align-items:flex-start}.docs-card-kicker{letter-spacing:0}
-.docs-card-link,.docs-inline-link,.docs-version-row{direction:rtl}
-.docs-build-grid{direction:rtl}
-.terminal-card,.terminal-card pre,.terminal-card code,.terminal-heading,.terminal-card .copy-button{direction:ltr;text-align:left;unicode-bidi:isolate}
-.skip-link{right:16px;left:auto}
-@media(max-width:760px){.site-nav{margin-right:0}.site-nav a{text-align:right}.nav-github{margin-left:0}}
+html[dir="rtl"],
+html[dir="rtl"] body {
+  direction: rtl;
+  text-align: start;
+}
+
+body {
+  font-family: "IBM Plex Sans Arabic", "Manrope", system-ui, sans-serif;
+  letter-spacing: 0;
+}
+
+.brand,
+.docs-hero h1,
+.docs-section-head h2,
+.docs-build-grid h2,
+.docs-card h3,
+.docs-notice h2 {
+  letter-spacing: 0;
+}
+
+.nav-wrap {
+  direction: rtl;
+}
+
+.site-nav {
+  margin-inline: 0 auto;
+}
+
+.nav-actions {
+  direction: ltr;
+}
+
+.docs-hero h1 {
+  line-height: 1.5;
+}
+
+.docs-section-head,
+.docs-card,
+.docs-notice {
+  text-align: start;
+}
+
+.docs-card {
+  align-items: flex-start;
+}
+
+.docs-card-kicker {
+  letter-spacing: 0;
+}
+
+.docs-card-link,
+.docs-inline-link,
+.docs-version-row {
+  direction: rtl;
+}
+
+.docs-build-grid {
+  direction: rtl;
+}
+
+.terminal-card,
+.terminal-card pre,
+.terminal-card code,
+.terminal-heading,
+.terminal-card .copy-button {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
+}
+
+.skip-link {
+  inset-inline-start: 16px;
+  inset-inline-end: auto;
+  right: auto;
+  left: auto;
+}
+
+main :where(ul, ol) {
+  margin-block: 1rem;
+  margin-inline: 0;
+  padding-block: 0;
+  padding-inline-start: 1.75rem;
+  padding-inline-end: 0;
+  list-style-position: outside;
+}
+
+main li {
+  margin-block: .35rem;
+}
+
+@media (max-width: 760px) {
+  .site-nav {
+    margin-inline: 0;
+  }
+
+  .site-nav a {
+    text-align: start;
+  }
+
+  .nav-github {
+    margin-inline: 0;
+  }
+}

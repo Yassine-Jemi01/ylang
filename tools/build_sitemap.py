@@ -39,6 +39,17 @@ def main() -> int:
         relative = page.relative_to(root).as_posix()
         entry = ET.SubElement(urlset, f"{{{SITEMAP_NS}}}url")
         ET.SubElement(entry, f"{{{SITEMAP_NS}}}loc").text = public_url(relative)
+        if relative in {"index.html", "ar/index.html"}:
+            for language, target in (
+                ("en", "index.html"),
+                ("ar", "ar/index.html"),
+                ("x-default", "index.html"),
+            ):
+                ET.SubElement(
+                    entry,
+                    f"{{{XHTML_NS}}}link",
+                    {"rel": "alternate", "hreflang": language, "href": public_url(target)},
+                )
         if relative in {"docs.html", "docs-ar.html"}:
             for language, target in (
                 ("en", "docs.html"),

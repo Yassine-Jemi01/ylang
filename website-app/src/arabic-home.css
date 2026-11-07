@@ -1,0 +1,205 @@
+body.ylang-ar-home {
+  direction: rtl;
+  text-align: start;
+  font-family: "IBM Plex Sans Arabic", "Manrope", system-ui, sans-serif;
+  letter-spacing: 0;
+}
+
+body.ylang-ar-home :where(h1, h2, h3, p, a, button, summary) {
+  letter-spacing: 0;
+}
+
+body.ylang-ar-home .nav-wrap {
+  direction: rtl;
+}
+
+body.ylang-ar-home .brand-version {
+  margin-inline: -4px 0;
+}
+
+body.ylang-ar-home .site-nav {
+  margin-inline: auto 0;
+}
+
+body.ylang-ar-home .nav-github {
+  margin-inline: 0;
+}
+
+body.ylang-ar-home .language-menu {
+  right: auto;
+  left: 0;
+}
+
+body.ylang-ar-home .skip-link {
+  right: 18px;
+  left: auto;
+}
+
+body.ylang-ar-home .hero-grid,
+body.ylang-ar-home .ecosystem-inner,
+body.ylang-ar-home .install-grid,
+body.ylang-ar-home .next-intro,
+body.ylang-ar-home .footer-main,
+body.ylang-ar-home .footer-bottom {
+  direction: rtl;
+}
+
+body.ylang-ar-home .hero-copy,
+body.ylang-ar-home .section-heading,
+body.ylang-ar-home .install-copy,
+body.ylang-ar-home .next-intro {
+  text-align: start;
+}
+
+body.ylang-ar-home .hero h1 {
+  font-size: clamp(3rem, 4.8vw, 4.35rem);
+  line-height: 1.35;
+}
+
+body.ylang-ar-home .hero-lede,
+body.ylang-ar-home .section-heading > p:last-child,
+body.ylang-ar-home .install-copy > p:not(.eyebrow),
+body.ylang-ar-home .next-intro > p {
+  line-height: 2;
+}
+
+body.ylang-ar-home .hero-actions,
+body.ylang-ar-home .hero-footnote,
+body.ylang-ar-home .hero-dev-link,
+body.ylang-ar-home .preview-links {
+  direction: rtl;
+}
+
+body.ylang-ar-home .hero-preview-wrap,
+body.ylang-ar-home .hero-preview,
+body.ylang-ar-home .preview-code,
+body.ylang-ar-home .preview-code code,
+body.ylang-ar-home .preview-terminal,
+body.ylang-ar-home .preview-terminal pre,
+body.ylang-ar-home .preview-terminal code,
+body.ylang-ar-home .preview-window-foot,
+body.ylang-ar-home .arabic-install-commands,
+body.ylang-ar-home .arabic-build-command {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
+}
+
+body.ylang-ar-home .feature-card,
+body.ylang-ar-home .next-card {
+  text-align: start;
+}
+
+body.ylang-ar-home .feature-card + .feature-card {
+  border-right: 1px solid var(--line);
+  border-left: 0;
+}
+
+body.ylang-ar-home .feature-meta {
+  letter-spacing: .06em;
+}
+
+body.ylang-ar-home .arabic-platforms {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+body.ylang-ar-home .arabic-platforms span {
+  padding: 7px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  color: var(--muted);
+  background: rgb(20 36 58 / 70%);
+  font: 500 .72rem/1.4 var(--mono);
+}
+
+body.ylang-ar-home .arabic-install-commands,
+body.ylang-ar-home .arabic-build-command {
+  display: grid;
+  gap: 10px;
+  margin: 0 23px;
+}
+
+body.ylang-ar-home .arabic-install-commands > div {
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #091321;
+}
+
+body.ylang-ar-home .arabic-install-commands > div > span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted-2);
+  font: 700 .62rem/1.4 var(--mono);
+}
+
+body.ylang-ar-home .arabic-install-commands pre,
+body.ylang-ar-home .arabic-build-command pre {
+  overflow-x: auto;
+  margin: 0;
+  color: #cfe1f3;
+  font: 400 .72rem/1.8 var(--mono);
+  white-space: pre;
+}
+
+body.ylang-ar-home .arabic-build-command {
+  margin-top: 12px;
+}
+
+body.ylang-ar-home .preview-grid.feature-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+body.ylang-ar-home main :where(ul, ol) {
+  margin-block: 1rem;
+  margin-inline: 0;
+  padding-inline-start: 1.5rem;
+  padding-inline-end: 0;
+}
+
+body.ylang-ar-home main li {
+  margin-block: .35rem;
+}
+
+body.ylang-ar-home .footer-links {
+  margin-inline: auto 0;
+}
+
+@media (max-width: 1000px) {
+  body.ylang-ar-home .hero h1 {
+    font-size: clamp(2.8rem, 6vw, 4rem);
+  }
+}
+
+@media (max-width: 760px) {
+  body.ylang-ar-home .site-nav {
+    margin-inline: 0;
+  }
+
+  body.ylang-ar-home .nav-github {
+    margin-inline: auto 0;
+  }
+
+  body.ylang-ar-home .feature-card + .feature-card {
+    border-right: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  body.ylang-ar-home .preview-grid.feature-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 430px) {
+  body.ylang-ar-home .hero h1 {
+    font-size: 2.75rem;
+  }
+
+  body.ylang-ar-home .arabic-install-commands,
+  body.ylang-ar-home .arabic-build-command {
+    margin-inline: 15px;
+  }
+}

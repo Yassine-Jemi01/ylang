@@ -119,6 +119,7 @@ def main() -> int:
 
     required = (
         "index.html",
+        "ar/index.html",
         "docs.html",
         "docs-ar.html",
         "learn/index.html",
@@ -171,7 +172,7 @@ def main() -> int:
         parsed_pages[page.resolve()] = parser
 
         relative = page.relative_to(root).as_posix()
-        arabic = relative == "docs-ar.html" or relative.startswith("learn/ar/")
+        arabic = relative == "docs-ar.html" or relative == "ar/index.html" or relative.startswith("learn/ar/")
         expected_language, expected_direction = ("ar", "rtl") if arabic else ("en", "ltr")
         if parser.language != expected_language or parser.direction != expected_direction:
             fail(
@@ -202,6 +203,8 @@ def main() -> int:
         fail("Arabic documentation portal does not link back to the English portal")
     if 'href="learn/ar/start-here.html"' not in arabic_portal:
         fail("Arabic documentation portal does not lead to the Arabic learning path")
+    if 'href="ar/"' not in arabic_portal:
+        fail("Arabic documentation portal does not link its Home navigation to the Arabic homepage")
     for page_name, source in (("docs.html", english_portal), ("docs-ar.html", arabic_portal)):
         for language in ('hreflang="en"', 'hreflang="ar"', 'hreflang="x-default"'):
             if language not in source:
@@ -221,8 +224,10 @@ def main() -> int:
             fail(f"homepage JavaScript bundle is missing: {script_path.relative_to(root)}")
         app_sources.append(script_path.read_text(encoding="utf-8"))
     app_bundle = "\n".join(app_sources)
-    if "docs-ar.html" not in app_bundle:
-        fail("homepage Arabic language selector does not link to docs-ar.html")
+    if "ar/" not in app_bundle:
+        fail("homepage Arabic language selector does not link to the Arabic homepage")
+    if "docs-ar.html" in app_bundle:
+        fail("homepage Arabic language selector still routes to the documentation portal")
     if "learn/ar/index.html" in app_bundle:
         fail("homepage Arabic language selector still routes directly to the Arabic book index")
     for route in APP_ROUTES:
@@ -231,11 +236,32 @@ def main() -> int:
         if route not in app_bundle:
             fail(f"homepage resource route is missing from the production bundle: {route}")
 
+    arabic_homepage_parser = parsed_pages[(root / "ar" / "index.html").resolve()]
+    arabic_homepage_scripts = [
+        resolve_local_target(urlsplit(reference).path, root / "ar" / "index.html", root)
+        for reference in arabic_homepage_parser.references
+        if urlsplit(reference).path.endswith(".js")
+    ]
+    if not arabic_homepage_scripts:
+        fail("the built Arabic homepage does not reference its JavaScript application bundle")
+    arabic_homepage_bundle = "\\n".join(
+        script_path.read_text(encoding="utf-8")
+        for script_path in arabic_homepage_scripts
+        if script_path.is_file()
+    )
+    for reference in ("../docs-ar.html", "../learn/ar/start-here.html", "../index.html"):
+        if reference not in arabic_homepage_bundle:
+            fail(f"Arabic homepage bundle is missing a required navigation route: {reference}")
+    for page_name, source in (("index.html", homepage), ("ar/index.html", (root / "ar" / "index.html").read_text(encoding="utf-8"))):
+        for language in ('hreflang="en"', 'hreflang="ar"', 'hreflang="x-default"'):
+            if language not in source:
+                fail(f"{page_name} is missing its {language} homepage alternate declaration")
+
     nav_source = (root / "learn" / "theme" / "ylang-nav.js").read_text(encoding="utf-8")
-    if "const ARABIC_PORTAL_URL = HOME_URL + 'docs-ar.html';" not in nav_source:
-        fail("Arabic book home link does not define the Arabic documentation portal")
-    if "relativeBookPath().startsWith('ar/') ? ARABIC_PORTAL_URL : HOME_URL" not in nav_source:
-        fail("Arabic book home link does not return to the Arabic documentation portal")
+    if "const ARABIC_HOME_URL = HOME_URL + 'ar/';" not in nav_source:
+        fail("Arabic book home link does not define the Arabic homepage")
+    if "relativeBookPath().startsWith('ar/') ? ARABIC_HOME_URL : HOME_URL" not in nav_source:
+        fail("Arabic book home link does not return to the Arabic homepage")
     ar_to_en = parse_mapping(nav_source, "AR_TO_EN")
     en_to_ar = parse_mapping(nav_source, "EN_TO_AR")
     for arabic_path, english_path in ar_to_en.items():
@@ -262,6 +288,10 @@ def main() -> int:
     book_css = (root / "learn" / "theme" / "ylang-book.css").read_text(encoding="utf-8")
     if "direction: rtl" not in book_css or ".ylang-ar #sidebar .chapter" not in book_css:
         fail("shared book stylesheet is missing RTL chapter-navigation rules")
+    if "IBM Plex Sans Arabic" not in book_css:
+        fail("Arabic book typography is missing the selected IBM Plex Sans Arabic font")
+    if "padding-inline-start: 1.75rem" not in book_css or "margin-inline: 0" not in book_css:
+        fail("Arabic book lists are missing direction-safe logical spacing rules")
 
     sitemap_root = ET.parse(root / "sitemap.xml").getroot()
     sitemap_urls = {
