@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap');
 /* Shared YLang site identity: dark navy, blue, orange, and homepage typography. */
 :root {
   --content-max-width: 900px;
@@ -170,7 +171,6 @@ body { font-family: "Manrope", system-ui, sans-serif; font-feature-settings: "ke
 .ylang-language-menu a:hover,
 .ylang-language-menu a[aria-current="page"] { color: #80c8f0 !important; background: #203752; }
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap');
 .ylang-home-link img { display: block; width: 25px; height: 25px; object-fit: contain; }
 .ylang-ar .ylang-language-menu { inset-inline-end: auto; inset-inline-start: 0; }
 .ylang-ar #menu-bar, .ylang-ar #menu-bar .left-buttons { direction: rtl; }
