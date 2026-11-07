@@ -1,4 +1,4 @@
-# YLang 2.3.0 — Development Notes
+# YLang 2.3.0 — Stable Release
 
 - Expanded HTTP integration coverage with a deterministic local HTTPS-handshake failure case and a server response that exceeds the documented 15-second buffered-request timeout. The streaming fixture now checks interleaved concurrent streams and cancellation during transfer. The Voice streaming fixture carries a generated non-silent WAV tone instead of silence, and now also generates an MP3 fixture with ffmpeg/libmp3lame when available, so both PCM and MP3 decoder paths can be exercised with actual audio samples.
 
@@ -6,9 +6,7 @@
 
 - Applied the 16 MiB generated-output limit to `json.escape`, accounting for quotes and control-byte expansion; added exact-boundary and overflow fixtures.
 
-**Status: unreleased development notes.** YLang 2.2.0 remains the latest stable release. This document records work merged into the 2.3 development branch; it is not a release announcement and does not imply that validation gates have passed.
-
-## Work integrated so far
+## Highlights
 - Fixed `json.get_string` so a missing property keeps the precise "JSON object key was not found" diagnostic instead of replacing it with "JSON property is not a string"; added success and wrong-type lookup regression cases to the JSON fixture.
 - Hardened source-file reading so a stale `errno` value cannot make an unrelated read failure look like the 64 MiB source-limit error; read, seek, allocation, and short-read failures now preserve or synthesize an accurate error.
 - Added `tools/check_tree_sitter.py` to generate and corpus-test the Zed Tree-sitter grammar in an isolated temporary directory. CI and `npm test` now use it so grammar generation cannot overwrite the compiler's hand-written `src/parser.c`.
