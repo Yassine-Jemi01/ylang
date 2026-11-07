@@ -354,9 +354,15 @@ jobs:
           test -s website/learn/ar/introduction.html
           test -s website/learn/ar/getting-started.html
           test -s website/learn/ar/hello-world.html
-          test -s website/learn/ar/ylanglings.html
           test -s website/learn/ar/language-basics.html
+          test -s website/learn/ar/compiler-workflow.html
+          test -s website/learn/ar/types.html
+          test -s website/learn/ar/modules.html
+          test -s website/learn/ar/standard-library.html
+          test -s website/learn/ar/platform-support.html
           test -s website/learn/ylanglings.html
+          test -s website/docs-ar.html
+          test -s website/docs-ar.css
           test -s website/learn/reference/language-spec.html
           test -s website/learn/reference/MEMORY-MODEL.html
           test -s website/learn/reference/CHANGELOG-2.1.0.html
