@@ -87,6 +87,31 @@ def rewrite_repo_relative_links(content: str) -> str:
     return LINK.sub(replace, content)
 
 
+def rewrite_arabic_cross_language_links() -> int:
+    """Keep Arabic chapters self-contained and link English-only references explicitly."""
+    arabic_src = BOOK_SRC / "ar"
+    base = "https://yassine-jemi01.github.io/ylang/learn"
+    replacements = {
+        "../index.html": f"{base}/getting-started.html",
+        "../ylanglings.md": f"{base}/ylanglings.html",
+    }
+    changed = 0
+    for chapter in arabic_src.glob("*.md"):
+        original = chapter.read_text(encoding="utf-8")
+        content = original
+        for old, new in replacements.items():
+            content = content.replace(old, new)
+        content = re.sub(
+            r"\]\(\.\./reference/([^)]+)\.md(#[^)]*)?\)",
+            lambda match: f"]({base}/reference/{match.group(1)}.html{match.group(2) or ''})",
+            content,
+        )
+        if content != original:
+            chapter.write_text(content, encoding="utf-8")
+            changed += 1
+    return changed
+
+
 def main() -> int:
     REFERENCE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -98,7 +123,8 @@ def main() -> int:
         content = source.read_text(encoding="utf-8")
         destination.write_text(rewrite_repo_relative_links(content), encoding="utf-8")
 
-    print(f"Prepared {len(REFERENCE_DOCS)} canonical reference chapters for mdBook.")
+    print(f"Prepared {len(REFERENCE_DOCS)} canonical English reference chapters for mdBook.")
+    print(f"Normalized cross-language links in {rewrite_arabic_cross_language_links()} Arabic chapters.")
     return 0
 
 
