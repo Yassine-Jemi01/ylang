@@ -36,6 +36,7 @@ class LinkParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.references: list[str] = []
+        self.favicons: list[str] = []
         self.ids: list[str] = []
         self.language: str | None = None
         self.direction: str | None = None
@@ -52,6 +53,11 @@ class LinkParser(HTMLParser):
             value = values.get(attribute)
             if value:
                 self.references.append(value)
+        if tag == "link":
+            rel_tokens = set((values.get("rel") or "").lower().split())
+            icon_href = values.get("href")
+            if "icon" in rel_tokens and icon_href:
+                self.favicons.append(icon_href)
         srcset = values.get("srcset")
         if srcset:
             for candidate in srcset.split(","):
@@ -171,6 +177,17 @@ def main() -> int:
         duplicates = sorted({value for value in parser.ids if parser.ids.count(value) > 1})
         if duplicates:
             fail(f"{relative} contains duplicate HTML IDs: {', '.join(duplicates)}")
+        if not parser.favicons:
+            fail(f"{relative} does not declare a favicon")
+        for favicon in parser.favicons:
+            parsed_icon = urlsplit(favicon)
+            if parsed_icon.scheme or parsed_icon.netloc or not parsed_icon.path:
+                fail(f"{relative} uses a non-local favicon: {favicon}")
+            icon_path = resolve_local_target(parsed_icon.path, page, root)
+            if not icon_path.is_file():
+                fail(f"{relative} favicon file is missing: {favicon}")
+            if icon_path.read_bytes() != canonical_mark:
+                fail(f"{relative} uses a favicon that differs from the canonical YLang mark: {favicon}")
 
     homepage = (root / "index.html").read_text(encoding="utf-8")
     english_portal = (root / "docs.html").read_text(encoding="utf-8")
