@@ -49,6 +49,7 @@
     'reference/error-codes.html': 'diagnostics.html',
     'reference/SECURITY.html': 'security.html',
     'reference/WINDOWS.html': 'windows.html',
+    'gui-game2d.html': 'gui-game2d.html',
     'reference/GAME2D.html': 'gui-game2d.html',
     'reference/GUI-API-SPEC.html': 'gui-game2d.html',
     'reference/MODULE-SYSTEM-SPEC.html': 'modules.html',
