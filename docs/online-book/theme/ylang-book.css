@@ -32,7 +32,7 @@ body { font-feature-settings: "kern"; }
 .content main h2 {
   margin-top: 2.4rem;
   padding-bottom: .4rem;
-  border-bottom: 1px solid rgb(147 212 200 / 22%);
+  border-bottom: 1px solid rgb(128 200 240 / 22%);
   color: #eaf2fb;
   letter-spacing: -.025em;
 }
@@ -43,7 +43,7 @@ body { font-feature-settings: "kern"; }
 .content main li { line-height: 1.78; }
 .content main blockquote {
   border-left: 3px solid #168bd2;
-  background: rgb(22 125 141 / 9%);
+  background: rgb(22 139 210 / 9%);
   border-radius: 0 7px 7px 0;
   padding: .7rem 1rem;
 }
@@ -54,7 +54,7 @@ body { font-feature-settings: "kern"; }
 }
 .content main :not(pre) > code {
   color: #ffb27a;
-  background: rgb(141 56 22 / 15%);
+  background: rgb(242 138 61 / 15%);
   border: 1px solid rgb(215 154 115 / 12%);
   border-radius: 4px;
   padding: .12rem .28rem;
@@ -90,7 +90,7 @@ body { font-feature-settings: "kern"; }
 .navy .content main h1,
 .navy .content main h2,
 .navy .content main h3 { color: #eaf2fb; }
-.navy .content main h2 { border-bottom-color: rgb(147 212 200 / 22%); }
+.navy .content main h2 { border-bottom-color: rgb(128 200 240 / 22%); }
 .navy .content main a:hover,
 .navy #sidebar a:hover { color: #ffb27a; }
 
@@ -144,10 +144,10 @@ body { font-feature-settings: "kern"; }
   width: 25px;
   height: 25px;
   place-items: center;
-  border: 1px solid rgb(147 212 200 / 36%);
+  border: 1px solid rgb(128 200 240 / 36%);
   border-radius: 6px;
   color: #80c8f0;
-  background: linear-gradient(145deg, rgb(22 125 141 / 30%), rgb(141 56 22 / 18%));
+  background: linear-gradient(145deg, rgb(22 139 210 / 30%), rgb(242 138 61 / 18%));
   font-weight: 800;
   letter-spacing: -.08em;
 }
