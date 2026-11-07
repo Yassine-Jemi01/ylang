@@ -15,6 +15,11 @@ class LinkParser(HTMLParser):
         super().__init__()
         self.references: list[str] = []
 
+def LinkParserReferences(html: str) -> list[str]:
+    parser = LinkParser()
+    parser.feed(html)
+    return parser.references
+
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
         for attribute in ("href", "src", "poster"):
@@ -118,8 +123,19 @@ def main() -> int:
         fail("Arabic documentation portal contains a homepage link that switches to English")
 
     homepage = (root / "index.html").read_text(encoding="utf-8")
-    if 'href="https://yassine-jemi01.github.io/ylang/learn/ar/index.html"' not in homepage:
-        fail("the homepage Arabic language option does not open the Arabic YLang Book")
+    homepage_scripts = [
+        (root / reference.split("?", 1)[0].lstrip("/")).resolve()
+        for reference in LinkParserReferences(homepage)
+        if reference.endswith(".js") or ".js?" in reference
+    ]
+    if not homepage_scripts:
+        fail("the built homepage does not reference its JavaScript application bundle")
+    app_bundle_sources = []
+    for script_path in homepage_scripts:
+        if script_path.is_file():
+            app_bundle_sources.append(script_path.read_text(encoding="utf-8"))
+    if not any("learn/ar/index.html" in source for source in app_bundle_sources):
+        fail("the homepage application bundle does not link to the Arabic YLang Book")
 
     for relative in ("docs.html", "docs-ar.html"):
         page = (root / relative).read_text(encoding="utf-8")
