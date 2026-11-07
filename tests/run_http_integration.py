@@ -103,6 +103,36 @@ def main():
             "    print(total);\n"
             "    print(http.stream_status(large));\n"
             "    http.stream_close(large);\n"
+            '    let http_stream concurrent_a = http.stream_open("GET", string.concat(base, "/stream"), "", "");\n'
+            '    let http_stream concurrent_b = http.stream_open("GET", string.concat(base, "/stream"), "", "");\n'
+            "    let owned_string a_first = http.stream_read(concurrent_a, 6);\n"
+            "    let owned_string b_first = http.stream_read(concurrent_b, 6);\n"
+            "    print(string.length(a_first));\n"
+            "    print(string.length(b_first));\n"
+            "    let string a_text = a_first;\n"
+            "    let string b_text = b_first;\n"
+            "    while (!http.stream_done(concurrent_a)) {\n"
+            "        let owned_string chunk = http.stream_read(concurrent_a, 32);\n"
+            "        a_text = string.concat(a_text, chunk);\n"
+            "    }\n"
+            "    while (!http.stream_done(concurrent_b)) {\n"
+            "        let owned_string chunk = http.stream_read(concurrent_b, 32);\n"
+            "        b_text = string.concat(b_text, chunk);\n"
+            "    }\n"
+            "    print(a_text);\n"
+            "    print(b_text);\n"
+            "    print(http.stream_status(concurrent_a));\n"
+            "    print(http.stream_status(concurrent_b));\n"
+            "    http.stream_close(concurrent_a);\n"
+            "    http.stream_close(concurrent_b);\n"
+            '    let http_stream cancelled = http.stream_open("GET", string.concat(base, "/stream"), "", "");\n'
+            "    let owned_string cancelled_chunk = http.stream_read(cancelled, 3);\n"
+            "    print(string.length(cancelled_chunk));\n"
+            "    http.stream_close(cancelled);\n"
+            '    let http_stream after_cancel = http.stream_open("GET", string.concat(base, "/hello"), "", "");\n'
+            "    print(http.stream_read(after_cancel, 32));\n"
+            "    print(http.stream_status(after_cancel));\n"
+            "    http.stream_close(after_cancel);\n"
             "    return 0;\n"
             "}\n",
             encoding="utf-8",
