@@ -72,6 +72,10 @@ jobs:
           # mdBook keeps custom theme assets in its theme directory; publish the shared favicon explicitly.
           cp docs/online-book/theme/favicon.svg website/learn/favicon.svg
           cp docs/online-book/theme/favicon.svg website/learn/ar/favicon.svg
+          # Keep the custom book navigation script at the URL referenced by mdBook output.
+          mkdir -p website/learn/theme website/learn/ar/theme
+          cp docs/online-book/theme/ylang-nav.js website/learn/theme/ylang-nav.js
+          cp docs/online-book/theme/ylang-nav.js website/learn/ar/theme/ylang-nav.js
 
       - name: Assemble the deployed site
         run: |
