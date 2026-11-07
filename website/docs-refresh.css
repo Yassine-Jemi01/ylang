@@ -32,7 +32,7 @@ a { color: inherit; }
 .site-nav { gap: clamp(20px, 3.1vw, 38px); }
 .site-nav a { color: #a6b8ca; font-size: .86rem; font-weight: 650; }
 .site-nav a:hover { color: #eaf2fb; }
-.nav-github { border-color: #3b5878; border-radius: 7px; background: rgb(20 34 35 / 70%); color: #eaf2fb; }
+.nav-github { border-color: #3b5878; border-radius: 7px; background: rgb(20 36 58 / 70%); color: #eaf2fb; }
 .nav-github:hover { border-color: #80c8f0; background: #14243a; color: #eaf2fb; }
 .menu-toggle { border-color: #293f59; border-radius: 7px; background: #14243a; }
 .menu-toggle span { background: #eaf2fb; }
@@ -100,7 +100,7 @@ a { color: inherit; }
 @media (max-width: 760px) {
   .nav-wrap { min-height: 68px; gap: 12px; }
   .site-nav { background: #0b1420; border-bottom-color: #293f59; box-shadow: 0 24px 30px rgb(0 0 0 / 22%); }
-  .site-nav a { border-bottom-color: rgb(41 65 63 / 55%); }
+  .site-nav a { border-bottom-color: rgb(41 63 89 / 55%); }
   .nav-github { margin-left: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
