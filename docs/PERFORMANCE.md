@@ -12,7 +12,7 @@ python3 benchmarks/bench-native.py benchmarks/native-loop.yl \
   --expected-file benchmarks/expected-native-loop.txt
 ```
 
-Use `--cc clang` for the Clang path. The optional `--compiler /path/to/ylang` chooses the compiler executable. Add `--keep-dir build/benchmark-artifacts` to preserve the final generated executable for inspection.
+Use `--cc clang` for the Clang path. The optional `--compiler /path/to/ylang` chooses the compiler executable. To compare a development compiler against the current stable tag on one host, run `python3 benchmarks/compare-release.py --baseline v2.2.0 --cc gcc --runs 30 --warmup 3`. Add `--keep-dir build/benchmark-artifacts` to preserve the final generated executable for inspection.
 
 The report shows the YLang version, host platform and architecture, reported CPU model, selected native C compiler version, requested and effective optimization level, core C build flags, compile-time median and P95, execution-time median and P95, and executable byte size. The expected-output check ensures that the benchmark is still measuring a program with known behavior rather than a broken output path.
 
@@ -23,7 +23,7 @@ The report shows the YLang version, host platform and architecture, reported CPU
 - **Binary size** is the size of the final executable produced by the last measured build.
 - Warm-up iterations are not included in the reported samples. P95 is the nearest-rank 95th percentile.
 
-The CI smoke test verifies that the harness executes and reports its metrics; it intentionally does not enforce a universal speed target. Do not compare measurements from different machines, native compiler versions, optimization settings, power modes, or workloads as if they were a controlled experiment.
+The CI smoke test verifies that the harness executes. The release-validation workflow also runs a 30-sample comparison against the latest stable compiler on the same Linux runner, using the same native compiler, optimization setting, workload, and expected output. It uploads both full reports and a ratio summary; it does not enforce a universal speed target. Do not compare measurements from different machines, native compiler versions, optimization settings, power modes, or workloads as if they were a controlled experiment.
 
 ## Suggested comparison record
 

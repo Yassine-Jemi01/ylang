@@ -57,6 +57,16 @@ jobs:
         run: ${{ steps.compiler.outputs.make }} voice voice-example voice-test CC="${{ steps.compiler.outputs.cc }}"
       - name: Run regression tests
         run: ${{ steps.compiler.outputs.make }} test CC="${{ steps.compiler.outputs.cc }}"
+      - name: Record native benchmark against stable baseline
+        if: runner.os == 'Linux' && matrix.compiler == 'gcc'
+        run: python3 benchmarks/compare-release.py --baseline v2.2.0 --cc gcc --runs 30 --warmup 3
+      - name: Upload reproducible benchmark comparison
+        if: runner.os == 'Linux' && matrix.compiler == 'gcc'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ylang-2.3-benchmark
+          path: build/release-benchmark/
+          if-no-files-found: error
       - name: Fuzz lexer/parser smoke test
         if: runner.os == 'Linux' && matrix.compiler == 'clang'
         run: make fuzz-smoke FUZZ_CC=clang

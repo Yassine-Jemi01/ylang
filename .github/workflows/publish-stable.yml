@@ -90,6 +90,16 @@ jobs:
         run: ${{ steps.compiler.outputs.make }} voice voice-example voice-test CC="${{ steps.compiler.outputs.cc }}"
       - name: Run regression tests
         run: ${{ steps.compiler.outputs.make }} test CC="${{ steps.compiler.outputs.cc }}"
+      - name: Record native benchmark against stable baseline
+        if: runner.os == 'Linux' && matrix.compiler == 'gcc'
+        run: python3 benchmarks/compare-release.py --baseline v2.2.0 --cc gcc --runs 30 --warmup 3
+      - name: Upload reproducible benchmark comparison
+        if: runner.os == 'Linux' && matrix.compiler == 'gcc'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ylang-2.3-benchmark
+          path: build/release-benchmark/
+          if-no-files-found: error
       - name: Fuzz lexer/parser smoke test
         if: runner.os == 'Linux' && matrix.compiler == 'clang'
         run: make fuzz-smoke FUZZ_CC=clang
@@ -118,6 +128,8 @@ jobs:
           install: >-
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-SDL2_mixer
+            mingw-w64-x86_64-curl
             mingw-w64-x86_64-pkgconf
             make
             python
@@ -126,7 +138,9 @@ jobs:
       - name: Build compiler
         run: make clean all CC=gcc
       - name: Build optional SDL2 GUI runtime
-        run: make gui gui-example CC=gcc
+        run: make gui gui-example game2d-example CC=gcc
+      - name: Build optional SDL2_mixer Voice runtime
+        run: make voice voice-example voice-test CC=gcc
       - name: Verify YLanglings offline CLI, install lifecycle, and full curriculum
         run: make ylanglings-test ylanglings-verify PYTHON=python
       - name: Check, compile, and run a native Windows program
@@ -171,6 +185,45 @@ jobs:
           ./build/ylang.exe build build/windows-smoke/input.yl -o build/windows-smoke/input.exe
           output="$(printf 'native Windows input\n' | ./build/windows-smoke/input.exe)"
           test "$output" = "native Windows input"
+      - name: Test native Windows HTTP, async tasks, and redirect safety
+        run: |
+          export YLANG_TEST_API_KEY=test-token
+          python tests/run_http_integration.py
+      - name: Compile TUI builtins for native Windows
+        run: |
+          ./build/ylang check tests/tui-builtins.yl
+          ./build/ylang build tests/tui-builtins.yl -o build/windows-smoke/tui-builtins.exe
+      - name: Exercise interactive Windows TUI input and console restoration
+        run: |
+          cat > build/windows-smoke/tui-interactive.yl <<'EOF'
+          function main() -> int {
+              if (!tui.init()) { return 10; }
+              if (!tui.clear()) { tui.shutdown(); return 11; }
+              if (!tui.set_cursor(1, 1)) { tui.shutdown(); return 12; }
+              if (!tui.hide_cursor()) { tui.shutdown(); return 13; }
+              if (!tui.write("READY")) { tui.shutdown(); return 14; }
+              let int key = tui.read_key();
+              tui.show_cursor();
+              tui.shutdown();
+              if (key != 120) { return 15; }
+              return 0;
+          }
+          EOF
+          ./build/ylang.exe check build/windows-smoke/tui-interactive.yl
+          ./build/ylang.exe build build/windows-smoke/tui-interactive.yl -o build/windows-smoke/tui-interactive.exe
+          gcc tests/tui_windows_console_test.c -o build/windows-smoke/tui-windows-console-test.exe
+          ./build/windows-smoke/tui-windows-console-test.exe ./build/windows-smoke/tui-interactive.exe
+      - name: Reject unsupported Windows interactive debugger cleanly
+        run: |
+          if ./build/ylang.exe debug tests/debug-source-map.yl -o build/windows-smoke/debug-unsupported.exe > build/windows-smoke/debug.out 2>&1; then
+            echo "FAIL: Windows interactive debugger unexpectedly claimed support" >&2
+            exit 1
+          else
+            status=$?
+            test "$status" -eq 64
+          fi
+          grep -q "interactive debugging is not implemented on Windows" build/windows-smoke/debug.out
+          test ! -e build/windows-smoke/debug-unsupported.exe
 
 
   editor-diagnostics:
