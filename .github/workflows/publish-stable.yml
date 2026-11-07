@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/PUBLISH_STABLE"
       - "tests/voice_runtime.c"
+      - "Makefile"
   workflow_dispatch:
     inputs:
       confirm_version:
