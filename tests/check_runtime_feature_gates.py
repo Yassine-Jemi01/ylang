@@ -24,15 +24,17 @@ def main() -> int:
     parser.add_argument("--cc", default="gcc", help="native C compiler command")
     args = parser.parse_args()
 
-    compiler = ROOT / "build" / ("ylang.exe" if sys.platform == "win32" else "ylang")
+    compiler = ROOT / "build" / "ylang"
+    if not compiler.is_file():
+        compiler = ROOT / "build" / "ylang.exe"
     if not compiler.is_file():
         print(f"FAIL: compiler not found: {compiler}", file=sys.stderr)
         return 1
 
-    source = ROOT / "tests" / "runtime-feature-gates" / "minimal.yl"
+    source = "tests/runtime-feature-gates/minimal.yl"
     generated = ROOT / "build" / "runtime-feature-gates-minimal.c"
     emit = subprocess.run(
-        [str(compiler), "emit-c", str(source), "-o", str(generated)],
+        [str(compiler), "emit-c", source, "-o", str(generated)],
         cwd=ROOT, text=True, capture_output=True, check=False,
     )
     if emit.returncode != 0:
