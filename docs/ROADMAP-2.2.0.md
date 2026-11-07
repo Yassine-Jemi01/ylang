@@ -30,7 +30,7 @@ Provide a standard, typed way to call HTTP APIs from YLang. A first useful miles
 - Documented redirect behavior.
 - Examples that read credentials from environment/configuration rather than hard-coding secrets.
 
-YLang 2.2.0 implementation status: the C backend has synchronous HTTP helpers and a generic method API; `http.request_async`, `await http_task`, and `http.cancel` use libcurl's multi interface. The native `json.*` API provides bounded JSON parsing, validation, typed getters, escaping, and pretty-printing; documents and extracted values remain owned JSON strings rather than a dynamic typed value tree. Immutable raw-text object/array builders were added later in the unreleased 2.3 development line. The NASM backend does not support HTTP; the native Windows HTTP path is covered by CI, but interactive debugging is not implemented there. Never embed API credentials in the compiler or examples.
+YLang 2.2.0 implementation status: the C backend has synchronous HTTP helpers and a generic method API; `http.request_async`, `await http_task`, and `http.cancel` use libcurl's multi interface. The native `json.*` API provides bounded JSON parsing, validation, typed getters, escaping, and pretty-printing; documents and extracted values remain owned JSON strings rather than a dynamic typed value tree. Immutable raw-text object/array builders were added in the subsequent stable 2.3.0 release. The NASM backend does not support HTTP; the native Windows HTTP path is covered by CI, but interactive debugging is not implemented there. Never embed API credentials in the compiler or examples.
 
 ### 3. YLang Debugger
 
