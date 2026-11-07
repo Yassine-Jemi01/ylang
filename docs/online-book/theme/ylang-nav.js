@@ -68,6 +68,7 @@
       const slug = path.startsWith('ar/') ? path.slice(3) : path;
       return BOOK_URL + (AR_TO_EN[slug] || 'index.html');
     }
+    if (path.startsWith('ar/')) return BOOK_URL + path;
     return BOOK_URL + 'ar/' + (EN_TO_AR[path] || 'start-here.html');
   }
 
