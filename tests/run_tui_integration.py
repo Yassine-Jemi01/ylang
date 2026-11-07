@@ -16,6 +16,29 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def read_pty_until(fd, token, timeout):
+    """Drain a PTY until token arrives or the bounded wait expires."""
+    output = bytearray()
+    deadline = time.monotonic() + timeout
+    while token not in output:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        ready, _, _ = select.select([fd], [], [], min(remaining, 0.1))
+        if not ready:
+            continue
+        try:
+            chunk = os.read(fd, 4096)
+        except OSError as error:
+            if error.errno == errno.EIO:
+                break
+            raise
+        if not chunk:
+            break
+        output.extend(chunk)
+    return bytes(output)
+
+
 def main():
     if os.name == "nt":
         print("SKIP: POSIX pseudo-terminal TUI test is not run on Windows.")
@@ -140,16 +163,12 @@ def main():
                 raise SystemExit(f"TUI SIGINT did not exit; signal output: {signal_output!r}")
             if signal_process.returncode != 128 + signal.SIGINT:
                 raise SystemExit(f"TUI SIGINT exit status mismatch: {signal_process.returncode}")
-            signal_output = bytearray()
-            ready, _, _ = select.select([signal_master], [], [], 0.2)
-            if ready:
-                try:
-                    signal_output.extend(os.read(signal_master, 4096))
-                except OSError as error:
-                    if error.errno != errno.EIO:
-                        raise
+            signal_output = read_pty_until(signal_master, b"\x1b[?25h", 2.0)
             if b"\x1b[?25h" not in signal_output:
-                raise SystemExit(f"TUI signal handler did not restore cursor visibility: {signal_output!r}")
+                raise SystemExit(
+                    "TUI signal handler did not restore cursor visibility within 2 seconds: "
+                    f"{signal_output!r}"
+                )
             signal_restored = termios.tcgetattr(signal_slave)
             if (signal_restored[3] & mask) != (signal_original[3] & mask):
                 raise SystemExit("TUI did not restore terminal settings on SIGINT")
