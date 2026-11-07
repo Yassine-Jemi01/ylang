@@ -76,6 +76,9 @@ jobs:
           mkdir -p website/learn/theme website/learn/ar/theme
           cp docs/online-book/theme/ylang-nav.js website/learn/theme/ylang-nav.js
           cp docs/online-book/theme/ylang-nav.js website/learn/ar/theme/ylang-nav.js
+          # mdBook does not copy nested additional CSS assets into the output; publish them explicitly.
+          cp docs/online-book/theme/ylang-book.css website/learn/theme/ylang-book.css
+          cp docs/online-book/theme/ylang-book.css website/learn/ar/theme/ylang-book.css
 
       - name: Assemble the deployed site
         run: |
