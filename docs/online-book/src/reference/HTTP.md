@@ -4,7 +4,7 @@
 
 ## Streaming
 
-Pull-based HTTP Streaming is implemented in the current 2.3 development tree. It provides a distinct `http_stream` handle, bounded 64 KiB per-stream response buffering, and a binary-safe byte-buffer read path. The Voice runtime can consume a stream through `voice.play_stream`. See [HTTP-STREAMING.md](HTTP-STREAMING.md) for ownership, limits, and verification status; this feature is not part of a published release yet.
+Pull-based HTTP Streaming shipped as an experimental feature in YLang 2.3.0. It provides a distinct `http_stream` handle, bounded 64 KiB per-stream response buffering, and a binary-safe byte-buffer read path. The Voice runtime can consume a stream through `voice.play_stream`. See [HTTP-STREAMING.md](HTTP-STREAMING.md) for ownership, limits, and verification status; it is not covered by the stable-core compatibility guarantee.
 
 ## Requirements
 
@@ -79,7 +79,7 @@ function main() -> int {
 }
 ```
 
-Replace the illustrative endpoint, model name, request JSON, and authorization scheme with those documented by the chosen provider. API response bodies are returned as strings. Use `std.json` to validate, parse, inspect, and format JSON documents; see [JSON support](JSON.md). Object/array construction helpers are tracked separately for the 2.3 development milestone.
+Replace the illustrative endpoint, model name, request JSON, and authorization scheme with those documented by the chosen provider. API response bodies are returned as strings. Use `std.json` to validate, parse, inspect, and format JSON documents; see [JSON support](JSON.md). Immutable object/array construction helpers were added in YLang 2.3.0; see [JSON.md](JSON.md).
 
 ## Error behavior
 
