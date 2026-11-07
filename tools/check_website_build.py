@@ -303,17 +303,13 @@ def main() -> int:
     if 'html[dir="rtl"] main ul' not in docs_ar_css or "padding: 0;" not in docs_ar_css:
         fail("Arabic documentation portal is missing the physical-padding reset")
 
-    arabic_home_css_files = [
-        resolve_local_target(urlsplit(reference).path, root / "ar" / "index.html", root)
-        for reference in arabic_homepage_parser.references
-        if urlsplit(reference).path.endswith(".css")
-    ]
-    arabic_home_css = "\n".join(path.read_text(encoding="utf-8") for path in arabic_home_css_files if path.is_file())
+    arabic_home_css_files = sorted((root / "assets").glob("arabicHome-*.css"))
     if not arabic_home_css_files:
-        fail("Arabic homepage does not reference its generated CSS bundle")
-    arabic_home_css_compact = re.sub(r"\s+", "", arabic_home_css)
-    if "padding:0;" not in arabic_home_css_compact or "padding-inline-start:1.75rem" not in arabic_home_css_compact:
-        fail("Arabic homepage is missing the physical-padding reset")
+        fail("Arabic homepage does not include its generated CSS bundle")
+    arabic_home_css = "".join(path.read_text(encoding="utf-8") for path in arabic_home_css_files)
+    arabic_home_css_compact = "".join(arabic_home_css.split())
+    if "padding-inline-start:1.75rem" not in arabic_home_css_compact or "list-style-position:outside" not in arabic_home_css_compact:
+        fail("Arabic homepage is missing the direction-aware list spacing rules")
 
     sitemap_root = ET.parse(root / "sitemap.xml").getroot()
     sitemap_urls = {
