@@ -9,6 +9,7 @@ on:
       - "docs/**"
       - "tools/build_docs_book.py"
       - "tools/check_website_build.py"
+      - "tools/build_sitemap.py"
       - ".github/workflows/deploy-website.yml"
   workflow_dispatch:
 
@@ -75,6 +76,9 @@ jobs:
           mkdir -p site-dist
           cp -a website/. site-dist/
           cp -a website-app/dist/. site-dist/
+
+      - name: Generate the public sitemap
+        run: python3 tools/build_sitemap.py site-dist
 
       - name: Verify the assembled website
         run: python3 tools/check_website_build.py site-dist
