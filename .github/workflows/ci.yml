@@ -360,6 +360,10 @@ jobs:
           test -s website/learn/ar/modules.html
           test -s website/learn/ar/standard-library.html
           test -s website/learn/ar/platform-support.html
+          test -s website/learn/ar/binary-io.html
+          test -s website/learn/ar/voice-audio.html
+          test -s website/learn/ar/tui.html
+          test -s website/learn/ar/gui-game2d.html
           test -s website/learn/ylanglings.html
           test -s website/docs-ar.html
           test -s website/docs-ar.css

@@ -13,6 +13,10 @@
 - [الدوال والوحدات](ar/modules.md)
 - [المكتبة القياسية](ar/standard-library.md)
 - [دعم الأنظمة والمنصات](ar/platform-support.md)
+- [الإدخال والإخراج الثنائي](ar/binary-io.md)
+- [Voice والصوت](ar/voice-audio.md)
+- [واجهة الطرفية TUI](ar/tui.md)
+- [GUI وGame2D](ar/gui-game2d.md)
 - [أساسيات اللغة](ar/language-basics.md)
 
 # Part I — Start Here

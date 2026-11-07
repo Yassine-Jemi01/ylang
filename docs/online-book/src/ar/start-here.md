@@ -27,6 +27,10 @@ YLang لغة مترجمة (Compiled). تكتب البرنامج في ملف ين
 - [الدوال والوحدات](modules.md)
 - [المكتبة القياسية](standard-library.md)
 - [دعم المنصات](platform-support.md)
+- [Binary I/O](binary-io.md)
+- [Voice والصوت](voice-audio.md)
+- [Terminal UI](tui.md)
+- [GUI وGame2D](gui-game2d.md)
 
 المراجع التفصيلية لقواعد اللغة وتواقيع الدوال وأكواد الأخطاء ما زالت باللغة الإنجليزية. لا تغيّر أسماء API أو نصوص رسائل المترجم عند نقلها إلى الشرح.
 
