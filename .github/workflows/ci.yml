@@ -149,7 +149,7 @@ jobs:
         run: |
           cat > build/windows-smoke/tui-interactive.yl <<'EOF'
           function main() -> int {
-              if (!tui.init()) return 10;
+              if (!tui.init()) { return 10; }
               if (!tui.clear()) { tui.shutdown(); return 11; }
               if (!tui.set_cursor(1, 1)) { tui.shutdown(); return 12; }
               if (!tui.hide_cursor()) { tui.shutdown(); return 13; }
@@ -157,7 +157,7 @@ jobs:
               let int key = tui.read_key();
               tui.show_cursor();
               tui.shutdown();
-              if (key != 120) return 15;
+              if (key != 120) { return 15; }
               return 0;
           }
           EOF
