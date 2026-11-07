@@ -4,7 +4,7 @@ A small landing page plus a multi-page online programming book. The marketing pa
 
 ## Design
 
-The design uses a clear blue-and-yellow palette inspired by the way Python presents its community language project, without copying its logo or page layout. Dark blue is reserved for the navigation, code examples, and footer; the reading areas stay light blue-gray for contrast.
+The documentation portal uses a dark blue palette with blue and orange accents. The refreshed marketing homepage is built separately in React/Vite and uses the same blue/orange identity.
 
 ## Files
 
