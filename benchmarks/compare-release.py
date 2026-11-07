@@ -39,6 +39,8 @@ def host_cpu() -> str:
 BENCHMARK = ROOT / "benchmarks" / "bench-native.py"
 SOURCE = ROOT / "benchmarks" / "native-loop.yl"
 EXPECTED = ROOT / "benchmarks" / "expected-native-loop.txt"
+HEAVY_SOURCE = ROOT / "benchmarks" / "native-loop-heavy.yl"
+HEAVY_EXPECTED = ROOT / "benchmarks" / "expected-native-loop-heavy.txt"
 
 
 def run(command: list[str], *, cwd: Path = ROOT) -> subprocess.CompletedProcess[str]:
@@ -80,31 +82,35 @@ def main() -> int:
     run(["git", "worktree", "add", "--detach", str(baseline_root), args.baseline])
     run(["make", "clean", "all", f"CC={args.cc}"], cwd=baseline_root)
 
-    def measure(label: str, compiler: Path) -> str:
-        artifact_dir = output / f"{label}-artifacts"
+    def measure(label: str, compiler: Path, source: Path, expected: Path, suffix: str) -> str:
+        artifact_dir = output / f"{label}-{suffix}-artifacts"
         command = [
-            sys.executable, str(BENCHMARK), str(SOURCE),
+            sys.executable, str(BENCHMARK), str(source),
             "--compiler", str(compiler), "--cc", args.cc,
             "--runs", str(args.runs), "--warmup", str(args.warmup),
-            "--expected-file", str(EXPECTED), "--keep-dir", str(artifact_dir),
+            "--expected-file", str(expected), "--keep-dir", str(artifact_dir),
         ]
         result = run(command)
         report = (
             f"Candidate commit: {candidate_sha}\n"
             f"Stable baseline tag: {args.baseline}\n"
-            f"Benchmark compiler role: {label}\n\n{result.stdout}"
+            f"Benchmark compiler role: {label}\n"
+            f"Workload: {suffix}\n\n{result.stdout}"
         )
-        (output / f"{label}.txt").write_text(report, encoding="utf-8")
+        (output / f"{label}-{suffix}.txt").write_text(report, encoding="utf-8")
         return result.stdout
 
-    candidate_report = measure("candidate", ROOT / "build" / "ylang")
-    baseline_report = measure("baseline", baseline_root / "build" / "ylang")
+    candidate_compact = measure("candidate", ROOT / "build" / "ylang", SOURCE, EXPECTED, "compact")
+    baseline_compact = measure("baseline", baseline_root / "build" / "ylang", SOURCE, EXPECTED, "compact")
+    candidate_heavy = measure("candidate", ROOT / "build" / "ylang", HEAVY_SOURCE, HEAVY_EXPECTED, "10m-loop")
+    baseline_heavy = measure("baseline", baseline_root / "build" / "ylang", HEAVY_SOURCE, HEAVY_EXPECTED, "10m-loop")
     fields = (
-        ("Compile median", "ms"),
-        ("Compile P95", "ms"),
-        ("Run median", "ms"),
-        ("Run P95", "ms"),
-        ("Binary size", "bytes"),
+        ("Compile median", "ms", candidate_compact, baseline_compact),
+        ("Compile P95", "ms", candidate_compact, baseline_compact),
+        ("Launch + short run median", "ms", candidate_compact, baseline_compact),
+        ("Run median", "ms", candidate_heavy, baseline_heavy),
+        ("Run P95", "ms", candidate_heavy, baseline_heavy),
+        ("Binary size", "bytes", candidate_compact, baseline_compact),
     )
     summary = [
         "YLang candidate versus stable baseline",
@@ -118,7 +124,7 @@ def main() -> int:
         "",
         "Ratios are candidate / baseline; below 1.0 means the candidate was lower for that measurement.",
     ]
-    for label, unit in fields:
+    for label, unit, candidate_report, baseline_report in fields:
         current = metric(candidate_report, label)
         baseline = metric(baseline_report, label)
         ratio = current / baseline if baseline else float("inf")
