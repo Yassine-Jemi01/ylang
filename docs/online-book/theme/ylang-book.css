@@ -174,3 +174,33 @@ body { font-family: "Manrope", system-ui, sans-serif; font-feature-settings: "ke
 .ylang-home-link img { display: block; width: 25px; height: 25px; object-fit: contain; }
 .ylang-ar .ylang-language-menu { inset-inline-end: auto; inset-inline-start: 0; }
 .ylang-ar #menu-bar, .ylang-ar #menu-bar .left-buttons { direction: rtl; }
+
+
+/* Keep the Arabic chapter navigation readable and consistently RTL. */
+.ylang-ar #sidebar,
+.ylang-ar #sidebar .sidebar-scrollbox {
+  direction: rtl;
+  text-align: right;
+}
+.ylang-ar #sidebar .chapter {
+  direction: rtl;
+  padding-right: 0;
+  padding-left: 0;
+  text-align: right;
+}
+.ylang-ar #sidebar .chapter li {
+  direction: rtl;
+  padding-right: 0;
+  padding-left: 0;
+  text-align: right;
+}
+.ylang-ar #sidebar .chapter li a {
+  direction: rtl;
+  text-align: right;
+  padding-right: 12px;
+  padding-left: 8px;
+}
+.ylang-ar #sidebar .chapter li a:before {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+}
