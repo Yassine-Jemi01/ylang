@@ -62,7 +62,7 @@ static bool token_list_push(TokenList *list, Token token)
 }
 
 /*
- * The 2.3 development CLI currently implements one high-confidence automatic fix:
+ * The YLang 2.3.0 CLI implements one high-confidence automatic fix:
  * the common `pritn(...)` typo becomes the built-in `print(...)` statement.
  * Requiring an explicit output path keeps the original file unchanged by
  * default. Strings and comments are ignored because the lexer skips comments
