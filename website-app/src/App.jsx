@@ -128,6 +128,13 @@ function Header() {
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
         </nav>
+        <details className="home-language-switcher">
+          <summary aria-label="Select site language">EN <FiChevronDown aria-hidden="true" /></summary>
+          <div className="home-language-menu">
+            <a href={SITE} lang="en" hreflang="en" aria-current="page">English (EN)</a>
+            <a href={`${SITE}docs-ar.html`} lang="ar" hreflang="ar">العربية (AR)</a>
+          </div>
+        </details>
         <a className="nav-github" href={REPO} target="_blank" rel="noreferrer">
           <FiGithub aria-hidden="true" /> <span>GitHub</span><FiArrowUpRight className="nav-external" aria-hidden="true" />
         </a>
