@@ -18,7 +18,6 @@ MAP_ENTRY = re.compile(r"'([^']+)'\s*:\s*'([^']+)'")
 APP_ROUTES = (
     "learn/index.html",
     "docs.html",
-    "docs-ar.html",
     "learn/reference/HTTP.html",
     "learn/reference/JSON.html",
     "learn/reference/DEBUGGER.html",

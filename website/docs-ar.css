@@ -23,7 +23,7 @@ body {
 }
 
 .site-nav {
-  margin-inline: 0 auto;
+  margin-inline: auto 0;
 }
 
 .nav-actions {
