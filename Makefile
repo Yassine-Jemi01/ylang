@@ -124,7 +124,7 @@ voice-example: check-voice $(BIN)
 
 build/voice-runtime-test: tests/voice_runtime.c stdlib/voice/voice.c include/ylang/voice.h
 	@mkdir -p build
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(VOICE_CFLAGS) tests/voice_runtime.c stdlib/voice/voice.c $(VOICE_LIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(VOICE_CFLAGS) -Umain tests/voice_runtime.c stdlib/voice/voice.c $(VOICE_LIBS) -o $@
 
 voice-test: check-voice build/voice-runtime-test
 	SDL_AUDIODRIVER=dummy ./build/voice-runtime-test
