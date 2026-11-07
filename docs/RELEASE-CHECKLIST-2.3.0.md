@@ -1,6 +1,6 @@
 # YLang 2.3.0 — Stable Release Checklist
 
-**Status: release candidate validation recorded; publication is gated by the stable workflow.** This checklist records the evidence reviewed for the YLang 2.3.0 candidate. The publishing workflow re-runs the required gates on the final authorization commit.
+**Status: completed; YLang 2.3.0 was published as a stable release on 2026-11-07.** This checklist records the candidate evidence and the final release-authorization run. The exact authorization commit passed the required GitHub Actions and CircleCI gates before the workflow created the tag and release.
 
 Evidence is attached below and in the linked CI/CircleCI runs. The stable publishing workflow independently rebuilds, tests, packages, and checks the exact authorization commit before creating the tag and release.
 
@@ -85,7 +85,7 @@ Evidence is attached below and in the linked CI/CircleCI runs. The stable publis
 - [x] In that same authorization commit, mark every required item in this checklist complete only after its evidence has been reviewed; the publishing workflow must find no remaining `- [x]` entries.
 - [x] Review the publishing workflow to confirm it checks out, tests, and publishes the exact authorization commit. The workflow creates the tag itself and refuses to overwrite or reuse an existing tag.
 
-When every gate is complete, the stable release workflow may create `v2.3.0`. Follow [the post-release checklist](POST-RELEASE-CHECKLIST-2.3.0.md) afterward.
+The stable workflow created `v2.3.0` after all required gates passed. Follow [the post-release checklist](POST-RELEASE-CHECKLIST-2.3.0.md) for the public artifact and documentation audit.
 
 ## Reviewed evidence
 
@@ -104,3 +104,10 @@ Candidate validation recorded on 2026-11-07. The local working-tree checks below
 - GitHub Actions [run #5119](https://github.com/Yassine-Jemi01/ylang/actions/runs/42383002692), commit `bd61b70598f35877e42f8066263c20f1298b74eb`: all nine jobs succeeded, including Linux GCC/Clang, macOS Clang, native Windows, YSPM package install/removal, editor diagnostics, website/book integrity, and Zed Tree-sitter.
 - CircleCI [build-and-test](https://circleci.com/gh/Yassine-Jemi01/ylang/1684) and [sanitizer-tests](https://circleci.com/gh/Yassine-Jemi01/ylang/1685) both reported success on the same SHA.
 - The stable publishing workflow is reviewed in `.github/workflows/publish-stable.yml`; it re-runs the candidate checks and refuses missing CircleCI contexts, non-final release notes, unchecked checklist entries, or an existing tag/release.
+
+## Final published release evidence
+
+- The final authorization commit is `31e30605a08b068cf4c3a81256464c3a72666112`, and tag `v2.3.0` points to that exact commit.
+- GitHub CI [run #5160](https://github.com/Yassine-Jemi01/ylang/actions/runs/42386464522) completed successfully on the authorization commit.
+- Stable publishing workflow [run #8](https://github.com/Yassine-Jemi01/ylang/actions/runs/42386464514) completed successfully, including Linux GCC/Clang, macOS Clang, Windows native smoke, package build/install/removal, editor/docs checks, fuzz/sanitizer checks, and the CircleCI status gate.
+- The final package and 30-sample benchmark are recorded in the [post-release checklist](POST-RELEASE-CHECKLIST-2.3.0.md) and [performance guide](PERFORMANCE.md).
