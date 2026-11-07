@@ -70,8 +70,32 @@ LLVM completion, Typed IR expansion, complete ownership/borrowing and lifetime a
 
 ## Validation status
 
-Local verification was run on 2026-11-07 against a working tree based on commit `e63ae70a` (not a frozen release commit). The following passed: clean GCC and Clang builds on Linux; the full `make test` suite with GCC and Clang; `make sanitize` (AddressSanitizer and UndefinedBehaviorSanitizer); a 1,000-run Clang frontend fuzz smoke test; isolated Tree-sitter generation and corpus tests; VS Code and Neovim diagnostic/syntax checks; VS Code `.vsix` packaging; YLanglings unit tests and `verify-all`; the online book build; the website production build and integrity check; and YSPM package build plus archive-content inspection using a dynamic-link workaround. GitHub CI 30-sample benchmark runs #5079 and #5088 remain the recorded paired measurements.
+The stable release was validated against the exact release-authorization commit
+`31e30605a08b068cf4c3a81256464c3a72666112`, which is also the target of tag
+`v2.3.0`. The final CI run [#5160](https://github.com/Yassine-Jemi01/ylang/actions/runs/42386464522)
+and stable publishing workflow [#8](https://github.com/Yassine-Jemi01/ylang/actions/runs/42386464514)
+both completed successfully on that commit.
 
-The initial YSPM install/removal smoke could not complete because this host lacked static libc. On 2026-11-07, after installing `glibc-static` and `libxcrypt-static`, the statically linked YSPM package build and isolated install/compiler-smoke/removal test passed for `ylang-2.2.0-x86_64.yspkg`. This resolves the host setup issue for 2.2.0 only; the 2.3.0 candidate package still needs its own build/install/removal smoke. macOS builds, native Windows smoke, and the release-runner benchmark comparison have not been run for this working tree. These gates, and all remaining acceptance gates in [the release roadmap](ROADMAP-2.3.0.md), must be run against the exact final release candidate. No passing result is claimed for unverified gates.
+The release workflow passed Linux GCC and Clang builds and regression suites,
+macOS Clang build/regression/sanitizer checks, native Windows MinGW-w64 smoke
+tests (including interactive TUI restoration), frontend fuzzing, AddressSanitizer
+and UndefinedBehaviorSanitizer checks, editor integration/package checks,
+Tree-sitter generation/corpus tests, bilingual website/book integrity, and the
+CircleCI status gate for the same commit. The YSPM x86-64 package was built,
+validated, installed into an isolated temporary root, used to check/build/run a
+sample program, and removed successfully.
 
-The version file remains `2.2.0` until the 2.3 acceptance gates in [the release roadmap](ROADMAP-2.3.0.md) are complete.
+The published asset `ylang-2.3.0-x86_64.yspkg` is 588,979 bytes. Its SHA-256 is
+`5d088b62c32bb17e8fc691573244e7d6830dad27ff47541965f40b29bfc57fe4`; this
+matches the digest reported by the GitHub Release API. The package metadata
+reports version `2.3.0`, architecture `x86_64`, and ABI `yspm-abi-1`.
+
+The final 30-sample paired benchmark against `v2.2.0` is documented in
+[Performance Measurements](PERFORMANCE.md). Earlier measurements from
+development commits are retained there as development history and are not used
+as the final release benchmark.
+
+The release does not claim a completed LLVM backend, full Rust-style
+ownership/borrowing or lifetime analysis, a stable NASM backend, or complete
+Windows platform parity. Those limits remain explicit in the compatibility
+notes above.
