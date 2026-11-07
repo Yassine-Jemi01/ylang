@@ -2370,6 +2370,11 @@ static bool yl_write_file(const char *path, const char *content) {
     if (fclose(file) != 0) ok = false;
     return ok;
 }
+static uint8_t yl_to_byte(int64_t value) {
+    if (value < 0 || value > 255) yl_runtime_error("byte conversion is outside the range 0..255");
+    return (uint8_t)value;
+}
+
 /* Binary file and stream functions are opt-in. */
 #ifdef YLANG_USE_BINARY
 #define YL_BINARY_MAX_READ (16U * 1024U * 1024U)
@@ -2458,10 +2463,6 @@ static bool yl_binary_write_hex(const char *path, int64_t offset, const char *he
     return ok;
 }
 
-static uint8_t yl_to_byte(int64_t value) {
-    if (value < 0 || value > 255) yl_runtime_error("byte conversion is outside the range 0..255");
-    return (uint8_t)value;
-}
 static int64_t yl_binary_read_bytes(const char *path, int64_t offset,
                                     uint8_t *buffer, size_t capacity) {
     if (!path || (!buffer && capacity != 0U) || offset < 0 ||
