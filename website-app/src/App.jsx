@@ -32,13 +32,13 @@ const installCommands = {
 };
 
 const ecosystem = [
-  { node: <SiC />, title: 'C17 compiler', hoverColor: '#7cc6bb' },
-  { node: <SiLinux />, title: 'Linux', hoverColor: '#f2bf61' },
-  { node: <SiApple />, title: 'macOS', hoverColor: '#e6eeeb' },
-  { node: <FiMonitor />, title: 'Windows · experimental', hoverColor: '#77aee5' },
-  { node: <FiCpu />, title: 'GCC / Clang', hoverColor: '#9ecf9a' },
-  { node: <FiTerminal />, title: 'Terminal UI', hoverColor: '#f3a77d' },
-  { node: <FiGithub />, title: 'Open source', href: REPO, hoverColor: '#e7ece9' }
+  { node: <SiC />, title: 'C17 compiler', hoverColor: '#80c8f0' },
+  { node: <SiLinux />, title: 'Linux', hoverColor: '#ffb27a' },
+  { node: <SiApple />, title: 'macOS', hoverColor: '#dce9f5' },
+  { node: <FiMonitor />, title: 'Windows · experimental', hoverColor: '#80c8f0' },
+  { node: <FiCpu />, title: 'GCC / Clang', hoverColor: '#a9c7e4' },
+  { node: <FiTerminal />, title: 'Terminal UI', hoverColor: '#ffb27a' },
+  { node: <FiGithub />, title: 'Open source', href: REPO, hoverColor: '#dce9f5' }
 ];
 
 function Mark() {
@@ -90,7 +90,7 @@ function Header() {
         </button>
         <nav className={`site-nav ${menuOpen ? 'site-nav--open' : ''}`} aria-label="Main navigation">
           <a href="#language" onClick={() => setMenuOpen(false)}>Language</a>
-          <a href="#preview" onClick={() => setMenuOpen(false)}>2.2 features</a>
+          <a href="#preview" onClick={() => setMenuOpen(false)}>What’s included</a>
           <a href="#install" onClick={() => setMenuOpen(false)}>Get started</a>
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
@@ -123,9 +123,6 @@ function Header() {
                 </DropdownMenu.Item>
                 <DropdownMenu.Item className="resource-menu-item" asChild>
                   <a href={`${SITE}learn/reference/CHANGELOG-2.3.0.html`}><FiLayers /> 2.3 release notes <FiArrowUpRight className="menu-external" /></a>
-                </DropdownMenu.Item>
-                <DropdownMenu.Item className="resource-menu-item" asChild>
-                  <a href={`${SITE}classic.html`}><FiLayers /> Classic homepage <FiArrowUpRight className="menu-external" /></a>
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
@@ -261,7 +258,7 @@ function LanguageSection() {
             fontWeight={750}
             letterSpacing={1.8}
             ribbon={false}
-            color="#93d4c8"
+            color="#80c8f0"
             edgeFade={0.65}
             pauseOnHover
             draggable={false}
@@ -279,9 +276,9 @@ function ExperimentalSection() {
     <section className="section preview-section" id="preview">
       <div className="container">
         <div className="section-heading">
-          <p className="eyebrow"><span className="eyebrow-mark" /> 2.2 / RELEASED</p>
-          <h2>Build beyond the stable core.</h2>
-          <p>YLang 2.2.0 adds these capabilities while keeping their experimental boundaries explicit. Read the release notes and guides before relying on them in production.</p>
+          <p className="eyebrow"><span className="eyebrow-mark" /> 2.3 / RELEASED</p>
+          <h2>What’s included in 2.3.0.</h2>
+          <p>YLang 2.3.0 is now a stable release. These capabilities retain their documented experimental boundaries; read the guides before relying on them in production.</p>
         </div>
         <div className="feature-grid preview-grid">
           <FeatureCard
@@ -324,7 +321,7 @@ function ExperimentalSection() {
           <a className="text-link" href={SITE + 'learn/reference/HTTP.html'}>HTTP and async task guide <FiArrowUpRight aria-hidden="true" /></a>
           <a className="text-link" href={SITE + 'learn/reference/JSON.html'}>JSON standard-library guide <FiArrowUpRight aria-hidden="true" /></a>
           <a className="text-link" href={SITE + 'learn/reference/DEBUGGER.html'}>Debugger guide <FiArrowUpRight aria-hidden="true" /></a>
-          <a className="text-link" href={SITE + 'learn/reference/CHANGELOG-2.2.0.html'}>YLang 2.2.0 release notes <FiArrowUpRight aria-hidden="true" /></a>
+          <a className="text-link" href={SITE + 'learn/reference/CHANGELOG-2.3.0.html'}>YLang 2.3.0 release notes <FiArrowUpRight aria-hidden="true" /></a>
           <a className="text-link" href={SITE + 'learn/reference/SECURITY.html'}>Security model and HTTP defaults <FiArrowUpRight aria-hidden="true" /></a>
           <a className="text-link" href={SITE + 'learn/reference/PERFORMANCE.html'}>Performance benchmarks <FiArrowUpRight aria-hidden="true" /></a>
         </div>
