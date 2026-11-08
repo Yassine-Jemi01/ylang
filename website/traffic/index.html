@@ -28,10 +28,10 @@
     .panel-head { display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
     h2 { font-size:17px; margin:0; }
     .chart { display:grid; grid-template-columns:repeat(14,minmax(0,1fr)); align-items:end; gap:8px; min-height:180px; padding-top:14px; border-bottom:1px solid var(--line); }
-    .bar-group { height:160px; display:flex; flex-direction:column; justify-content:end; align-items:center; gap:6px; min-width:0; }
-    .bar { width:min(100%,28px); min-height:2px; border-radius:5px 5px 0 0; background:var(--accent); }
+    .bar-group { height:160px; position:relative; display:flex; flex-direction:row; justify-content:center; align-items:end; gap:3px; min-width:0; padding-bottom:22px; }
+    .bar { width:min(45%,28px); min-height:2px; border-radius:5px 5px 0 0; background:var(--accent); }
     .bar.views { background:var(--blue); }
-    .bar-date { color:var(--muted); font-size:10px; white-space:nowrap; }
+    .bar-date { position:absolute; bottom:0; color:var(--muted); font-size:10px; white-space:nowrap; }
     .legend { display:flex; gap:18px; color:var(--muted); font-size:12px; margin-top:13px; }
     .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; background:var(--accent); }
     .dot.blue { background:var(--blue); }
@@ -46,7 +46,7 @@
     .error { color:#ff9a9a; }
     footer { margin-top:28px; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; color:var(--muted); font-size:12px; }
     @media(max-width:760px) { .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .chart { gap:4px; } .bar-date { font-size:9px; } }
-    @media(max-width:420px) { .wrap { width:min(100% - 24px,1040px); padding-top:26px; } .card { padding:14px; } .panel { padding:15px; } .chart { grid-template-columns:repeat(7,minmax(0,1fr)); } .bar-group:nth-child(n+8) { display:none; } }
+    @media(max-width:420px) { .wrap { width:min(100% - 24px,1040px); padding-top:26px; } .card { padding:14px; } .panel { padding:15px; } }
   </style>
 </head>
 <body>
@@ -99,7 +99,7 @@
     async function loadTraffic() {
       const status = document.getElementById('updated');
       try {
-        const response = await fetch('./data.json', { cache: 'no-store' });
+        const response = await fetch('https://raw.githubusercontent.com/Yassine-Jemi01/ylang/main/website/traffic/data.json', { cache: 'no-store' });
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const archive = await response.json();
         const days = Object.entries(archive.days || {}).sort(([a],[b]) => a.localeCompare(b)).map(([date, values]) => ({ date, ...values }));
