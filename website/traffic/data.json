@@ -1,7 +1,92 @@
 {
-  "schema_version": 1,
+  "days": {
+    "2026-10-25": {
+      "clones": 3735,
+      "unique_cloners": 279,
+      "unique_visitors": 4,
+      "views": 24
+    },
+    "2026-10-26": {
+      "clones": 1419,
+      "unique_cloners": 285,
+      "unique_visitors": 3,
+      "views": 21
+    },
+    "2026-10-27": {
+      "clones": 1780,
+      "unique_cloners": 80,
+      "unique_visitors": 4,
+      "views": 33
+    },
+    "2026-10-28": {
+      "clones": 1529,
+      "unique_cloners": 302,
+      "unique_visitors": 8,
+      "views": 25
+    },
+    "2026-10-29": {
+      "clones": 809,
+      "unique_cloners": 157,
+      "unique_visitors": 3,
+      "views": 13
+    },
+    "2026-10-30": {
+      "clones": 1593,
+      "unique_cloners": 46,
+      "unique_visitors": 1,
+      "views": 8
+    },
+    "2026-10-31": {
+      "clones": 3056,
+      "unique_cloners": 129,
+      "unique_visitors": 3,
+      "views": 11
+    },
+    "2026-11-01": {
+      "clones": 1822,
+      "unique_cloners": 278,
+      "unique_visitors": 2,
+      "views": 10
+    },
+    "2026-11-02": {
+      "clones": 1423,
+      "unique_cloners": 162,
+      "unique_visitors": 3,
+      "views": 16
+    },
+    "2026-11-03": {
+      "clones": 1195,
+      "unique_cloners": 252,
+      "unique_visitors": 3,
+      "views": 33
+    },
+    "2026-11-04": {
+      "clones": 11691,
+      "unique_cloners": 506,
+      "unique_visitors": 3,
+      "views": 14
+    },
+    "2026-11-05": {
+      "clones": 7636,
+      "unique_cloners": 417,
+      "unique_visitors": 1,
+      "views": 2
+    },
+    "2026-11-06": {
+      "clones": 1423,
+      "unique_cloners": 374,
+      "unique_visitors": 1,
+      "views": 1
+    },
+    "2026-11-07": {
+      "clones": 4711,
+      "unique_cloners": 281,
+      "unique_visitors": 3,
+      "views": 33
+    }
+  },
+  "first_collected_at": "2026-11-08T10:09:42Z",
+  "last_updated_at": "2026-11-08T10:09:42Z",
   "repository": "Yassine-Jemi01/ylang",
-  "first_collected_at": null,
-  "last_updated_at": null,
-  "days": {}
+  "schema_version": 1
 }
