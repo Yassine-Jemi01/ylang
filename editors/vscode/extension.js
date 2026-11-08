@@ -434,10 +434,103 @@ async function debugCurrentFile() {
   ].join(" "));
 }
 
+
+const IO_API = [
+  {
+    name: "try_read_file",
+    label: "io.try_read_file(path)",
+    insertText: "io.try_read_file(\${1:path})",
+    detail: "Read a text file without terminating the program",
+    documentation: "Returns an \`owned_string\`. On failure, returns an empty string and records the reason in \`io.last_error()\`. A successfully read empty file clears the previous error. Embedded NUL bytes are rejected.",
+    parameters: [{ name: "path", documentation: "Path to the text file." }],
+    returns: "owned_string"
+  },
+  {
+    name: "write_file_atomic",
+    label: "io.write_file_atomic(path, content)",
+    insertText: "io.write_file_atomic(\${1:path}, \${2:content})",
+    detail: "Atomically write or replace a text file",
+    documentation: "Returns \`true\` on success or \`false\` on failure. Writes a uniquely created temporary file in the target directory, flushes it, then atomically replaces the target. It does not create missing parent directories.",
+    parameters: [
+      { name: "path", documentation: "Destination file path." },
+      { name: "content", documentation: "Text to write to the destination." }
+    ],
+    returns: "bool"
+  },
+  {
+    name: "last_error",
+    label: "io.last_error()",
+    insertText: "io.last_error()",
+    detail: "Get the latest text-I/O diagnostic",
+    documentation: "Returns the latest text-I/O diagnostic, or \`No error\` after a successful operation. A later successful \`io.try_read_file\` or \`io.write_file_atomic\` clears the previous diagnostic.",
+    parameters: [],
+    returns: "string"
+  }
+];
+
+function ioApiForName(name) {
+  return IO_API.find((entry) => entry.name === name);
+}
+
+function provideIoCompletions(document, position) {
+  const line = document.lineAt(position.line).text.slice(0, position.character);
+  const match = line.match(/\bio\.([A-Za-z_]*)$/);
+  if (!match) return undefined;
+  const prefix = match[1];
+  return IO_API
+    .filter((entry) => entry.name.startsWith(prefix))
+    .map((entry) => {
+      const item = new vscode.CompletionItem(entry.label, vscode.CompletionItemKind.Function);
+      item.detail = entry.detail + " → " + entry.returns;
+      item.documentation = new vscode.MarkdownString(entry.documentation);
+      item.insertText = new vscode.SnippetString(entry.insertText);
+      item.filterText = "io." + entry.name;
+      item.sortText = "0_" + entry.name;
+      return item;
+    });
+}
+
+function provideIoSignatureHelp(document, position) {
+  const line = document.lineAt(position.line).text.slice(0, position.character);
+  const match = line.match(/\bio\.(try_read_file|write_file_atomic|last_error)\s*\(([^()]*)$/);
+  if (!match) return undefined;
+
+  const entry = ioApiForName(match[1]);
+  if (!entry) return undefined;
+  const help = new vscode.SignatureHelp();
+  const signature = new vscode.SignatureInformation(
+    entry.label + " → " + entry.returns,
+    entry.documentation
+  );
+  signature.parameters = entry.parameters.map((parameter) =>
+    new vscode.ParameterInformation(parameter.name, parameter.documentation)
+  );
+  help.signatures = [signature];
+  help.activeSignature = 0;
+  help.activeParameter = entry.parameters.length
+    ? Math.min((match[2].match(/,/g) || []).length, entry.parameters.length - 1)
+    : 0;
+  return help;
+}
+
 function activate(context) {
   diagnostics = vscode.languages.createDiagnosticCollection("ylang");
   output = vscode.window.createOutputChannel("YLang");
   context.subscriptions.push(diagnostics, output);
+
+  context.subscriptions.push(
+    vscode.languages.registerCompletionItemProvider(
+      { language: "ylang" },
+      { provideCompletionItems: provideIoCompletions },
+      "."
+    ),
+    vscode.languages.registerSignatureHelpProvider(
+      { language: "ylang" },
+      { provideSignatureHelp: provideIoSignatureHelp },
+      "(",
+      ","
+    )
+  );
 
   context.subscriptions.push(
     vscode.commands.registerCommand("ylang.checkCurrentFile", checkCurrentFile),
@@ -498,6 +591,8 @@ module.exports = {
   deactivate,
   _parseDiagnostics: parseDiagnostics,
   _temporarySource: temporarySource,
-  _cleanupTemporarySource: cleanupTemporarySource
+  _cleanupTemporarySource: cleanupTemporarySource,
+  _provideIoCompletions: provideIoCompletions,
+  _provideIoSignatureHelp: provideIoSignatureHelp
 };
 

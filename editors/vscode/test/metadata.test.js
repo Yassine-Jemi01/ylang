@@ -8,7 +8,7 @@ const root = path.join(__dirname, "..");
 const manifest = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 
 assert.equal(manifest.publisher, "yassine-jemi01");
-assert.equal(manifest.version, "0.6.0");
+assert.equal(manifest.version, "0.7.0");
 assert.ok(manifest.engines.vscode, "the VS Code engine range must be declared");
 assert.ok(manifest.main && fs.existsSync(path.join(root, manifest.main)), "the extension entry point must exist");
 
@@ -30,6 +30,10 @@ assert.match(extensionSource, /terminal\.sendText\(/,
   "debug command should run the compiler inside the user's normal integrated shell");
 assert.match(extensionSource, /quotePosixShellArgument\(sourcePath\)/,
   "debug command must quote paths safely when launching the compiler");
+assert.match(extensionSource, /registerCompletionItemProvider/,
+  "YLang completion provider must be registered");
+assert.match(extensionSource, /registerSignatureHelpProvider/,
+  "YLang signature help provider must be registered");
 assert.doesNotMatch(extensionSource, /shellPath:\s*compiler/,
   "the compiler is a command, not an interactive terminal shell");
 
