@@ -324,8 +324,32 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install Tree-sitter CLI
-        run: npm install --global tree-sitter-cli
+      - name: Install Tree-sitter CLI (retry transient release-download failures)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          attempt=1
+          max_attempts=5
+
+          while (( attempt <= max_attempts )); do
+            echo "Installing tree-sitter-cli@0.27.2 (attempt ${attempt}/${max_attempts})"
+            if npm install --global tree-sitter-cli@0.27.2; then
+              tree-sitter --version
+              exit 0
+            fi
+
+            if (( attempt == max_attempts )); then
+              break
+            fi
+
+            delay=$((attempt * 10))
+            echo "::warning::Tree-sitter CLI installation failed; retrying in ${delay}s."
+            sleep "${delay}"
+            attempt=$((attempt + 1))
+          done
+
+          echo "::error::Could not install tree-sitter-cli@0.27.2 after ${max_attempts} attempts."
+          exit 1
       - name: Generate and test YLang parser in isolation
         run: python3 tools/check_tree_sitter.py
 
