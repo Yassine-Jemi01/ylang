@@ -180,6 +180,9 @@ print(string.ends_with(name, "n"));
 - The generated runtime tracks allocated strings until process exit, so repeated concatenation or case conversion in a long-running loop can increase memory use.
 - `io.read_line()` reads one line from standard input and removes its trailing newline. At end-of-file it returns an empty string.
 - `io.read_file(path)` reads an entire UTF-8/ASCII-compatible text file into a string. A file-open/read failure or embedded NUL byte terminates the program with a runtime error; binary files are not supported by the string API.
+- `io.try_read_file(path)` returns an `owned_string`. On success it contains the complete text (including an empty string for an empty file) and clears `io.last_error()`. On failure it returns an empty owned string and records the cause in `io.last_error()`; check the error accessor to distinguish a failed read from a successfully read empty file. Embedded NUL bytes are rejected.
+- `io.write_file_atomic(path, content)` writes to a uniquely created temporary file in the target directory, flushes it, then atomically replaces the target. It returns `true` on success or `false` on failure; a failure before replacement leaves the existing target untouched. It does not create missing parent directories.
+- `io.last_error()` returns the latest text-I/O diagnostic, or `"No error"` after a successful operation. A later successful `try_read_file` or `write_file_atomic` clears the previous diagnostic.
 - `io.write_file(path, content)` overwrites or creates a text file and returns `true` on success or `false` if it cannot open/write the file. It does not create missing parent directories.
 - File paths are interpreted relative to the process working directory. File I/O is synchronous and currently has no structured error/exception type.
 - `path.exists(path)` returns whether a path can be inspected with `stat`; it may return true for files, directories, or other filesystem objects.
