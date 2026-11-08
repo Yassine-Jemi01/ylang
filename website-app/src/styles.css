@@ -156,7 +156,7 @@ h1, h2, h3, p { margin: 0; }
 }
 .scroll-reveal.is-visible {
   opacity: 1;
-  transform: translate3d(0, 0, 0);
+  transform: none;
   will-change: auto;
 }
 .scroll-reveal .feature-card {
@@ -166,7 +166,7 @@ h1, h2, h3, p { margin: 0; }
 }
 .scroll-reveal.is-visible .feature-card {
   opacity: 1;
-  transform: translate3d(0, 0, 0);
+  transform: none;
 }
 .scroll-reveal.is-visible .feature-card:nth-child(2) { transition-delay: 90ms; }
 .scroll-reveal.is-visible .feature-card:nth-child(3) { transition-delay: 180ms; }
@@ -177,7 +177,7 @@ h1, h2, h3, p { margin: 0; }
 .scroll-reveal.is-visible .next-card:nth-child(3) { animation-delay: 180ms; }
 @keyframes reveal-card {
   from { opacity: 0; transform: translate3d(0, 14px, 0); }
-  to { opacity: 1; transform: translate3d(0, 0, 0); }
+  to { opacity: 1; transform: none; }
 }
 
 /* Sections */
