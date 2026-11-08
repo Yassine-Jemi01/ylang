@@ -1,0 +1,20 @@
+function main() -> int {
+    let bool first = io.write_file_atomic("build/io-atomic.txt", "first");
+    print(first);
+    let owned_string first_text = io.try_read_file("build/io-atomic.txt");
+    print(first_text);
+    let bool replaced = io.write_file_atomic("build/io-atomic.txt", "second");
+    print(replaced);
+    let owned_string second_text = io.try_read_file("build/io-atomic.txt");
+    print(second_text);
+    let owned_string missing = io.try_read_file("build/io-safe-missing-file.txt");
+    print(io.last_error() != "No error");
+    let bool bad_write = io.write_file_atomic("build/io-safe-missing-parent/output.txt", "bad");
+    print(bad_write == false);
+    let owned_string after_failure = io.try_read_file("build/io-atomic.txt");
+    print(after_failure);
+    let owned_string empty = io.try_read_file("build/io-empty.txt");
+    print(io.last_error() == "No error");
+    print(string.length(empty) == 0);
+    return 0;
+}

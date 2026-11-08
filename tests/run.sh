@@ -1023,6 +1023,16 @@ diff -u tests/expected-file-io.txt build/file-io.out
 printf 'YLang file I/O' > build/io-expected.txt
 cmp build/io-output.txt build/io-expected.txt
 
+# Safe text I/O: recoverable read errors, empty-file success, and atomic replacement.
+: > build/io-empty.txt
+./build/ylang check tests/io-safe.yl >/dev/null
+./build/ylang build tests/io-safe.yl -o build/test-io-safe >/dev/null
+./build/test-io-safe > build/io-safe.out
+diff -u tests/expected-io-safe.txt build/io-safe.out
+printf 'second' > build/io-atomic-expected.txt
+cmp build/io-atomic.txt build/io-atomic-expected.txt
+
+
 # String standard library: replacement is non-overlapping and handles empty needles safely.
 ./build/ylang check examples/string-replace.yl >/dev/null
 ./build/ylang build examples/string-replace.yl -o build/test-string-replace >/dev/null

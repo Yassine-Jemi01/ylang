@@ -2330,6 +2330,95 @@ static const char *yl_tui_last_error(void) {
     return yl_tui_error_text[0] ? yl_tui_error_text : "No error";
 }
 #endif /* YLANG_USE_TUI */
+static char yl_io_error_text[256];
+
+static void yl_io_clear_error(void) {
+    yl_io_error_text[0] = '\0';
+}
+
+static void yl_io_set_error(const char *operation, int error_code) {
+    if (!operation) operation = "file I/O failed";
+    if (error_code == 0) error_code = EIO;
+    (void)snprintf(yl_io_error_text, sizeof(yl_io_error_text),
+                   "%s: %s", operation, strerror(error_code));
+}
+
+static const char *yl_io_last_error(void) {
+    return yl_io_error_text[0] ? yl_io_error_text : "No error";
+}
+
+static const char *yl_try_read_file(const char *path) {
+    if (!path) {
+        yl_io_set_error("cannot read file", EINVAL);
+        char *empty = calloc(1U, 1U);
+        if (!empty) yl_runtime_error("out of memory");
+        return (const char *)yl_track(empty, 1U);
+    }
+    FILE *file = fopen(path, "rb");
+    if (!file) {
+        int saved = errno;
+        yl_io_set_error("cannot open file for reading", saved);
+        char *empty = calloc(1U, 1U);
+        if (!empty) yl_runtime_error("out of memory");
+        return (const char *)yl_track(empty, 1U);
+    }
+    if (fseek(file, 0, SEEK_END) != 0) {
+        int saved = errno;
+        fclose(file);
+        yl_io_set_error("cannot seek input file", saved);
+        char *empty = calloc(1U, 1U);
+        if (!empty) yl_runtime_error("out of memory");
+        return (const char *)yl_track(empty, 1U);
+    }
+    long end = ftell(file);
+    if (end < 0 || (uintmax_t)end >= (uintmax_t)SIZE_MAX) {
+        int saved = errno ? errno : EFBIG;
+        fclose(file);
+        yl_io_set_error("cannot determine input file size", saved);
+        char *empty = calloc(1U, 1U);
+        if (!empty) yl_runtime_error("out of memory");
+        return (const char *)yl_track(empty, 1U);
+    }
+    if (fseek(file, 0, SEEK_SET) != 0) {
+        int saved = errno;
+        fclose(file);
+        yl_io_set_error("cannot rewind input file", saved);
+        char *empty = calloc(1U, 1U);
+        if (!empty) yl_runtime_error("out of memory");
+        return (const char *)yl_track(empty, 1U);
+    }
+    size_t size = (size_t)end;
+    char *data = malloc(size + 1U);
+    if (!data) {
+        fclose(file);
+        yl_runtime_error("out of memory");
+    }
+    size_t got = size ? fread(data, 1U, size, file) : 0U;
+    bool failed = ferror(file) != 0 || got != size;
+    int saved = failed ? (errno ? errno : EIO) : 0;
+    if (fclose(file) != 0 && !failed) {
+        failed = true;
+        saved = errno ? errno : EIO;
+    }
+    if (failed) {
+        free(data);
+        yl_io_set_error("failed to read input file", saved);
+        char *empty = calloc(1U, 1U);
+        if (!empty) yl_runtime_error("out of memory");
+        return (const char *)yl_track(empty, 1U);
+    }
+    if (memchr(data, '\0', size)) {
+        free(data);
+        yl_io_set_error("binary files are not supported by string I/O", EINVAL);
+        char *empty = calloc(1U, 1U);
+        if (!empty) yl_runtime_error("out of memory");
+        return (const char *)yl_track(empty, 1U);
+    }
+    data[size] = '\0';
+    yl_io_clear_error();
+    return (const char *)yl_track(data, size + 1U);
+}
+
 static const char *yl_read_file(const char *path) {
     FILE *file = fopen(path, "rb");
     if (!file) yl_runtime_error("cannot open file for reading");
@@ -2370,6 +2459,109 @@ static bool yl_write_file(const char *path, const char *content) {
     bool ok = fwrite(content, 1, size, file) == size;
     if (fclose(file) != 0) ok = false;
     return ok;
+}
+
+static bool yl_write_file_atomic(const char *path, const char *content) {
+    if (!path || !content) {
+        yl_io_set_error("cannot write file", EINVAL);
+        return false;
+    }
+    size_t path_len = strlen(path);
+    size_t content_len = strlen(content);
+    if (path_len > SIZE_MAX - 32U) {
+        yl_io_set_error("target path is too long", ENAMETOOLONG);
+        return false;
+    }
+#ifdef _WIN32
+    char directory[MAX_PATH];
+    char temporary[MAX_PATH];
+    const char *slash = strrchr(path, '\\');
+    const char *forward = strrchr(path, '/');
+    if (!slash || (forward && forward > slash)) slash = forward;
+    if (slash) {
+        size_t directory_len = (size_t)(slash - path);
+        if (directory_len == 0U) directory_len = 1U;
+        if (directory_len >= sizeof(directory)) {
+            yl_io_set_error("target directory path is too long", ENAMETOOLONG);
+            return false;
+        }
+        memcpy(directory, path, directory_len);
+        directory[directory_len] = '\0';
+    } else {
+        (void)snprintf(directory, sizeof(directory), ".");
+    }
+    if (!GetTempFileNameA(directory, "ylg", 0U, temporary)) {
+        yl_io_set_error("cannot create sibling temporary file", EIO);
+        return false;
+    }
+    FILE *file = fopen(temporary, "wb");
+    if (!file) {
+        int saved = errno;
+        (void)DeleteFileA(temporary);
+        yl_io_set_error("cannot open temporary file", saved);
+        return false;
+    }
+    bool ok = fwrite(content, 1U, content_len, file) == content_len;
+    if (ok && fflush(file) != 0) ok = false;
+    if (ok && _commit(_fileno(file)) != 0) ok = false;
+    int saved = ok ? 0 : (errno ? errno : EIO);
+    if (fclose(file) != 0 && ok) { ok = false; saved = errno ? errno : EIO; }
+    if (!ok) {
+        (void)DeleteFileA(temporary);
+        yl_io_set_error("failed to write temporary file", saved);
+        return false;
+    }
+    if (!MoveFileExA(temporary, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        (void)DeleteFileA(temporary);
+        yl_io_set_error("cannot atomically replace target file", EIO);
+        return false;
+    }
+#else
+    char *temporary = malloc(path_len + sizeof(".ylang-tmp-XXXXXX"));
+    if (!temporary) {
+        yl_io_set_error("out of memory creating temporary path", ENOMEM);
+        return false;
+    }
+    (void)snprintf(temporary, path_len + sizeof(".ylang-tmp-XXXXXX"),
+                   "%s.ylang-tmp-XXXXXX", path);
+    int fd = mkstemp(temporary);
+    if (fd < 0) {
+        int saved = errno;
+        free(temporary);
+        yl_io_set_error("cannot create sibling temporary file", saved);
+        return false;
+    }
+    FILE *file = fdopen(fd, "wb");
+    if (!file) {
+        int saved = errno;
+        (void)close(fd);
+        (void)unlink(temporary);
+        free(temporary);
+        yl_io_set_error("cannot open temporary file stream", saved);
+        return false;
+    }
+    bool ok = fwrite(content, 1U, content_len, file) == content_len;
+    if (ok && fflush(file) != 0) ok = false;
+    if (ok && fsync(fd) != 0) ok = false;
+    int saved = ok ? 0 : (errno ? errno : EIO);
+    if (fclose(file) != 0 && ok) { ok = false; saved = errno ? errno : EIO; }
+    if (!ok) {
+        (void)unlink(temporary);
+        free(temporary);
+        yl_io_set_error("failed to write temporary file", saved);
+        return false;
+    }
+    if (rename(temporary, path) != 0) {
+        saved = errno;
+        (void)unlink(temporary);
+        free(temporary);
+        yl_io_set_error("cannot atomically replace target file", saved);
+        return false;
+    }
+    free(temporary);
+#endif
+    yl_io_clear_error();
+    return true;
 }
 /* Shared by core byte conversion and Binary/HTTP buffer paths; keep outside the optional Binary I/O section. */
 static uint8_t yl_to_byte(int64_t value) {

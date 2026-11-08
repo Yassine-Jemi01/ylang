@@ -632,6 +632,9 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "owned_string.lower") == 0) return "yl_string_lower";
     if (strcmp(name, "io.read_line_owned") == 0) return "yl_read_line";
     if (strcmp(name, "io.read_file_owned") == 0) return "yl_read_file";
+    if (strcmp(name, "io.try_read_file") == 0) return "yl_try_read_file";
+    if (strcmp(name, "io.write_file_atomic") == 0) return "yl_write_file_atomic";
+    if (strcmp(name, "io.last_error") == 0) return "yl_io_last_error";
     if (strcmp(name, "string.contains") == 0) return "yl_string_contains";
     if (strcmp(name, "string.starts_with") == 0) return "yl_string_starts_with";
     if (strcmp(name, "string.ends_with") == 0) return "yl_string_ends_with";
