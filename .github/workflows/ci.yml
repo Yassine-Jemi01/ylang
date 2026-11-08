@@ -90,14 +90,15 @@ jobs:
       - name: Set up MinGW-w64 toolchain
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: UCRT64
+          release: false
           update: true
           install: >-
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-SDL2
-            mingw-w64-x86_64-SDL2_mixer
-            mingw-w64-x86_64-curl
-            mingw-w64-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-SDL2
+            mingw-w64-ucrt-x86_64-SDL2_mixer
+            mingw-w64-ucrt-x86_64-curl
+            mingw-w64-ucrt-x86_64-pkgconf
             make
             python
       - name: Verify generated runtime template
@@ -324,8 +325,27 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install Tree-sitter CLI
-        run: npm install --global tree-sitter-cli
+      - name: Cache Tree-sitter Cargo dependencies and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ${{ runner.temp }}/cargo-target
+          key: ${{ runner.os }}-${{ runner.arch }}-tree-sitter-cli-0.27.2-cargo-v1
+      - name: Install Tree-sitter CLI from crates.io
+        shell: bash
+        env:
+          CARGO_NET_RETRY: 5
+          CARGO_HTTP_TIMEOUT: 120
+          CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+          CARGO_TARGET_DIR: ${{ runner.temp }}/cargo-target
+        run: |
+          set -Eeuo pipefail
+          install_dir="$RUNNER_TEMP/tree-sitter"
+          cargo install --locked --version 0.27.2 --root "$install_dir" tree-sitter-cli
+          echo "$install_dir/bin" >> "$GITHUB_PATH"
+          "$install_dir/bin/tree-sitter" --version
       - name: Generate and test YLang parser in isolation
         run: python3 tools/check_tree_sitter.py
 
@@ -346,9 +366,26 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm run build
-      - name: Set up mdBook
-        uses: peaceiris/actions-mdbook@v2
+      - name: Cache mdBook Cargo dependencies and build
+        uses: actions/cache@v4
         with:
-          mdbook-version: "0.5.4"
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ${{ runner.temp }}/cargo-target
+          key: ${{ runner.os }}-${{ runner.arch }}-mdbook-0.5.4-cargo-v1
+      - name: Install mdBook from crates.io
+        shell: bash
+        env:
+          CARGO_NET_RETRY: 5
+          CARGO_HTTP_TIMEOUT: 120
+          CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+          CARGO_TARGET_DIR: ${{ runner.temp }}/cargo-target
+        run: |
+          set -Eeuo pipefail
+          install_dir="$RUNNER_TEMP/mdbook"
+          cargo install mdbook --no-default-features --features search --version 0.5.4 --locked --root "$install_dir"
+          echo "$install_dir/bin" >> "$GITHUB_PATH"
+          "$install_dir/bin/mdbook" --version
       - name: Build, assemble, and validate the complete website
         run: python3 tools/build_website.py site-dist
