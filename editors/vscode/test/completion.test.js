@@ -78,10 +78,14 @@ assert.deepEqual(filtered.map((item) => item.label), [
   "io.write_file_atomic(path, content)"
 ]);
 
+const nestedCompletions = extension._provideIoCompletions(
+  documentWithLine("print(io."),
+  { line: 0, character: 9 }
+);
 assert.equal(
-  extension._provideIoCompletions(documentWithLine("print(io."), { line: 0, character: 9 }),
-  undefined,
-  "completion should not trigger unless the cursor follows the io namespace prefix"
+  nestedCompletions.length,
+  3,
+  "io completions should also work inside nested expressions"
 );
 
 const writeHelp = extension._provideIoSignatureHelp(
