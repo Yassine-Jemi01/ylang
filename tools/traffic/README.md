@@ -16,7 +16,7 @@ The workflow uses the token only for read-only traffic API requests. The separat
 - The workflow runs daily at 03:17 UTC and can also be started manually.
 - Each run imports all daily buckets still available from GitHub and merges them by UTC date.
 - Existing dates are updated when GitHub refreshes a bucket; older dates are never discarded.
-- The public dashboard is deployed at [https://yassine-jemi01.github.io/ylang/traffic/](https://yassine-jemi01.github.io/ylang/traffic/).
+- The public dashboard is deployed at [https://yassine-jemi01.github.io/ylang/traffic/](https://yassine-jemi01.github.io/ylang/traffic/). It reads the latest JSON directly from the repository's `main` branch, so daily archive commits update the figures without requiring a website redeployment.
 - The website deployment workflow already watches `website/**`, so a new archive commit triggers a Pages deployment.
 
 ## Metric definitions
