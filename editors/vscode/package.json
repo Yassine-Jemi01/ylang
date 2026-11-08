@@ -1,16 +1,16 @@
 {
   "name": "ylang-language-support",
   "displayName": "YLang Language Support",
-  "description": "Official YLang language support with syntax highlighting, compiler diagnostics, logo assets, and integrated Code Runner defaults.",
+  "description": "Official YLang language support with syntax highlighting, compiler diagnostics, I/O API autocomplete, signature help, logo assets, and integrated Code Runner defaults.",
   "repository": {
     "type": "git",
     "url": "https://github.com/Yassine-Jemi01/ylang.git",
     "directory": "editors/vscode"
   },
   "scripts": {
-    "test": "node test/diagnostics.test.js && node test/syntax.test.js && node test/metadata.test.js"
+    "test": "node test/diagnostics.test.js && node test/syntax.test.js && node test/completion.test.js && node test/metadata.test.js"
   },
-  "version": "0.6.0",
+  "version": "0.7.0",
   "publisher": "yassine-jemi01",
   "license": "MIT",
   "categories": [
