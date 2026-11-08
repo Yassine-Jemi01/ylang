@@ -109,7 +109,7 @@
         document.getElementById('unique-visitors').textContent = number(sum(days, 'unique_visitors'));
         status.textContent = archive.last_updated_at ? 'Last updated ' + new Date(archive.last_updated_at).toLocaleString() : 'Waiting for first collection';
         document.getElementById('coverage').textContent = days.length ? days[0].date + ' — ' + days[days.length - 1].date + ' · ' + days.length + ' days' : 'No daily records yet';
-        document.getElementById('first-collected').textContent = archive.first_collected_at ? 'Tracking since ' + new Date(archive.first_collected_at).toLocaleDateString() : 'Archive collection has not started yet.';
+        document.getElementById('first-collected').textContent = archive.first_collected_at ? 'Initial archive collected ' + new Date(archive.first_collected_at).toLocaleDateString() : 'Archive collection has not started yet.';
 
         const recent = days.slice(-14);
         const max = Math.max(1, ...recent.flatMap(day => [day.clones || 0, day.views || 0]));
