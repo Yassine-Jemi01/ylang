@@ -165,12 +165,38 @@
     toolbar.prepend(link);
   }
 
+
+  function setupBookScrollReveal() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!('IntersectionObserver' in window)) return;
+
+    const main = document.querySelector('.content main');
+    if (!main) return;
+    const blocks = Array.from(main.children);
+    if (!blocks.length) return;
+
+    document.documentElement.classList.add('ylang-scroll-ready');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('is-visible');
+        observer.unobserve(entry.target);
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+
+    blocks.forEach((block) => {
+      block.classList.add('ylang-scroll-reveal');
+      observer.observe(block);
+    });
+  }
+
   function initialize() {
     addSharedTheme();
     setBookLanguage();
     localizeArabicChrome();
     addHomeLink();
     addLanguageSwitcher();
+    setupBookScrollReveal();
   }
 
   if (document.readyState === 'loading') {

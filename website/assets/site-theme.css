@@ -173,3 +173,39 @@ html[dir="rtl"] main li::marker,
 html[dir="rtl"] .content main li::marker {
   unicode-bidi: isolate;
 }
+
+
+/* Scroll-triggered reveals for the English and Arabic documentation portals. */
+.docs-scroll-reveal {
+  opacity: 0;
+  transform: translate3d(0, 22px, 0);
+  transition: opacity 640ms ease, transform 640ms cubic-bezier(.2, .7, .2, 1);
+  will-change: opacity, transform;
+}
+.docs-scroll-reveal.is-visible {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+.docs-scroll-reveal.is-visible .docs-card {
+  animation: docs-reveal-card 520ms both;
+}
+.docs-scroll-reveal.is-visible .docs-card:nth-child(2) { animation-delay: 70ms; }
+.docs-scroll-reveal.is-visible .docs-card:nth-child(3) { animation-delay: 140ms; }
+.docs-scroll-reveal.is-visible .docs-card:nth-child(4) { animation-delay: 210ms; }
+.docs-scroll-reveal.is-visible .docs-card:nth-child(5) { animation-delay: 280ms; }
+.docs-scroll-reveal.is-visible .docs-card:nth-child(6) { animation-delay: 350ms; }
+@keyframes docs-reveal-card {
+  from { opacity: 0; transform: translate3d(0, 12px, 0); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .docs-scroll-reveal,
+  .docs-scroll-reveal .docs-card {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+    will-change: auto;
+  }
+}

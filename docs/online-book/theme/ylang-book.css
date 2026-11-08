@@ -278,3 +278,22 @@ html[dir="rtl"] .content main li::marker,
 .ylang-ar .content main li::marker {
   unicode-bidi: isolate;
 }
+
+
+/* Subtle scroll reveals for English and Arabic book chapters. */
+html.ylang-scroll-ready .content main > .ylang-scroll-reveal {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  transition: opacity 560ms ease, transform 560ms cubic-bezier(.2, .7, .2, 1);
+}
+html.ylang-scroll-ready .content main > .ylang-scroll-reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.ylang-scroll-ready .content main > .ylang-scroll-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

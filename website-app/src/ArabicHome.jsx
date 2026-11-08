@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   FiArrowLeft,
   FiArrowUpRight,
@@ -13,6 +13,32 @@ import {
 } from 'react-icons/fi';
 
 const REPO = 'https://github.com/Yassine-Jemi01/ylang';
+
+function ScrollReveal({ children, className = '' }) {
+  const revealRef = useRef(null);
+
+  useEffect(() => {
+    const element = revealRef.current;
+    if (!element) return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
+      element.classList.add('is-visible');
+      return;
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        element.classList.add('is-visible');
+        observer.unobserve(element);
+      }
+    }, { threshold: 0.12, rootMargin: '0px 0px -48px 0px' });
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  return <div ref={revealRef} className={`scroll-reveal ${className}`.trim()}>{children}</div>;
+}
 
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -160,6 +186,7 @@ function ArabicHome() {
           <div className="hero-bottom-line" aria-hidden="true" />
         </section>
 
+        <ScrollReveal>
         <section className="ecosystem" aria-label="المنصات وأدوات البناء">
           <div className="container ecosystem-inner">
             <p className="ecosystem-label">سلسلة أدوات تركّز على المترجم</p>
@@ -168,7 +195,9 @@ function ArabicHome() {
             </div>
           </div>
         </section>
+        </ScrollReveal>
 
+        <ScrollReveal>
         <section className="section language-section" id="features">
           <div className="container">
             <div className="section-heading">
@@ -183,7 +212,9 @@ function ArabicHome() {
             </div>
           </div>
         </section>
+        </ScrollReveal>
 
+        <ScrollReveal>
         <section className="section preview-section" id="release">
           <div className="container">
             <div className="section-heading">
@@ -203,7 +234,9 @@ function ArabicHome() {
             </div>
           </div>
         </section>
+        </ScrollReveal>
 
+        <ScrollReveal>
         <section className="section install-section" id="install">
           <div className="container install-grid">
             <div className="install-copy">
@@ -216,7 +249,9 @@ function ArabicHome() {
             <ArabicInstallPanel />
           </div>
         </section>
+        </ScrollReveal>
 
+        <ScrollReveal>
         <section className="section next-section">
           <div className="container">
             <div className="next-intro">
@@ -236,7 +271,9 @@ function ArabicHome() {
             </div>
           </div>
         </section>
+        </ScrollReveal>
       </main>
+      <ScrollReveal>
       <footer className="site-footer">
         <div className="container footer-main">
           <a className="brand footer-brand" href="./"><img className="brand-mark" src="../ylang-mark.svg" alt="" width="28" height="28" />YLang</a>
@@ -249,6 +286,7 @@ function ArabicHome() {
         </div>
         <div className="container footer-bottom"><span>YLang 2.3.0</span><span>المصدر المفتوح، بوضوح.</span></div>
       </footer>
+      </ScrollReveal>
     </>
   );
 }
