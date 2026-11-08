@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DropdownMenu, Tabs } from 'radix-ui';
 import {
   FiArrowRight,
@@ -24,6 +24,40 @@ const REPO = 'https://github.com/Yassine-Jemi01/ylang';
 const SITE = 'https://yassine-jemi01.github.io/ylang/';
 const BOOK = `${SITE}learn/index.html`;
 const DOCS = `${SITE}docs.html`;
+
+function ScrollReveal({ children, className = '' }) {
+  const revealRef = useRef(null);
+
+  useEffect(() => {
+    const element = revealRef.current;
+    if (!element) return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      element.classList.add('is-visible');
+      return;
+    }
+
+    if (!('IntersectionObserver' in window)) {
+      element.classList.add('is-visible');
+      return;
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        element.classList.add('is-visible');
+        observer.unobserve(element);
+      }
+    }, {
+      threshold: 0.12,
+      rootMargin: '0px 0px -48px 0px'
+    });
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  return <div ref={revealRef} className={`scroll-reveal ${className}`.trim()}>{children}</div>;
+}
 
 const installCommands = {
   fedora: 'sudo dnf install gcc make clang',
@@ -441,13 +475,13 @@ export default function App() {
       <Header />
       <main id="main">
         <Hero />
-        <Ecosystem />
-        <LanguageSection />
-        <ExperimentalSection />
-        <InstallSection />
-        <NextSteps />
+        <ScrollReveal><Ecosystem /></ScrollReveal>
+        <ScrollReveal><LanguageSection /></ScrollReveal>
+        <ScrollReveal><ExperimentalSection /></ScrollReveal>
+        <ScrollReveal><InstallSection /></ScrollReveal>
+        <ScrollReveal><NextSteps /></ScrollReveal>
       </main>
-      <Footer />
+      <ScrollReveal><Footer /></ScrollReveal>
     </>
   );
 }
