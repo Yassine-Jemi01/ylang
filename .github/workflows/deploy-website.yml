@@ -50,10 +50,11 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build
 
-      - name: Set up mdBook
-        uses: peaceiris/actions-mdbook@v2
-        with:
-          mdbook-version: "0.5.4"
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install mdBook 0.5.4
+        run: cargo install mdbook --version 0.5.4 --locked
 
       - name: Build, assemble, and verify the complete bilingual website
         run: python3 tools/build_website.py site-dist
