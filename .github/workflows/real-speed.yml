@@ -1,0 +1,31 @@
+name: YLang 2.3 vs C performance benchmark
+
+on:
+  push:
+    branches:
+      - bench/2.3-vs-c
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out YLang 2.3.0
+        uses: actions/checkout@v4
+      - name: Install native toolchain
+        run: sudo apt-get update && sudo apt-get install -y build-essential python3
+      - name: Build YLang compiler
+        run: make clean all CC=gcc
+      - name: Run paired YLang vs C benchmarks
+        run: python3 benchmarks/bench-real-speed.py --cc gcc --runs 30 --warmup 5 --output build/real-speed
+      - name: Upload full report and raw samples
+        uses: actions/upload-artifact@v4
+        with:
+          name: ylang-2.3-vs-c-performance
+          path: build/real-speed/
+          if-no-files-found: error
+          retention-days: 90
