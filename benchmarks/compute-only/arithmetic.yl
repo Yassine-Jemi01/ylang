@@ -9,3 +9,7 @@ function benchmark() -> int {
     }
     return total;
 }
+
+function main() -> int {
+    return 0;
+}
