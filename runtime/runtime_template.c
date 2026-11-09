@@ -1784,7 +1784,21 @@ static bool yl_string_ends_with(const char *value, const char *suffix) {
            memcmp(value + value_length - suffix_length, suffix, suffix_length) == 0;
 }
 static const char *yl_string_concat(const char *left, const char *right) {
-    return yl_format("%s%s", left, right);
+    size_t left_length = strlen(left);
+    size_t right_length = strlen(right);
+    if (left_length == SIZE_MAX ||
+        right_length > SIZE_MAX - left_length - 1U) {
+        yl_runtime_error("string concatenation result is too large");
+    }
+    size_t result_length = left_length + right_length;
+    char *result = malloc(result_length + 1U);
+    if (!result) yl_runtime_error("out of memory");
+    if (left_length > 0U) memcpy(result, left, left_length);
+    if (right_length > 0U) {
+        memcpy(result + left_length, right, right_length);
+    }
+    result[result_length] = '\0';
+    return (const char *)yl_track(result, result_length + 1U);
 }
 static const char *yl_string_replace(const char *value, const char *needle,
                                     const char *replacement) {
