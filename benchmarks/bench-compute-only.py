@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
         int64_t checksum = BENCH_FUNCTION();
         uint64_t elapsed = bench_now_ns() - started;
         sink = checksum;
-        printf("%" PRIu64 ",%" PRId64 "\\n", elapsed, checksum);
+        printf("%" PRIu64 ",%" PRId64 "\n", elapsed, checksum);
     }
 #ifdef YLANG_GENERATED
     yl_cleanup();
@@ -46,8 +46,8 @@ def run(command, env, timeout=180):
     result = subprocess.run(command, cwd=ROOT, env=env, text=True,
                             capture_output=True, timeout=timeout, check=False)
     if result.returncode:
-        raise RuntimeError(f"command failed ({result.returncode}): {' '.join(command)}\\n"
-                           f"stdout:\\n{result.stdout}\\nstderr:\\n{result.stderr}")
+        raise RuntimeError(f"command failed ({result.returncode}): {' '.join(command)}\n"
+                           f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}")
     return result.stdout
 
 def percentile(values, p):
@@ -68,16 +68,16 @@ def compile_pair(name, compiler, cc, build, env):
     ylang_bin, c_bin = build / f"{name}-ylang", build / f"{name}-c"
     run([str(compiler), "emit-c", str(SUITE / f"{name}.yl"), "-o", str(generated)], env)
     source = generated.read_text(encoding="utf-8")
-    match = re.search(r"(?m)^int64_t (yl_fn_m[0-9]+_benchmark)\\(void\\) \\{", source)
+    match = re.search(r"(?m)^int64_t (yl_fn_m[0-9]+_benchmark)\(void\) \{", source)
     if not match:
         raise RuntimeError(f"could not locate generated benchmark function in {generated}")
     symbol = match.group(1)
     source = source[:match.start()] + f"__attribute__((noinline)) int64_t {symbol}(void) {{" + source[match.end():]
     source += HARNESS.replace("BENCH_FUNCTION", symbol).replace(
-        "#include <inttypes.h>", "#define YLANG_GENERATED 1\\n#include <inttypes.h>")
+        "#include <inttypes.h>", "#define YLANG_GENERATED 1\n#include <inttypes.h>")
     generated.write_text(source, encoding="utf-8")
 
-    direct = (SUITE / f"{name}.c").read_text(encoding="utf-8")
+    direct = "#define _POSIX_C_SOURCE 200809L\n" + (SUITE / f"{name}.c").read_text(encoding="utf-8")
     direct += HARNESS.replace("BENCH_FUNCTION", "benchmark")
     c_source = build / f"{name}.direct.c"
     c_source.write_text(direct, encoding="utf-8")
@@ -157,7 +157,7 @@ def main():
         "paired_order": "alternating YLang-first and C-first",
         "checksums_verified": True, "workloads": results,
     }
-    (output / "results.json").write_text(json.dumps(metadata, indent=2) + "\\n", encoding="utf-8")
+    (output / "results.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     with (output / "samples.csv").open("w", newline="", encoding="utf-8") as stream:
         writer = csv.writer(stream)
         writer.writerow(("workload", "language", "sample", "nanoseconds", "checksum"))
@@ -190,8 +190,8 @@ def main():
         "helpers called by that path. It excludes process startup and runtime cleanup. "
         "Results are specific to this host, compiler, flags, and workload.", "",
         "Raw samples: samples.csv. Full metadata: results.json.", ""]
-    (output / "report.md").write_text("\\n".join(rows), encoding="utf-8")
-    print("\\n".join(rows))
+    (output / "report.md").write_text("\n".join(rows), encoding="utf-8")
+    print("\n".join(rows))
     return 0
 
 if __name__ == "__main__":
