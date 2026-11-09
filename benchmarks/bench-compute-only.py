@@ -74,7 +74,7 @@ def compile_pair(name, compiler, cc, build, env):
     symbol = match.group(1)
     source = re.sub(r"(?m)^int64_t (yl_fn_m[0-9]+_[A-Za-z0-9_]+)(\([^)]*\) \{)",
                       r"__attribute__((noinline)) int64_t \1\2", source)
-    source = re.sub(r"(?m)^int main\(void\) \{[^\\n]*\}\\s*$", "", source)
+    source = re.sub(r"(?m)^int main\(void\) \{[^\n]*\}\s*$", "", source)
     source += HARNESS.replace("BENCH_FUNCTION", symbol).replace(
         "#include <inttypes.h>", "#define YLANG_GENERATED 1\n#include <inttypes.h>")
     generated.write_text(source, encoding="utf-8")
