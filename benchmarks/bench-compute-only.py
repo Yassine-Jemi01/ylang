@@ -72,7 +72,8 @@ def compile_pair(name, compiler, cc, build, env):
     if not match:
         raise RuntimeError(f"could not locate generated benchmark function in {generated}")
     symbol = match.group(1)
-    source = re.sub(r"(?m)^int64_t (yl_fn_m[0-9]+_[A-Za-z0-9_]+)(\\([^)]*\\) \\{)",\n                      r"__attribute__((noinline)) int64_t \\1\\2", source)
+    source = re.sub(r"(?m)^int64_t (yl_fn_m[0-9]+_[A-Za-z0-9_]+)(\([^)]*\) \{)",
+                      r"__attribute__((noinline)) int64_t \1\2", source)
     source += HARNESS.replace("BENCH_FUNCTION", symbol).replace(
         "#include <inttypes.h>", "#define YLANG_GENERATED 1\n#include <inttypes.h>")
     generated.write_text(source, encoding="utf-8")
