@@ -1,0 +1,15 @@
+function benchmark() -> int {
+    let int i = 0;
+    let int state = 1;
+    let int total = 0;
+    while (i < 10000000) {
+        state = (state * 1664525 + 1013904223) % 2147483647;
+        if (state % 7 == 0) {
+            total = total + state;
+        } else {
+            total = total - (state % 97);
+        }
+        i = i + 1;
+    }
+    return total;
+}
