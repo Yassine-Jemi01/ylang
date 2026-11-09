@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse, csv, json, math, os, platform, re, statistics, subprocess, sys, tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 SUITE = ROOT / "benchmarks" / "compute-only"
 WORKLOADS = ("arithmetic", "branching", "array", "function-calls")
 
