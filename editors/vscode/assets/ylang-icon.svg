@@ -1,7 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="YLang application icon">
-  <rect width="256" height="256" rx="58" fill="#0B1220"/>
-  <g transform="translate(32 32) scale(0.75)">
-    <polygon points="28,52 96,52 126,94.7 126,204 94,204 94,146" fill="#00A8D6"/>
-    <polygon points="228,52 160,52 130,94.7 130,204 162,204 162,146" fill="#FF8A3D"/>
+  <rect width="256" height="256" rx="58" fill="#0D1729"/>
+  <g transform="translate(32 32) scale(0.375)">
+    <g fill="none" stroke-linecap="round" stroke-width="46.08">
+      <path d="M256 268.8 L143.36 128" stroke="#2BD4BD"/>
+      <path d="M256 268.8 L368.64 128" stroke="#FABD24"/>
+      <path d="M256 268.8 L256 404.48" stroke="#FFFFFF"/>
+      <circle cx="256" cy="268.8" r="30.72" stroke="#FFFFFF" stroke-width="12.8"/>
+    </g>
   </g>
 </svg>
