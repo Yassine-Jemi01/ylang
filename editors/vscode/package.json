@@ -41,8 +41,8 @@
         ],
         "configuration": "./language-configuration.json",
         "icon": {
-          "light": "./icons/ylang-light.svg",
-          "dark": "./icons/ylang-dark.svg"
+          "light": "./assets/ylang-logo-light.svg",
+          "dark": "./assets/ylang-logo-dark.svg"
         }
       }
     ],
