@@ -1,0 +1,12 @@
+function main() -> int {
+    let int i = 0;
+    let int state = 1;
+    let int total = 0;
+    while (i < 10000000) {
+        state = (state * 1664525 + 1013904223) % 2147483647;
+        total = total + state;
+        i = i + 1;
+    }
+    print(total);
+    return 0;
+}
