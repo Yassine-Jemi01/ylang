@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-static int64_t transform(int64_t value) {
+__attribute__((noinline)) static int64_t transform(int64_t value) {
     return (value * 31 + 7) % 1000003;
 }
 
