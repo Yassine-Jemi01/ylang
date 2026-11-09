@@ -6,6 +6,29 @@
   const menuButton = $(".menu-toggle");
   const nav = $("#site-nav");
 
+  function setupScrollReveal() {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!("IntersectionObserver" in window)) return;
+
+    const targets = document.querySelectorAll("main > section, body > footer");
+    if (!targets.length) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("is-visible");
+        observer.unobserve(entry.target);
+      });
+    }, { threshold: 0.12, rootMargin: "0px 0px -48px 0px" });
+
+    targets.forEach((target) => {
+      target.classList.add("docs-scroll-reveal");
+      observer.observe(target);
+    });
+  }
+
+  setupScrollReveal();
+
   // Preserve the page family when switching back from the Arabic portal.
   if (new URLSearchParams(window.location.search).get("from") === "home") {
     const englishChoice = $('.language-menu a[lang="en"]');

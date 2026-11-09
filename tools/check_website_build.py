@@ -294,6 +294,24 @@ def main() -> int:
     if "padding: 0;" not in book_css or "list-style-position: outside" not in book_css:
         fail("Arabic book list reset does not clear inherited physical padding")
 
+    arabic_home_source = (Path(__file__).resolve().parents[1] / "website-app" / "src" / "ArabicHome.jsx").read_text(encoding="utf-8")
+    if "function ScrollReveal" not in arabic_home_source or "prefers-reduced-motion" not in arabic_home_source:
+        fail("Arabic homepage is missing scroll reveals or reduced-motion handling")
+    if arabic_home_source.count("<ScrollReveal>") < 6:
+        fail("Arabic homepage sections are not consistently wrapped for scroll reveals")
+
+    docs_script = (root / "script.js").read_text(encoding="utf-8")
+    if "setupScrollReveal" not in docs_script or "IntersectionObserver" not in docs_script:
+        fail("English and Arabic documentation portals are missing scroll-reveal behavior")
+    if ".docs-scroll-reveal" not in (root / "assets" / "site-theme.css").read_text(encoding="utf-8"):
+        fail("shared documentation theme is missing scroll-reveal styles")
+
+    book_script = (root / "learn" / "theme" / "ylang-nav.js").read_text(encoding="utf-8")
+    if "setupBookScrollReveal" not in book_script or "IntersectionObserver" not in book_script:
+        fail("English and Arabic book chapters are missing scroll-reveal behavior")
+    if "ylang-scroll-ready" not in (root / "learn" / "theme" / "ylang-book.css").read_text(encoding="utf-8"):
+        fail("shared book stylesheet is missing scroll-reveal styles")
+
     shared_theme_css = (root / "assets" / "site-theme.css").read_text(encoding="utf-8")
     required_rtl_list_rules = ('html[dir="rtl"] main ul', "padding-inline-start: 1.75rem", "unicode-bidi: isolate")
     if any(rule not in shared_theme_css for rule in required_rtl_list_rules):
