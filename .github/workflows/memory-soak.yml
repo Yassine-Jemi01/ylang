@@ -1,0 +1,31 @@
+name: YLang 2.3 memory soak benchmark
+
+on:
+  push:
+    branches:
+      - bench/2.3-memory-soak
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  memory-soak:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out YLang 2.3.0
+        uses: actions/checkout@v4
+      - name: Install native toolchain
+        run: sudo apt-get update && sudo apt-get install -y build-essential python3
+      - name: Build released YLang compiler
+        run: make clean all CC=gcc
+      - name: Run paired memory retention soak
+        run: python3 benchmarks/bench-memory-soak.py --iterations 2000000 --interval 0.1 --output build/memory-soak
+      - name: Upload raw samples and report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ylang-2.3-memory-soak
+          path: build/memory-soak/
+          if-no-files-found: error
+          retention-days: 90
