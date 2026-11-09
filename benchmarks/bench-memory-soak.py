@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
-"""Paired long-running memory-retention benchmark for YLang 2.3 and C.
-
-The four cases deliberately separate lifetime policy from language:
-- YLang legacy string vs C retained allocations
-- YLang owned_string vs C malloc/free
-
-RSS is sampled while each process is alive. YLang's tracked-byte diagnostic is
-also recorded at normal exit; it is not treated as RSS.
-"""
+"""Long-duration, paired memory-retention soak for YLang 2.3 and C."""
 from __future__ import annotations
 
 import argparse
@@ -45,62 +37,103 @@ def cpu_name() -> str:
     return platform.processor() or platform.machine()
 
 
-def run_sample(label: str, command: list[str], env: dict[str, str],
-               interval: float, output_dir: Path) -> dict[str, object]:
-    samples: list[tuple[float, int]] = []
+def expect_ready(process: subprocess.Popen[str], label: str) -> None:
+    assert process.stdout is not None
+    line = process.stdout.readline()
+    if line != "READY\n":
+        stderr = process.stderr.read() if process.stderr else ""
+        raise RuntimeError(f"{label} did not reach the next batch boundary; output={line!r}; stderr={stderr}")
+
+
+def run_case(label: str, command: list[str], env: dict[str, str], rounds: int,
+             pause: float, interval: float, output_dir: Path) -> dict[str, object]:
+    process = subprocess.Popen(command, cwd=ROOT, env=env, text=True, bufsize=1,
+                               stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+    assert process.stdin is not None
+    samples: list[tuple[float, int, int]] = []
     started = time.monotonic()
-    process = subprocess.Popen(command, cwd=ROOT, env=env, text=True,
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    while process.poll() is None:
-        rss = read_rss_kib(process.pid)
-        if rss is not None:
-            samples.append((time.monotonic() - started, rss))
-        time.sleep(interval)
-    stdout, stderr = process.communicate()
-    elapsed = time.monotonic() - started
+
+    def sample_window(round_number: int) -> None:
+        deadline = time.monotonic() + pause
+        while True:
+            rss = read_rss_kib(process.pid)
+            if rss is not None:
+                samples.append((time.monotonic() - started, round_number, rss))
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            time.sleep(min(interval, remaining))
+
+    try:
+        expect_ready(process, label)
+        sample_window(0)
+        for round_number in range(1, rounds + 1):
+            process.stdin.write("1\n")
+            process.stdin.flush()
+            expect_ready(process, label)
+            sample_window(round_number)
+        process.stdin.write("0\n")
+        process.stdin.flush()
+        stdout, stderr = process.communicate(timeout=30)
+        elapsed = time.monotonic() - started
+    except Exception:
+        process.kill()
+        process.communicate()
+        raise
+
     if process.returncode != 0:
-        raise RuntimeError(
-            f"{label} exited {process.returncode}\nstdout:\n{stdout}\nstderr:\n{stderr}"
-        )
+        raise RuntimeError(f"{label} exited {process.returncode}\nstdout:\n{stdout}\nstderr:\n{stderr}")
+
     csv_path = output_dir / f"{label}.csv"
     with csv_path.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.writer(stream)
-        writer.writerow(("elapsed_seconds", "rss_kib"))
-        writer.writerows((f"{t:.3f}", rss) for t, rss in samples)
+        writer.writerow(("elapsed_seconds", "completed_round", "rss_kib"))
+        writer.writerows((f"{t:.3f}", round_number, rss) for t, round_number, rss in samples)
 
-    rss_values = [value for _, value in samples]
+    rss_values = [value for _, _, value in samples]
+    per_round = []
+    for round_number in range(rounds + 1):
+        values = [rss for _, r, rss in samples if r == round_number]
+        per_round.append({
+            "round": round_number,
+            "rss_median_mib": round(sum(values) / len(values) / 1024, 2) if values else None,
+            "rss_peak_mib": round(max(values) / 1024, 2) if values else None,
+        })
     stats_match = re.search(
         r"YLang memory stats: tracked_allocations=(\d+) tracked_bytes=(\d+)", stderr
     )
-    result: dict[str, object] = {
+    return {
         "case": label,
-        "elapsed_seconds": round(elapsed, 3),
+        "elapsed_seconds": round(elapsed, 2),
         "samples": len(samples),
         "rss_start_mib": round(rss_values[0] / 1024, 2) if rss_values else None,
         "rss_peak_mib": round(max(rss_values) / 1024, 2) if rss_values else None,
         "rss_last_sample_mib": round(rss_values[-1] / 1024, 2) if rss_values else None,
-        "rss_growth_mib": round((max(rss_values) - rss_values[0]) / 1024, 2) if rss_values else None,
+        "rss_growth_mib": round((rss_values[-1] - rss_values[0]) / 1024, 2) if rss_values else None,
         "tracked_allocations_at_exit": int(stats_match.group(1)) if stats_match else None,
         "tracked_bytes_at_exit": int(stats_match.group(2)) if stats_match else None,
         "stdout": stdout.strip(),
         "stderr_tail": stderr.strip().splitlines()[-1] if stderr.strip() else "",
         "samples_file": csv_path.name,
+        "per_round": per_round,
     }
-    return result
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--compiler", type=Path, default=ROOT / "build" / "ylang")
     parser.add_argument("--cc", default="gcc")
-    parser.add_argument("--iterations", type=int, default=2_000_000)
-    parser.add_argument("--interval", type=float, default=0.1)
+    parser.add_argument("--batch", type=int, default=100_000)
+    parser.add_argument("--rounds", type=int, default=10)
+    parser.add_argument("--pause", type=float, default=15.0)
+    parser.add_argument("--interval", type=float, default=0.5)
     parser.add_argument("--output", type=Path, default=ROOT / "build" / "memory-soak")
     args = parser.parse_args()
     if sys.platform != "linux":
         parser.error("RSS sampling currently requires Linux /proc")
-    if args.iterations < 1 or args.interval <= 0:
-        parser.error("iterations and interval must be positive")
+    if args.batch < 1 or args.rounds < 1 or args.pause <= 0 or args.interval <= 0:
+        parser.error("batch, rounds, pause, and interval must be positive")
 
     compiler = args.compiler.resolve()
     if not compiler.is_file():
@@ -113,14 +146,13 @@ def main() -> int:
     cases: list[tuple[str, list[str], dict[str, str]]] = []
     base_env = os.environ.copy()
     base_env["YLANG_OPT_LEVEL"] = "2"
-
     for label, source_name in (
         ("ylang-legacy", "memory-soak.yl"),
         ("ylang-owned", "memory-soak-owned.yl"),
     ):
         template = (ROOT / "benchmarks" / source_name).read_text(encoding="utf-8")
         source = temp_dir / source_name
-        source.write_text(template.replace("__ITERATIONS__", str(args.iterations)), encoding="utf-8")
+        source.write_text(template.replace("__BATCH__", str(args.batch)), encoding="utf-8")
         binary = temp_dir / label
         subprocess.run(
             [str(compiler), "build", str(source), "-o", str(binary), "--cc", args.cc],
@@ -137,14 +169,15 @@ def main() -> int:
         cwd=ROOT, check=True, text=True,
     )
     cases.extend((
-        ("c-retained", [str(c_binary), str(args.iterations), "retain"], base_env),
-        ("c-freed", [str(c_binary), str(args.iterations), "free"], base_env),
+        ("c-retained", [str(c_binary), str(args.batch), "retain"], base_env),
+        ("c-freed", [str(c_binary), str(args.batch), "free"], base_env),
     ))
 
     results = []
     for label, command, env in cases:
-        print(f"Running {label}...", flush=True)
-        result = run_sample(label, command, env, args.interval, output_dir)
+        print(f"Starting {label}: {args.rounds} rounds, {args.batch:,} allocations/round, "
+              f"{args.pause:g}s observation after each round", flush=True)
+        result = run_case(label, command, env, args.rounds, args.pause, args.interval, output_dir)
         results.append(result)
         print(json.dumps(result, sort_keys=True), flush=True)
 
@@ -158,28 +191,30 @@ def main() -> int:
         "ylang_version": subprocess.run(
             [str(compiler), "--version"], capture_output=True, text=True, check=True
         ).stdout.strip(),
-        "iterations_per_case": args.iterations,
+        "rounds": args.rounds,
+        "allocations_per_round": args.batch,
+        "total_allocations_per_case": args.rounds * args.batch,
         "payload_bytes_per_allocation": PAYLOAD_BYTES,
+        "pause_after_each_round_seconds": args.pause,
         "sample_interval_seconds": args.interval,
         "optimization": "-O2",
         "results": results,
     }
-    (output_dir / "results.json").write_text(
-        json.dumps(metadata, indent=2) + "\n", encoding="utf-8"
-    )
+    (output_dir / "results.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
 
     rows = [
-        "# YLang 2.3 Memory Soak Benchmark",
+        "# YLang 2.3 Long-Duration Memory Soak",
         "",
         f"- Host: {metadata['host']}",
         f"- CPU: {metadata['cpu']}",
         f"- Native compiler: {metadata['native_compiler']}",
         f"- YLang: {metadata['ylang_version']}",
-        f"- Workload: {args.iterations:,} allocations per case, {PAYLOAD_BYTES} payload bytes each",
-        f"- RSS sampling interval: {args.interval:g}s",
+        f"- Workload: {args.rounds} rounds × {args.batch:,} allocations = {args.rounds * args.batch:,} allocations per case",
+        f"- Payload: {PAYLOAD_BYTES} bytes per string",
+        f"- Observation: {args.pause:g}s after each round; RSS sampled every {args.interval:g}s",
         "- Optimization: -O2",
         "",
-        "| Case | Time (s) | RSS start (MiB) | RSS peak (MiB) | RSS growth (MiB) | Tracked allocations at exit | Tracked bytes at exit |",
+        "| Case | Duration (s) | RSS baseline (MiB) | RSS peak (MiB) | RSS change (MiB) | Tracked allocations at exit | Tracked bytes at exit |",
         "|---|---:|---:|---:|---:|---:|---:|",
     ]
     for result in results:
@@ -191,16 +226,15 @@ def main() -> int:
         "",
         "## Interpretation",
         "",
-        "The retained cases intentionally keep every allocation alive until process exit. "
-        "The freed cases release each allocation immediately. Compare YLang legacy with C retained, "
-        "and YLang owned_string with C malloc/free; do not compare unlike lifetime policies.",
+        "Compare YLang legacy string with C retained allocations, and YLang owned_string with C malloc/free. "
+        "Each process stays alive through all rounds; the harness pauses after each batch and samples RSS "
+        "while the process is idle, so the report shows whether memory rises between rounds or remains bounded.",
         "",
-        "RSS is sampled from /proc/<pid>/status. The final RSS sample is taken before process exit; "
-        "the allocator may keep freed pages mapped, so RSS need not fall immediately after free. "
-        "YLang tracked bytes are a separate runtime counter sampled at normal exit and exclude allocator "
-        "metadata. This is a retention stress test, not a general language-speed benchmark.",
+        "RSS comes from /proc/<pid>/status. Allocators may keep freed pages mapped, so a flat RSS after free "
+        "does not prove that live allocations remain. YLang tracked-byte counters are reported separately "
+        "at normal process exit and exclude allocator metadata.",
         "",
-        "Raw time-series samples are in the accompanying CSV files.",
+        "Raw per-sample time series and per-round summaries are included as CSV and JSON.",
         "",
     ))
     report = "\n".join(rows)
@@ -212,6 +246,6 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
+    except (OSError, RuntimeError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
         print(f"memory benchmark failed: {error}", file=sys.stderr)
         raise SystemExit(1)

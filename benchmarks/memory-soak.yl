@@ -1,10 +1,19 @@
 function main() -> int {
-    let int count = __ITERATIONS__;
-    let int index = 0;
-    while (index < count) {
-        let string value = string.concat("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
-        index++;
+    let bool running = true;
+    let int rounds = 0;
+    while (running) {
+        let int command = terminal.read_int("READY\n");
+        if (command == 0) {
+            running = false;
+        } else {
+            let int index = 0;
+            while (index < __BATCH__) {
+                let string value = string.concat("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+                index++;
+            }
+            rounds++;
+        }
     }
-    print(index);
+    print(rounds);
     return 0;
 }

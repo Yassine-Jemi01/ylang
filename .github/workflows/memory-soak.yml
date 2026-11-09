@@ -20,8 +20,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y build-essential python3
       - name: Build released YLang compiler
         run: make clean all CC=gcc
-      - name: Run paired memory retention soak
-        run: python3 benchmarks/bench-memory-soak.py --iterations 2000000 --interval 0.1 --output build/memory-soak
+      - name: Run long-duration paired memory retention soak
+        run: python3 benchmarks/bench-memory-soak.py --batch 100000 --rounds 10 --pause 15 --interval 0.5 --output build/memory-soak
       - name: Upload raw samples and report
         uses: actions/upload-artifact@v4
         with:
