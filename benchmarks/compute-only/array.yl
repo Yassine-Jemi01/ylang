@@ -1,0 +1,15 @@
+function benchmark() -> int {
+    let int values[] = [13, 29, 47, 61, 83, 101, 127, 149, 167, 191, 211, 233, 251, 277, 293, 313];
+    let int i = 0;
+    let int index = 0;
+    let int total = 0;
+    while (i < 20000000) {
+        total = total + values[index];
+        index = index + 1;
+        if (index == 16) {
+            index = 0;
+        }
+        i = i + 1;
+    }
+    return total;
+}
