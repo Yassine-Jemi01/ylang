@@ -1,6 +1,6 @@
 # YLang Language Support for VS Code
 
-Official branding: [light logo](assets/ylang-logo-light.svg) · [dark logo](assets/ylang-logo-dark.svg) · [transparent mark](assets/ylang-mark.svg) · [application icon](assets/ylang-icon.svg)
+Official branding: [light logo](assets/ylang-logo-light.svg) · [dark logo](assets/ylang-logo-dark.svg)
 
 This extension registers the `.yl` file extension as YLang and provides syntax highlighting, compiler diagnostics, a language icon, and Code Runner integration.
 
@@ -8,7 +8,7 @@ This extension registers the `.yl` file extension as YLang and provides syntax h
 
 - YLang 2.2 highlighting for `struct` and `enum` declarations, enum variants, exhaustive `match` arms, named `from ... import ...` imports, typed variables and struct fields, built-in namespaces, functions, operators, arrays, scientific-notation numbers, strings, f-strings, and both `//` and `/* ... */` comments.
 - Matching brackets, automatic closing pairs, comment toggling, and basic indentation.
-- Official YLang mark for light and dark themes, using the current teal/gold/white identity.
+- The exact official YLang wordmarks used by the repository README, with matching light and dark variants.
 - A default Code Runner executor for `.yl` files: compile with YLang, then run the generated executable.
 - Syntax and semantic diagnostics from the real `ylang check` compiler command, including current array/type diagnostics, diagnostic codes, full explanations, and actionable compiler hints in diagnostic details.
 - Checks on open, while editing, and on save. Checks use a temporary copy of the current editor buffer, so unsaved edits are checked too. For saved files in writable directories, the temporary source is created beside the file so relative imports continue to resolve.
@@ -75,11 +75,7 @@ Save a `.yl` file and invoke **Run Code** (default shortcut: `Ctrl+Alt+N`). The 
 
 ## Official branding assets
 
-- `assets/ylang-logo-light.svg` and `assets/ylang-logo-dark.svg`: full wordmarks for light and dark backgrounds.
-- `assets/ylang-mark.svg`: transparent teal/gold/white mark used by VS Code's language icon.
-- `assets/ylang-icon.svg`: square application-style icon.
-
-The full wordmarks and application icon use the current teal/gold/white identity. VS Code's language icon uses the compact transparent mark so it remains legible at small sizes.
+- `assets/ylang-logo-light.svg` and `assets/ylang-logo-dark.svg` are the same two canonical logo files referenced by the repository README.
 
 ## File icon note
 
