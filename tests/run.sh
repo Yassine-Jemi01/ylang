@@ -1039,6 +1039,22 @@ cmp build/io-atomic.txt build/io-atomic-expected.txt
 ./build/test-string-replace > build/string-replace.out
 diff -u tests/expected-string-replace.txt build/string-replace.out
 
+# String concatenation preserves empty operands and tracked cleanup.
+cat > build/string-concat-edge.yl <<'EOF'
+function main() -> int {
+    print(string.concat("", "right"));
+    print(string.concat("left", ""));
+    print(string.concat("", ""));
+    return 0;
+}
+EOF
+./build/ylang check build/string-concat-edge.yl >/dev/null
+./build/ylang build build/string-concat-edge.yl -o build/test-string-concat-edge >/dev/null
+YLANG_MEMORY_STATS=1 ./build/test-string-concat-edge > build/string-concat-edge.out 2> build/string-concat-edge.err
+printf 'right\nleft\n\n' > build/string-concat-edge.expected
+diff -u build/string-concat-edge.expected build/string-concat-edge.out
+grep -Eq 'YLang memory stats: tracked_allocations=0 tracked_bytes=0' build/string-concat-edge.err
+
 # String standard library and stdin line input.
 ./build/ylang check examples/strings.yl >/dev/null
 ./build/ylang build examples/strings.yl -o build/test-strings >/dev/null
