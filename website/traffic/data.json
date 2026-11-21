@@ -155,10 +155,16 @@
       "unique_cloners": 13,
       "unique_visitors": 1,
       "views": 1
+    },
+    "2026-11-20": {
+      "clones": 9,
+      "unique_cloners": 5,
+      "unique_visitors": 1,
+      "views": 1
     }
   },
   "first_collected_at": "2026-11-08T10:09:42Z",
-  "last_updated_at": "2026-11-20T11:50:19Z",
+  "last_updated_at": "2026-11-21T11:16:47Z",
   "repository": "Yassine-Jemi01/ylang",
   "schema_version": 1
 }
