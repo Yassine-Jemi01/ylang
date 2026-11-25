@@ -104,6 +104,97 @@ function game2d_rects_overlap(int ax, int ay, int aw, int ah,
            ay < by + bh and ay + ah > by;
 }
 
+
+/* Park-Miller PRNG. This is for game behavior, not cryptographic use. */
+let int game2d_random_state = 1;
+
+function game2d_random_seed(int seed) -> void {
+    seed = seed % 2147483646;
+    if (seed < 0) {
+        seed = 0 - seed;
+    }
+    game2d_random_state = seed + 1;
+}
+
+function game2d_random() -> int {
+    game2d_random_state = (game2d_random_state * 48271) % 2147483647;
+    return game2d_random_state - 1;
+}
+
+function game2d_random_range(int minimum, int maximum) -> int {
+    if (maximum < minimum) {
+        return minimum;
+    }
+    if (minimum < -1073741823 or maximum > 1073741823) {
+        return minimum;
+    }
+    let int span = maximum - minimum + 1;
+    return minimum + (game2d_random() % span);
+}
+
+/* Small reusable helpers for frame-based animation and 2D motion. */
+function game2d_animation_frame(int elapsed_ms, int frame_duration_ms,
+                                int frame_count, bool looping) -> int {
+    if (elapsed_ms < 0 or frame_duration_ms <= 0 or frame_count <= 0) {
+        return 0;
+    }
+    let int frame = elapsed_ms / frame_duration_ms;
+    if (looping) {
+        return frame % frame_count;
+    }
+    if (frame >= frame_count) {
+        return frame_count - 1;
+    }
+    return frame;
+}
+
+function game2d_clamp_float(float value, float minimum, float maximum) -> float {
+    if (maximum < minimum) {
+        return minimum;
+    }
+    if (value < minimum) {
+        return minimum;
+    }
+    if (value > maximum) {
+        return maximum;
+    }
+    return value;
+}
+
+function game2d_lerp(float start, float finish, float amount) -> float {
+    return start + (finish - start) * amount;
+}
+
+function game2d_move_towards(float current, float target, float max_delta) -> float {
+    if (max_delta <= 0.0) {
+        return current;
+    }
+    if (target > current and target - current <= max_delta) {
+        return target;
+    }
+    if (target < current and current - target <= max_delta) {
+        return target;
+    }
+    if (target > current) {
+        return current + max_delta;
+    }
+    if (target < current) {
+        return current - max_delta;
+    }
+    return target;
+}
+
+function game2d_circles_overlap(float ax, float ay, float ar,
+                                float bx, float by, float br) -> bool {
+    if (ar < 0.0 or br < 0.0) {
+        return false;
+    }
+    let float dx = ax - bx;
+    let float dy = ay - by;
+    let float radius = ar + br;
+    return dx * dx + dy * dy <= radius * radius;
+}
+
 function game2d_point_in_rect(int px, int py, int rx, int ry,
                               int width, int height) -> bool {
     if (width <= 0 or height <= 0) {
