@@ -1510,6 +1510,11 @@ grep -q 'ylgui_api_key_down' build/game2d-generated.c
 grep -q 'ylgui_api_key_pressed' build/game2d-generated.c
 grep -q 'ylgui_api_key_released' build/game2d-generated.c
 grep -q 'ylgui_api_draw_text' build/game2d-generated.c
+grep -q 'ylgui_api_load_bmp' build/game2d-generated.c
+grep -q 'ylgui_api_draw_image' build/game2d-generated.c
+grep -q 'ylgui_api_free_image' build/game2d-generated.c
+grep -q 'game2d_random_range' build/game2d-generated.c
+grep -q 'game2d_animation_frame' build/game2d-generated.c
 grep -q 'ylgui_api_mouse_button_down' build/game2d-generated.c
 grep -q 'ylgui_api_ticks_ms' build/game2d-generated.c
 
