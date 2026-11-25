@@ -16,15 +16,32 @@ function main() -> int {
     }
     let bool pressed = gui.key_pressed("Space");
     let bool released = gui.key_released("Space");
-    if (not gui.draw_text("TETRIS 123", 2, 28, 2, 240, 240, 240)) {
+    let int image = gui.load_bmp("build/game2d-test.bmp");
+    if (image < 0) {
+        print(gui.last_error());
         gui.close();
         gui.shutdown();
         return 6;
     }
-    if (not gui.present()) {
+    if (not gui.draw_image(image, 40, 40)) {
         gui.close();
         gui.shutdown();
         return 7;
+    }
+    if (not gui.free_image(image)) {
+        gui.close();
+        gui.shutdown();
+        return 8;
+    }
+    if (not gui.draw_text("TETRIS 123", 2, 28, 2, 240, 240, 240)) {
+        gui.close();
+        gui.shutdown();
+        return 9;
+    }
+    if (not gui.present()) {
+        gui.close();
+        gui.shutdown();
+        return 10;
     }
     gui.close();
     gui.shutdown();
