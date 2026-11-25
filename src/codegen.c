@@ -740,12 +740,15 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "gui.create_window") == 0) return "ylgui_api_create_window";
     if (strcmp(name, "gui.poll") == 0) return "ylgui_api_poll";
     if (strcmp(name, "gui.key_down") == 0) return "ylgui_api_key_down";
+    if (strcmp(name, "gui.key_pressed") == 0) return "ylgui_api_key_pressed";
+    if (strcmp(name, "gui.key_released") == 0) return "ylgui_api_key_released";
     if (strcmp(name, "gui.mouse_x") == 0) return "ylgui_api_mouse_x";
     if (strcmp(name, "gui.mouse_y") == 0) return "ylgui_api_mouse_y";
     if (strcmp(name, "gui.mouse_button_down") == 0) return "ylgui_api_mouse_button_down";
     if (strcmp(name, "gui.ticks_ms") == 0) return "ylgui_api_ticks_ms";
     if (strcmp(name, "gui.clear") == 0) return "ylgui_api_clear";
     if (strcmp(name, "gui.draw_rect") == 0) return "ylgui_api_draw_rect";
+    if (strcmp(name, "gui.draw_text") == 0) return "ylgui_api_draw_text";
     if (strcmp(name, "gui.present") == 0) return "ylgui_api_present";
     if (strcmp(name, "gui.last_error") == 0) return "ylgui_api_last_error";
     if (strcmp(name, "gui.close") == 0) return "ylgui_api_close";
