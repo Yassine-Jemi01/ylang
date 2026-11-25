@@ -39,6 +39,18 @@ function game2d_draw_text(string text, int x, int y, int scale,
     return gui.draw_text(text, x, y, scale, red, green, blue);
 }
 
+function game2d_load_bmp(string path) -> int {
+    return gui.load_bmp(path);
+}
+
+function game2d_draw_image(int image, int x, int y) -> bool {
+    return gui.draw_image(image, x, y);
+}
+
+function game2d_free_image(int image) -> bool {
+    return gui.free_image(image);
+}
+
 function game2d_last_error() -> string {
     return gui.last_error();
 }
