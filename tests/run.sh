@@ -1575,6 +1575,14 @@ else
     grep -q 'build-asm currently supports Linux x86-64 only' build/gui-nasm.out
 fi
 
+# Build a tiny 24-bit BMP fixture for the optional SDL2 integration smoke test.
+python3 - <<'PY'
+import struct
+from pathlib import Path
+header = b"BM" + struct.pack("<IHHI", 58, 0, 0, 54)
+dib = struct.pack("<IiiHHIIiiII", 40, 1, 1, 1, 24, 0, 4, 2835, 2835, 0, 0)
+Path("build/game2d-test.bmp").write_bytes(header + dib + b"\xff\x00\x00\x00")
+
 # Build the SDL2-backed GUI integration only where its development package exists.
 if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists sdl2; then
     ./build/ylang build tests/gui-smoke.yl -o build/test-gui >/dev/null
