@@ -8,11 +8,12 @@ The experimental game2d.yl module is a small, source-level helper layer over YLa
 - Run a frame loop with event polling, background clear, and present.
 - Read held, newly pressed, and newly released keyboard keys, plus mouse position and buttons.
 - Measure elapsed time between frames.
-- Draw filled rectangles and compact bitmap text with RGB colors.
+- Draw filled rectangles, compact bitmap text, and BMP sprites.
+- Generate repeatable pseudo-random values and use small animation/physics helpers.
 - Test rectangle overlap and point-in-rectangle.
 - A complete playable Dodge example that demonstrates movement, timing, collision detection, and score.
 
-Image loading/sprites, audio playback, animation helpers, physics helpers, scene management, and multiple active windows remain outside this first 2.3.1 update. Text uses a built-in 3x5 bitmap font and does not require SDL2_ttf.
+PNG/JPEG loading, audio playback through Game2D, a scene manager, and multiple active windows remain outside this update. BMP loading uses SDL2 directly; audio playback is available separately through YLang's optional Voice library. Text uses a built-in 3x5 bitmap font and does not require SDL2_ttf.
 
 ## Requirements
 
@@ -76,6 +77,13 @@ The example in this repository uses a relative import because it is intended to 
 | game2d_key_pressed(name) | Test whether a key was pressed during the current frame (non-repeating key-down). |
 | game2d_key_released(name) | Test whether a key was released during the current frame. |
 | game2d_draw_text(text, x, y, scale, red, green, blue) | Draw compact 3x5 bitmap text; scale must be 1–16. |
+| game2d_load_bmp(path) | Load a BMP image and return an integer handle, or -1 on failure. |
+| game2d_draw_image(handle, x, y) | Draw a loaded BMP image at its native dimensions. |
+| game2d_free_image(handle) | Release a loaded image handle. Images are also released when the window closes. |
+| game2d_random_seed(seed) / game2d_random_range(min, max) | Seed and use the Park-Miller pseudo-random generator; not for cryptographic use. |
+| game2d_animation_frame(elapsed, duration, count, looping) | Calculate a frame index for a time-based animation. |
+| game2d_lerp / game2d_clamp_float / game2d_move_towards | Basic floating-point motion helpers. |
+| game2d_circles_overlap | Circle collision test using squared distances. |
 | game2d_mouse_x() / game2d_mouse_y() | Read the current mouse position. |
 | game2d_mouse_button_down(button) | Test a mouse button; left is 1, middle 2, right 3. |
 | game2d_ticks_ms() | Read elapsed SDL time in milliseconds. |
