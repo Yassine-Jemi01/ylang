@@ -2,7 +2,7 @@
 
 The optional GUI runtime uses SDL2. The Game2D helper module is a small, experimental layer for learning and simple 2D prototypes—not a general-purpose game engine.
 
-It provides helpers for window lifecycle, event polling, keyboard and mouse input, elapsed frame time, rectangle drawing, collision checks, and presentation. The repository includes a playable Dodge example. This chapter explains the setup and development workflow; the [Game2D Library Reference](reference/GAME2D.md) and [GUI API Contract](reference/GUI-API-SPEC.md) define the exact API and its limitations.
+It provides helpers for window lifecycle, event polling, held/pressed/released keyboard input, mouse input, elapsed frame time, rectangle and bitmap-text drawing, BMP sprite loading, collision checks, and presentation. The module also includes small pseudo-random, animation-frame, interpolation, and 2D motion helpers. The repository includes a playable Dodge example. This chapter explains the setup and development workflow; the [Game2D Library Reference](reference/GAME2D.md) and [GUI API Contract](reference/GUI-API-SPEC.md) define the exact API and its limitations.
 
 ## Before you start
 
@@ -62,7 +62,7 @@ Keep the update logic separate from drawing where practical. This makes the game
 
 Headless CI verifies type-checking, compilation, linking, and non-window helper behavior. It does not verify that a live window behaves correctly on every desktop, display server, or graphics driver. Test the game on a real graphical session before relying on it.
 
-The library does not yet provide sprites, advanced animation, audio, a scene system, or a complete physics engine. Do not assume it is a replacement for a mature game engine. Check the API contract for supported functions and the exact behavior of window and event operations.
+BMP sprites are supported; PNG/JPEG loading and a scene manager are not included. Audio playback is available separately through the optional Voice library. The animation and physics helpers are intentionally small utilities, not a complete engine. Do not assume Game2D is a replacement for a mature game engine.
 
 ## Troubleshooting
 
