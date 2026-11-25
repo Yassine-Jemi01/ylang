@@ -38,6 +38,15 @@ bool ylgui_clear(YlguiWindow *window, uint8_t red, uint8_t green, uint8_t blue);
 bool ylgui_draw_rect(YlguiWindow *window, int x, int y, int width, int height,
                      uint8_t red, uint8_t green, uint8_t blue);
 
+/* Draw compact built-in 3x5 bitmap text. */
+bool ylgui_draw_text(YlguiWindow *window, const char *text, int x, int y, int scale,
+                     uint8_t red, uint8_t green, uint8_t blue);
+
+bool ylgui_api_key_pressed(const char *key);
+bool ylgui_api_key_released(const char *key);
+bool ylgui_api_draw_text(const char *text, int64_t x, int64_t y, int64_t scale,
+                         int64_t red, int64_t green, int64_t blue);
+
 /* Present the frame to the window. */
 bool ylgui_present(YlguiWindow *window);
 
