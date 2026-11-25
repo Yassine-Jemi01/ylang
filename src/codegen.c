@@ -749,6 +749,9 @@ static const char *builtin_c_name(const char *name)
     if (strcmp(name, "gui.clear") == 0) return "ylgui_api_clear";
     if (strcmp(name, "gui.draw_rect") == 0) return "ylgui_api_draw_rect";
     if (strcmp(name, "gui.draw_text") == 0) return "ylgui_api_draw_text";
+    if (strcmp(name, "gui.load_bmp") == 0) return "ylgui_api_load_bmp";
+    if (strcmp(name, "gui.draw_image") == 0) return "ylgui_api_draw_image";
+    if (strcmp(name, "gui.free_image") == 0) return "ylgui_api_free_image";
     if (strcmp(name, "gui.present") == 0) return "ylgui_api_present";
     if (strcmp(name, "gui.last_error") == 0) return "ylgui_api_last_error";
     if (strcmp(name, "gui.close") == 0) return "ylgui_api_close";
