@@ -6,13 +6,13 @@ The experimental game2d.yl module is a small, source-level helper layer over YLa
 
 - Create and close one window.
 - Run a frame loop with event polling, background clear, and present.
-- Read keyboard state, mouse position, and mouse buttons.
+- Read held, newly pressed, and newly released keyboard keys, plus mouse position and buttons.
 - Measure elapsed time between frames.
-- Draw filled rectangles with RGB colors.
+- Draw filled rectangles and compact bitmap text with RGB colors.
 - Test rectangle overlap and point-in-rectangle.
 - A complete playable Dodge example that demonstrates movement, timing, collision detection, and score.
 
-This version does not yet provide sprites or image loading, text rendering, audio, animation systems, physics, scene management, or multiple active windows. image.open() opens a file in the operating system's default viewer; it does not draw a sprite inside the game window.
+Image loading/sprites, audio playback, animation helpers, physics helpers, scene management, and multiple active windows remain outside this first 2.3.1 update. Text uses a built-in 3x5 bitmap font and does not require SDL2_ttf.
 
 ## Requirements
 
@@ -48,7 +48,7 @@ Controls:
 - Escape: quit.
 - Avoid the falling red block. The score increases each time it passes you.
 
-The example writes instructions and the final score to the terminal. The current renderer has no text-drawing API, so the score is not drawn inside the window.
+The Dodge example still reports its final score in the terminal. Game2D now also supports compact in-window text for HUDs and score labels.
 
 ## Install the optional runtime and helper module
 
@@ -72,7 +72,10 @@ The example in this repository uses a relative import because it is intended to 
 | game2d_begin_frame(red, green, blue) | Poll events and clear the frame background. Returns false when the user closes the window or an error occurs. |
 | game2d_draw_rect(x, y, width, height, red, green, blue) | Draw a filled rectangle. Coordinates start at the top-left. |
 | game2d_end_frame() | Present the finished frame. |
-| game2d_key_down(name) | Test whether a key is held, e.g. "Left", "Right", "Space", or "Escape". |
+| game2d_key_down(name) | Test whether a key is held. |
+| game2d_key_pressed(name) | Test whether a key was pressed during the current frame (non-repeating key-down). |
+| game2d_key_released(name) | Test whether a key was released during the current frame. |
+| game2d_draw_text(text, x, y, scale, red, green, blue) | Draw compact 3x5 bitmap text; scale must be 1–16. |
 | game2d_mouse_x() / game2d_mouse_y() | Read the current mouse position. |
 | game2d_mouse_button_down(button) | Test a mouse button; left is 1, middle 2, right 3. |
 | game2d_ticks_ms() | Read elapsed SDL time in milliseconds. |
