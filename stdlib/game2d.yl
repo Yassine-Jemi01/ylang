@@ -34,12 +34,25 @@ function game2d_end_frame() -> bool {
     return gui.present();
 }
 
+function game2d_draw_text(string text, int x, int y, int scale,
+                           int red, int green, int blue) -> bool {
+    return gui.draw_text(text, x, y, scale, red, green, blue);
+}
+
 function game2d_last_error() -> string {
     return gui.last_error();
 }
 
 function game2d_key_down(string key) -> bool {
     return gui.key_down(key);
+}
+
+function game2d_key_pressed(string key) -> bool {
+    return gui.key_pressed(key);
+}
+
+function game2d_key_released(string key) -> bool {
+    return gui.key_released(key);
 }
 
 function game2d_mouse_x() -> int {
