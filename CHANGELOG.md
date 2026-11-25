@@ -8,6 +8,8 @@ The next development milestone is planned to focus on the LLVM backend; no LLVM 
 
 - Added dependency-free 3x5 bitmap text rendering to the optional SDL2 GUI API and Game2D helpers, including bounded text length and scale/coordinate/color validation.
 - Added frame-scoped `gui.key_pressed` and `gui.key_released` events for responsive game controls; repeated key-down events are ignored.
+- Added BMP texture loading, drawing, and explicit release handles to the SDL2 GUI runtime; textures are automatically released with their owning window.
+- Added Game2D pseudo-random, animation-frame, interpolation, movement, clamping, and circle-overlap helpers.
 - Extended GUI/Game2D API documentation and smoke coverage for text rendering and key-edge bindings.
 
 
