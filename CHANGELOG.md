@@ -2,7 +2,14 @@
 
 ## [Unreleased]
 
-The next development milestone is planned to focus on the LLVM backend; no LLVM completion is included in 2.3.0.
+The next development milestone is planned to focus on the LLVM backend; no LLVM completion is included in 2.3.x.
+
+## [2.3.1] — 2026-11-25
+
+- Added dependency-free 3x5 bitmap text rendering to the optional SDL2 GUI API and Game2D helpers, including bounded text length and scale/coordinate/color validation.
+- Added frame-scoped `gui.key_pressed` and `gui.key_released` events for responsive game controls; repeated key-down events are ignored.
+- Extended GUI/Game2D API documentation and smoke coverage for text rendering and key-edge bindings.
+
 
 
 All notable changes to YLang are documented here. This project follows semantic versioning for future releases.
