@@ -31,6 +31,9 @@ The first milestone intentionally supports one active window per process. It doe
 | `gui.clear(red, green, blue)` | `bool` | Clear the current frame using RGB channels in the range 0–255. |
 | `gui.draw_rect(x, y, width, height, red, green, blue)` | `bool` | Draw a filled rectangle; dimensions must be positive and color channels 0–255. |
 | `gui.draw_text(text, x, y, scale, red, green, blue)` | `bool` | Draw dependency-free 3x5 bitmap text. ASCII letters are rendered uppercase; digits and `: . - /` are supported. Scale is 1–16. |
+| `gui.load_bmp(path)` | `int` | Load a BMP image and return a positive handle; returns -1 on failure. The texture belongs to the active window. |
+| `gui.draw_image(handle, x, y)` | `bool` | Draw a loaded BMP texture at its native dimensions. |
+| `gui.free_image(handle)` | `bool` | Release a loaded texture. Closing its owner window releases remaining textures automatically. |
 | `gui.present()` | `bool` | Present the current frame. |
 | `gui.last_error()` | `string` | Return a readable description of the latest GUI runtime error. |
 | `gui.close()` | `void` | Destroy the active window and release its resources. Safe to call after failed creation. |
