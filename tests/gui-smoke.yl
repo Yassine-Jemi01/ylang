@@ -14,10 +14,17 @@ function main() -> int {
         gui.shutdown();
         return 4;
     }
+    let bool pressed = gui.key_pressed("Space");
+    let bool released = gui.key_released("Space");
+    if (not gui.draw_text("TETRIS 123", 2, 28, 2, 240, 240, 240)) {
+        gui.close();
+        gui.shutdown();
+        return 6;
+    }
     if (not gui.present()) {
         gui.close();
         gui.shutdown();
-        return 5;
+        return 7;
     }
     gui.close();
     gui.shutdown();
