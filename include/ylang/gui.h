@@ -46,6 +46,9 @@ bool ylgui_api_key_pressed(const char *key);
 bool ylgui_api_key_released(const char *key);
 bool ylgui_api_draw_text(const char *text, int64_t x, int64_t y, int64_t scale,
                          int64_t red, int64_t green, int64_t blue);
+int64_t ylgui_api_load_bmp(const char *path);
+bool ylgui_api_draw_image(int64_t handle, int64_t x, int64_t y);
+bool ylgui_api_free_image(int64_t handle);
 
 /* Present the frame to the window. */
 bool ylgui_present(YlguiWindow *window);
