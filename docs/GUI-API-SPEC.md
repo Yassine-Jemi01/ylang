@@ -22,12 +22,15 @@ The first milestone intentionally supports one active window per process. It doe
 | `gui.init()` | `bool` | Initialize the GUI runtime; false means initialization failed. |
 | `gui.create_window(title, width, height)` | `bool` | Create one window; title is `string`, dimensions are positive `int` values. |
 | `gui.poll()` | `bool` | Process pending events; false means the window was closed or polling failed. |
-| `gui.key_down(key)` | `bool` | Check a named key after polling; supports SDL scancode names such as `Left`, `Space`, and `Escape`. |
+| `gui.key_down(key)` | `bool` | Check whether a named key is held. |
+| `gui.key_pressed(key)` | `bool` | True for the frame in which a non-repeating key-down event is received; call after `gui.poll()`. |
+| `gui.key_released(key)` | `bool` | True for the frame in which a key-up event is received; call after `gui.poll()`. |
 | `gui.mouse_x()`, `gui.mouse_y()` | `int` | Read the mouse position in window coordinates. |
 | `gui.mouse_button_down(button)` | `bool` | Check mouse button state (1 left, 2 middle, 3 right; values 1–5 are accepted). |
 | `gui.ticks_ms()` | `int` | Read SDL's monotonic timer in milliseconds after initialization. |
 | `gui.clear(red, green, blue)` | `bool` | Clear the current frame using RGB channels in the range 0–255. |
 | `gui.draw_rect(x, y, width, height, red, green, blue)` | `bool` | Draw a filled rectangle; dimensions must be positive and color channels 0–255. |
+| `gui.draw_text(text, x, y, scale, red, green, blue)` | `bool` | Draw dependency-free 3x5 bitmap text. ASCII letters are rendered uppercase; digits and `: . - /` are supported. Scale is 1–16. |
 | `gui.present()` | `bool` | Present the current frame. |
 | `gui.last_error()` | `string` | Return a readable description of the latest GUI runtime error. |
 | `gui.close()` | `void` | Destroy the active window and release its resources. Safe to call after failed creation. |
