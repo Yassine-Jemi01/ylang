@@ -1507,6 +1507,9 @@ test ! -e build/asm-unsupported.asm
 YLANG_PATH=stdlib ./build/ylang check examples/game2d.yl >/dev/null
 YLANG_PATH=stdlib ./build/ylang emit-c examples/game2d.yl -o build/game2d-generated.c >/dev/null
 grep -q 'ylgui_api_key_down' build/game2d-generated.c
+grep -q 'ylgui_api_key_pressed' build/game2d-generated.c
+grep -q 'ylgui_api_key_released' build/game2d-generated.c
+grep -q 'ylgui_api_draw_text' build/game2d-generated.c
 grep -q 'ylgui_api_mouse_button_down' build/game2d-generated.c
 grep -q 'ylgui_api_ticks_ms' build/game2d-generated.c
 
