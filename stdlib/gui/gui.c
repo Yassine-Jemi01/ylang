@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 struct YlguiWindow {
     SDL_Window *window;
@@ -16,6 +17,8 @@ struct YlguiWindow {
 static bool gui_initialized;
 static YlguiWindow *gui_windows;
 static char gui_error[256];
+static bool gui_key_pressed[SDL_NUM_SCANCODES];
+static bool gui_key_released[SDL_NUM_SCANCODES];
 
 static void set_error(const char *message)
 {
@@ -103,9 +106,19 @@ bool ylgui_window_poll(YlguiWindow *window)
         return false;
     }
 
+    memset(gui_key_pressed, 0, sizeof(gui_key_pressed));
+    memset(gui_key_released, 0, sizeof(gui_key_released));
     SDL_Event event;
     while (SDL_PollEvent(&event) != 0) {
-        if (event.type == SDL_QUIT) {
+        if (event.type == SDL_KEYDOWN && event.key.repeat == 0 &&
+            event.key.keysym.scancode >= 0 &&
+            event.key.keysym.scancode < SDL_NUM_SCANCODES) {
+            gui_key_pressed[event.key.keysym.scancode] = true;
+        } else if (event.type == SDL_KEYUP &&
+                   event.key.keysym.scancode >= 0 &&
+                   event.key.keysym.scancode < SDL_NUM_SCANCODES) {
+            gui_key_released[event.key.keysym.scancode] = true;
+        } else if (event.type == SDL_QUIT) {
             for (YlguiWindow *at = gui_windows; at != NULL; at = at->next) {
                 at->open = false;
             }
@@ -152,6 +165,95 @@ bool ylgui_draw_rect(YlguiWindow *window, int x, int y, int width, int height,
         SDL_RenderFillRect(window->renderer, &rectangle) != 0) {
         set_sdl_error("Could not draw rectangle");
         return false;
+    }
+    gui_error[0] = '\0';
+    return true;
+}
+
+
+/* Five rows of three pixels per glyph. The compact font is dependency-free. */
+static const uint8_t ylgui_font_3x5[42][5] = {
+    {0,0,0,0,0}, {7,5,5,5,7}, {2,6,2,2,7}, {7,1,7,4,7}, {7,1,7,1,7},
+    {5,5,7,1,1}, {7,4,7,1,7}, {7,4,7,5,7}, {7,1,1,1,1}, {7,5,7,5,7},
+    {7,5,7,1,7}, {2,5,7,5,5}, {6,5,6,5,6}, {3,4,4,4,3}, {6,5,5,5,6},
+    {7,4,6,4,7}, {7,4,6,4,4}, {3,4,5,5,3}, {5,5,7,5,5}, {7,2,2,2,7},
+    {1,1,1,5,2}, {5,5,6,5,5}, {4,4,4,4,7}, {5,7,7,5,5}, {5,7,7,7,5},
+    {2,5,5,5,2}, {6,5,6,4,4}, {2,5,5,7,3}, {6,5,6,5,5}, {3,4,2,1,6},
+    {7,2,2,2,2}, {5,5,5,5,7}, {5,5,5,5,2}, {5,5,7,7,5}, {5,5,2,5,5},
+    {5,5,2,2,2}, {7,1,2,4,7}, {0,2,0,2,0}, {0,0,0,0,2}, {0,0,7,0,0},
+    {1,1,2,4,4}, {6,1,2,0,2}
+};
+
+static const uint8_t *ylgui_glyph_3x5(char character)
+{
+    if (character >= 'a' && character <= 'z')
+        character = (char)(character - 'a' + 'A');
+    if (character == ' ') return ylgui_font_3x5[0];
+    if (character >= '0' && character <= '9')
+        return ylgui_font_3x5[1 + (size_t)(character - '0')];
+    if (character >= 'A' && character <= 'Z')
+        return ylgui_font_3x5[11 + (size_t)(character - 'A')];
+    if (character == ':') return ylgui_font_3x5[37];
+    if (character == '.') return ylgui_font_3x5[38];
+    if (character == '-') return ylgui_font_3x5[39];
+    if (character == '/') return ylgui_font_3x5[40];
+    return ylgui_font_3x5[41];
+}
+
+bool ylgui_draw_text(YlguiWindow *window, const char *text, int x, int y, int scale,
+                     uint8_t red, uint8_t green, uint8_t blue)
+{
+    if (window == NULL || window->renderer == NULL || text == NULL ||
+        scale < 1 || scale > 16) {
+        set_error("Text drawing requires a valid window, non-null text, and scale from 1 to 16");
+        return false;
+    }
+    size_t length = strlen(text);
+    if (length > 4096U) {
+        set_error("Text drawing is limited to 4096 bytes per call");
+        return false;
+    }
+    if (SDL_SetRenderDrawColor(window->renderer, red, green, blue, 255) != 0) {
+        set_sdl_error("Could not set text color");
+        return false;
+    }
+    int64_t cursor_x = x;
+    int64_t cursor_y = y;
+    for (size_t i = 0; i < length; i++) {
+        unsigned char byte = (unsigned char)text[i];
+        if (byte == '\n') {
+            cursor_x = x;
+            cursor_y += (int64_t)(6 * scale);
+            if (cursor_y > INT_MAX) {
+                set_error("Text position exceeds the supported coordinate range");
+                return false;
+            }
+            continue;
+        }
+        const uint8_t *glyph = ylgui_glyph_3x5((char)byte);
+        for (int row = 0; row < 5; row++) {
+            for (int column = 0; column < 3; column++) {
+                if ((glyph[row] & (uint8_t)(1U << (unsigned)(2 - column))) == 0U)
+                    continue;
+                int64_t pixel_x = cursor_x + (int64_t)(column * scale);
+                int64_t pixel_y = cursor_y + (int64_t)(row * scale);
+                if (pixel_x < INT_MIN || pixel_x > INT_MAX ||
+                    pixel_y < INT_MIN || pixel_y > INT_MAX) {
+                    set_error("Text position exceeds the supported coordinate range");
+                    return false;
+                }
+                SDL_Rect pixel = {(int)pixel_x, (int)pixel_y, scale, scale};
+                if (SDL_RenderFillRect(window->renderer, &pixel) != 0) {
+                    set_sdl_error("Could not draw text");
+                    return false;
+                }
+            }
+        }
+        cursor_x += (int64_t)(4 * scale);
+        if (cursor_x > INT_MAX) {
+            set_error("Text position exceeds the supported coordinate range");
+            return false;
+        }
     }
     gui_error[0] = '\0';
     return true;
@@ -251,6 +353,37 @@ bool ylgui_api_key_down(const char *key)
     return state[scancode] != 0;
 }
 
+
+static bool ylgui_api_key_edge(const char *key, bool pressed)
+{
+    if (ylgui_active_window == NULL || !gui_initialized) {
+        set_error("Call gui.init() and create a window before reading keyboard state");
+        return false;
+    }
+    if (key == NULL || key[0] == '\0') {
+        set_error("Key name must not be empty");
+        return false;
+    }
+    SDL_Scancode scancode = SDL_GetScancodeFromName(key);
+    if (scancode == SDL_SCANCODE_UNKNOWN || scancode < 0 ||
+        scancode >= SDL_NUM_SCANCODES) {
+        set_error("Unknown key name; try Left, Right, Up, Down, Space, Escape, Return, or a letter");
+        return false;
+    }
+    gui_error[0] = '\0';
+    return pressed ? gui_key_pressed[scancode] : gui_key_released[scancode];
+}
+
+bool ylgui_api_key_pressed(const char *key)
+{
+    return ylgui_api_key_edge(key, true);
+}
+
+bool ylgui_api_key_released(const char *key)
+{
+    return ylgui_api_key_edge(key, false);
+}
+
 int64_t ylgui_api_mouse_x(void)
 {
     if (ylgui_active_window == NULL || !gui_initialized) {
@@ -321,6 +454,22 @@ bool ylgui_api_draw_rect(int64_t x, int64_t y, int64_t width, int64_t height,
         !ylgui_api_channel(blue, &b)) return false;
     return ylgui_draw_rect(ylgui_active_window, (int)x, (int)y,
                            (int)width, (int)height, r, g, b);
+}
+
+
+bool ylgui_api_draw_text(const char *text, int64_t x, int64_t y, int64_t scale,
+                         int64_t red, int64_t green, int64_t blue)
+{
+    uint8_t r, g, b;
+    if (x < INT_MIN || x > INT_MAX || y < INT_MIN || y > INT_MAX ||
+        scale < 1 || scale > 16) {
+        set_error("Text coordinates must fit in int and scale must be from 1 to 16");
+        return false;
+    }
+    if (!ylgui_api_channel(red, &r) || !ylgui_api_channel(green, &g) ||
+        !ylgui_api_channel(blue, &b)) return false;
+    return ylgui_draw_text(ylgui_active_window, text, (int)x, (int)y,
+                           (int)scale, r, g, b);
 }
 
 bool ylgui_api_present(void)
