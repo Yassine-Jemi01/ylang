@@ -6,6 +6,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct YlguiImage YlguiImage;
+
+struct YlguiImage {
+    int64_t id;
+    SDL_Texture *texture;
+    int width;
+    int height;
+    YlguiWindow *owner;
+    YlguiImage *next;
+};
+
 struct YlguiWindow {
     SDL_Window *window;
     SDL_Renderer *renderer;
@@ -16,6 +27,8 @@ struct YlguiWindow {
 
 static bool gui_initialized;
 static YlguiWindow *gui_windows;
+static YlguiImage *gui_images;
+static int64_t gui_next_image_id = 1;
 static char gui_error[256];
 static bool gui_key_pressed[SDL_NUM_SCANCODES];
 static bool gui_key_released[SDL_NUM_SCANCODES];
@@ -270,9 +283,25 @@ bool ylgui_present(YlguiWindow *window)
     return true;
 }
 
+static void ylgui_release_images_for_window(YlguiWindow *window)
+{
+    YlguiImage **link = &gui_images;
+    while (*link != NULL) {
+        YlguiImage *image = *link;
+        if (image->owner == window) {
+            *link = image->next;
+            SDL_DestroyTexture(image->texture);
+            free(image);
+        } else {
+            link = &image->next;
+        }
+    }
+}
+
 void ylgui_window_destroy(YlguiWindow *window)
 {
     if (window == NULL) return;
+    ylgui_release_images_for_window(window);
     YlguiWindow **link = &gui_windows;
     while (*link != NULL && *link != window) link = &(*link)->next;
     if (*link == window) *link = window->next;
@@ -470,6 +499,95 @@ bool ylgui_api_draw_text(const char *text, int64_t x, int64_t y, int64_t scale,
         !ylgui_api_channel(blue, &b)) return false;
     return ylgui_draw_text(ylgui_active_window, text, (int)x, (int)y,
                            (int)scale, r, g, b);
+}
+
+
+int64_t ylgui_api_load_bmp(const char *path)
+{
+    if (ylgui_active_window == NULL || !gui_initialized) {
+        set_error("Create a GUI window before loading an image");
+        return -1;
+    }
+    if (path == NULL || path[0] == '\0') {
+        set_error("Bitmap path must not be empty");
+        return -1;
+    }
+    if (gui_next_image_id <= 0 || gui_next_image_id == INT64_MAX) {
+        set_error("Image handle space is exhausted");
+        return -1;
+    }
+    SDL_Surface *surface = SDL_LoadBMP(path);
+    if (surface == NULL) {
+        set_sdl_error("Could not load BMP image");
+        return -1;
+    }
+    SDL_Texture *texture = SDL_CreateTextureFromSurface(ylgui_active_window->renderer, surface);
+    if (texture == NULL) {
+        set_sdl_error("Could not create image texture");
+        SDL_FreeSurface(surface);
+        return -1;
+    }
+    YlguiImage *image = calloc(1, sizeof(*image));
+    if (image == NULL) {
+        set_error("Out of memory while storing image handle");
+        SDL_DestroyTexture(texture);
+        SDL_FreeSurface(surface);
+        return -1;
+    }
+    image->id = gui_next_image_id++;
+    image->texture = texture;
+    image->width = surface->w;
+    image->height = surface->h;
+    image->owner = ylgui_active_window;
+    image->next = gui_images;
+    gui_images = image;
+    SDL_FreeSurface(surface);
+    gui_error[0] = '\0';
+    return image->id;
+}
+
+bool ylgui_api_draw_image(int64_t handle, int64_t x, int64_t y)
+{
+    if (ylgui_active_window == NULL || !gui_initialized) {
+        set_error("Create a GUI window before drawing an image");
+        return false;
+    }
+    if (x < INT_MIN || x > INT_MAX || y < INT_MIN || y > INT_MAX) {
+        set_error("Image coordinates must fit in int");
+        return false;
+    }
+    for (YlguiImage *image = gui_images; image != NULL; image = image->next) {
+        if (image->id == handle && image->owner == ylgui_active_window) {
+            SDL_Rect destination = {(int)x, (int)y, image->width, image->height};
+            if (SDL_RenderCopy(ylgui_active_window->renderer, image->texture,
+                               NULL, &destination) != 0) {
+                set_sdl_error("Could not draw image");
+                return false;
+            }
+            gui_error[0] = '\0';
+            return true;
+        }
+    }
+    set_error("Unknown image handle for the active window");
+    return false;
+}
+
+bool ylgui_api_free_image(int64_t handle)
+{
+    YlguiImage **link = &gui_images;
+    while (*link != NULL) {
+        YlguiImage *image = *link;
+        if (image->id == handle && image->owner == ylgui_active_window) {
+            *link = image->next;
+            SDL_DestroyTexture(image->texture);
+            free(image);
+            gui_error[0] = '\0';
+            return true;
+        }
+        link = &image->next;
+    }
+    set_error("Unknown image handle for the active window");
+    return false;
 }
 
 bool ylgui_api_present(void)
